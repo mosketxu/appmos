@@ -89,6 +89,8 @@ class Prefacturas extends Component
         $this->validate([
             'anyoplan'=>'required|digits:4|integer|min:1900|max:'.(date('Y')+1),
         ]);
+        $agrupacion=FacturacionConcepto::where('entidad_id',$this->entidad->id)->groupBy('agrupacion')->get();
+        dd($agrupacion);
         $conceptos=FacturacionConcepto::where('entidad_id',$this->entidad->id)->get();
         foreach ($conceptos as $concepto) {
             $prefac=new PrefacturaCreateAction; $p=$prefac->execute($concepto,$this->entidad,$this->anyoplan);

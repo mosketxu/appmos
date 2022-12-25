@@ -86,7 +86,7 @@
                                 </x-slot>
                             </x-jet-dropdown>
                         </div>
-                        <x-jet-nav-link href="{{ route('entidad.facturacionconceptos',$entmenu)}}" :active="request()->routeIs('entidad.facturacionconceptos')">
+                        <x-jet-nav-link href="{{ route('facturacionconcepto.entidad',$entmenu)}}" :active="request()->routeIs('facturacionconcepto.entidad')">
                             {{ __('Fac.Conceptos') }}
                         </x-jet-nav-link>
                     </div>

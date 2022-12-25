@@ -1,6 +1,11 @@
 <?php
 
-use App\Http\Controllers\{EntidadController,FacturacionController};
+use App\Http\Controllers\{
+    EntidadController,
+    FacturacionController,
+    FacturacionConceptoController,
+    FacturacionConceptoDetalleController
+};
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,9 +25,10 @@ Route::get('/', function () {
 
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/', function () {return view('entidades');})->name('entidades');
+    Route::get('/dashboard', function () {return view('entidades');})->name('dashboard');
 
     // entidades
-    Route::get('/entidad/facturacionconceptos/{entidad}', [EntidadController::class, 'facturacionconceptos'])->name('entidad.facturacionconceptos');
+    // Route::get('/entidad/facturacionconceptos/{entidad}', [EntidadController::class, 'facturacionconceptos'])->name('entidad.facturacionconceptos');
     Route::get('/entidad/pu/{entidad}', [EntidadController::class, 'pus'])->name('entidad.pu');
     Route::get('/entidad/contacto/{entidad}', [EntidadController::class, 'contactos'])->name('entidad.contacto');
     Route::get('/entidad/nuevocontacto/{entidad}', [EntidadController::class, 'createcontacto'])->name('entidad.createcontacto');
@@ -40,6 +46,18 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('facturacion/prefacturas', [FacturacionController::class,'prefacturas'])->name('facturacion.prefacturas');
     Route::get('facturacion/prefacturas/{entidad}/entidad', [FacturacionController::class,'prefacturasentidad'])->name('facturacion.prefacturasentidad');
     Route::resource('facturacion', FacturacionController::class);
+
+    //Facturacion Conceptos
+    Route::get('facturacionconcepto/{entidad}',[FacturacionConceptoController::class,'conceptosentidad'])->name('facturacionconcepto.entidad');
+    // Route::post('facturacionconcepto/newdetalle',[FacturacionConceptoController::class,'newdetalle'])->name('facturacionconceptos.newdetalle');
+    Route::resource('facturacionconcepto', FacturacionConceptoController::class);
+
+    //Facturacion Conceptos detalles
+    Route::resource('facturacionconceptodetalle', FacturacionConceptoDetalleController::class);
+
+    // Route::get('conceptosentidad/{entidad}', [FacturacionConceptoController::class,'conceptosentidad]')->name('facturacionconceptos.entidad');
+    // Route::resource('facturacionconceptos', FacturacionConceptoController::class);
+
 
  });
 
