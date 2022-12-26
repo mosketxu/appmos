@@ -6,6 +6,7 @@ use App\Http\Controllers\{
     FacturacionConceptoController,
     FacturacionConceptoDetalleController
 };
+use App\Models\FacturacionConceptodetalle;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -53,13 +54,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::resource('facturacionconcepto', FacturacionConceptoController::class);
 
     //Facturacion Conceptos detalles
+
     Route::resource('facturacionconceptodetalle', FacturacionConceptoDetalleController::class);
 
     // Route::get('conceptosentidad/{entidad}', [FacturacionConceptoController::class,'conceptosentidad]')->name('facturacionconceptos.entidad');
     // Route::resource('facturacionconceptos', FacturacionConceptoController::class);
 
 
- });
+});
 
 //  Route::any('{query}',function(){
 //      return redirect('/login');

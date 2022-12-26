@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Livewire;
+namespace App\Http\Livewire\FacturacionConceptos;
 
 use App\Models\{FacturacionConcepto,Ciclo, FacturacionConceptodetalle};
 use Livewire\Component;
@@ -40,7 +40,7 @@ class FacturacionConceptos extends Component
         $conceptos=FacturacionConcepto::with('detalles')->where('entidad_id',$this->entidad->id)->get();
         $ciclos=Ciclo::get();
 
-        return view('livewire.facturacion-conceptos',compact('ent','conceptos','ciclos'));
+        return view('livewire.facturacion-conceptos.facturacion-conceptos',compact('ent','conceptos','ciclos'));
     }
 
     public function makeBlank(){

@@ -17,7 +17,8 @@
                 </div>
             @endif
             <div class="flex justify-between">
-                <x-button.primary wire:click="create"><x-icon.plus/> Nuevo Concepto</x-button.primary>
+                {{-- <x-button.primary wire:click="create"><x-icon.plus/> Nuevo Concepto</x-button.primary> --}}
+                @livewire('facturacion-conceptos.conceptonuevo-modal')
             </div>
 
             {{-- tabla conceptos --}}

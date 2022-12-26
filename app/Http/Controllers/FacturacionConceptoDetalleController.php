@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FacturacionConcepto;
 use App\Models\FacturacionConceptodetalle;
 use Illuminate\Http\Request;
+
+use function PHPUnit\Framework\isNull;
 
 class FacturacionConceptoDetalleController extends Controller
 {
@@ -37,7 +40,6 @@ class FacturacionConceptoDetalleController extends Controller
     {
         $rules=[
             'facturacionconcepto_id'=>'required',
-            'entidadId'=>'required',
             'concepto'=>'required',
             'importe'=>'required|numeric',
             'orden'=>'nullable|numeric',
@@ -45,18 +47,27 @@ class FacturacionConceptoDetalleController extends Controller
 
         $messages = [
             'facturacionconcepto_id'=>'Tiene que existir una agrupacion antes de añadir un concepto',
-            'entidadId'=>'Tiene que existir una entidad seleccionada antes de añadir un concepto',
             'concepto'=>'Es necesario el concepto',
             'importe.numeric'=>'El importe debe ser numérico',
             'importe.required'=>'El importe es necesario',
             'orden.numeric'=>'El orden debe ser numérico',
         ];
-
-        $detalle = FacturacionConceptodetalle::create($request->except('entidadId'));
+        // dd($request);
+        $detalle = FacturacionConceptodetalle::create([
+            'facturacionconcepto_id'=>$request->facturacionconcepto_id,
+            'concepto'=>$request->concepto,
+            'unidades'=>$request->unidades,
+            'orden'=>$request->orden=='' ? '0' : $request->orden  ,
+            'importe'=>$request->importe,
+        ]);
 
         $this->validate($request, $rules,$messages);
 
-        return redirect()->route('facturacionconcepto.entidad',$request->entidadId);
+        $notification = array(
+            'message' => 'Elemento añadido satisfactoriamente!',
+            'alert-type' => 'success'
+        );
+        return redirect()->back()->with($notification);
 
     }
 
@@ -83,15 +94,7 @@ class FacturacionConceptoDetalleController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
+    public function update(Request $request, $id){
         $rules=[
             'facturacionconcepto_id'=>'required',
             'concepto'=>'required',
@@ -107,8 +110,15 @@ class FacturacionConceptoDetalleController extends Controller
             'orden.numeric'=>'El orden debe ser numérico',
         ];
 
-        $request->validate($request, $rules,$messages);
-        FacturacionConceptodetalle::update($request->all());
+        $request->validate($rules,$messages);
+        $f=FacturacionConceptodetalle::find($id);
+        $f->orden=$request->orden;
+        $f->concepto=$request->concepto;
+        $f->unidades=$request->unidades;
+        $f->importe=$request->importe;
+        // dd($f->importe);
+        $f->save();
+
         return redirect()->back()->with('success','Detalle actualizado satisfactoriamente');
     }
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{FacturacionConcepto, Entidad, FacturacionConceptodetalle, FacturacionDetalle};
+use App\Models\{Ciclo, FacturacionConcepto, Entidad, FacturacionConceptodetalle, FacturacionDetalle};
 use Illuminate\Http\Request;
 
 class FacturacionConceptoController extends Controller
@@ -18,11 +18,10 @@ class FacturacionConceptoController extends Controller
     }
 
 
-    public function conceptosentidad(Entidad $entidad)
-    {
+    public function conceptosentidad(Entidad $entidad){
+        $ciclosfact=Ciclo::get();
         $conceptos=FacturacionConcepto::where('entidad_id',$entidad->id)->with('detalles')->get();
-        return view('facturacionconceptos.index',compact(['entidad','conceptos']));
-
+        return view('facturacionconceptos.index',compact(['entidad','conceptos','ciclosfact']));
     }
 
     /**
@@ -32,19 +31,35 @@ class FacturacionConceptoController extends Controller
      */
     public function create()
     {
+        dd('create');
         //
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
+    public function store(Request $request){
+        $request->validate([
+            'entidad_id'=>'required',
+            'ciclo_id'=>'required',
+            'concepto'=>'required',
+            'importe'=>'nullable',
+            'ciclocorrespondiente'=>'ciclocorrespondiente',
+            ]);
+
+        FacturacionConcepto::insert([
+            'entidad_id'=>$request->entidad_id,
+            'ciclo_id'=>$request->ciclo_id,
+            'concepto'=>$request->concepto,
+            'importe'=>$request->importe,
+            'ciclocorrespondiente'=>$request->ciclocorrespondiente,
+        ]);
+
+        $notification = array(
+            'message' => 'Elemento creado satisfactoriamente!',
+            'alert-type' => 'success'
+        );
+        return redirect('store')->with($notification);
     }
+
+
 
     /**
      * Display the specified resource.
@@ -77,7 +92,17 @@ class FacturacionConceptoController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $f=FacturacionConcepto::find($id);
+        $f->concepto=$request->agrup;
+        $f->ciclo_id=$request->ciclo;
+        $f->ciclocorrespondiente=$request->corresponde;
+        $f->save();
+
+        $notification = array(
+            'message' => 'Elemento actualizado satisfactoriamente!',
+            'alert-type' => 'success'
+        );
+        return redirect()->back()->with($notification);
     }
 
     /**

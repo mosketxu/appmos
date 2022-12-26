@@ -12,7 +12,7 @@ class FacturacionConcepto extends Model
     protected $table = 'facturacion_conceptos';
 
     // protected $fillable = ['entidad_id','concepto','importe','ciclo_id','ciclocorrespondiente','agrupacion'];
-    protected $fillable = ['entidad_id','ciclo_id','ciclocorrespondiente','agrupacion'];
+    protected $fillable = ['entidad_id','ciclo_id','ciclocorrespondiente','concepto'];
 
     public function entidad()
     {
