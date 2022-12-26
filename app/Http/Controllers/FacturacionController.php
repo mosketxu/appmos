@@ -23,9 +23,9 @@ class FacturacionController extends Controller
         return view('facturacion.create');
     }
 
-    public function createprefactura()
+    public function createprefactura(Entidad $entidad)
     {
-        return view('facturacion.createprefactura');
+    return view('facturacion.createprefactura',compact('entidad'));
     }
 
 

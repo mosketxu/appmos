@@ -14,6 +14,8 @@ class Factura extends Component
 {
     public $factura, $conceptos, $facturada, $message, $showgenerar, $nf,$pre,$titulo;
     public $bloqueado=false;
+    public $ruta='facturacion.prefacturas';
+
 
     protected $listeners = [
         'facturaupdate' => '$refresh',

@@ -43,6 +43,9 @@
                         </div>
                     </div>
                     <div class="inline-flex mt-3 space-x-2">
+                        {{-- <x-button.button color="blue" onclick="location.href = '{{ route('facturacion.createprefactura',$entidad) }}'">Nueva</x-button.button> --}}
+                        <x-button.button color="blue" onclick="location.href = '{{ route('facturacion.createprefactura',$entidad) }}'">Nueva</x-button.button>
+
                         <x-dropdown label="Actions">
                             <x-dropdown.item type="button" wire:click="generarSelected" class="flex items-center space-x-2">
                                 <x-icon.invoice class="text-pink-400"></x-icon.invoice> <span>Generar Facturas </span>
@@ -72,6 +75,7 @@
                             <th class="font-medium text-center w-28">{{ __('F.Factura') }}</th>
                             <th class="font-medium text-center w-28">{{ __('F.Vto') }}</th>
                             <th class="pl-4 font-medium text-left">{{ __('Entidad') }}</th>
+                            <th class="pl-4 font-medium text-left">{{ __('Ciclo') }} </th>
                             <th class="pl-4 font-medium text-left">{{ __('Pago') }} </th>
                             <th class="pl-4 font-medium text-left">{{ __('Email') }}</th>
                             <th class="w-24 pl-4 font-medium text-left">{{ __('Ref.Cli') }}</th>
@@ -115,6 +119,9 @@
                                 </td>
                                 <td>
                                     <input type="text" value="{{ $facturacion->entidad }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                </td>
+                                <td>
+                                    <input type="text" value="{{ $facturacion->ciclo->ciclo }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
                                 <td class="text-center">
                                     <span class="text-sm text-gray-500 ">{{$facturacion->metodopago->metodopagocorto ?? '-'}}</span>

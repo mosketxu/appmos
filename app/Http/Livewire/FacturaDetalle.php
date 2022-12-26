@@ -14,7 +14,13 @@ class FacturaDetalle extends Component
     public $editedDetalleField = null;
     public $detalles=[];
     public $showcrear=false;
-    protected $listeners = [ 'funshow'=>'funshowdetalle','detallerefresh' => '$refresh'];
+
+    protected $listeners = [ 'funshow'=>'funshowdetalle','detallerefresh' => '$refresh','detallerefreshPP'=>'prueba'];
+
+    public function prueba()
+    {
+        dd('llego');
+    }
 
     protected $rules = [
         'detalles.*.orden' => ['numeric'],
@@ -28,7 +34,9 @@ class FacturaDetalle extends Component
         'base'=>'nullable',
     ];
 
-    public function mount(){
+
+
+    public function mount(Facturacion $factura){
         $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)
             ->orderBy('orden')
             ->get()
@@ -36,9 +44,12 @@ class FacturaDetalle extends Component
     }
 
     public function render(){
-
         $factura=$this->facturacion;
-        $this->showcrear=$this->facturacion->facturada? false : true;
+        if($factura->id){
+            $this->showcrear=$this->facturacion->facturada? false : true;
+        }else{
+            $this->showcrear=false;
+        }
         $this->base=$factura->facturadetalles->sum('base');
         $this->exenta=$factura->facturadetalles->sum('exenta');
         $this->totaliva=$factura->facturadetalles->sum('totaliva');

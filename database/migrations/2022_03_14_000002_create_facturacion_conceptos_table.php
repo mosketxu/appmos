@@ -17,8 +17,8 @@ class CreateFacturacionConceptosTable extends Migration
             $table->id();
             $table->foreignId('entidad_id')->constrained('entidades');
             $table->foreignId('ciclo_id')->constrained('ciclos');
-            $table->string('concepto');
-            $table->double('importe', 15, 2)->default(0.00);
+            // $table->string('concepto');
+            // $table->double('importe', 15, 2)->default(0.00);
             $table->integer('ciclocorrespondiente')->default(0);
             $table->timestamps();
         });

@@ -10,6 +10,7 @@ use Livewire\Component;
 class FacturaDetalleCreate extends Component
 {
     public $facturacion;
+    public $fprueba;
     public $detalle;
 
     protected $rules = [
@@ -36,12 +37,10 @@ class FacturaDetalleCreate extends Component
         $this->detalle->iva='0.21';
         $this->detalle->subcuenta='705000';
         $this->detalle->pagadopor=0;
-        $facturacion=$this->facturacion->id;
     }
 
     public function render()
     {
-        $facturacion=$this->facturacion;
         return view('livewire.factura-detalle-create');
     }
 
@@ -69,7 +68,7 @@ class FacturaDetalleCreate extends Component
 
     public function save()
     {
-        if($this->detalle){
+if($this->detalle){
             $this->validate();
             FacturacionDetalle::create([
                 'facturacion_id'=>$this->detalle->facturacion_id,

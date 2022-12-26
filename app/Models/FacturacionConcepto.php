@@ -11,7 +11,8 @@ class FacturacionConcepto extends Model
 
     protected $table = 'facturacion_conceptos';
 
-    protected $fillable = ['entidad_id','concepto','importe','ciclo_id','ciclocorrespondiente'];
+    // protected $fillable = ['entidad_id','concepto','importe','ciclo_id','ciclocorrespondiente','agrupacion'];
+    protected $fillable = ['entidad_id','ciclo_id','ciclocorrespondiente','concepto'];
 
     public function entidad()
     {
@@ -21,6 +22,11 @@ class FacturacionConcepto extends Model
     public function ciclo()
     {
         return $this->belongsTo(Ciclo::class);
+    }
+
+    public function detalles()
+    {
+        return $this->hasMany(FacturacionConceptodetalle::class,'facturacionconcepto_id')->orderBy('orden');
     }
 
     public function getCorrespondeAttribute()

@@ -39,10 +39,10 @@ class EntidadController extends Controller
         return view('entidad.pus',compact('entidad'));
     }
 
-    public function facturacionconceptos(Entidad $entidad)
-    {
-        return view('entidad.facturacionconceptos',compact('entidad'));
-    }
+    // public function facturacionconceptos(Entidad $entidad)
+    // {
+    //     return view('entidad.facturacionconceptos',compact('entidad'));
+    // }
 
     public function planfacturacion(Entidad $entidad)
     {

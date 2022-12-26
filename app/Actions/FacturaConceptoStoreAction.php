@@ -18,6 +18,7 @@ class FacturaConceptoStoreAction
                 $per=trimestre($factura->fechafactura,$concepto->ciclocorrespondiente,$factura->entidad->idioma);
             }
         }
+        // $per=!$per? 'falla' : $per;
         $f=FacturacionDetalle::create([
             'facturacion_id'=>$factura->id,
             'orden'=>'0',

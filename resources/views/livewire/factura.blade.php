@@ -1,5 +1,8 @@
 <div class="">
-    @livewire('navigation-menu')
+    {{-- @livewire('navigation-menu') --}}
+    @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
+
+
     <div class="flex justify-between mx-5 mt-2">
         <div class="">
             <h1 class="text-2xl font-semibold text-gray-900">Factura  {{ $nf }}</h1>

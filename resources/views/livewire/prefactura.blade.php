@@ -1,16 +1,14 @@
 <div class="">
-    @livewire('navigation-menu')
+    {{-- @livewire('navigation-menu') --}}
+    @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
+
     <div class="flex justify-between mx-5 mt-2">
         <div class="">
-            @if($factura)
-                <h1 class="text-2xl font-semibold text-gray-900">{{ $titulo }} </h1>
-            @else
-                <h1 class="text-2xl font-semibold text-gray-900">Nueva Prefactura</h1>
-            @endif
+            <h1 class="text-2xl font-semibold text-gray-900">{{ $titulo }} </h1>
         </div>
         <div class="">
             <x-button.button  wire:click="creafactura({{ $factura }})" color="green">{{ __('Generar Factura') }}</x-button.button>
-            <x-button.button  onclick="location.href = '{{ route('facturacion.createprefactura') }}'" color="blue">{{ __('Nueva Prefactura') }}</x-button.button>
+            <x-button.button  onclick="location.href = '{{ route('facturacion.createprefactura',$factura->entidad_id) }}'" color="blue">{{ __('Nueva Prefactura') }}</x-button.button>
         </div>
     </div>
 
@@ -77,7 +75,7 @@
                         </div>
                         <div class="form-item">
                             <x-jet-label for="fechafactura">{{ __('F.Factura') }}</x-jet-label>
-                            <x-jet-input  wire:model.defer="factura.fechafactura" type="date"  id="fechafactura" name="fechafactura" :value="old('fechafactura') "  class="w-full"/>
+                            <x-jet-input  wire:model.lazy="factura.fechafactura" type="date"  id="fechafactura" name="fechafactura" :value="old('fechafactura') "  class="w-full"/>
                             <x-jet-input-error for="fechafactura" class="mt-2" />
                         </div>
                         <div class="form-item">
@@ -201,7 +199,8 @@
                     >Saved!</span>
                 </div>
                 <div class="space-x-3">
-                    <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturas')}}'">{{ __('Volver') }}</x-jet-secondary-button>
+                    {{-- <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturas',$factura->entidad_id)}}'">{{ __('Volver') }}</x-jet-secondary-button> --}}
+                    <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturasentidad',$factura->entidad_id)}}'">{{ __('Volver') }}</x-jet-secondary-button>
                 </div>
             </div>
         </form>

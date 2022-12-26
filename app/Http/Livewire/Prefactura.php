@@ -13,10 +13,9 @@ use Livewire\Component;
 class Prefactura extends Component
 {
     public $factura, $conceptos, $facturada, $message, $titulo;
+    public $ent;
     public $bloqueado=false;
-    // protected $listeners = [
-    //     'facturaupdate' => '$refresh',
-    // ];
+    public $ruta='facturacion.prefacturas';
 
     protected function rules(){
         return [
@@ -43,24 +42,44 @@ class Prefactura extends Component
         ];
     }
 
-    public function mount(Facturacion $facturacion)
+    public function mount(Facturacion $facturacion, Entidad $entidad)
     {
         $this->factura=$facturacion;
+        if ($entidad->id) {
+            $this->inicializaPrefactura($entidad);
+            $this->ent=$entidad;
+        }
+        if(!$this->factura->serie) $this->factura->serie=substr(date('Y'),-2);
         $this->factura->enviar=1;
         $this->factura->enviada=0;
         $this->factura->pagada=0;
         $this->factura->facturable=1;
         $this->factura->facturada= false;
         $this->conceptos=FacturacionConcepto::where('entidad_id',$facturacion->entidad_id)->get();
-        $this->titulo= 'Prefactura ' . $this->factura->id;
-        // if($facturacion) $this->factura->entidad_id=$facturacion->entidad_id;
+
+        if($this->factura->id)
+            $this->titulo= 'Prefactura ' . $this->factura->id .' de '. $this->factura->entidad->entidad;
+        else
+            $this->titulo= 'Nueva Prefactura para '. $this->factura->entidad->entidad;
+
     }
 
     public function render(){
         $entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
-        // dd($entidades);
         $pagos=MetodoPago::all();
         return view('livewire.prefactura',compact('entidades','pagos',));
+    }
+
+
+    public function updatedFacturaFechafactura(){
+        if($this->factura->entidad_id )
+        {
+            $dia = date("d", strtotime($this->factura->fechafactura));
+            $mes = date("m", strtotime($this->factura->fechafactura));
+            if($this->ent->diavencimiento<$dia) $mes=$mes+1;
+            $anyo = date("Y", strtotime($this->factura->fechafactura));
+            $this->factura->fechavencimiento=$this->ent->diavencimiento.'-'.$mes.'-'.$anyo;
+        }
     }
 
     public function updatedFacturaEntidadId()
@@ -107,7 +126,7 @@ class Prefactura extends Component
                 'notas'=>$this->factura->notas,
             ]
         );
-        $this->emitSelf('notify-saved');
+        $this->redirect( route('facturacion.editprefactura',$fac) );
     }
 
     public function agregarconcepto(FacturacionConcepto $concepto){
@@ -134,6 +153,14 @@ class Prefactura extends Component
         $fac=new FacturaCreateAction;$f=$fac->execute($factura);
         $fac=new FacturaImprimirAction;$fac->execute($f);
         return redirect( route('facturacion.edit',$f) );
+    }
+
+    public function inicializaPrefactura(Entidad $entidad)
+    {
+        $this->factura->entidad_id=$entidad->id;
+        if(!$this->factura->metodopago_id) $this->factura->metodopago_id=$entidad->metodopago_id;
+        if(!$this->factura->mail) $this->factura->mail=$entidad->emailadm;
+        if(!$this->factura->refcliente) $this->factura->refcliente=$entidad->referenciacliente;
     }
 
     public function delete($facturacionId)

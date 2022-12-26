@@ -33,7 +33,7 @@ class Entidad extends Model
     ];
 
     const CICLOS =[
-        '0'=>'No Del',
+        '0'=>'No Def',
         '1'=>'Mensual',
         '3'=>'Trimestral',
         '12'=>'Anual',

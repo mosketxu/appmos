@@ -17,44 +17,48 @@
                 </div>
             @endif
             <div class="flex justify-between">
-                {{-- <div class="flex w-2/4 space-x-2">
-                    <input type="text" wire:model="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
-                </div> --}}
-                <x-button.primary wire:click="create"><x-icon.plus/> Nuevo Concepto</x-button.primary>
+                {{-- <x-button.primary wire:click="create"><x-icon.plus/> Nuevo Concepto</x-button.primary> --}}
+                @livewire('facturacion-conceptos.conceptonuevo-modal')
             </div>
 
             {{-- tabla conceptos --}}
             <div class="flex-col space-y-4">
                 <x-table>
                     <x-slot name="head">
-                        <x-table.heading class="pl-4 text-left">{{ __('Concepto') }}</x-table.heading>
-                        <x-table.heading class="pl-4 text-left">{{ __('Importe') }} </x-table.heading>
+                        <x-table.heading class="pl-4 text-left">{{ __('Agrupacion') }}</x-table.heading>
                         <x-table.heading class="pl-4 text-left">{{ __('Ciclo') }}</x-table.heading>
                         <x-table.heading class="pl-4 text-left">{{ __('Corresponde a:') }}</x-table.heading>
+                        <x-table.heading class="pl-4 text-left">{{ __('Concepto') }}</x-table.heading>
+                        <x-table.heading class="pl-4 text-left">{{ __('Importe') }} </x-table.heading>
+                        <x-table.heading class="pl-4 text-left">{{ __('Orden') }} </x-table.heading>
                         <x-table.heading colspan="2"/>
                     </x-slot>
                     <x-slot name="body">
                         @forelse ($conceptos as $concepto)
-                            <x-table.row wire:loading.class.delay="opacity-50">
-                                <x-table.cell>
-                                    <input type="text" value="{{ $concepto->concepto }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                            @forelse($concepto->detalles as $detalles)
+                                <x-table.row wire:loading.class.delay="opacity-50">
+                                    <x-table.cell><input type="text" value="{{ $concepto->concepto }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/></x-table.cell>
+                                    <x-table.cell><input type="text" value="{{ $concepto->ciclo->ciclo }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/></x-table.cell>
+                                    <x-table.cell><input type="text" value="{{ $concepto->corresponde }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/></x-table.cell>
+                                    <x-table.cell><input type="text" value="{{ $detalles->concepto }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/></x-table.cell>
+                                    <x-table.cell><input type="number" step="any" value="{{ $detalles->importe }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/></x-table.cell>
+                                    <x-table.cell><input type="number" value="{{ $detalles->orden }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/></x-table.cell>
+                                    <x-table.cell>
+                                        <div class="flex items-center justify-center space-x-3">
+                                            <x-icon.edit-a wire:click="edit({{ $detalles->id }})" href="#"/>
+                                            <x-icon.delete-a wire:click.prevent="delete({{ $concepto->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
+                                        </div>
+                                    </x-table.cell>
+                                </x-table.row>
+                            @empty
+                                <x-table.row>
+                                    <x-table.cell colspan="7">
                                 </x-table.cell>
-                                <x-table.cell>
-                                    <input type="number" step="any" value="{{ $concepto->importe }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
-                                </x-table.cell>
-                                <x-table.cell>
-                                    <input type="text" value="{{ $concepto->ciclo->ciclo }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
-                                </x-table.cell>
-                                <x-table.cell>
-                                    <input type="text" value="{{ $concepto->corresponde }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
-                                </x-table.cell>
-                                <x-table.cell>
-                                    <div class="flex items-center justify-center space-x-3">
-                                        <x-icon.edit-a wire:click="edit({{ $concepto->id }})" href="#"/>
-                                        <x-icon.delete-a wire:click.prevent="delete({{ $concepto->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
-                                    </div>
-                                </x-table.cell>
-                            </x-table.row>
+                                </x-table.row>
+                            @endforelse
+                            @if ($loop->last)
+                                <tr><td><hr></td></tr>
+                            @endif
                         @empty
                             <x-table.row>
                                 <x-table.cell colspan="7">
@@ -96,12 +100,8 @@
                 <x-slot name="title">Editar Concepto</x-slot>
 
                 <x-slot name="content">
-                    <x-input.group for="concepto" label="Concepto" :error="$errors->first('editing.concepto')">
-                        <x-input.text wire:model="editing.concepto" id="concepto"  />
-                    </x-input.group>
-
-                    <x-input.group for="importe" label="Importe" :error="$errors->first('editing.importe')">
-                        <x-input.text wire:model="editing.importe" id="importe" />
+                    <x-input.group for="concepto" label="Agrupación" :error="$errors->first('editing.concepto')">
+                        <x-input.text wire:model.defer="editing.concepto" id="concepto"  />
                     </x-input.group>
 
                     <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:py-5">
@@ -134,6 +134,18 @@
                             @error('editing.ciclocorrespondiente') <span class="text-red-500">{{ $message }}</span>@enderror
                         </div>
                     </div>
+                    <x-input.group for="concepto" label="Concepto" :error="$errors->first('editing.concepto')">
+                        <x-input.text wire:model.defer="concepto" id="concepto"  />
+                    </x-input.group>
+
+                    <x-input.group for="importe" label="Importe" :error="$errors->first('editing.importe')">
+                        <x-input.text wire:model.defer="importe" id="importe" />
+                    </x-input.group>
+
+                    <x-input.group for="orden" label="orden" :error="$errors->first('editing.orden')">
+                        <x-input.text wire:model.defer="orden" id="orden" />
+                    </x-input.group>
+
                 </x-slot>
                 <x-slot name="footer">
                     <x-button.secondary wire:click="$set('showEditModal', false)">Cancel</x-button.secondary>

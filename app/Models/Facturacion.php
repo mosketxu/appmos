@@ -24,23 +24,13 @@ class Facturacion extends Model
         'fechavencimiento' => 'date:Y-m-d',
     ];
 
-    protected $fillable=['numfactura','serie','entidad_id','fechafactura','fechavencimiento','metodopago_id','refcliente','mail',
+    protected $fillable=['numfactura','serie','entidad_id','ciclo_id','fechafactura','fechavencimiento','metodopago_id','refcliente','mail',
     'facturada','enviar','enviada','pagada','facturable','asiento','fechaasiento','observaciones','notas','ruta','fichero'];
 
-    public function metodopago()
-    {
-        return $this->belongsTo(MetodoPago::class);
-    }
-
-    public function facturadetalles()
-    {
-        return $this->hasMany(FacturacionDetalle::class)->orderBy('tipo')->orderBy('orden');
-    }
-
-    public function entidad()
-    {
-        return $this->belongsTo(Entidad::class);
-    }
+    public function metodopago(){return $this->belongsTo(MetodoPago::class);}
+    public function facturadetalles(){return $this->hasMany(FacturacionDetalle::class)->orderBy('tipo')->orderBy('orden');}
+    public function entidad(){return $this->belongsTo(Entidad::class);}
+    public function ciclo(){return $this->belongsTo(Ciclo::class);}
 
     public function getDateFraAttribute()
     {
