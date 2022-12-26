@@ -16,6 +16,7 @@ class PrefacturaCreateAction
             $fvto=$anyoplan.'-'.($mes+1).'-'.$entidad->diavencimiento;
             $fac=Facturacion::create([
                 'entidad_id'=>$concepto->entidad_id,
+                'ciclo_id'=>$concepto->ciclo_id,
                 'fechafactura'=>$ffra,
                 'fechavencimiento'=>$fvto,
                 'metodopago_id'=>$entidad->metodopago_id,

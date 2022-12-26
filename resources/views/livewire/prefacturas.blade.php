@@ -75,6 +75,7 @@
                             <th class="font-medium text-center w-28">{{ __('F.Factura') }}</th>
                             <th class="font-medium text-center w-28">{{ __('F.Vto') }}</th>
                             <th class="pl-4 font-medium text-left">{{ __('Entidad') }}</th>
+                            <th class="pl-4 font-medium text-left">{{ __('Ciclo') }} </th>
                             <th class="pl-4 font-medium text-left">{{ __('Pago') }} </th>
                             <th class="pl-4 font-medium text-left">{{ __('Email') }}</th>
                             <th class="w-24 pl-4 font-medium text-left">{{ __('Ref.Cli') }}</th>
@@ -118,6 +119,9 @@
                                 </td>
                                 <td>
                                     <input type="text" value="{{ $facturacion->entidad }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                </td>
+                                <td>
+                                    <input type="text" value="{{ $facturacion->ciclo->ciclo }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
                                 <td class="text-center">
                                     <span class="text-sm text-gray-500 ">{{$facturacion->metodopago->metodopagocorto ?? '-'}}</span>
