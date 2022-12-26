@@ -2,6 +2,8 @@
 
 namespace App\Http\Livewire\FacturacionConceptos;
 
+use App\Models\Ciclo;
+use App\Models\Entidad;
 use App\Models\FacturacionConcepto;
 use Livewire\Component;
 
@@ -29,13 +31,21 @@ class ConceptonuevoModal extends Component
         'ciclocorrespondiente'=>'required',
     ];}
 
-    public function render()
-    {
-        return view('livewire.facturacion-conceptos.conceptonuevo-modal');
+    public function render(){
+
+        $ciclosfact=Ciclo::get();
+        return view('livewire.facturacion-conceptos.conceptonuevo-modal',compact('ciclosfact'));
     }
 
     public function cambianuevomodal(){
         $this->muestranuevomodal= $this->muestranuevomodal==false ? true : false;
+    }
+
+    public function cancelarnuevomodal(){
+        $this->ciclo_id='';
+        $this->concepto='';
+        $this->ciclocorrespondiente='';
+        $this->muestranuevomodal= false ;
     }
 
     public function save()
@@ -56,8 +66,13 @@ class ConceptonuevoModal extends Component
         $this->concepto='';
         $this->ciclocorrespondiente='';
 
-        // dd($concepto);
-        $mensaje="Concepto creado con éxito";
-        $this->dispatchBrowserEvent('notify', $mensaje);
+        $e=Entidad::find($this->entidadid);
+        $this->muestranuevomodal=false;
+        $notification = array(
+            'message' => 'Concepto añadido satisfactoriamente!',
+            'alert-type' => 'success'
+        );
+        return redirect()->route('facturacionconcepto.entidad',$e)->with($notification);
+        // route('facturacionconcepto.entidad',$entidad)
     }
 }

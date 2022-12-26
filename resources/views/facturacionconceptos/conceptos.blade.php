@@ -17,16 +17,16 @@
             </div>
             <div class="flex w-full pt-2 pb-0 pl-2 space-x-2 text-sm font-bold text-gray-500 bg-blue-100 rounded-t-md">
                 <div class="flex w-4/12 space-x-1 rounded-l-xl">
-                    <div class="w-5/12"><input type="text" value="Agrupación" class="w-full  py-1 text-sm font-bold bg-blue-100 text-gray-500 truncate border-0 rounded-md" disabled/></div>
-                    <div class="w-3/12"><input type="text" value="Ciclo" class="w-full  py-1 text-sm font-bold bg-blue-100 text-gray-500 truncate border-0 rounded-md" disabled/></div>
-                    <div class="w-3/12"><input type="text" value="Per.Ref." class="w-full  py-1 text-sm font-bold bg-blue-100 text-gray-500 truncate border-0 rounded-md" disabled/></div>
+                    <div class="w-5/12"><input type="text" value="Agrupación" class="w-full py-1 text-sm font-bold text-gray-500 truncate bg-blue-100 border-0 rounded-md" disabled/></div>
+                    <div class="w-3/12"><input type="text" value="Ciclo" class="w-full py-1 text-sm font-bold text-gray-500 truncate bg-blue-100 border-0 rounded-md" disabled/></div>
+                    <div class="w-3/12"><input type="text" value="Per.Ref." class="w-full py-1 text-sm font-bold text-gray-500 truncate bg-blue-100 border-0 rounded-md" disabled/></div>
                     <div class="w-1/12"></div>
                 </div>
                 <div class="flex w-8/12 space-x-1">
-                    <div class="w-1/12" ><input type="text" value="Orden" class="w-full py-1 bg-blue-100 text-sm font-bold text-gray-500 truncate border-0 rounded-md" disabled /></div>
-                    <div class="w-7/12"><input type="text" value="Concepto" class="w-full py-1 bg-blue-100 text-sm font-bold text-gray-500 truncate border-0 rounded-md" disabled /></div>
-                    <div class="w-1/12"><input type="text" value="Uds" class="w-full py-1 bg-blue-100 text-sm font-bold text-gray-500 truncate border-0 rounded-md" disabled /></div>
-                    <div class="w-1/12"><input type="text" value="Importe" class="w-full py-1 bg-blue-100 text-sm font-bold text-gray-500 truncate border-0 rounded-md" disabled /></div>
+                    <div class="w-1/12" ><input type="text" value="Orden" class="w-full py-1 text-sm font-bold text-gray-500 truncate bg-blue-100 border-0 rounded-md" disabled /></div>
+                    <div class="w-7/12"><input type="text" value="Concepto" class="w-full py-1 text-sm font-bold text-gray-500 truncate bg-blue-100 border-0 rounded-md" disabled /></div>
+                    <div class="w-1/12"><input type="text" value="Uds" class="w-full py-1 text-sm font-bold text-gray-500 truncate bg-blue-100 border-0 rounded-md" disabled /></div>
+                    <div class="w-1/12"><input type="text" value="Importe" class="w-full py-1 text-sm font-bold text-gray-500 truncate bg-blue-100 border-0 rounded-md" disabled /></div>
                     <div class="w-2/12"></div>
                 </div>
             </div>
@@ -35,7 +35,7 @@
                 @csrf
                 @method('PUT')
                 <div class="border border-gray-200 flex space-x-1 pt-0 mt-0 {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }}" wire:loading.class.delay="opacity-50">
-                    <div class="w-4/12 flex">
+                    <div class="flex w-4/12">
                         <div class="w-5/12 {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }}">
                             <input type="text" name="agrup" value="{{ $concepto->concepto }}"
                             class="w-full py-1 {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }} text-sm font-thin text-gray-500 truncate border-0 rounded-md"/>
@@ -56,13 +56,24 @@
                                 <option value="2" {{ $concepto->ciclocorrespondiente=='2' ? 'selected' : '' }} >Ninguno</option>
                             </select>
                         </div>
-                        <div class="w-1/12 {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }}">
-                            <button type="button" class="text-center btn btn-primary" name="Guardar" onclick="form.submit()">
-                                <x-icon.save class="mt-1"/>
-                            </button>
+                        <div class="w-2/12 flex {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }}">
+                            <div class="mt-1">
+                                <button type="button" class="text-center btn btn-primary" name="Guardar" onclick="form.submit()">
+                                    <x-icon.save />
+                                </button>
+                            </div>
+                </form>
+                            <div class="mt-1">
+                                <form role="form" method="post" action="{{ route('facturacionconcepto.destroy',$concepto->id) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="enlace">
+                                        <x-icon.trash-can class="text-red-500 "/>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </form>
                     <div class="w-8/12 ">
                         @livewire('facturacion-conceptos.concepto-detalles',['concepto'=>$concepto,'color'=>$loop->even ? 'yellow' : 'green'],key($concepto->id))
                     </div>

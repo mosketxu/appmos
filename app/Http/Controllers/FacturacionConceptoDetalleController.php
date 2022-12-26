@@ -36,8 +36,7 @@ class FacturacionConceptoDetalleController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
+    public function store(Request $request){
         $rules=[
             'facturacionconcepto_id'=>'required',
             'concepto'=>'required',
@@ -52,7 +51,9 @@ class FacturacionConceptoDetalleController extends Controller
             'importe.required'=>'El importe es necesario',
             'orden.numeric'=>'El orden debe ser numérico',
         ];
-        // dd($request);
+
+        $request->validate($rules,$messages);
+
         $detalle = FacturacionConceptodetalle::create([
             'facturacionconcepto_id'=>$request->facturacionconcepto_id,
             'concepto'=>$request->concepto,

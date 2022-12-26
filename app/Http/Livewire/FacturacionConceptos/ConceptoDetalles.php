@@ -9,6 +9,7 @@ class ConceptoDetalles extends Component{
 
     public $conceptoid;
     public $color;
+    // public $facturacionconcepto_id;
 
     public function mount($concepto,$color){
         $this->conceptoid=$concepto->id;
@@ -16,7 +17,6 @@ class ConceptoDetalles extends Component{
     }
 
     public function render(){
-
         $detalles=FacturacionConceptodetalle::where('facturacionconcepto_id',$this->conceptoid)->get();
         return view('livewire.facturacion-conceptos.concepto-detalles',compact('detalles'));
     }

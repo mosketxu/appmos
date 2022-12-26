@@ -26,8 +26,8 @@
                         <select wire:model.defer="ciclofacturacionid"
                         class="block w-full p-1 transition duration-150 border border-blue-300 rounded-lg form-input hover:border-blue-300 focus:border-blue-300 active:border-blue-300" >
                             <option value="">-- choose --</option>
-                            @foreach (App\Models\Entidad::CICLOS as $value=>$label)
-                            <option value="{{ $value }}">{{ $label }}</option>
+                            @foreach ($ciclosfact as $ciclo)
+                            <option value="{{ $ciclo->id }}">{{ $ciclo->ciclo }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -43,7 +43,7 @@
                     </div>
                 </div>
                 <div class="mt-5 ">
-                    <x-jet-secondary-button wire:click="cambianuevomodal()">
+                    <x-jet-secondary-button wire:click="cancelarnuevomodal()">
                         {{ __('Cancelar') }}
                     </x-jet-secondary-button>
                     <x-jet-button type="submit" class="bg-blue-700 hover:bg-blue-900" >
