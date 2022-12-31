@@ -237,10 +237,21 @@
                             <td ></td>
                             <td ></td>
                             <td class="pt-2 text-sm text-right text-gray-600">Total:</td>
-                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totaliva / 0.21 ,2),2) }}</td>
+                            @if($totales)
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totaliva  / 0.21 ,2),2) }}</td>
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totalbase - ($totales->totaliva/0.21  ) ,2),2) }}</td>
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totaliva,2),2) }}</td>
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totales,2),2) }}</td>
+                            @else
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">0</td>
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">0</td>
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">0</td>
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">0</td>
+                            @endif
+                            {{-- <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totaliva / 0.21 ,2),2) }}</td>
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totalbase - ($totales->totaliva/0.21  ) ,2),2) }}</td>
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totaliva,2),2) }}</td>
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totales,2),2) }}</td> --}}
                             <td ></td>
                             <td ></td>
                             <td ></td>

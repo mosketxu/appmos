@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Livewire;
+namespace App\Http\Livewire\Facturacion;
 
 use App\Actions\FacturaReplicarAction;
 use App\Models\{Facturacion,Entidad};
@@ -53,7 +53,7 @@ class Facturaciones extends Component
         $totales= Facturacion::query()
         ->facturas($this->filtroenviada, $this->filtropagada, $this->filtrofacturado,$this->filtroanyo,$this->filtromes ,$this->search)
         ->first();
-        return view('livewire.facturaciones',compact('facturaciones','totales'));
+        return view('livewire.facturacion.facturaciones',compact('facturaciones','totales'));
     }
 
     public function replicateFactura($facturaId)

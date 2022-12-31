@@ -2,7 +2,8 @@
     <div class="p-2">
         <div class="max-w-full mx-auto">
             <div class="overflow-hidden bg-white shadow-xl sm:rounded-lg">
-                @livewire('prefacturas',['entidad'=>$entidad],key($entidad->id))
+                @livewire('facturacion.prefacturas',['entidad'=>$entidad],key($entidad->id))
+                {{-- @livewire('prefacturas',['entidad'=>$entidad],key($entidad->id)) --}}
             </div>
         </div>
     </div>

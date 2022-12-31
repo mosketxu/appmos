@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Livewire;
+namespace App\Http\Livewire\Facturacion;
 
 use App\Models\{Facturacion,FacturacionDetalle};
 
@@ -17,11 +17,6 @@ class FacturaDetalle extends Component
 
     protected $listeners = [ 'funshow'=>'funshowdetalle','detallerefresh' => '$refresh','detallerefreshPP'=>'prueba'];
 
-    public function prueba()
-    {
-        dd('llego');
-    }
-
     protected $rules = [
         'detalles.*.orden' => ['numeric'],
         'detalles.*.tipo' => ['numeric'],
@@ -33,8 +28,6 @@ class FacturaDetalle extends Component
         'detalles.*.pagadopor' => ['numeric'],
         'base'=>'nullable',
     ];
-
-
 
     public function mount(Facturacion $factura){
         $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)
@@ -61,9 +54,9 @@ class FacturaDetalle extends Component
             ->toArray();
 
         if(!$this->showcrear)
-            return view('livewire.factura-detalle-blocked',compact(['factura']));
+            return view('livewire.facturacion.factura-detalle-blocked',compact(['factura']));
         else
-            return view('livewire.factura-detalle',compact(['factura']));
+            return view('livewire.facturacion.factura-detalle',compact(['factura']));
     }
 
     public function funshowdetalle(){

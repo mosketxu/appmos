@@ -13,56 +13,42 @@ use Excel;
 class FacturacionController extends Controller
 {
 
-    public function index()
-    {
+    public function index(){
         return view('facturacion.index');
     }
 
-    public function create()
-    {
+    public function create(){
         return view('facturacion.create');
     }
 
-    public function createprefactura(Entidad $entidad)
-    {
+    public function createprefactura(Entidad $entidad){
     return view('facturacion.createprefactura',compact('entidad'));
     }
 
-
-    public function show($entidadId)
-    {
+    public function show($entidadId){
         $entidad=Entidad::find($entidadId);
-
         return view('facturacion.entidad',compact(['entidad']));
     }
 
-    public function prefacturasentidad($entidadId)
-    {
+    public function prefacturasentidad($entidadId){
         $entidad=Entidad::find($entidadId);
-
         return view('facturacion.prefacturasentidad',compact(['entidad']));
     }
 
-    public function editprefactura($facturacionId)
-    {
+    public function editprefactura($facturacionId){
         $facturacion=Facturacion::find($facturacionId);
         return view('facturacion.editprefactura',compact('facturacion'));
     }
 
-    public function edit(Facturacion $facturacion)
-    {
+    public function edit(Facturacion $facturacion){
         return view('facturacion.edit',compact('facturacion'));
     }
-
-
 
     public function prefacturas(){
         return view('facturacion.prefacturas');
     }
 
-    public function downfacturas()
-    {
-
+    public function downfacturas(){
         $facturas=Facturacion::get();
 
         foreach ($facturas as $factura) {
@@ -72,9 +58,7 @@ class FacturacionController extends Controller
         $this->downloadZip();
     }
 
-
-    public function downloadZip()
-    {
+    public function downloadZip(){
         $zip = new ZipArchive;
         $fileName = 'myNewFile.zip';
         $ruta='storage/facturas/21/06/';
@@ -90,8 +74,7 @@ class FacturacionController extends Controller
         return response()->download(public_path($fileName));
     }
 
-    public function import()
-    {
+    public function import(){
 
         Excel::import(new FacturacionImport, 'Facturas.xlsx');
 

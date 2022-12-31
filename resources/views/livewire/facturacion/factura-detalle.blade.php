@@ -1,16 +1,9 @@
 <div class="p-1 mx-2">
 
     <div class="py-1 space-y-2">
-        @if (session()->has('message'))
-            <div id="alert" class="relative px-6 py-2 mb-2 text-white bg-red-200 border-red-500 rounded border-1">
-                <span class="inline-block mx-8 align-middle">
-                    {{ session('message') }}
-                </span>
-                <button class="absolute top-0 right-0 mt-2 mr-6 text-2xl font-semibold leading-none bg-transparent outline-none focus:outline-none" onclick="document.getElementById('alert').remove();">
-                    <span>×</span>
-                </button>
-            </div>
-        @endif
+        <div class="">
+            @include('errores')
+        </div>
         <div class="bg-yellow-100 rounded-md">
             <h3 class="ml-2 font-semibold ">Detalle Factura</h3>
         </div>
@@ -294,7 +287,7 @@
         </div>
 
         @if($showcrear)
-            @livewire('factura-detalle-create',['facturacion'=>$factura],key($factura->id))
+            @livewire('facturacion.factura-detalle-create',['facturacion'=>$factura],key($factura->id))
         @endif
     </div>
 </div>

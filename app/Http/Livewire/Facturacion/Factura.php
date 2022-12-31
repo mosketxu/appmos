@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Livewire;
+namespace App\Http\Livewire\Facturacion;
 
 // use App\Actions\MonthQuarterAction;
 
@@ -59,7 +59,7 @@ class Factura extends Component
     public function render(){
         $entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
         $pagos=MetodoPago::all();
-        return view('livewire.factura',compact('entidades','pagos',));
+        return view('livewire.facturacion.factura',compact('entidades','pagos',));
     }
 
     public function updatedFacturaEntidadId()

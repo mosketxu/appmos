@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Livewire;
+namespace App\Http\Livewire\Facturacion;
 
 use App\Models\{Facturacion, FacturacionDetalle};
 
@@ -41,7 +41,7 @@ class FacturaDetalleCreate extends Component
 
     public function render()
     {
-        return view('livewire.factura-detalle-create');
+        return view('livewire.facturacion.factura-detalle-create');
     }
 
     public function updatedDetalleTipo()

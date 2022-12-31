@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Livewire;
+namespace App\Http\Livewire\Facturacion;
 
 use App\Actions\FacturaCreateAction;
 use App\Actions\FacturaImprimirAction;
@@ -44,7 +44,7 @@ class Prefacturas extends Component
     public function render(){
         if($this->selectAll) $this->selectPageRows();
         $facturaciones = $this->rows;
-        return view('livewire.prefacturas',compact('facturaciones'));
+        return view('livewire.facturacion.prefacturas',compact('facturaciones'));
     }
 
     public function getRowsQueryProperty(){
