@@ -15,7 +15,8 @@ class CreateCiclosTable extends Migration
     {
         Schema::create('ciclos', function (Blueprint $table) {
             $table->id();
-    $table->string('ciclo');
+            $table->string('ciclo');
+            $table->integer('ciclos')->default(0);
         });
     }
 
