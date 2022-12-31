@@ -27,6 +27,7 @@
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Importe') }}</th>
                         <th class="w-16 py-3 pl-10 text-xs font-medium leading-4 tracking-wider text-left text-gray-500 bg-yellow-50">{{ __('% IVA') }}</th>
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Base (€)') }}</th>
+                        <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Exenta (€)') }}</th>
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('IVA (€)') }}</th>
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Total (€)') }}</th>
                         <th class="py-3 pl-2 text-xs font-medium leading-4 tracking-wider text-left text-gray-500 bg-yellow-50 w-28">{{ __('Subcta') }}</th>
@@ -116,20 +117,20 @@
                                     </div>
                                 @endif
                             </x-table.cell>
-                            {{-- coste --}}
+                            {{-- importe --}}
                             <x-table.cell class="">
-                                @if ($editedDetalleIndex === $index || $editedDetalleField === $index . '.coste')
+                                @if ($editedDetalleIndex === $index || $editedDetalleField === $index . '.importe')
                                     <input type="number" step="any"
-                                        @click.away="$wire.editedDetalleField === '{{ $index }}.coste' ? $wire.saveDetalle({{ $index }}) : null"
-                                        wire:model.defer="detalles.{{ $index }}.coste"
+                                        @click.away="$wire.editedDetalleField === '{{ $index }}.importe' ? $wire.saveDetalle({{ $index }}) : null"
+                                        wire:model.defer="detalles.{{ $index }}.importe"
                                         class="w-full text-xs text-right p-2 border border-blue-300 transition rounded-lg duration-150 hover:border-blue-300 focus:border-blue-300  active:border-blue-300
-                                        {{ $errors->has('detalles.' . $index . '.coste') ? 'border-red-500' : 'border-blue-300' }}"/>
-                                    @if ($errors->has('detalles.' . $index . '.coste'))
-                                        <div class="text-red-500">{{ $errors->first('detalles.' . $index . '.coste') }}</div>
+                                        {{ $errors->has('detalles.' . $index . '.importe') ? 'border-red-500' : 'border-blue-300' }}"/>
+                                    @if ($errors->has('detalles.' . $index . '.importe'))
+                                        <div class="text-red-500">{{ $errors->first('detalles.' . $index . '.importe') }}</div>
                                     @endif
                                 @else
-                                    <div class="flex-1 p-2 pr-10 text-xs text-right text-gray-600 cursor-pointer" wire:click="editDetalleField({{ $index }}, 'coste')">
-                                        {{ $detalle['coste'] }}
+                                    <div class="flex-1 p-2 pr-10 text-xs text-right text-gray-600 cursor-pointer" wire:click="editDetalleField({{ $index }}, 'importe')">
+                                        {{ $detalle['importe'] }}
                                     </div>
                                 @endif
                             </x-table.cell>
@@ -155,27 +156,35 @@
                                 </div>
                                 @endif
                             </x-table.cell>
-
+                            {{-- base --}}
                             <x-table.cell>
                                 <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 rounded-lg bg-blue-50">
-                                    @if(is_numeric($detalle['unidades']) && is_numeric($detalle['coste']))
-                                    {{ number_format(round($detalle['unidades']*$detalle['coste'], 2),2,',','.') }}
+                                    @if(is_numeric($detalle['unidades']) && is_numeric($detalle['importe'])&& $detalle['iva']!='0')
+                                    {{ number_format(round($detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
                                     @endif
                                 </div>
                             </x-table.cell>
-
+                            {{-- exenta --}}
+                            <x-table.cell>
+                                <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 rounded-lg bg-blue-50">
+                                    @if(is_numeric($detalle['unidades']) && is_numeric($detalle['importe'])&& $detalle['iva']=='0')
+                                    {{ number_format(round($detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
+                                    @endif
+                                </div>
+                            </x-table.cell>
+                            {{-- iva --}}
                             <x-table.cell>
                                 <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 bg-blue-100 rounded-lg">
-                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['coste']))
-                                    {{ number_format(round($detalle['iva']*$detalle['unidades']*$detalle['coste'], 2),2,',','.') }}
+                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['importe']))
+                                    {{ number_format(round($detalle['iva']*$detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
                                     @endif
                                 </div>
                             </x-table.cell>
-
+                            {{-- total --}}
                             <x-table.cell>
                                 <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 bg-blue-200 rounded-lg">
-                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['coste']))
-                                    {{ number_format(round((1+$detalle['iva'])*$detalle['unidades']*$detalle['coste'], 2),2,',','.') }}
+                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['importe']))
+                                    {{ number_format(round((1+$detalle['iva'])*$detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
                                     @endif
                                 </div>
                             </x-table.cell>

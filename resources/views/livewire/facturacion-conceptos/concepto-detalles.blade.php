@@ -12,7 +12,6 @@
                 <div class="w-1/12 "><input type="number" name="importe" step="any" value="{{ $detalle->importe }}" class="w-full py-1 {{ $color }} text-right text-sm font-thin text-gray-500 truncate border-0 rounded-md"/></div>
                 <div class="flex items-center justify-center w-2/12 ">
                     <button type="submit"><x-icon.save/></button>
-                    <x-icon.edit-a href="{{route('facturacionconceptodetalle.edit', $detalle->id )}}"/>
                     <x-icon.delete-a />
                 </div>
             </div>
@@ -27,22 +26,19 @@
         </div>
     </div>
     @endforelse
-        {{-- @if ($loop->last) --}}
-        <form action="{{route('facturacionconceptodetalle.store')}}" method="post">
-            @csrf
-            <input type="hidden" name="facturacionconcepto_id" value="{{ $conceptoid }}">
-            <div class="flex space-x-1" wire:loading.class.delay="opacity-50">
-                <div class="w-1/12 {{ $color }}"><input type="number" name="orden" value="{{ old('orden','0') }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"/></div>
-                <div class="w-7/12 {{ $color }}"><input type="text" name="concepto" value="{{ old('concepto') }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md" /></div>
-                <div class="w-1/12 {{ $color }}"><input type="number" name="unidades" step="any" value="{{ old('unidades','1') }}" class="w-full py-1 text-sm font-thin text-right text-gray-500 truncate border-0 rounded-md"/></div>
-                <div class="w-1/12 {{ $color }}"><input type="number" name="importe" step="any" value="{{ old('coste','0') }}" class="w-full py-1 text-sm font-thin text-right text-gray-500 truncate border-0 rounded-md"/></div>
-                <div  class="w-2/12 mx-auto text-center text-blue-800">
-                    <button type="button" class="text-center btn btn-primary" name="Guardar" onclick="form.submit()">
-                        <x-icon.circle-plus class="mt-1"/>
-                    </button>
-                </div>
+    <form action="{{route('facturacionconceptodetalle.store')}}" method="post">
+        @csrf
+        <input type="hidden" name="facturacionconcepto_id" value="{{ $conceptoid }}">
+        <div class="flex space-x-1" wire:loading.class.delay="opacity-50">
+            <div class="w-1/12 {{ $color }}"><input type="number" name="orden" value="{{ old('orden','0') }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"/></div>
+            <div class="w-7/12 {{ $color }}"><input type="text" name="concepto" value="{{ old('concepto') }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md" /></div>
+            <div class="w-1/12 {{ $color }}"><input type="number" name="unidades" step="any" value="{{ old('unidades','1') }}" class="w-full py-1 text-sm font-thin text-right text-gray-500 truncate border-0 rounded-md"/></div>
+            <div class="w-1/12 {{ $color }}"><input type="number" name="importe" step="any" value="{{ old('importe','0') }}" class="w-full py-1 text-sm font-thin text-right text-gray-500 truncate border-0 rounded-md"/></div>
+            <div  class="w-2/12 mx-auto text-center text-blue-800">
+                <button type="button" class="text-center btn btn-primary" name="Guardar" onclick="form.submit()">
+                    <x-icon.circle-plus class="mt-1"/>
+                </button>
             </div>
-            </form>
-            {{-- @endif --}}
-
+        </div>
+    </form>
 </div>

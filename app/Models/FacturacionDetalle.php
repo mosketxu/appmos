@@ -9,7 +9,7 @@ class FacturacionDetalle extends Model
 {
     use HasFactory;
 
-    protected $fillable=['facturacion_id','orden','tipo','concepto','unidades','coste','iva','subcuenta','pagadopor'];
+    protected $fillable=['facturacion_id','orden','tipo','concepto','unidades','importe','iva','totaliva','base','exenta','total','subcuenta','pagadopor'];
 
     const TIPOS =[
         '0'=>'General',
@@ -17,13 +17,9 @@ class FacturacionDetalle extends Model
         '2'=>'Otros',
     ];
 
-    public function factura()
-    {
-        return $this->belongsTo(Facturacion::class);
-    }
+    public function factura(){return $this->belongsTo(Facturacion::class);}
 
-    public function getTipofraAttribute()
-    {
+    public function getTipofraAttribute(){
         return [
             '0'=>'Gral',
             '1'=>'Suplido',
@@ -31,13 +27,15 @@ class FacturacionDetalle extends Model
         ][$this->tipo] ?? '0';
     }
 
-    public function getBaseAttribute(){
-        return $this->iva!=0 ? round($this->unidades*$this->coste,2) : 0;
-    }
+    // public function getBaseAttribute(){
+    //     dd($this->iva);
+    //     return $this->iva!=0 ? round($this->unidades*$this->coste,2) : 0;
 
-    public function getExentaAttribute(){
-        return $this->iva==0 ? round($this->unidades*$this->coste,2) : 0;
-    }
+    //     return round($this->base,2);
+    // }
+    // public function getExentaAttribute(){return round($this->exenta,2);}
+    // public function getTotalivaAttribute(){return round($this->totaliva,2);}
+    // public function getTotalAttribute(){return round($this->total,2);}
 
     public function getPorAttribute(){
         if($this->pagadopor=='1')
@@ -46,14 +44,6 @@ class FacturacionDetalle extends Model
             return 'Susana';
         else
             return 'NP';
-    }
-
-    public function getTotalivaAttribute(){
-        return round($this->unidades*$this->coste*$this->iva,2);
-    }
-    public function getTotalAttribute(){
-        return round((1+$this->iva)*$this->unidades*$this->coste,2);
-        // return number_format(round((1+$this->iva)$this->unidades*$this->coste,2),2);
     }
 
 

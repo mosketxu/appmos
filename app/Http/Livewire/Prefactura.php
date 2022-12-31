@@ -65,6 +65,8 @@ class Prefactura extends Component
     }
 
     public function render(){
+
+
         $entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
         $pagos=MetodoPago::all();
         return view('livewire.prefactura',compact('entidades','pagos',));

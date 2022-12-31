@@ -26,7 +26,7 @@ class PlanFacturacionAction
             'tipo'=>'0',
             'concepto'=>$concepto->concepto . ' ' . $per,
             'unidades'=>'1',
-            'coste'=>$concepto->importe,
+            'importe'=>$concepto->importe,
             'iva'=>$factura->entidad->tipoiva,
             'subcuenta'=>'705000',
             'pagadopor'=>$sumaId,

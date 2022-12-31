@@ -1,5 +1,4 @@
 <div class="">
-    {{-- @livewire('navigation-menu') --}}
     @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
 
     <div class="flex justify-between mx-5 mt-2">
@@ -12,31 +11,8 @@
         </div>
     </div>
 
-    <div class="mx-5 space-y-1">
-        @if ($message)
-            <div id="alert" class="relative px-6 py-2 mb-2 text-white bg-red-200 border-red-500 rounded border-1">
-                <span class="inline-block mx-8 align-middle">
-                    {{ $message }}
-                </span>
-                <button class="absolute top-0 right-0 mt-2 mr-6 text-2xl font-semibold leading-none bg-transparent outline-none focus:outline-none" onclick="document.getElementById('alert').remove();">
-                    <span>×</span>
-                </button>
-            </div>
-        @endif
-        @if ($errors->any())
-            <div id="alert" class="relative px-6 py-2 mb-2 text-white bg-red-200 border-red-500 rounded border-1">
-                <x-jet-label class="text-red">Verifica los errores</x-jet-label>
-                <ul class="mt-3 text-sm text-red-600 list-disc list-inside">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-                <button class="absolute top-0 right-0 mt-2 mr-6 text-2xl font-semibold leading-none bg-transparent outline-none focus:outline-none" onclick="document.getElementById('alert').remove();">
-                    <span>×</span>
-                </button>
-            </div>
-        @endif
-        {{-- <x-jet-validation-errors/> --}}
+    <div class="">
+        @include('errores')
     </div>
 
     <div class="flex-col mx-5 mt-2 text-gray-500 rounded-lg">

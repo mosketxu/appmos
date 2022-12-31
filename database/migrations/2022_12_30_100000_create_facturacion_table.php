@@ -20,6 +20,11 @@ class CreateFacturacionTable extends Migration
             $table->integer('numfactura')->nullable();
             $table->date('fechafactura')->nullable();
             $table->date('fechavencimiento')->nullable();
+            $table->integer('ciclo_id');
+            $table->double('totaliva', 15, 2)->default(0.00);
+            $table->double('base', 15, 2)->default(0.00);
+            $table->double('exenta', 15, 2)->default(0.00);
+            $table->double('total', 15, 2)->default(0.00);
             $table->integer('metodopago_id')->nullable();
             $table->string('refcliente', 50)->nullable();
             $table->string('mail')->nullable();
@@ -34,7 +39,7 @@ class CreateFacturacionTable extends Migration
             $table->longText('notas')->nullable();
             $table->string('ruta', 100)->nullable();
             $table->string('fichero', 50)->nullable();
-            $table->timestamp('deleted_at')->nullable();
+            // $table->timestamp('deleted_at')->nullable();
             $table->timestamps();
         });
     }

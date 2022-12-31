@@ -2,7 +2,7 @@
 
 namespace App\Actions;
 
-use App\Models\{Entidad, Facturacion,FacturacionConcepto};
+use App\Models\{Entidad, Facturacion,FacturacionConcepto, FacturacionConceptodetalle, FacturacionDetalle};
 
 class PrefacturaCreateAction
 {
@@ -32,8 +32,12 @@ class PrefacturaCreateAction
                 'observaciones'=>$entidad->observaciones,
                 'notas'=>$entidad->notas,
             ]);
+
             $fc=new FacturaConceptoStoreAction;
             $fc->execute($fac,$concepto);
+            // $det=FacturacionDetalle::where('facturacion_id',$fac->id);
+            // $det=FacturacionDetalle::where('facturacion_id',$fac->id);
+
         }
     $mensaje='Exito';
         return $mensaje;

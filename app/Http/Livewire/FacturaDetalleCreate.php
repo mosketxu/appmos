@@ -20,7 +20,7 @@ class FacturaDetalleCreate extends Component
         'detalle.tipo'=>'required|numeric',
         'detalle.concepto'=>'required|max:250',
         'detalle.unidades'=>'numeric|required',
-        'detalle.coste'=>'numeric|required',
+        'detalle.importe'=>'numeric|required',
         'detalle.iva'=>'numeric|required',
         'detalle.subcuenta'=>'numeric|required',
         'detalle.pagadopor'=>'numeric|required',
@@ -33,7 +33,7 @@ class FacturaDetalleCreate extends Component
         $this->detalle->orden=0;
         $this->detalle->tipo=0;
         $this->detalle->unidades=1;
-        $this->detalle->coste=0;
+        $this->detalle->importe=0;
         $this->detalle->iva='0.21';
         $this->detalle->subcuenta='705000';
         $this->detalle->pagadopor=0;
@@ -68,7 +68,7 @@ class FacturaDetalleCreate extends Component
 
     public function save()
     {
-if($this->detalle){
+        if($this->detalle){
             $this->validate();
             FacturacionDetalle::create([
                 'facturacion_id'=>$this->detalle->facturacion_id,
@@ -76,7 +76,7 @@ if($this->detalle){
                 'tipo'=>$this->detalle->tipo,
                 'concepto'=>$this->detalle->concepto,
                 'unidades'=>$this->detalle->unidades,
-                'coste'=>$this->detalle->coste,
+                'importe'=>$this->detalle->importe,
                 'iva'=>$this->detalle->iva,
                 'subcuenta'=>$this->detalle->subcuenta,
                 'pagadopor'=>$this->detalle->pagadopor,
@@ -89,7 +89,7 @@ if($this->detalle){
             $this->detalle->concepto='';
             $this->detalle->tipo=0;
             $this->detalle->unidades=1;
-            $this->detalle->coste=0;
+            $this->detalle->importe=0;
             $this->detalle->iva=0;
             $this->detalle->subcuenta=0;
             $this->detalle->pagadopor=0;

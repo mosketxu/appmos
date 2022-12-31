@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
-use Illuminate\Database\Eloquent\SoftDeletes;
+// use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Facturacion extends Model
 {
     use HasFactory;
-    use SoftDeletes;
+    // use SoftDeletes;
 
     protected $table = 'facturacion';
 
@@ -24,7 +24,7 @@ class Facturacion extends Model
         'fechavencimiento' => 'date:Y-m-d',
     ];
 
-    protected $fillable=['numfactura','serie','entidad_id','ciclo_id','fechafactura','fechavencimiento','metodopago_id','refcliente','mail',
+    protected $fillable=['numfactura','serie','entidad_id','ciclo_id','totaliva','base','exenta','total','fechafactura','fechavencimiento','metodopago_id','refcliente','mail',
     'facturada','enviar','enviada','pagada','facturable','asiento','fechaasiento','observaciones','notas','ruta','fichero'];
 
     public function metodopago(){return $this->belongsTo(MetodoPago::class);}
@@ -32,54 +32,47 @@ class Facturacion extends Model
     public function entidad(){return $this->belongsTo(Entidad::class);}
     public function ciclo(){return $this->belongsTo(Ciclo::class);}
 
-    public function getDateFraAttribute()
-    {
+    public function getDateFraAttribute(){
         if ($this->fechafactura) {
             return $this->fechafactura->format('d/m/Y');
         }
     }
 
-    public function getDateVtoAttribute()
-    {
+    public function getDateVtoAttribute(){
         if ($this->fechavencimiento) {
             return $this->fechavencimiento->format('d/m/Y');
         }
     }
 
-    public function getEnviarEstAttribute()
-    {
+    public function getEnviarEstAttribute(){
         return [
             '0'=>['red','No'],
             '1'=>['green','Sí']
         ][$this->enviar] ?? ['gray',''];
     }
 
-    public function getEnviadaEstAttribute()
-    {
+    public function getEnviadaEstAttribute(){
         return [
             '0'=>['red','No'],
             '1'=>['green','Sí']
         ][$this->enviada] ?? ['gray',''];
     }
 
-    public function getPagadaEstAttribute()
-    {
+    public function getPagadaEstAttribute(){
         return [
             '0'=>['red','No'],
             '1'=>['green','Sí']
         ][$this->pagada] ?? ['gray',''];
     }
 
-    public function getFacturableEstAttribute()
-    {
+    public function getFacturableEstAttribute(){
         return [
             '0'=>['red','No'],
             '1'=>['green','Sí']
         ][$this->facturable] ?? ['gray',''];
     }
 
-    public function getContabilizadaAttribute()
-    {
+    public function getContabilizadaAttribute(){
         if ($this->asiento){
             return ['green','Sí'];
         }else{
@@ -87,8 +80,7 @@ class Facturacion extends Model
         }
     }
 
-    public function getFacturadoAttribute()
-    {
+    public function getFacturadoAttribute(){
         if ($this->numfactura){
             return ['green','Sí'];
         }else{
@@ -96,8 +88,7 @@ class Facturacion extends Model
         }
     }
 
-    public function getFacturadaEstAttribute()
-    {
+    public function getFacturadaEstAttribute(){
         if ($this->asiento){
             return ['green','Sí'];
         }else{
@@ -105,24 +96,17 @@ class Facturacion extends Model
         }
     }
 
-    public function getRutaficheroAttribute()
-    {
-        return $this->ruta.'/'.$this->fichero;
-    }
+    public function getRutaficheroAttribute(){return $this->ruta.'/'.$this->fichero;}
+    public function getFactura5Attribute(){return $this->serie.'_'.substr($this->numfactura,-5);}
 
-    public function getFactura5Attribute()
-    {
-        return $this->serie.'_'.substr($this->numfactura,-5);
-    }
-
-    public function scopeFacturas(Builder $query, $filtroenviada, $filtropagada, $filtrofacturado,$filtroanyo,$filtromes ,$search) : Builder
-    {
+    public function scopeFacturas(Builder $query, $filtroenviada, $filtropagada, $filtrofacturado,$filtroanyo,$filtromes ,$search) : Builder{
         return $query->join('entidades','facturacion.entidad_id','=','entidades.id')
             ->join('facturacion_detalles','facturacion.id','=','facturacion_detalles.facturacion_id')
-            ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm',
-                DB::raw('sum(unidades * coste) as totalbase'),
-                DB::raw('sum(unidades * coste * iva) as totaliva'),
-                DB::raw('sum(unidades * coste * (1+ iva)) as totales'))
+            // ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm',
+            //     DB::raw('sum(unidades * importe) as totalbase'),
+            //     DB::raw('sum(unidades * importe * iva) as totaliva'),
+            //     DB::raw('sum(unidades * importe * (1+ iva)) as totales'))
+            ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm')
             ->where('numfactura','<>','')
             ->when($this->filtroenviada!='', function ($query){
                 $query->where('enviada',$this->filtroenviada);
@@ -141,5 +125,30 @@ class Facturacion extends Model
             ->searchMes('fechafactura',$this->filtromes)
             ->search('entidades.entidad',$this->search)
             ->orSearch('facturacion.numfactura',$this->search);
+    }
+
+    public static function actualizaimportes($f){
+        $factura=Facturacion::find($f);
+        $fdetalles=FacturacionDetalle::where('facturacion_id',$factura->id)->get();
+
+        $factura->totaliva='0';
+        $factura->base='0';
+        $factura->exenta='0';
+        $factura->total='0';
+
+        foreach ($fdetalles as $fdetalle) {
+            $fdetconcep=FacturacionDetalleConcepto::where('facturaciondetalle_id',$fdetalle->id)->get();
+            $fdetalle->base=$fdetconcep->sum('base');
+            $fdetalle->exenta=$fdetconcep->sum('exenta');
+            $fdetalle->totaliva=$fdetconcep->sum('totaliva');
+            $fdetalle->total=$fdetconcep->sum('total');
+            $fdetalle->save();
+            $factura->base=$factura->base + $fdetconcep->sum('base');
+            $factura->exenta=$factura->total + $fdetconcep->sum('exenta');
+            $factura->totaliva=$factura->totaliva + $fdetconcep->sum('totaliva');
+            $factura->total=$factura->total + $fdetconcep->sum('total');
+        }
+        $factura->save();
+        // dd($factura);
     }
 }

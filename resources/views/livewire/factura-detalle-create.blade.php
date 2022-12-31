@@ -24,6 +24,7 @@
                 <x-table.headgreen class="py-0 pr-10 my-0 text-right w-28 ">{{ __('Importe') }}</x-table.headgreen>
                 <x-table.headgreen class="w-16 py-0 pl-10 my-0 text-left ">{{ __('IVA') }}</x-table.headgreen>
                 <x-table.headgreen class="py-0 pr-10 my-0 text-right w-28 ">{{ __('Base (€)') }}</x-table.headgreen>
+                <x-table.headgreen class="py-0 pr-10 my-0 text-right w-28 ">{{ __('Exenta (€)') }}</x-table.headgreen>
                 <x-table.headgreen class="py-0 pr-10 my-0 text-right w-28 ">{{ __('IVA (€)') }}</x-table.headgreen>
                 <x-table.headgreen class="py-0 pr-10 my-0 text-right w-28 ">{{ __('Total (€)') }}</x-table.headgreen>
                 <x-table.headgreen class="py-0 pl-2 my-0 text-left w-28 ">{{ __('Subcta') }}</x-table.headgreen>
@@ -60,8 +61,8 @@
                     </td>
 
                     <td>
-                        <x-jet-input  wire:model="detalle.coste" type="number" step="any" id="coste" class="w-full text-right" :value="old('coste') "/>
-                        <x-jet-input-error for="detalle.coste" class="mt-2" />
+                        <x-jet-input  wire:model="detalle.importe" type="number" step="any" id="importe" class="w-full text-right" :value="old('importe') "/>
+                        <x-jet-input-error for="detalle.importe" class="mt-2" />
                     </td>
 
                     <td>
@@ -73,26 +74,34 @@
                         </x-select>
                         <x-jet-input-error for="detalle.iva" class="mt-2" />
                     </td>
-
+                    {{-- base --}}
                     <x-table.cell>
                         <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 rounded-lg bg-gray-50">
-                            @if(is_numeric($detalle->unidades) && is_numeric($detalle->coste))
-                                {{ number_format(round($detalle->unidades*$detalle->coste, 2),2) }}
+                            @if(is_numeric($detalle->unidades) && is_numeric($detalle->importe) && $detalle['iva']!='0')
+                                {{ number_format(round($detalle->unidades*$detalle->importe, 2),2) }}
+                            @endif
+                        </div>
+                    </x-table.cell>
+                    {{-- exenta --}}
+                    <x-table.cell>
+                        <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 rounded-lg bg-gray-50">
+                            @if(is_numeric($detalle->unidades) && is_numeric($detalle->importe) && $detalle['iva']=='0')
+                                {{ number_format(round($detalle->unidades*$detalle->importe, 2),2) }}
                             @endif
                         </div>
                     </x-table.cell>
 
                     <x-table.cell>
                         <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 bg-gray-100 rounded-lg">
-                            @if(is_numeric($detalle->iva) && is_numeric($detalle->unidades) && is_numeric($detalle->coste))
-                                {{ number_format(round($detalle->iva*$detalle->unidades*$detalle->coste, 2),2) }}
+                            @if(is_numeric($detalle->iva) && is_numeric($detalle->unidades) && is_numeric($detalle->importe))
+                                {{ number_format(round($detalle->iva*$detalle->unidades*$detalle->importe, 2),2) }}
                             @endif
                         </div>
                     </x-table.cell>
                     <x-table.cell>
                         <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 bg-gray-200 rounded-lg">
-                            @if(is_numeric($detalle->iva) && is_numeric($detalle->unidades) && is_numeric($detalle->coste))
-                                {{ number_format(round((1+$detalle->iva)*$detalle->unidades*$detalle->coste, 2),2) }}
+                            @if(is_numeric($detalle->iva) && is_numeric($detalle->unidades) && is_numeric($detalle->importe))
+                                {{ number_format(round((1+$detalle->iva)*$detalle->unidades*$detalle->importe, 2),2) }}
                             @endif
                         </div>
                     </x-table.cell>

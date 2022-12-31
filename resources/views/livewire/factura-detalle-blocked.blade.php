@@ -27,6 +27,7 @@
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Importe') }}</th>
                         <th class="w-16 py-3 pl-10 text-xs font-medium leading-4 tracking-wider text-left text-gray-500 bg-yellow-50">{{ __('% IVA') }}</th>
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Base (€)') }}</th>
+                        <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Exenta (€)') }}</th>
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('IVA (€)') }}</th>
                         <th class="py-3 pr-10 text-xs font-medium leading-4 tracking-wider text-right text-gray-500 bg-yellow-50 w-28">{{ __('Total (€)') }}</th>
                         <th class="py-3 pl-2 text-xs font-medium leading-4 tracking-wider text-left text-gray-500 bg-yellow-50 w-28">{{ __('Subcta') }}</th>
@@ -66,10 +67,10 @@
                                     {{ $detalle['unidades'] }}
                                 </div>
                             </x-table.cell>
-                            {{-- coste --}}
+                            {{-- importe --}}
                             <x-table.cell class="">
-                                <div class="flex-1 p-2 pr-10 text-xs text-right text-gray-600 cursor-pointer" wire:click="editDetalleField({{ $index }}, 'coste')">
-                                    {{ $detalle['coste'] }}
+                                <div class="flex-1 p-2 pr-10 text-xs text-right text-gray-600 cursor-pointer" wire:click="editDetalleField({{ $index }}, 'importe')">
+                                    {{ $detalle['importe'] }}
                                 </div>
                             </x-table.cell>
                             {{-- %IVA --}}
@@ -78,27 +79,35 @@
                                     {{ $detalle['iva'] * 100 }}%
                                 </div>
                             </x-table.cell>
-
+                            {{-- base --}}
                             <x-table.cell>
                                 <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 rounded-lg bg-blue-50">
-                                    @if(is_numeric($detalle['unidades']) && is_numeric($detalle['coste']))
-                                        {{ number_format(round($detalle['unidades']*$detalle['coste'], 2),2,',','.') }}
+                                    @if(is_numeric($detalle['unidades']) && is_numeric($detalle['importe']) && $detalle['iva']!='0')
+                                        {{ number_format(round($detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
                                     @endif
                                 </div>
                             </x-table.cell>
-
+                            {{-- exenta --}}
+                            <x-table.cell>
+                                <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 rounded-lg bg-blue-50">
+                                    @if(is_numeric($detalle['unidades']) && is_numeric($detalle['importe'] && $detalle['iva']=='0'))
+                                        {{ number_format(round($detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
+                                    @endif
+                                </div>
+                            </x-table.cell>
+                            {{-- Iva --}}
                             <x-table.cell>
                                 <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 bg-blue-100 rounded-lg">
-                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['coste']))
-                                        {{ number_format(round($detalle['iva']*$detalle['unidades']*$detalle['coste'], 2),2,',','.') }}
+                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['importe']))
+                                        {{ number_format(round($detalle['iva']*$detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
                                     @endif
                                 </div>
                             </x-table.cell>
-
+                            {{-- total --}}
                             <x-table.cell>
                                 <div class="flex-1 py-1 pr-10 text-sm font-bold text-right text-gray-900 bg-blue-200 rounded-lg">
-                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['coste']))
-                                        {{ number_format(round((1+$detalle['iva'])*$detalle['unidades']*$detalle['coste'], 2),2,',','.') }}
+                                    @if(is_numeric($detalle['iva']) && is_numeric($detalle['unidades']) && is_numeric($detalle['importe']))
+                                        {{ number_format(round((1+$detalle['iva'])*$detalle['unidades']*$detalle['importe'], 2),2,',','.') }}
                                     @endif
                                 </div>
                             </x-table.cell>
@@ -143,6 +152,7 @@
                         <td class="pr-10 text-right w-28"></td>
                         <td class="w-16 pl-10 text-left border">Total</td>
                         <td class="pr-10 text-right border w-28">{{ number_format($base,2,',','.') }}</td>
+                        <td class="pr-10 text-right border w-28">{{ number_format($exenta,2,',','.') }}</td>
                         <td class="pr-10 text-right border w-28">{{ number_format($totaliva,2,',','.') }}</td>
                         <td class="pr-10 text-right border w-28">{{ number_format($total,2,',','.') }}</td>
                         <td class="pl-2 text-left w-28"></td>

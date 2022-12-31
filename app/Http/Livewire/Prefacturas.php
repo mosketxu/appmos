@@ -37,7 +37,7 @@ class Prefacturas extends Component
 
     public function mount(Entidad $entidad){
         $this->filtroanyo=date('Y');
-        $this->filtromes=intval(date('m'));
+        // $this->filtromes=intval(date('m'));
         $this->entidad=$entidad;
     }
 

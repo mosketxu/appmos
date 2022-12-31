@@ -4,18 +4,9 @@
     <div class="p-1 mx-2">
         <h1 class="text-2xl font-semibold text-gray-900">Pre-Facturación {{ $entidad->id? 'de '. $entidad->entidad  :'' }} </h1>
         <div class="py-1 space-y-4">
-            @if (session()->has('message'))
-                <div id="alert" class="relative px-6 py-2 mb-2 text-white bg-red-200 border-red-500 rounded border-1">
-                    <span class="inline-block mx-8 align-middle">
-                        {{ session('message') }}
-                    </span>
-                    <button class="absolute top-0 right-0 mt-2 mr-6 text-2xl font-semibold leading-none bg-transparent outline-none focus:outline-none" onclick="document.getElementById('alert').remove();">
-                        <span>×</span>
-                    </button>
-                </div>
-            @endif
-
-            <x-jet-validation-errors></x-jet-validation-errors>
+            <div class="">
+                @include('errores')
+            </div>
 
             {{-- filtros y boton --}}
             <div>
@@ -47,14 +38,14 @@
                         <x-button.button color="blue" onclick="location.href = '{{ route('facturacion.createprefactura',$entidad) }}'">Nueva</x-button.button>
 
                         <x-dropdown label="Actions">
-                            <x-dropdown.item type="button" wire:click="generarSelected" class="flex items-center space-x-2">
-                                <x-icon.invoice class="text-pink-400"></x-icon.invoice> <span>Generar Facturas </span>
-                            </x-dropdown.item>
                             @if ($entidad->id)
                                 <x-dropdown.item type="button" wire:click="$toggle('showPlanModal')" class="flex items-center space-x-2">
                                     <x-icon.invoice class="text-yellow-400"></x-icon.invoice> <span>Plan de Facturación </span>
                                 </x-dropdown.item>
                             @endif
+                            <x-dropdown.item type="button" wire:click="generarSelected" class="flex items-center space-x-2">
+                                <x-icon.invoice class="text-pink-400"></x-icon.invoice> <span>Generar Facturas </span>
+                            </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="exportSelected" class="flex items-center space-x-2">
                                 <x-icon.csv class="text-green-400"></x-icon.csv> <span>Export </span>
                             </x-dropdown.item>

@@ -27,7 +27,7 @@ class FacturaDetalle extends Component
         'detalles.*.tipo' => ['numeric'],
         'detalles.*.concepto' => ['max:150'],
         'detalles.*.unidades' => ['numeric'],
-        'detalles.*.coste' => ['numeric'],
+        'detalles.*.importe' => ['numeric'],
         'detalles.*.iva' => ['numeric'],
         'detalles.*.subcuenta' => ['numeric'],
         'detalles.*.pagadopor' => ['numeric'],
@@ -89,7 +89,7 @@ class FacturaDetalle extends Component
             $p->tipo=$detalle['tipo'];
             $p->concepto=$detalle['concepto'];
             $p->unidades=$detalle['unidades'];
-            $p->coste=$detalle['coste'];
+            $p->importe=$detalle['importe'];
             if($p->tipo=='1')
                 $p->iva='0';
             else
