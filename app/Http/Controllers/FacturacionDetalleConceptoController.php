@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Facturacion;
+use App\Models\FacturacionConceptodetalle;
+use App\Models\FacturacionDetalle;
 use App\Models\FacturacionDetalleConcepto;
-use App\Http\Requests\StoreFacturacionDetalleConceptoRequest;
-use App\Http\Requests\UpdateFacturacionDetalleConceptoRequest;
+use Illuminate\Http\Request;
 
 class FacturacionDetalleConceptoController extends Controller
 {
@@ -34,9 +36,9 @@ class FacturacionDetalleConceptoController extends Controller
      * @param  \App\Http\Requests\StoreFacturacionDetalleConceptoRequest  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(StoreFacturacionDetalleConceptoRequest $request)
+    public function store($request)
     {
-        //
+        dd($request);
     }
 
     /**
@@ -61,16 +63,27 @@ class FacturacionDetalleConceptoController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \App\Http\Requests\UpdateFacturacionDetalleConceptoRequest  $request
-     * @param  \App\Models\FacturacionDetalleConcepto  $facturacionDetalleConcepto
-     * @return \Illuminate\Http\Response
-     */
-    public function update(UpdateFacturacionDetalleConceptoRequest $request, FacturacionDetalleConcepto $facturacionDetalleConcepto)
-    {
-        //
+    public function update( Request $request, $id){
+        $fdc=FacturacionDetalleConcepto::find($id);
+        $fdc->orden=$request->orden;
+        $fdc->tipo=$request->tipo;
+        $fdc->subcuenta=$request->subcuenta;
+        $fdc->concepto=$request->concepto;
+        $fdc->unidades=$request->unidades;
+        $fdc->importe=$request->importe;
+        $fdc->iva=$fdc->tipo=='1'? '0.00' : $request->iva;
+        $fdc->save();
+        $fdc->calculo();
+
+        // $fd=FacturacionDetalle::find($fdc->facturaciondetalle_id);
+        // Facturacion::actualizaimportes($fd->facturacion_id);
+
+        $notification = array(
+            'message' => 'Elemento actualizado satisfactoriamente!',
+            'alert-type' => 'success'
+        );
+
+        return redirect()->back();
     }
 
     /**

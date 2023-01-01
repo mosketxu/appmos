@@ -127,28 +127,59 @@ class Facturacion extends Model
             ->orSearch('facturacion.numfactura',$this->search);
     }
 
-    public static function actualizaimportes($f){
-        $factura=Facturacion::find($f);
-        $fdetalles=FacturacionDetalle::where('facturacion_id',$factura->id)->get();
+    // public static function actualizaimportes($f){
+    //     $factura=Facturacion::find($f);
+    //     $fdetalles=FacturacionDetalle::where('facturacion_id',$factura->id)->get();
 
-        $factura->totaliva='0';
-        $factura->base='0';
-        $factura->exenta='0';
-        $factura->total='0';
+    //     $factura->totaliva='0';
+    //     $factura->base='0';
+    //     $factura->exenta='0';
+    //     $factura->total='0';
 
-        foreach ($fdetalles as $fdetalle) {
-            $fdetconcep=FacturacionDetalleConcepto::where('facturaciondetalle_id',$fdetalle->id)->get();
-            $fdetalle->base=$fdetconcep->sum('base');
-            $fdetalle->exenta=$fdetconcep->sum('exenta');
-            $fdetalle->totaliva=$fdetconcep->sum('totaliva');
-            $fdetalle->total=$fdetconcep->sum('total');
-            $fdetalle->save();
-            $factura->base=$factura->base + $fdetconcep->sum('base');
-            $factura->exenta=$factura->total + $fdetconcep->sum('exenta');
-            $factura->totaliva=$factura->totaliva + $fdetconcep->sum('totaliva');
-            $factura->total=$factura->total + $fdetconcep->sum('total');
-        }
-        $factura->save();
-        // dd($factura);
+    //     foreach ($fdetalles as $fdetalle) {
+    //         $fdetconcep=FacturacionDetalleConcepto::where('facturaciondetalle_id',$fdetalle->id)->get();
+    //         $fdetalle->base=$fdetconcep->sum('base');
+    //         $fdetalle->exenta=$fdetconcep->sum('exenta');
+    //         $fdetalle->totaliva=$fdetconcep->sum('totaliva');
+    //         $fdetalle->total=$fdetconcep->sum('total');
+    //         $fdetalle->save();
+    //         $factura->base=$factura->base + $fdetconcep->sum('base');
+    //         $factura->exenta=$factura->total + $fdetconcep->sum('exenta');
+    //         $factura->totaliva=$factura->totaliva + $fdetconcep->sum('totaliva');
+    //         $factura->total=$factura->total + $fdetconcep->sum('total');
+    //     }
+    //     $factura->save();
+    // }
+
+    public function getTotalesAttribute(){
+        $fd=FacturacionDetalle::select('id')->where('facturacion_id', $this->id)->get();
+        $fd=$fd->toArray();
+        $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$fd)->get();
+
+        $base0=$fdc->where('iva','0.00')->sum('base');
+        $base4=$fdc->where('iva','0.04')->sum('base');
+        $iva4=$fdc->where('iva','0.04')->sum('totaliva');
+        $base10=$fdc->where('iva','0.10')->sum('base');
+        $iva10=$fdc->where('iva','0.10')->sum('totaliva');
+        $base21=$fdc->where('iva','0.21')->sum('base');
+        $iva21=$fdc->where('iva','0.21')->sum('totaliva');
+        $exenta=$fdc->sum('exenta');
+        $suplido=$fdc->where('tipo','1')->sum('exenta');
+        $totaliva=$fdc->sum('totaliva');
+        $totalbase=$base0+$base4+$base10+$base21;
+
+        $total=$fdc->sum('total');
+        $a= [
+            '0'=>[$base0,''],
+            '4'=>[$base4,$iva4],
+            '10'=>[$base10,$iva10],
+            '21'=>[$base21,$iva21],
+            's'=>[$suplido,''],
+            'e'=>[$exenta,''],
+            't'=>[$totalbase,$total,$totaliva],
+        ];
+
+        return $a;
+
     }
 }

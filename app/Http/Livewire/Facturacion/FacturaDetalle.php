@@ -2,14 +2,14 @@
 
 namespace App\Http\Livewire\Facturacion;
 
-use App\Models\{Facturacion,FacturacionDetalle};
+use App\Models\{Facturacion,FacturacionDetalle, FacturacionDetalleConcepto};
 
 
 use Livewire\Component;
 
 class FacturaDetalle extends Component
 {
-    public $facturacion, $base, $exenta, $totaliva, $total;
+    public $facturacion, $base,$base4,$base10,$base21,$iva4,$iva10,$iva21, $exenta, $totaliva, $total;
     public $editedDetalleIndex = null;
     public $editedDetalleField = null;
     public $detalles=[];
@@ -30,10 +30,10 @@ class FacturaDetalle extends Component
     ];
 
     public function mount(Facturacion $factura){
-        $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)
-            ->orderBy('orden')
-            ->get()
-            ->toArray();
+        // $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)
+        //     ->orderBy('orden')
+        //     ->get()
+        //     ->toArray();
     }
 
     public function render(){
@@ -43,18 +43,24 @@ class FacturaDetalle extends Component
         }else{
             $this->showcrear=false;
         }
+        $a=FacturacionDetalle::select('id')->where('facturacion_id', $this->facturacion->id)->orderBy('orden')->get();
+        $a=$a->toArray();
+        $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->get();
+        $this->base=$factura->facturadetalles->sum('base');
+        $this->base4=$fdc->where('iva','0.04')->sum('base');
+        $this->base10=$fdc->where('iva','0.10')->sum('base');
+        $this->base21=$fdc->where('iva','0.21')->sum('base');
         $this->base=$factura->facturadetalles->sum('base');
         $this->exenta=$factura->facturadetalles->sum('exenta');
         $this->totaliva=$factura->facturadetalles->sum('totaliva');
         $this->total=$factura->facturadetalles->sum('total');
 
         $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)
-            ->orderBy('orden')
-            ->get()
-            ->toArray();
+        ->orderBy('orden')
+        ->get();
 
         if(!$this->showcrear)
-            return view('livewire.facturacion.factura-detalle-blocked',compact(['factura']));
+        return view('livewire.facturacion.factura-detalle-blocked',compact(['factura']));
         else
             return view('livewire.facturacion.factura-detalle',compact(['factura']));
     }

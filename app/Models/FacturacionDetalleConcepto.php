@@ -19,4 +19,12 @@ class FacturacionDetalleConcepto extends Model
     ];
 
     public function detalle(){return $this->belongsTo(FacturacionDetalle::class);}
+
+    public function calculo(){
+        $this->totaliva=round($this->unidades*$this->importe*$this->iva,2);
+        $this->total=round($this->unidades*$this->importe*(1+$this->iva),2);
+        $this->base=$this->iva!='0.00' ? round($this->unidades*$this->importe,2) : '0.00';
+        $this->exenta=$this->iva=='0.00' ? round($this->unidades*$this->importe,2) : '0.00';
+        $this->save();
+    }
 }

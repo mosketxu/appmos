@@ -166,11 +166,9 @@
                     </div>
                 </div>
             </div>
-            <div class="flex mt-2 ml-4 space-x-4">
-                <div class="space-x-3">
-                    {{-- <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturas',$factura->entidad_id)}}'">{{ __('Volver') }}</x-jet-secondary-button> --}}
-                    <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturasentidad',$factura->entidad_id)}}'">{{ __('Volver') }}</x-jet-secondary-button>
-                </div>
+            <div class="flex mt-2 ml-4 space-x-2">
+                <x-jet-button class="bg-blue-600">{{ __('Guardar') }}</x-jet-button>
+                <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturasentidad',$factura->entidad_id)}}'">{{ __('Volver') }}</x-jet-secondary-button>
             </div>
         </form>
     </div>

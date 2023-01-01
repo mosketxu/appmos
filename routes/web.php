@@ -4,7 +4,9 @@ use App\Http\Controllers\{
     EntidadController,
     FacturacionController,
     FacturacionConceptoController,
-    FacturacionConceptoDetalleController
+    FacturacionConceptoDetalleController,
+    FacturacionDetalleConceptoController,
+    FacturacionDetalleController
 };
 use App\Models\FacturacionConceptodetalle;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +49,12 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('facturacion/prefacturas', [FacturacionController::class,'prefacturas'])->name('facturacion.prefacturas');
     Route::get('facturacion/prefacturas/{entidad}/entidad', [FacturacionController::class,'prefacturasentidad'])->name('facturacion.prefacturasentidad');
     Route::resource('facturacion', FacturacionController::class);
+
+    //Facturacion detalle
+    Route::resource('facturaciondetalle', FacturacionDetalleController::class);
+
+    //Facturacion detalle concepto
+    Route::resource('facturaciondetalleconcepto', FacturacionDetalleConceptoController::class);
 
     //Facturacion Conceptos
     Route::get('facturacionconcepto/{entidad}',[FacturacionConceptoController::class,'conceptosentidad'])->name('facturacionconcepto.entidad');

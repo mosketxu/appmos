@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\FacturacionConceptos;
 
+use App\Models\FacturacionConcepto;
 use App\Models\FacturacionConceptodetalle;
 use Livewire\Component;
 
@@ -19,6 +20,18 @@ class ConceptoDetalles extends Component{
     public function render(){
         $detalles=FacturacionConceptodetalle::where('facturacionconcepto_id',$this->conceptoid)->get();
         return view('livewire.facturacion-conceptos.concepto-detalles',compact('detalles'));
+    }
+
+    public function delete($conceptoid)
+    {
+        $borrar = FacturacionConcepto::find($conceptoid);
+
+        if ($borrar) {
+            $borrar->delete();
+            // Facturacion::actualizaimportes($this->detalle->facturacion_id);
+            $this->dispatchBrowserEvent('notify', 'Concepto eliminado!');
+        }
+
     }
 
 }
