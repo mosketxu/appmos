@@ -12,7 +12,6 @@
                 <div class="w-1/12 "><input type="number" name="importe" step="any" value="{{ $detalle->importe }}" class="w-full py-1 {{ $color }} text-right text-sm font-thin text-gray-500 truncate border-0 rounded-md"/></div>
                 <div class="flex items-center justify-center w-2/12 ">
                     <button type="submit"><x-icon.save/></button>
-                    <button type="submit"><x-icon.save/></button>
                         <x-icon.delete-a wire:click.prevent="delete({{ $detalle->id }})"
                             onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"
                             class="pl-1 " title="Borrar" />
