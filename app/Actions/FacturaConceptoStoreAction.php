@@ -12,6 +12,7 @@ class FacturaConceptoStoreAction
     public function execute($factura,$concepto)
     {
         $sumaId=!$factura->entidad->suma_id ? '1' :$factura->entidad->suma_id;
+        $per='';
         if($concepto->ciclocorrespondiente!='2')
         {
             if ($concepto->ciclo_id==1) {
