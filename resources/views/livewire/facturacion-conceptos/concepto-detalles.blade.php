@@ -13,7 +13,7 @@
                 <div class="flex items-center justify-center w-2/12 ">
                     <button type="submit"><x-icon.save/></button>
                     <button type="submit"><x-icon.save/></button>
-                        <x-icon.delete-a wire:click.prevent="delete({{ $concepto->id }})"
+                        <x-icon.delete-a wire:click.prevent="delete({{ $detalle->id }})"
                             onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"
                             class="pl-1 " title="Borrar" />
                 </div>
