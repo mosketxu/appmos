@@ -208,12 +208,12 @@
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="porcentajemarta">{{ __('% Marta') }}</x-jet-label>
-                    <x-jet-input  wire:model.defer="entidad.porcentajemarta" type="number" id="porcentajemarta" name="porcentajemarta" :value="old('porcentajemarta')" class="w-full"/>
+                    <x-jet-input  wire:model.defer="entidad.porcentajemarta" type="number" step="any" id="porcentajemarta" name="porcentajemarta" :value="old('porcentajemarta')" class="w-full"/>
                     <x-jet-input-error for="porcentajemarta" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="porcentajesusana">{{ __('% Susana') }}</x-jet-label>
-                    <x-jet-input  wire:model.defer="entidad.porcentajesusana" type="number" id="porcentajesusana" name="porcentajesusana" :value="old('porcentajesusana')" class="w-full"/>
+                    <x-jet-input  wire:model.defer="entidad.porcentajesusana" type="number"  step="any" id="porcentajesusana" name="porcentajesusana" :value="old('porcentajesusana')" class="w-full"/>
                     <x-jet-input-error for="porcentajesusana" class="mt-2" />
                 </div>
             </div>
