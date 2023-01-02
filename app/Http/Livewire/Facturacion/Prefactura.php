@@ -45,9 +45,11 @@ class Prefactura extends Component
     public function mount(Facturacion $facturacion, Entidad $entidad)
     {
         $this->factura=$facturacion;
-        if ($entidad->id) {
+if ($entidad->id) {
             $this->inicializaPrefactura($entidad);
             $this->ent=$entidad;
+        }else{
+            $this->ent= $facturacion->entidad;
         }
         if(!$this->factura->serie) $this->factura->serie=substr(date('Y'),-2);
         $this->factura->enviar=1;
@@ -65,18 +67,20 @@ class Prefactura extends Component
     }
 
     public function render(){
-$entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
+        $entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
         $pagos=MetodoPago::all();
         return view('livewire.facturacion.prefactura',compact('entidades','pagos',));
     }
 
 
     public function updatedFacturaFechafactura(){
-        if($this->factura->entidad_id )
-        {
+
+        if($this->factura->entidad_id ){
             $dia = date("d", strtotime($this->factura->fechafactura));
             $mes = date("m", strtotime($this->factura->fechafactura));
-            if($this->ent->diavencimiento<$dia) $mes=$mes+1;
+            //miro si la fecha me obliga a pasar de mes
+            if($this->ent->diavencimiento<$dia)
+                $mes=$mes+1;
             $anyo = date("Y", strtotime($this->factura->fechafactura));
             $this->factura->fechavencimiento=$this->ent->diavencimiento.'-'.$mes.'-'.$anyo;
         }
