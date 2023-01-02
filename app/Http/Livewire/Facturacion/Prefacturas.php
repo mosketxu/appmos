@@ -6,7 +6,8 @@ use App\Actions\FacturaCreateAction;
 use App\Actions\FacturaImprimirAction;
 use App\Actions\PrefacturaCreateAction;
 use App\Exports\PrefacturasExport;
-use App\Models\{Facturacion,Entidad, FacturacionConcepto};
+use App\Models\{Facturacion,Entidad, FacturacionConcepto, FacturacionDetalleConcepto};
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Maatwebsite\Excel\Facades\Excel;
@@ -50,9 +51,19 @@ class Prefacturas extends Component
 
     public function getRowsQueryProperty(){
         return Facturacion::query()
-            ->with('metodopago')
+            ->with('metodopago','ciclo')
             ->join('entidades','facturacion.entidad_id','=','entidades.id')
-            ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm')
+            ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+            ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+            // ->select('facturacion.id','facturacion.fechafactura','facturacion.ciclo_id','facturacion.fechavencimiento','facturacion.enviada','facturacion.facturada',
+            ->select('facturacion.*',
+                    'entidades.entidad','entidades.emailadm',
+                    DB::raw('sum(facturacion_detalle_conceptos.base) as totalesbase'),
+                    DB::raw('sum(facturacion_detalle_conceptos.exenta) as totalesexenta'),
+                    DB::raw('sum(facturacion_detalle_conceptos.totaliva) as totalesiva'),
+                    DB::raw('sum(facturacion_detalle_conceptos.total) as totalestotal')
+                    )
+            ->groupBy('facturacion.id')
             ->where(function ($query){
                 $query->where('numfactura','')
                     ->orWhere('numfactura',null);
@@ -135,22 +146,6 @@ class Prefacturas extends Component
                 $prefacturas,
             ), 'prefacturas.xlsx');
 
-
-        // return Excel::download(new ExportPresupuestos(
-        //         $this->mesanyo,
-        //         $sel,
-        //         $est,
-        //         $ent,
-        //         $sol,
-        //         $this->filtroFi,
-        //         $this->filtroFf,
-        //         $this->filtroventasIni,
-        //         $this->filtroventasFin,
-        //         $filas,
-        //     ), 'estadisticapresupuestos.xlsx');
-return response()->streamDownload(function(){
-    echo $csv->toCsv();
-},'prefacturas.csv');
 
 
     }

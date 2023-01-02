@@ -34,7 +34,6 @@
                         </div>
                     </div>
                     <div class="inline-flex mt-3 space-x-2">
-                        {{-- <x-button.button color="blue" onclick="location.href = '{{ route('facturacion.createprefactura',$entidad) }}'">Nueva</x-button.button> --}}
                         <x-button.button color="blue" onclick="location.href = '{{ route('facturacion.createprefactura',$entidad) }}'">Nueva</x-button.button>
 
                         <x-dropdown label="Actions">
@@ -127,16 +126,16 @@
                                     <input type="text" value="{{ $facturacion->refcliente }}" class="w-full text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totales['t'][0] }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalesbase }}</span>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totales['e'][0] }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalesexenta }}</span>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totales['t'][2] }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalesiva }}</span>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totales['t'][1] }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalestotal }}</span>
                                 </td>
                                 <td class="text-left">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $facturacion->enviar_est[0] }}-100 text-green-800">
