@@ -5,10 +5,11 @@ namespace App\Http\Livewire\Facturacion;
 use App\Actions\FacturaCreateAction;
 use App\Actions\FacturaImprimirAction;
 use App\Actions\PrefacturaCreateAction;
+use App\Exports\PrefacturasExport;
 use App\Models\{Facturacion,Entidad, FacturacionConcepto};
 use Livewire\Component;
 use Livewire\WithPagination;
-
+use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Livewire\DataTable\WithBulkActions;
 
 class Prefacturas extends Component
@@ -84,8 +85,7 @@ class Prefacturas extends Component
         return redirect()->route('facturacion.index');
     }
 
-    public function generarplan()
-    {
+    public function generarplan(){
         $this->validate([
             'anyoplan'=>'required|digits:4|integer|min:2022|max:'.(date('Y')+1),
         ],[
@@ -112,6 +112,47 @@ class Prefacturas extends Component
         },'prefacturas.csv');
 
         $this->dispatchBrowserEvent('notify', 'CSV Prefacturas descargado!');
+    }
+
+    public function exportXls(){
+
+        $prefacturas= Facturacion::query()
+            ->join('entidades','facturacion.entidad_id','=','entidades.id')
+            ->join('facturacion_detalles','facturacion.id','=','facturacion_id')
+            ->join('facturacion_detalle_conceptos','facturacion_detalles.id','=','facturaciondetalle_id')
+            ->select( 'entidades.entidad',
+                'facturacion.fechafactura','facturacion.fechavencimiento',
+                'facturacion_detalles.concepto',
+                'facturacion_detalle_conceptos.concepto','facturacion_detalle_conceptos.base',
+                'facturacion_detalle_conceptos.exenta','facturacion_detalle_conceptos.iva','facturacion_detalle_conceptos.total')
+            ->searchYear('fechafactura',$this->filtroanyo)
+            ->searchMes('fechafactura',$this->filtromes)
+            ->orderBy('facturacion.fechafactura')
+            ->orderBy('entidades.entidad')
+            ->get();
+
+            return Excel::download(new PrefacturasExport (
+                $prefacturas,
+            ), 'prefacturas.xlsx');
+
+
+        // return Excel::download(new ExportPresupuestos(
+        //         $this->mesanyo,
+        //         $sel,
+        //         $est,
+        //         $ent,
+        //         $sol,
+        //         $this->filtroFi,
+        //         $this->filtroFf,
+        //         $this->filtroventasIni,
+        //         $this->filtroventasFin,
+        //         $filas,
+        //     ), 'estadisticapresupuestos.xlsx');
+return response()->streamDownload(function(){
+    echo $csv->toCsv();
+},'prefacturas.csv');
+
+
     }
 
     public function deleteSelected(){

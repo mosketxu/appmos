@@ -24,13 +24,11 @@ trait WithBulkActions
         $this->selectAll=true;
     }
 
-    public function selectPageRows()
-    {
+    public function selectPageRows(){
         $this->selected = $this->rows->pluck('id')->map(fn($id) => (string) $id);
     }
 
-    public function getSelectedRowsQueryProperty()
-    {
+    public function getSelectedRowsQueryProperty(){
         return (clone $this->rowsQuery)
             ->unless($this->selectAll, fn($query) => $query->whereKey($this->selected));
     }
