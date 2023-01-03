@@ -73,6 +73,9 @@
             <div style="margin-top:50px; margin-left:60px ; ">
                 <div>Fecha Factura: {{ $factura->fechafactura->format('d/m/Y') }}</div>
                 <div>Nº Factura: {{ $factura->serie }}/{{ substr($factura->numfactura,-5) }}</div>
+                @if($factura->refcliente)
+                <div>Ref.Cliente: {{ $factura->refcliente }}</div>
+                @endif
             </div>
             <div style="margin-top:40px;  margin-left:100px  ">
                 @if(count($facturadetalles)>0)
