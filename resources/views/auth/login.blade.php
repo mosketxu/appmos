@@ -26,7 +26,7 @@
                 <x-jet-input id="password" class="block w-full mt-1" type="password" name="password" required autocomplete="current-password" />
             </div>
             <div class="mt-4">
-                <a href="{{ route('register') }}" class="ml-4 text-sm text-gray-700 underline">Register</a>
+                {{-- <a href="{{ route('register') }}" class="ml-4 text-sm text-gray-700 underline">Register</a> --}}
             </div>
 
             {{-- <div class="block mt-4">
