@@ -92,7 +92,7 @@
                     <table style="margin-top: 20px;" width="90%">
                         <tr>
                             <td width="69%"  style="padding-left: 30px">Base imponible:</td>
-                            <td width="29%" style="text-align: right; " width="50%">{{number_format($base,2,',','.')}}  </td>
+                            <td width="29%" style="text-align: right; " width="50%">{{number_format($base,2,',','.')}} <span style="font-family: Arial">€</span> </td>
                         </tr>
                         @if($suplidos)
                         <tr>
