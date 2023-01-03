@@ -37,6 +37,7 @@ class FacturacionConceptoDetalleController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request){
+        dd('sdf');
         $rules=[
             'facturacionconcepto_id'=>'required',
             'concepto'=>'required',

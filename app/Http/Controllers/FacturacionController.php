@@ -37,8 +37,9 @@ class FacturacionController extends Controller
     }
 
     public function editprefactura($facturacionId){
+        $ruta="facturacion.prefacturasentidad";
         $facturacion=Facturacion::find($facturacionId);
-        return view('facturacion.editprefactura',compact('facturacion'));
+        return view('facturacion.editprefactura',compact('facturacion','ruta'));
     }
 
     public function edit(Facturacion $facturacion){
