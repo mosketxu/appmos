@@ -34,7 +34,7 @@ class FacturaImprimirAction
 
         Storage::put('public/'.$factura->ruta.'/'.$factura->fichero, $pdf->output());
 
-        dd('sdfs');
+
 
         // $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','suplidos','totaliva','total'));
         // $pdf->setPaper('a4','portrait');
