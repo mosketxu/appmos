@@ -120,6 +120,7 @@
                                         <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
                                         {{-- <x-icon.bars-a href="{{ route('entidad.facturacionconceptos',$entidad)}}"  title="Conceptos"/> --}}
                                         <x-icon.bars-a href="{{ route('facturacionconcepto.entidad',$entidad)}}"  title="Conceptos"/>
+                                        <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
                                         <x-icon.euro-a href="{{ route('facturacion.show',$entidad)}}"  title="Facturas"/>
                                         <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1"/>
                                     </div>

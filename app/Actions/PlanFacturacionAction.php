@@ -12,8 +12,6 @@ class PlanFacturacionAction
             $p=new PrefacturaCreateAction;
             $prefactura=$p->execute();
         }
-        // if($ciclo_id)
-        // dd($concepto);
         $sumaId=!$factura->entidad->suma_id ? '1' :$factura->entidad->suma_id;
         if ($concepto->ciclo_id==1) {
             $per=mes($factura->fechafactura,$concepto->ciclocorrespondiente,'ES');

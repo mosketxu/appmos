@@ -17,7 +17,6 @@ class PrefacturasExport implements FromCollection,WithHeadings{
     public $prefacturas;
 
     function __construct($prefacturas){
-        // dd($prefacturas);
         $this->prefacturas=$prefacturas;
     }
 

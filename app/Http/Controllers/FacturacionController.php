@@ -32,7 +32,8 @@ class FacturacionController extends Controller
 
     public function prefacturasentidad($entidadId){
         $entidad=Entidad::find($entidadId);
-        return view('facturacion.prefacturasentidad',compact(['entidad']));
+        $ruta="facturacion.prefacturasentidad";
+        return view('facturacion.prefacturasentidad',compact(['entidad','ruta']));
     }
 
     public function editprefactura($facturacionId){
@@ -45,7 +46,8 @@ class FacturacionController extends Controller
     }
 
     public function prefacturas(){
-        return view('facturacion.prefacturas');
+        $ruta="facturacion.prefacturas";
+        return view('facturacion.prefacturas',compact('ruta'));
     }
 
     public function downfacturas(){
