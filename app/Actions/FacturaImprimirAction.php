@@ -19,14 +19,15 @@ class FacturaImprimirAction
         $a=$a->toArray();
         $facturadetalles=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->get();
 
-        $base4=$facturadetalles->where('iva','0.04')->sum('base');
-        $base10=$facturadetalles->where('iva','0.10')->sum('base');
-        $base21=$facturadetalles->where('iva','0.21')->sum('base');
-        $base=$base4 + $base10 +$base21;
-        $exenta=$facturadetalles->where('tipo'!='1')->sum('exenta');
-        $suplidos=$facturadetalles->where('tipo'=='1')->sum('exenta');
-        $totaliva=$facturadetalles->sum('totaliva');
-        $total=$facturadetalles->sum('total');
+        $base4=$factura->totales[4][0];
+        $base10=$factura->totales[10][0];
+        $base21=$factura->totales[21][0];
+        $base=$factura->totales['t'][0];
+        $exenta=$factura->totales['e'][0];
+        $suplidos=$factura->totales['s'][0];
+        $totaliva=$factura->totales['t'][2];
+        $total=$factura->totales['t'][1];
+
 
         $pdf = new Dompdf();
         $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','suplidos','totaliva','total'));

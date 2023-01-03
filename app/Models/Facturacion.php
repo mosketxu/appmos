@@ -163,7 +163,7 @@ class Facturacion extends Model
         $iva10=$fdc->where('iva','0.10')->sum('totaliva');
         $base21=$fdc->where('iva','0.21')->sum('base');
         $iva21=$fdc->where('iva','0.21')->sum('totaliva');
-        $exenta=$fdc->sum('exenta');
+        $exenta=$fdc->where('tipo','<>','1')->sum('exenta');
         $suplido=$fdc->where('tipo','1')->sum('exenta');
         $totaliva=$fdc->sum('totaliva');
         $totalbase=$base0+$base4+$base10+$base21;
