@@ -205,11 +205,9 @@
                                 <td class="">
                                     <div class="flex items-center justify-center">
                                         <x-icon.invoice-a href="{{ route('facturacion.edit',$facturacion) }}" title="Factura"/>
-                                        <a href = '{{asset('storage/'.$facturacion->rutafichero)}}'  target='_blank'  class="pt-2 ml-2" title="PDF">
-                                            <x-icon.pdf class="mb-2"></x-icon.pdf>
-                                        </a>
+                                        <a href = '{{asset('storage/'.$facturacion->rutafichero)}}'  target='_blank'  class="pt-2 ml-2" title="PDF"><x-icon.pdf class="mb-2"></x-icon.pdf></a>
+                                        <a href="{{route('facturacion.pdffactura',[$facturacion->id])}}" target="_blank" title="Imprimir factura"><x-icon.pdf class="mr-5 text-green-500 hover:text-red-700 "/></a>
                                         <x-icon.copy-a wire:click="replicateFactura({{ $facturacion->id }})" onclick="confirm('¿Estás seguro de querer copiar la factura?') || event.stopImmediatePropagation()" class="text-purple-500" title="Copiar Factura" />
-                                        &nbsp;&nbsp;&nbsp;
                                         <x-icon.delete-a wire:click.prevent="delete({{ $facturacion->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1 " title="Borrar"/>
                                     </div>
                                 </td>
@@ -241,7 +239,8 @@
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totaliva  / 0.21 ,2),2) }}</td>
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totalbase - ($totales->totaliva/0.21  ) ,2),2) }}</td>
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totaliva,2),2) }}</td>
-                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totales,2),2) }}</td>
+                            <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">corregir esto</td>
+                            {{-- <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">{{ number_format(round($totales->totales,2),2) }}</td> --}}
                             @else
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">0</td>
                             <td class="w-24 pt-2 pr-4 text-sm text-right text-gray-600">0</td>

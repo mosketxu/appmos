@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Imports\FacturacionImport;
-use App\Models\{Facturacion, Entidad};
+use App\Models\{Facturacion, Entidad, FacturacionDetalle, FacturacionDetalleConcepto};
 use ZipArchive;
 use File;
 use Excel;
-
-// use Barryvdh\DomPDF\PDF;
+use Dompdf\Dompdf;
 
 class FacturacionController extends Controller
 {
@@ -50,6 +49,32 @@ class FacturacionController extends Controller
         $ruta="facturacion.prefacturas";
         return view('facturacion.prefacturas',compact('ruta'));
     }
+
+    public function pdffactura($facturaid){
+
+        $factura=Facturacion::with('entidad')->find($facturaid);
+        $a=FacturacionDetalle::select('id')->where('facturacion_id', $facturaid)->orderBy('orden')->get();
+        $a=$a->toArray();
+        $facturadetalles=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->get();
+
+        $base4=$facturadetalles->where('iva','0.04')->sum('base');
+        $base10=$facturadetalles->where('iva','0.10')->sum('base');
+        $base21=$facturadetalles->where('iva','0.21')->sum('base');
+        $base=$base4 + $base10 +$base21;
+        $exenta=$facturadetalles->where('tipo'!='1')->sum('exenta');
+        $suplidos=$facturadetalles->where('tipo'=='1')->sum('exenta');
+        $totaliva=$facturadetalles->sum('totaliva');
+        $total=$facturadetalles->sum('total');
+
+        $pdf = new Dompdf();
+
+        $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','suplidos','totaliva','total'));
+        $pdf->setPaper('a4','portrait');
+        return $pdf->stream('factura_'.$factura->numfactura.'.pdf'); //asi lo muestra por pantalla
+
+
+    }
+
 
     public function downfacturas(){
         $facturas=Facturacion::get();

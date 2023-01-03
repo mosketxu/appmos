@@ -45,7 +45,7 @@ class Prefactura extends Component
     public function mount(Facturacion $facturacion, Entidad $entidad)
     {
         $this->factura=$facturacion;
-if ($entidad->id) {
+        if ($entidad->id) {
             $this->inicializaPrefactura($entidad);
             $this->ent=$entidad;
         }else{

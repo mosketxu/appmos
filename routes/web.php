@@ -42,7 +42,8 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('facturacion/import', [FacturacionController::class,'import'])->name('facturacion.import');
     Route::get('facturacion/{factura}/prefactura', [FacturacionController::class,'editprefactura'])->name('facturacion.editprefactura');
     Route::get('facturacion/prefactura/create/{entidad?}', [FacturacionController::class,'createprefactura'])->name('facturacion.createprefactura');
-    Route::get('facturacion/{factura}/imprimirfactura', [FacturacionController::class,'imprimirfactura'])->name('facturacion.imprimirfactura');
+    // Route::get('facturacion/{factura}/imprimirfactura', [FacturacionController::class,'imprimirfactura'])->name('facturacion.imprimirfactura');
+    Route::get('facturacion/{factura}/pdf', [FacturacionController::class,'pdffactura'])->name('facturacion.pdffactura');
     Route::get('facturacion/{factura}/downfacturapdf', [FacturacionController::class,'downfacturapdf'])->name('facturacion.downfactura');
     Route::get('facturacion/downfacturas', [FacturacionController::class,'downfacturas'])->name('facturacion.downfacturas');
     Route::get('facturacion/zip', [FacturacionController::class,'downloadZip'])->name('facturacion.zip');

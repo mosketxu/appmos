@@ -2,7 +2,7 @@
     <html lang="es">
 
     <head>
-        <meta charset="UTF-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <title>Factura {{$factura->serie}}/{{ $factura->numfactura }}</title>
         <link rel="stylesheet" href="{{ asset('css/pdf.css')}}">
 
@@ -75,10 +75,10 @@
                 <div>Nº Factura: {{ $factura->serie }}/{{ substr($factura->numfactura,-5) }}</div>
             </div>
             <div style="margin-top:40px;  margin-left:100px  ">
-                @if(count($factura->facturadetalles)>0)
+                @if(count($facturadetalles)>0)
                     {{-- Detalles  --}}
                     <table style="margin-top: 20px;" width="90%">
-                        @foreach($factura->facturadetalles as $detalle)
+                        @foreach($facturadetalles as $detalle)
                         <tr>
                             <td width="70%" >{{ $detalle->tipo=='1' ? 'Suplidos:' :'' }} {{$detalle->concepto}}</td>
                             <td width="25%" style="text-align: right">
@@ -92,12 +92,12 @@
                     <table style="margin-top: 20px;" width="90%">
                         <tr>
                             <td width="69%"  style="padding-left: 30px">Base imponible:</td>
-                            <td width="29%" style="text-align: right; " width="50%">{{number_format($base,2,',','.')}} <span style="font-family: Arial">€</span></td>
+                            <td width="29%" style="text-align: right; " width="50%">{{number_format($base,2,',','.')}}  </td>
                         </tr>
                         @if($suplidos)
                         <tr>
                             <td width="69%" style="padding-left: 30px">Suplidos:</td>
-                            <td width="29%" style="text-align: right" width="50%">{{number_format($suplidos,2,',','.')}} <span style="font-family: Arial">€</span></td>
+                            <td width="29%" style="text-align: right" width="50%">{{number_format($suplidos,2,',','.')}} <span style="font-family: sans-serif">€</span></td>
                         </tr>
                         @endif
                         <tr>

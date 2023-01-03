@@ -18,6 +18,7 @@ class FacturacionDetalle extends Model
     ];
 
     public function factura(){return $this->belongsTo(Facturacion::class);}
+    public function facturadetalleconceptos(){return $this->hasMany(FacturacionDetalleConcepto::class,'facturaciondetalle_id','id');}
 
     public function getTipofraAttribute(){
         return [

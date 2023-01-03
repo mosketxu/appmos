@@ -4,7 +4,8 @@
 } */
 
 body {
-    font-family: DejaVu Sans, Arial, Helvetica Neue, Helvetica, sans-serif;
+    /* font-family: DejaVu Sans, Arial, Helvetica Neue, Helvetica, sans-serif; */
+    font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
     /* font-family: Arial, Helvetica Neue, Helvetica, sans-serif; */
     /* font-size: x-small; */
     font-size: 0.85rem;
