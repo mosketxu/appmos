@@ -183,7 +183,7 @@ class Facturaciones extends Component
             ->select('entidades.entidad as empresa','entidades.iban1 as iban','entidades.id as mandato',DB::raw('sum(facturacion_detalle_conceptos.total) as importe'),'facturacion.fechafactura','facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura')
             ->groupBy('facturacion.id')
             ->where('fechavencimiento',$this->filtroremesa)
-            ->where('metodopago_id','2')
+            ->where('facturaciones.metodopago_id','2')
             ->toCsv();
         },'remesa.csv');
 
