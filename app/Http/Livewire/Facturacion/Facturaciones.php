@@ -184,7 +184,7 @@ class Facturaciones extends Component
                 'facturacion.fechafactura','facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura','facturacion.metodopago_id')
             ->groupBy('facturacion.id')
             ->where('fechavencimiento',$this->filtroremesa)
-            ->where('facturacio.metodopago_id','2')
+            ->where('facturacion.metodopago_id','2')
             ->toCsv();
         },'remesa.csv');
 
