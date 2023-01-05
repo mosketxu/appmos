@@ -147,9 +147,6 @@ class Prefacturas extends Component
             return Excel::download(new PrefacturasExport (
                 $prefacturas,
             ), 'prefacturas.xlsx');
-
-
-
     }
 
     public function deleteSelected(){

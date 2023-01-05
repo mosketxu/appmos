@@ -22,6 +22,7 @@ class Facturaciones extends Component
     public $filtrofacturacionPrefacturacion='1';
     public $filtrocontabilizado='';
     public $filtroenviada='';
+    public $filtroremesa='';
     public $filtropagada='';
     public $filtroanyo='';
     public $filtromes='';
@@ -123,9 +124,6 @@ class Facturaciones extends Component
                 $zip->close();
             // }
             return response()->download(public_path($fileName))->deleteFileAfterSend();
-
-
-
         }
     }
 
@@ -134,11 +132,8 @@ class Facturaciones extends Component
         $sinproblemas=0;
         $facturas = $this->selectedRowsQuery->get();
 
-
         foreach ($facturas as $factura) {
-
             $fileName='storage/'.$factura->rutafichero;
-
             if (!file_exists($fileName) || !$factura->mail) {
                 array_push($conproblemas,$factura->factura5);
             }else{
@@ -153,8 +148,6 @@ class Facturaciones extends Component
         }
         $conproblema=$conproblemas ? json_encode($conproblemas): 0;
 
-        // dd($conproblemas);
-
         session()->flash('message', 'Mails enviados correctamente: '. $sinproblemas. ', Con problemas: '. $conproblema);
         return redirect(route('facturacion.index'));
         // $this->dispatchBrowserEvent('notify', 'Mails enviados correctamente: '. $sinproblemas. ', Con problemas:'. $conproblemas);
@@ -166,8 +159,31 @@ class Facturaciones extends Component
         return response()->streamDownload(function(){
             echo $this->selectedRowsQuery->toCsv();
         },'prefacturas.csv');
-
         $this->dispatchBrowserEvent('notify', 'CSV Facturas descargado!');
+    }
+
+    public function exportRemesa(){
+        $this->validate(['filtroremesa'=>'required|date'],['filtroremesa.requiered'=>'Es obligatoria la fecha de la remesa','filtroremesa.date'=>'La fecha de la remesa debe ser una fecha válida']);
+
+        $remesa= Facturacion::query()
+        ->join('entidades','facturacion.entidad_id','=','entidades.id')
+        ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+        ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+        ->select('entidades.entidad as empresa','entidades.iban1 as iban','entidades.id as mandato',DB::raw('sum(facturacion_detalle_conceptos.total) as importe'),'facturacion.fechafactura','facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura')
+        ->groupBy('facturacion.id')
+        ->where('fechavencimiento',$this->filtroremesa);
+
+
+        return response()->streamDownload(function(){
+            echo Facturacion::query()
+            ->join('entidades','facturacion.entidad_id','=','entidades.id')
+            ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+            ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+            ->select('entidades.entidad as empresa','entidades.iban1 as iban','entidades.id as mandato',DB::raw('sum(facturacion_detalle_conceptos.total) as importe'),'facturacion.fechafactura','facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura')
+            ->groupBy('facturacion.id')
+            ->where('fechavencimiento',$this->filtroremesa)->toCsv();
+        },'remesa.csv');
+
     }
 
 

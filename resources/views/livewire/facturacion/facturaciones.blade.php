@@ -65,6 +65,10 @@
                                 <option value="">Todos</option>
                             </select>
                         </div>
+                        <div class="text-xs">
+                            <label class="px-1 text-gray-600">Fecha Remesa</label>
+                            <input type="date" wire:model="filtroremesa" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none"/>
+                        </div>
                     </div>
                     <div class="inline-flex mt-3 space-x-2">
                         <x-dropdown label="Actions">
@@ -76,6 +80,9 @@
                             </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="exportSelected" class="flex items-center space-x-2">
                                 <x-icon.csv class="text-green-400"></x-icon.csv><span>Export </span>
+                            </x-dropdown.item>
+                            <x-dropdown.item type="button" wire:click="exportRemesa" class="flex items-center space-x-2">
+                                <x-icon.xls class="text-yellow-400"></x-icon.xls> <span>Remesa XLS</span>
                             </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="$toggle('showDeleteModal')" class="flex items-center space-x-2">
                                 <x-icon.trash class="text-red-400"></x-icon.trash> <span>Delete </span>
