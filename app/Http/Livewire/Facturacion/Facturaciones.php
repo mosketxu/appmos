@@ -171,7 +171,8 @@ class Facturaciones extends Component
         ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
         ->select('entidades.entidad as empresa','entidades.iban1 as iban','entidades.id as mandato',DB::raw('sum(facturacion_detalle_conceptos.total) as importe'),'facturacion.fechafactura','facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura')
         ->groupBy('facturacion.id')
-        ->where('fechavencimiento',$this->filtroremesa);
+        ->where('fechavencimiento',$this->filtroremesa)
+        ->where('metodopago_id','2');
 
 
         return response()->streamDownload(function(){
@@ -181,7 +182,9 @@ class Facturaciones extends Component
             ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
             ->select('entidades.entidad as empresa','entidades.iban1 as iban','entidades.id as mandato',DB::raw('sum(facturacion_detalle_conceptos.total) as importe'),'facturacion.fechafactura','facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura')
             ->groupBy('facturacion.id')
-            ->where('fechavencimiento',$this->filtroremesa)->toCsv();
+            ->where('fechavencimiento',$this->filtroremesa)
+            ->where('metodopago_id','2')
+            ->toCsv();
         },'remesa.csv');
 
     }
