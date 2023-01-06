@@ -13,7 +13,8 @@ class FacturacionController extends Controller
 {
 
     public function index(){
-        return view('facturacion.index');
+        $ruta="facturacion.prefacturasentidad";
+        return view('facturacion.index',compact('ruta'));
     }
 
     public function create(){

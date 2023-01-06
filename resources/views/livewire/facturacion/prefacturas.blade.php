@@ -126,16 +126,16 @@
                                     <input type="text" value="{{ $facturacion->refcliente }}" class="w-full text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalesbase }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ number_format($facturacion->totalesbase,2) }}</span>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalesexenta }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ number_format($facturacion->totalesexenta,2) }}</span>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalesiva }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ number_format($facturacion->totalesiva,2) }}</span>
                                 </td>
                                 <td class="text-right">
-                                    <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalestotal }}</span>
+                                    <span class="pr-4 text-xs text-blue-500">{{ number_format($facturacion->totalestotal,2) }}</span>
                                 </td>
                                 {{-- <td class="text-left">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $facturacion->enviar_est[0] }}-100 text-green-800">

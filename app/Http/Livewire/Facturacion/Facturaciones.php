@@ -39,20 +39,21 @@ class Facturaciones extends Component
         ];
     }
 
-    public function mount(Entidad $entidad)
+    public function mount(Entidad $entidad, $ruta)
     {
         $this->filtroanyo=date('Y');
         $this->filtromes=intval(date('m'));
         $this->entidad=$entidad;
+        $this->ruta=$ruta;
     }
 
     public function render(){
         if($this->selectAll) $this->selectPageRows();
         $facturaciones = $this->rows;
-        $totales= Facturacion::query()
-        ->facturas($this->filtroenviada, $this->filtropagada, $this->filtrofacturado,$this->filtroanyo,$this->filtromes ,$this->search)
-        ->first();
-        return view('livewire.facturacion.facturaciones',compact('facturaciones','totales'));
+        // $totales= Facturacion::query()
+        // ->facturas($this->filtroenviada, $this->filtropagada, $this->filtrofacturado,$this->filtroanyo,$this->filtromes ,$this->search)
+        // ->first();
+        return view('livewire.facturacion.facturaciones',compact('facturaciones'));
     }
 
     public function replicateFactura($facturaId){
@@ -66,7 +67,17 @@ class Facturaciones extends Component
         return Facturacion::query()
             ->with('metodopago')
             ->join('entidades','facturacion.entidad_id','=','entidades.id')
-            ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm')
+            ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+            ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+            // ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm')
+            ->select('facturacion.*',
+                    'entidades.entidad','entidades.emailadm',
+                    DB::raw('sum(facturacion_detalle_conceptos.base) as totalesbase'),
+                    DB::raw('sum(facturacion_detalle_conceptos.exenta) as totalesexenta'),
+                    DB::raw('sum(facturacion_detalle_conceptos.totaliva) as totalesiva'),
+                    DB::raw('sum(facturacion_detalle_conceptos.total) as totalestotal')
+                    )
+            ->groupBy('facturacion.id')
             ->where('numfactura','<>','')
             ->when($this->filtroenviada!='', function ($query){
                 $query->where('enviada',$this->filtroenviada);
@@ -94,7 +105,7 @@ class Facturaciones extends Component
     }
 
     public function getRowsProperty(){
-        return $this->rowsQuery->paginate();
+        return $this->rowsQuery->paginate(100);
     }
 
     public function zipSelected(){
