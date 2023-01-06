@@ -42,7 +42,10 @@ class Facturacion extends Model
             'id');
     }
 
-
+    public function getFraAttribute()
+    {
+        return 'Fra. '. $this->numfactura . ' Suma';
+    }
     public function getDateFraAttribute(){
         if ($this->fechafactura) {
             return $this->fechafactura->format('d/m/Y');

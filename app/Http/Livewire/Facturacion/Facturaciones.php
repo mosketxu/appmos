@@ -88,6 +88,9 @@ class Facturaciones extends Component
             ->when($this->entidad->id!='', function ($query){
                 $query->where('entidad_id',$this->entidad->id);
                 })
+            ->when($this->filtroremesa!='', function ($query){
+                $query->where('fechavencimiento',$this->filtroremesa);
+                })
             ->when($this->filtrocontabilizado!='', function ($query){
                 if($this->filtrocontabilizado=='0'){
                     $query->where('asiento','0');
@@ -169,14 +172,26 @@ class Facturaciones extends Component
     }
 
     public function exportRemesa(){
-        $this->validate(['filtroremesa'=>'required|date'],['filtroremesa.requiered'=>'Es obligatoria la fecha de la remesa','filtroremesa.date'=>'La fecha de la remesa debe ser una fecha válida']);
+
+        // $this->validate(['filtroremesa'=>'required|date'],['filtroremesa.requiered'=>'Es obligatoria la fecha de la remesa','filtroremesa.date'=>'La fecha de la remesa debe ser una fecha válida']);
+        $nada='';
+        $f=Facturacion::find('66');
+
+        // dd($f->fra);
+        $a="Fra.";
 
         $remesa= Facturacion::query()
         ->join('entidades','facturacion.entidad_id','=','entidades.id')
         ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
         ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
-        ->select('entidades.entidad as empresa','entidades.iban1 as iban','entidades.id as mandato','facturacion.fechafactura',DB::raw('sum(facturacion_detalle_conceptos.total) as importe'),
-            'facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura','facturacion.metodopago_id')
+        ->select("entidades.entidad as empresacli","entidades.iban1 as iban","entidades.id as mandato","facturacion.fechafactura",
+            DB::raw("sum(facturacion_detalle_conceptos.total) as importe"),
+            DB::raw("CONCAT('Fra. ',facturacion.numfactura,' Suma') as numfra"),
+            DB::raw("'' AS bicswift"),
+            DB::raw("'RCUR' AS rcur"),
+            "facturacion.fechavencimiento as fv",
+            "facturacion.numfactura as IdFactura",
+            "facturacion.metodopago_id")
         ->groupBy('facturacion.id')
         ->where('fechavencimiento',$this->filtroremesa)
         ->where('facturacion.metodopago_id','2')
@@ -186,20 +201,6 @@ class Facturaciones extends Component
         return Excel::download(new RemesaExport (
             $remesa,
         ), 'remesa.xlsx');
-
-
-        // return response()->streamDownload(function(){
-        //     echo Facturacion::query()
-        //     ->join('entidades','facturacion.entidad_id','=','entidades.id')
-        //     ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
-        //     ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
-            // ->select('entidades.entidad as empresa','entidades.iban1 as iban','entidades.id as mandato','facturacion.fechafactura',DB::raw('sum(facturacion_detalle_conceptos.total) as importe'),
-            //     'facturacion.numfactura','facturacion.fechavencimiento as fv','facturacion.numfactura as IdfFactura','facturacion.metodopago_id')
-            // ->groupBy('facturacion.id')
-            // ->where('fechavencimiento',$this->filtroremesa)
-            // ->where('facturacion.metodopago_id','2')
-        //     ->toCsv();
-        // },'remesa.csv');
 
     }
 

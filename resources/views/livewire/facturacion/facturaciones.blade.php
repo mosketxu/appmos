@@ -93,7 +93,7 @@
             </x-jet-nav-link>
             {{-- tabla facturaciones --}}
 
-            <div class="min-w-full overflow-hidden overflow-x-auto align-middle shadow sm:rounded-lg">
+            <div class="min-w-full min-h-screen align-middle shadow sm:rounded-lg">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="text-xs leading-4 tracking-wider text-gray-500 bg-blue-50 ">
                         <tr class="">
