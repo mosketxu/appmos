@@ -11,51 +11,52 @@
                     <div class="w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Base 4%:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales[4][0] }}</div>
+                            {{-- <div class="w-1/4 mr-2 text-right">{{ $factura->totales[4][0] }}</div> --}}
+                            <div class="w-1/4 mr-2 text-right">{{ $base04 }}</div>
                         </div>
                         <div class="flex">
                             <div class="w-3/4 ml-2">Iva 4%:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales[4][1] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $iva04 }}</div>
                         </div>
                     </div>
                     <div class="w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Base 10%:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales[10][0] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $base10 }}</div>
                         </div>
                         <div class="flex">
                             <div class="w-3/4 ml-2">Iva 10%:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales[10][1] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $iva10 }}</div>
                         </div>
                     </div>
                     <div class="w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Base 21%:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales[21][0] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $base21}}</div>
                         </div>
                         <div class="flex">
                             <div class="w-3/4 ml-2">Iva 21%:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales[21][1] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $iva21 }}</div>
                         </div>
                     </div>
                     <div class="w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Exento:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales['e'][0] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $exenta }}</div>
                         </div>
                         <div class="flex">
                             <div class="w-3/4 ml-2">Suplidos:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales['s'][0] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $suplido }}</div>
                         </div>
                     </div>
                     <div class="w-3/12 font-bold border">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Total:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales['t'][1] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $total }}</div>
                         </div>
                         <div class="flex">
                             <div class="w-3/4 ml-2">Iva:</div>
-                            <div class="w-1/4 mr-2 text-right">{{ $factura->totales['t'][2] }}</div>
+                            <div class="w-1/4 mr-2 text-right">{{ $totaliva }}</div>
                         </div>
                     </div>
                 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Livewire\Facturacion\FacturaDetalle;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,16 @@ class Facturacion extends Model
     public function facturadetalles(){return $this->hasMany(FacturacionDetalle::class)->orderBy('tipo')->orderBy('orden');}
     public function entidad(){return $this->belongsTo(Entidad::class);}
     public function ciclo(){return $this->belongsTo(Ciclo::class);}
+    public function conceptos(){
+        return $this->hasManyThrough(
+            FacturacionDetalleConcepto::class,
+            FacturacionDetalle::class,
+            'facturacion_id',
+            'facturaciondetalle_id',
+            'id',
+            'id');
+    }
+
 
     public function getDateFraAttribute(){
         if ($this->fechafactura) {

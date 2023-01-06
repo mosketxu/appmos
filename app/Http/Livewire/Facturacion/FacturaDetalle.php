@@ -3,13 +3,13 @@
 namespace App\Http\Livewire\Facturacion;
 
 use App\Models\{Facturacion,FacturacionDetalle, FacturacionDetalleConcepto};
-
+use Illuminate\Support\Facades\DB;
 
 use Livewire\Component;
 
 class FacturaDetalle extends Component
 {
-    public $facturacion, $base,$base4,$base10,$base21,$iva4,$iva10,$iva21, $exenta, $totaliva, $total;
+    public $facturacion, $base,$base04,$base10,$base21,$iva04,$iva10,$iva21, $exenta,$suplido, $totaliva, $total;
     public $editedDetalleIndex = null;
     public $editedDetalleField = null;
     public $detalles=[];
@@ -37,32 +37,47 @@ class FacturaDetalle extends Component
     }
 
     public function render(){
-        $factura=$this->facturacion;
-        if($factura->id){
+        $factura=Facturacion::with('conceptos')->find($this->facturacion->id);
+        $this->base=$factura->conceptos->sum('base');
+        $this->base21=$factura->conceptos->where('iva','0.21')->sum('base');
+        $this->iva21=$factura->conceptos->where('iva','0.21')->sum('totaliva');
+        $this->base10=$factura->conceptos->where('iva','0.10')->sum('base');
+        $this->iva10=$factura->conceptos->where('iva','0.10')->sum('totaliva');
+        $this->base04=$factura->conceptos->where('iva','0.04')->sum('base');
+        $this->iva04=$factura->conceptos->where('iva','0.04')->sum('totaliva');
+        $this->exenta=$factura->conceptos->where('tipo','!=','1')->sum('exenta');
+        $this->suplido=$factura->conceptos->where('tipo','1')->sum('exenta');
+        $this->totaliva=$factura->conceptos->sum('totaliva');
+        $this->total=$factura->conceptos->sum('total');
+        // dd($base4);
+
+        // dd($factura->conceptos->where('iva','0.21')->sum('totales'));
+        // if($factura->id){
             $this->showcrear=$this->facturacion->facturada? false : true;
-        }else{
-            $this->showcrear=false;
-        }
+        // }else{
+        //     $this->showcrear=false;
+        // }
         $a=FacturacionDetalle::select('id')->where('facturacion_id', $this->facturacion->id)->orderBy('orden')->get();
         $a=$a->toArray();
         $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->get();
-        $this->base=$factura->facturadetalles->sum('base');
-        $this->base4=$fdc->where('iva','0.04')->sum('base');
-        $this->base10=$fdc->where('iva','0.10')->sum('base');
-        $this->base21=$fdc->where('iva','0.21')->sum('base');
-        $this->base=$factura->facturadetalles->sum('base');
-        $this->exenta=$factura->facturadetalles->sum('exenta');
-        $this->totaliva=$factura->facturadetalles->sum('totaliva');
-        $this->total=$factura->facturadetalles->sum('total');
+        // $this->base=$factura->facturadetalles->sum('base');
+        // $this->base4=$fdc->where('iva','0.04')->sum('base');
+        // $this->base10=$fdc->where('iva','0.10')->sum('base');
+        // $this->base21=$fdc->where('iva','0.21')->sum('base');
+        // $this->base=$factura->facturadetalles->sum('base');
+        // $this->exenta=$factura->facturadetalles->sum('exenta');
+        // $this->totaliva=$factura->facturadetalles->sum('totaliva');
+        // $this->total=$factura->facturadetalles->sum('total');
 
         $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)
         ->orderBy('orden')
         ->get();
 
-        if(!$this->showcrear)
-        return view('livewire.facturacion.factura-detalle-blocked',compact(['factura']));
-        else
-            return view('livewire.facturacion.factura-detalle',compact(['factura']));
+        $showcrear=$this->showcrear;
+        // if(!$this->showcrear)
+        //     return view('livewire.facturacion.factura-detalle-blocked',compact(['factura']));
+        // else
+            return view('livewire.facturacion.factura-detalle',compact(['factura','showcrear']));
     }
 
     public function funshowdetalle(){
