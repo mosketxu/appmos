@@ -18,7 +18,7 @@
         <form wire:submit.prevent="save" >
             <div class="flex">
                 {{-- datos factura --}}
-                <div class="flex-initial w-7/12 py-2 mr-1 bg-white rounded-lg shadow-md">
+                <div class="flex-initial w-8/12 py-2 mr-1 bg-white rounded-lg shadow-md">
                     <div class="px-2 mx-2 my-1 bg-blue-100 rounded-md">
                         <h3 class="font-semibold ">Datos Factura</h3>
                         <x-jet-input  wire:model.defer="factura.id" type="hidden"  id="id" name="id" :value="old('id')"/>
@@ -86,7 +86,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex-initial w-3/12 py-2 mr-1 bg-white rounded-lg shadow-md">
+                {{-- <div class="flex-initial w-3/12 py-2 mr-1 bg-white rounded-lg shadow-md">
                     <div class="px-2 mx-2 my-1 bg-yellow-100 rounded-md">
                         <h3 class="font-semibold ">Conceptos habituales</h3>
                     </div>
@@ -113,8 +113,8 @@
                             </div>
                         @endforelse
                     </div>
-                </div>
-                <div class="flex-initial w-2/12 py-2 mr-1 bg-white rounded-lg shadow-md">
+                </div> --}}
+                <div class="flex-initial w-4/12 py-2 mr-1 bg-white rounded-lg shadow-md">
                     <div class="px-2 mx-2 my-1 bg-red-100 rounded-md">
                         <h3 class="font-semibold ">Datos Control</h3>
                     </div>

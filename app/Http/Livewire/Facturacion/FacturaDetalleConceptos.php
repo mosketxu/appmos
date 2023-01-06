@@ -24,6 +24,7 @@ class FacturaDetalleConceptos extends Component
     public $base='0.00';
     public $exenta='0.00';
     public $total='0.00';
+    public $deshabilitado='';
 
 
     protected function rules(){
@@ -32,10 +33,11 @@ class FacturaDetalleConceptos extends Component
         ];
     }
 
-    public function mount($detalle,$color){
+    public function mount($detalle,$color,$deshabilitado){
         $this->detalleid=$detalle->id;
         $this->detalle=$detalle;
         $this->color='bg-'.$color.'-50';
+        $this->$deshabilitado=$deshabilitado;
     }
 
     public function render(){

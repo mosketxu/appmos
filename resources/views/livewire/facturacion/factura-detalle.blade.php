@@ -6,6 +6,7 @@
             <div class="flex w-full">
                 <div class="w-4/12">
                     <h1 class="text-2xl font-semibold text-gray-900">Detalle de la factura</h1>
+                    {{-- <p>Show crear: {{ $showcrear }}</p> --}}
                 </div>
                 <div class="w-6/12 flex mt-1.5 text-sm space-x-3 text-gray-900">
                     <div class="w-3/12 border ">
@@ -61,7 +62,9 @@
                     </div>
                 </div>
                 <div class="flex flex-row-reverse w-2/12">
+                    @if($deshabilitado=='')
                     @livewire('facturacion.factura-detallenuevo-modal',['factura'=>$factura])
+                    @endif
                 </div>
             </div>
         </div>
@@ -99,15 +102,19 @@
                         </div> --}}
                         <div class="w-8/12 {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }}">
                             <input type="text" name="agrup" value="{{ $detalle->concepto }}"
-                            class="w-full py-0.5 {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }} text-xs font-thin text-gray-500 truncate border-0 rounded-md"/>
+                            class="w-full py-0.5 {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }} text-xs font-thin text-gray-500 truncate border-0 rounded-md"
+                            {{ $deshabilitado }}/>
                         </div>
                         <div class="w-4/12 flex {{ $loop->even ? 'bg-yellow-50' : 'bg-green-50' }}">
+                            @if($deshabilitado=='')
                             <div class="mt-1">
                             <button type="button" class="text-center btn btn-primary" name="Guardar" onclick="form.submit()">
                                 <x-icon.save />
                             </button>
                             </div>
+                            @endif
                 </form>
+                            @if($deshabilitado=='')
                             <div class="mt-1">
                             <form role="form" method="post" action="{{ route('facturacionconcepto.destroy',$detalle->id) }}">
                                 @csrf
@@ -117,10 +124,11 @@
                                 </button>
                             </form>
                             </div>
+                            @endif
                         </div>
                     </div>
                     <div class="w-11/12 pl-2">
-                        @livewire('facturacion.factura-detalle-conceptos',['detalle'=>$detalle,'color'=>$loop->even ? 'yellow' : 'green'],key($detalle->id))
+                        @livewire('facturacion.factura-detalle-conceptos',['detalle'=>$detalle,'deshabilitado'=>$deshabilitado,'color'=>$loop->even ? 'yellow' : 'green'],key($detalle->id))
                     </div>
                 </div>
             @empty
