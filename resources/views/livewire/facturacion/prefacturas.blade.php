@@ -76,8 +76,8 @@
                             <th class="w-24 pr-4 font-medium text-right">{{ __('Exenta (€)') }}</th>
                             <th class="w-24 pr-4 font-medium text-right">{{ __('Iva (€)') }}</th>
                             <th class="w-24 pr-4 font-medium text-right">{{ __('Total (€)') }}</th>
-                            <th class="" title="Enviar"><x-icon.arroba/></th>
-                            <th class="" title="Facturable"><x-icon.euro/></th>
+                            {{-- <th class="" title="Enviar"><x-icon.arroba/></th>
+                            <th class="" title="Facturable"><x-icon.euro/></th> --}}
                             <th colspan="2"></th>
                         </tr>
                     </thead>
@@ -137,7 +137,7 @@
                                 <td class="text-right">
                                     <span class="pr-4 text-xs text-blue-500">{{ $facturacion->totalestotal }}</span>
                                 </td>
-                                <td class="text-left">
+                                {{-- <td class="text-left">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $facturacion->enviar_est[0] }}-100 text-green-800">
                                         {{ $facturacion->enviar_est[1] }}
                                     </span>
@@ -145,11 +145,11 @@
                                 <td class="text-left">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $facturacion->facturable_est[0] }}-100 text-green-800">
                                         {{ $facturacion->facturable_est[1] }}
-                                    </span>
+                                    </span> --}}
                                 </td>
                                 <td class="">
                                     <div class="flex items-center justify-center">
-                                        <x-icon.invoice-a href="{{ route('facturacion.editprefactura',$facturacion) }}" title="Pre-Factura"/>
+                                        <x-icon.edit-a href="{{ route('facturacion.editprefactura',$facturacion) }}" title="Pre-Factura"/>
                                         <x-icon.delete-a wire:click.prevent="delete({{ $facturacion->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1 " title="Borrar"/>
                                     </div>
                                 </td>

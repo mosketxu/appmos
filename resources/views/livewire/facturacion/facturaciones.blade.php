@@ -3,17 +3,9 @@
     <div class="p-1 mx-2">
         <h1 class="text-2xl font-semibold text-gray-900">Facturación  {{ $entidad->id? 'de '. $entidad->entidad  :'' }} </h1>
 
-        <div class="py-1 space-y-4">
-            @if (session()->has('message'))
-                <div id="alert" class="relative px-6 py-2 mb-2 text-white bg-green-200 border-green-500 rounded border-1">
-                    <span class="inline-block mx-8 align-middle">
-                        {{ session('message') }}
-                    </span>
-                    <button class="absolute top-0 right-0 mt-2 mr-6 text-2xl font-semibold leading-none bg-transparent outline-none focus:outline-none" onclick="document.getElementById('alert').remove();">
-                        <span>×</span>
-                    </button>
-                </div>
-            @endif
+        <div class="">
+            @include('errores')
+        </div>
 
             <x-jet-validation-errors/>
 
@@ -120,7 +112,7 @@
                             <th class="w-24 pr-4 font-medium text-right">{{ __('Total (€)') }}</th>
                             <th class="" title="Enviar"><x-icon.arroba/></th>
                             <th class="" title="Enviada"><x-icon.plane/></th>
-                            <th class="" title="Facturado"><x-icon.invoice/></th>
+                            <th class="" title="Facturado"><x-icon.edit/></th>
                             <th class="" title="Pagada"><x-icon.money/></th>
                             <th class="" title="Contabilizado"><x-icon.sage/></th>
                             <th colspan="2"></th>
@@ -210,12 +202,12 @@
                                     </span>
                                 </td>
                                 <td class="">
-                                    <div class="flex items-center justify-center">
-                                        <x-icon.invoice-a href="{{ route('facturacion.edit',$facturacion) }}" title="Factura"/>
-                                        <a href = '{{asset('storage/'.$facturacion->rutafichero)}}'  target='_blank'  class="pt-2 ml-2" title="PDF"><x-icon.pdf class="mb-2"></x-icon.pdf></a>
-                                        <a href="{{route('facturacion.pdffactura',[$facturacion->id])}}" target="_blank" title="Imprimir factura"><x-icon.pdf class="mr-5 text-green-500 hover:text-red-700 "/></a>
+                                    <div class="flex items-center justify-center w-full">
+                                        <x-icon.edit-a href="{{ route('facturacion.edit',$facturacion) }}" title="Factura"/>
+                                        <a href = '{{asset('storage/'.$facturacion->rutafichero)}}'  target='_blank'  class="" title="PDF"><x-icon.pdf class=""></x-icon.pdf></a>
+                                        <a href="{{route('facturacion.pdffactura',[$facturacion->id])}}" target="_blank" title="Imprimir factura"><x-icon.pdf class="text-green-500 hover:text-red-700"/></a>
                                         <x-icon.copy-a wire:click="replicateFactura({{ $facturacion->id }})" onclick="confirm('¿Estás seguro de querer copiar la factura?') || event.stopImmediatePropagation()" class="text-purple-500" title="Copiar Factura" />
-                                        <x-icon.delete-a wire:click.prevent="delete({{ $facturacion->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1 " title="Borrar"/>
+                                        <x-icon.delete-a wire:click.prevent="delete({{ $facturacion->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="" title="Borrar"/>
                                     </div>
                                 </td>
                             </tr>
@@ -276,20 +268,5 @@
         </div>
 
     </div>
-    <!-- Delete Transactions Modal -->
-    <form wire:submit.prevent="deleteSelected">
-        <x-modal.confirmation wire:model.defer="showDeleteModal">
-            <x-slot name="title">Borrar Factura</x-slot>
 
-            <x-slot name="content">
-                <div class="py-8 text-gray-700">¿Esás seguro? Esta acción es irreversible.</div>
-            </x-slot>
-
-            <x-slot name="footer">
-                <x-button.secondary wire:click="$set('showDeleteModal', false)">Cancel</x-button.secondary>
-
-                <x-button.primary type="submit">Delete</x-button.primary>
-            </x-slot>
-        </x-modal.confirmation>
-    </form>
 </div>

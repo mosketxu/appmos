@@ -31,7 +31,6 @@ class Facturaciones extends Component
     public $entidad;
     public $message;
     public $ruta='facturacion.show';
-    public $showDeleteModal=false;
 
     protected function rules(){
         return[
@@ -47,20 +46,16 @@ class Facturaciones extends Component
         $this->entidad=$entidad;
     }
 
-    public function render()
-    {
+    public function render(){
         if($this->selectAll) $this->selectPageRows();
         $facturaciones = $this->rows;
-
-
         $totales= Facturacion::query()
         ->facturas($this->filtroenviada, $this->filtropagada, $this->filtrofacturado,$this->filtroanyo,$this->filtromes ,$this->search)
         ->first();
         return view('livewire.facturacion.facturaciones',compact('facturaciones','totales'));
     }
 
-    public function replicateFactura($facturaId)
-    {
+    public function replicateFactura($facturaId){
         $factura=Facturacion::find($facturaId);
         $fac=new FacturaReplicarAction;
         $f=$fac->execute($factura);
@@ -103,8 +98,6 @@ class Facturaciones extends Component
     }
 
     public function zipSelected(){
-
-
         $this->validate();
         $zip = new ZipArchive;
         $fileName = 'myNewFile.zip';
