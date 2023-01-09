@@ -67,10 +67,11 @@ class Ent extends Component
         ];
     }
 
-    public function mount(Entidad $entidad, Entidad $contacto)
+    public function mount(Entidad $entidad, Entidad $contacto,$ruta)
     {
         $this->entidad=$entidad;
         $this->contacto=$contacto;
+        $this->ruta=$ruta;
     }
 
     public function render(){

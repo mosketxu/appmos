@@ -8,6 +8,7 @@ use ZipArchive;
 use File;
 use Excel;
 use Dompdf\Dompdf;
+use Illuminate\Support\Facades\Route;
 
 class FacturacionController extends Controller
 {
@@ -26,8 +27,9 @@ class FacturacionController extends Controller
     }
 
     public function show($entidadId){
+        $ruta=Route::currentRouteName();
         $entidad=Entidad::find($entidadId);
-        return view('facturacion.entidad',compact(['entidad']));
+        return view('facturacion.entidad',compact(['entidad','ruta']));
     }
 
     public function prefacturasentidad($entidadId){

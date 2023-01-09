@@ -6,7 +6,7 @@ use App\Actions\PlanFacturacionAction;
 use App\Models\Entidad;
 use App\Models\FacturacionConcepto;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Route;
 
 class EntidadController extends Controller
 {
@@ -28,9 +28,9 @@ class EntidadController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit(Entidad $entidad)
-    {
-        return view('entidad.edit',compact('entidad'));
+    public function edit(Entidad $entidad){
+        $ruta=Route::currentRouteName();
+        return view('entidad.edit',compact('entidad','ruta'));
     }
 
 
