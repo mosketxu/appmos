@@ -1,5 +1,7 @@
 <div class="">
-    @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
+    @if($factura->entidad && $factura->numfactura)
+        @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
+    @endif
 
     <div class="flex justify-between mx-5 mt-2">
         <div class="">
@@ -26,11 +28,16 @@
                     <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-1">
                         <div class="form-item">
                             <x-jet-label for="entidad_id">{{ __('Entidad') }} </x-jet-label>
-                            <x-select wire:model.lazy="factura.entidad_id" selectname="entidad_id" class="w-full" disabled="{{ $bloqueado }}">
-                                @foreach ($entidades as $entidad)
-                                    <option value="{{ $entidad->id }}">{{ $entidad->entidad }}</option>
-                                @endforeach
-                            </x-select>
+                            @if($factura->entidad_id)
+                                <x-input.text class="w-full py-1.5 text-sm" value="{{ $factura->entidad->entidad }}" disabled/>
+                            @else
+                                <x-select wire:model.lazy="factura.entidad_id" selectname="entidad_id" class="w-full" disabled="{{ $bloqueado }}">
+                                    <option value="">--Selecciona--</option>
+                                    @foreach ($entidades as $entidad)
+                                        <option value="{{ $entidad->id }}">{{ $entidad->entidad }}</option>
+                                    @endforeach
+                                </x-select>
+                            @endif
                         </div>
                         <div class="form-item">
                             <x-jet-label for="serie">{{ __('Serie') }}</x-jet-label>
@@ -162,16 +169,6 @@
                 @if($factura->facturada==False)
                     <div class="space-x-3">
                         <x-jet-button class="bg-blue-600">{{ __('Guardar') }}</x-jet-button>
-                        <span
-                            x-data="{ open: false }"
-                            x-init="@this.on('notify-saved', () => {
-                                    if (open === false) setTimeout(() => { open = false }, 2500);
-                                    open = true;})"
-                            x-show.transition.out.duration.1000ms="open"
-                            style="display: none;"
-                            class="p-2 m-2 text-gray-500 rounded-lg bg-green-50">
-                            Saved!
-                        </span>
                     </div>
                 @endif
                 <div class="space-x-3">

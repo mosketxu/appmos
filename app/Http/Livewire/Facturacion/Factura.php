@@ -25,11 +25,11 @@ class Factura extends Component
         return [
             'factura.id'=>'nullable',
             'factura.numfactura'=>'nullable',
-            'factura.serie'=>'nullable',
+            'factura.serie'=>'required',
             'factura.entidad_id'=>'required',
             'factura.fechafactura'=>'date|required',
-            'factura.fechavencimiento'=>'date|nullable',
-            'factura.metodopago_id'=>'numeric|nullable',
+            'factura.fechavencimiento'=>'date|required',
+            'factura.metodopago_id'=>'numeric|required',
             'factura.refcliente'=>'nullable',
             'factura.mail'=>'nullable',
             'factura.enviar'=>'boolean|nullable',
@@ -80,8 +80,22 @@ class Factura extends Component
 
     public function save(){
         $this->validate();
-        $f=Facturacion::find($this->factura->id);
-        $f->update([
+
+        $i=$this->factura->id? $this->factura->id : 0;
+
+        // $prefacturas = $this->selectedRowsQuery->get();
+        // $this->validate();
+        // foreach ($prefacturas as $prefactura) {
+        //     $fac=new FacturaCreateAction;$f=$fac->execute($prefactura);
+        //     $fac=new FacturaImprimirAction;$fac->execute($f);
+        // }
+        // return redirect()->route('facturacion.index');
+
+
+        $f=Facturacion::updateOrCreate([
+            'id'=>$i
+            ],
+            [
             'numfactura'=>$this->factura->numfactura,
             'serie'=>$this->factura->serie,
             'entidad_id'=>$this->factura->entidad_id,
@@ -90,20 +104,26 @@ class Factura extends Component
             'metodopago_id'=>$this->factura->metodopago_id,
             'refcliente'=>$this->factura->refcliente,
             'mail'=>$this->factura->mail,
-            'enviar'=>$this->factura->enviar,
-            'enviada'=>$this->factura->enviada,
-            'pagada'=>$this->factura->pagada,
-            'facturada'=>$this->factura->facturada,
-            'facturable'=>$this->factura->facturable,
+            'enviar'=>$this->factura->enviar ?? '0',
+            'enviada'=>$this->factura->enviada ?? '0',
+            'pagada'=>$this->factura->pagada ?? '0',
+            'facturada'=>$this->factura->facturada ?? '1',
+            'facturable'=>$this->factura->facturable ?? '1',
             'asiento'=>$this->factura->asiento,
             'fechaasiento'=>$this->factura->fechaasiento,
             'observaciones'=>$this->factura->observaciones,
             'notas'=>$this->factura->notas,
         ]);
-        $f->save();
-        $fac=new FacturaImprimirAction;
-        $fac->execute($f);
-        $this->emitSelf('notify-saved');
+
+        $fac=new FacturaCreateAction;
+        $factura=$fac->execute($f);
+        //     $fac=new FacturaImprimirAction;$fac->execute($f);
+        // $f->save();
+        if($i!=0){
+            $fac=new FacturaImprimirAction;
+            $fac->execute($f);
+        }
+        return redirect()->route('facturacion.edit',$f);
     }
 
     public function agregarconcepto(FacturacionConcepto $concepto){

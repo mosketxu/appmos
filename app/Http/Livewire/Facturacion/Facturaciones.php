@@ -67,8 +67,8 @@ class Facturaciones extends Component
         return Facturacion::query()
             ->with('metodopago')
             ->join('entidades','facturacion.entidad_id','=','entidades.id')
-            ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
-            ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+            ->leftJoin('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+            ->leftJoin('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
             // ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm')
             ->select('facturacion.*',
                     'entidades.entidad','entidades.emailadm',
@@ -172,14 +172,9 @@ class Facturaciones extends Component
     }
 
     public function exportRemesa(){
-
-        // $this->validate(['filtroremesa'=>'required|date'],['filtroremesa.requiered'=>'Es obligatoria la fecha de la remesa','filtroremesa.date'=>'La fecha de la remesa debe ser una fecha válida']);
         $nada='';
         $f=Facturacion::find('66');
-
-        // dd($f->fra);
         $a="Fra.";
-
         $remesa= Facturacion::query()
         ->join('entidades','facturacion.entidad_id','=','entidades.id')
         ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')

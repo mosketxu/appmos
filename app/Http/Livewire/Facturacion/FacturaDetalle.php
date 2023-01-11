@@ -38,23 +38,24 @@ class FacturaDetalle extends Component
     }
 
     public function render(){
+
         // dd($this->facturacion->facturada);
         $this->showcrear=$this->facturacion->facturada =='0'? true : false;
         $this->deshabilitado= $this->showcrear==true ? '' : 'disabled' ;
         $factura=Facturacion::with('conceptos')->find($this->facturacion->id);
-        $this->base=$factura->conceptos->sum('base');
-        $this->base21=$factura->conceptos->where('iva','0.21')->sum('base');
-        $this->iva21=$factura->conceptos->where('iva','0.21')->sum('totaliva');
-        $this->base10=$factura->conceptos->where('iva','0.10')->sum('base');
-        $this->iva10=$factura->conceptos->where('iva','0.10')->sum('totaliva');
-        $this->base04=$factura->conceptos->where('iva','0.04')->sum('base');
-        $this->iva04=$factura->conceptos->where('iva','0.04')->sum('totaliva');
-        $this->exenta=$factura->conceptos->where('tipo','!=','1')->sum('exenta');
-        $this->suplido=$factura->conceptos->where('tipo','1')->sum('exenta');
-        $this->totaliva=$factura->conceptos->sum('totaliva');
-        $this->total=$factura->conceptos->sum('total');
-
-
+        if($this->facturacion->id){
+            $this->base=$factura->conceptos->sum('base');
+            $this->base21=$factura->conceptos->where('iva','0.21')->sum('base');
+            $this->iva21=$factura->conceptos->where('iva','0.21')->sum('totaliva');
+            $this->base10=$factura->conceptos->where('iva','0.10')->sum('base');
+            $this->iva10=$factura->conceptos->where('iva','0.10')->sum('totaliva');
+            $this->base04=$factura->conceptos->where('iva','0.04')->sum('base');
+            $this->iva04=$factura->conceptos->where('iva','0.04')->sum('totaliva');
+            $this->exenta=$factura->conceptos->where('tipo','!=','1')->sum('exenta');
+            $this->suplido=$factura->conceptos->where('tipo','1')->sum('exenta');
+            $this->totaliva=$factura->conceptos->sum('totaliva');
+            $this->total=$factura->conceptos->sum('total');
+        }
 
         $a=FacturacionDetalle::select('id')->where('facturacion_id', $this->facturacion->id)->orderBy('orden')->get();
         $a=$a->toArray();

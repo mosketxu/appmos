@@ -19,10 +19,13 @@ class FacturaCreateAction
         }else{
             $fac=$factura->numfactura;
         }
-        $factura->ruta='facturas/'.$serie.'/'.$factura->fechafactura->format('m');
+        $ruta='facturas/'.$serie.'/'.$factura->fechafactura->format('m');
+        $factura->ruta=$ruta;
         $caracteresmalos=['.',',',"'"];
-        $ent=str_replace($caracteresmalos,"",$factura->entidad);
-        $factura->fichero=(trim('Fra_Suma_'.$factura->serie.'_'.substr ( $fac ,-5 ).'_'.$ent,' ').'.pdf');
+
+        $ent=str_replace($caracteresmalos,"",$factura->entidad->entidad);
+        $fichero=(trim('Fra_Suma_'.$factura->serie.'_'.substr ( $fac ,-5 ).'_'.$ent,' ').'.pdf');
+        $factura->fichero=substr($fichero, 0, 49);
         $factura->serie=$serie;
         $factura->numfactura=$fac;
         $factura->facturada=true;
