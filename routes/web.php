@@ -34,6 +34,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Route::get('/entidad/facturacionconceptos/{entidad}', [EntidadController::class, 'facturacionconceptos'])->name('entidad.facturacionconceptos');
     Route::get('/entidad/pu/{entidad}', [EntidadController::class, 'pus'])->name('entidad.pu');
     Route::get('/entidad/contacto/{entidad}', [EntidadController::class, 'contactos'])->name('entidad.contacto');
+    Route::get('/entidad/nueva/{ruta}', [EntidadController::class, 'create'])->name('entidad.nueva');
     Route::get('/entidad/nuevocontacto/{entidad}', [EntidadController::class, 'createcontacto'])->name('entidad.createcontacto');
     Route::get('/entidad/planfacturacion/{entidad}', [EntidadController::class, 'planfacturacion'])->name('entidad.planfacturacion');
     Route::resource('entidad', EntidadController::class)->only('edit','create');

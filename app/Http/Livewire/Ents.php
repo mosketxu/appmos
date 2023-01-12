@@ -15,10 +15,12 @@ class Ents extends Component
     public $filtroactivo='';
     public $filtrofacturar='';
     public Entidad $entidad;
+    public $ruta;
 
     public function render()
     {
         $this->entidad= new Entidad;
+        $this->ruta='entidades';
         $entidades=Entidad::query()
             ->with('entidadtipo')
             ->with('cicloimp')

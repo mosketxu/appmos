@@ -16,9 +16,9 @@ class EntidadController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
-    {
-        return view('entidad.create');
+    public function create($ruta){
+
+        return view('entidad.create',compact('ruta'));
     }
 
 

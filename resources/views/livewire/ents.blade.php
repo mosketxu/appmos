@@ -1,6 +1,6 @@
 <div class="">
     {{-- @livewire('navigation-menu')  --}}
-    @livewire('menu',['entidad'=>$entidad],key($entidad->id))
+    @livewire('menu',['entidad'=>$entidad,'ruta'=>$ruta],key($entidad->id))
 
     <div class="p-1 mx-2">
 
@@ -46,7 +46,7 @@
                         </select>
                     </div>
                 </div>
-                <x-button.button  onclick="location.href = '{{ route('entidad.create') }}'" color="blue"><x-icon.plus/>{{ __('Nueva Entidad') }}</x-button.button>
+                <x-button.button  onclick="location.href = '{{ route('entidad.nueva',$ruta) }}'" color="blue"><x-icon.plus/>{{ __('Nueva Entidad') }}</x-button.button>
             </div>
             {{-- tabla entidades --}}
             <div class="flex-col space-y-4">
