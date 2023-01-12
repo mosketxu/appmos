@@ -57,7 +57,7 @@ class Ent extends Component
             'entidad.diafactura'=>'numeric|nullable',
             'entidad.diavencimiento'=>'numeric|nullable',
             'entidad.referenciacliente'=>'nullable',
-            'entidad.tipoiva'=>'numeric|nullable',
+            'entidad.tipoiva'=>'numeric|required',
             'entidad.suma_id'=>'nullable',
             'entidad.porcentajemarta'=>'numeric|nullable',
             'entidad.porcentajesusana'=>'numeric|nullable',
@@ -90,6 +90,7 @@ class Ent extends Component
     {
         if(!$this->entidad->facturar) $this->entidad->facturar=false;
         if(!$this->entidad->enviar) $this->entidad->enviar=false;
+        if(!$this->entidad->iva) $this->entidad->iva='0.21';
         if($this->entidad->id){
             $i=$this->entidad->id;
             $this->validate([

@@ -60,7 +60,7 @@
             </div>
             {{-- tabla pre-facturas --}}
             <table class="min-w-full divide-y divide-gray-200">
-                    <div class="min-w-full overflow-hidden overflow-x-auto align-middle shadow min-vh-100 sm:rounded-lg">
+                <div class="min-w-full overflow-hidden overflow-x-auto align-middle shadow min-vh-100 sm:rounded-lg">
                     <thead class="text-xs leading-4 tracking-wider text-gray-500 bg-blue-50 ">
                         <tr class="">
                             <th class="w-5 py-3 pl-2 font-medium text-center"><x-input.checkbox wire:model="selectPage"/></th>
@@ -190,6 +190,24 @@
                     </x-slot>
                 </x-modal.confirmation>
         </form>
+        @endif
+        <!-- Delete Transactions Modal -->
+        @if($showDeleteModal)
+            <form wire:submit.prevent="deleteSelected">
+                <x-modal.confirmation wire:model.defer="showDeleteModal">
+                    <x-slot name="title">Borrar Prefactura</x-slot>
+
+                    <x-slot name="content">
+                        <div class="py-8 text-gray-700">¿Esás seguro? Esta acción es irreversible.</div>
+                    </x-slot>
+
+                    <x-slot name="footer">
+                        <x-button.secondary wire:click="$set('showDeleteModal', false)">Cancel</x-button.secondary>
+
+                        <x-button.primary type="submit">Delete</x-button.primary>
+                    </x-slot>
+                </x-modal.confirmation>
+            </form>
         @endif
     </div>
 </div>
