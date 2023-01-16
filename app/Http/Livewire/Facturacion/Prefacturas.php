@@ -133,12 +133,13 @@ class Prefacturas extends Component
             ->join('entidades','facturacion.entidad_id','=','entidades.id')
             ->join('facturacion_detalles','facturacion.id','=','facturacion_id')
             ->join('facturacion_detalle_conceptos','facturacion_detalles.id','=','facturaciondetalle_id')
+            ->join('metodo_pagos','entidades.metodopago_id','=','metodo_pagos.id')
             ->select( 'entidades.entidad',
                 'facturacion.fechafactura','facturacion.fechavencimiento',
                 'facturacion_detalles.concepto',
                 'facturacion_detalle_conceptos.concepto','facturacion_detalle_conceptos.base',
                 'facturacion_detalle_conceptos.exenta','facturacion_detalle_conceptos.iva','facturacion_detalle_conceptos.total',
-                'entidades.iban1',)
+                'entidades.iban1','metodo_pagos.metodopagocorto')
             ->searchYear('fechafactura',$this->filtroanyo)
             ->searchMes('fechafactura',$this->filtromes)
             ->orderBy('facturacion.fechafactura')
