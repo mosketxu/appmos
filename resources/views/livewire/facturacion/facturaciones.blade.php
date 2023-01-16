@@ -230,7 +230,23 @@
                 </div>
             </div>
         </div>
+        <!-- Delete Transactions Modal -->
+        @if($showDeleteModal)
+            <form wire:submit.prevent="deleteSelected">
+                <x-modal.confirmation wire:model.defer="showDeleteModal">
+                    <x-slot name="title">Borrar Prefactura</x-slot>
 
+                    <x-slot name="content">
+                        <div class="py-8 text-gray-700">¿Esás seguro? Esta acción es irreversible.</div>
+                    </x-slot>
+
+                    <x-slot name="footer">
+                        <x-button.secondary wire:click="$set('showDeleteModal', false)">Cancel</x-button.secondary>
+
+                        <x-button.primary type="submit">Delete</x-button.primary>
+                    </x-slot>
+                </x-modal.confirmation>
+            </form>
+        @endif
     </div>
-
 </div>

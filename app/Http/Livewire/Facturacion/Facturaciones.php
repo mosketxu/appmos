@@ -31,6 +31,7 @@ class Facturaciones extends Component
     public $entidad;
     public $message;
     public $ruta='facturacion.show';
+    public $showDeleteModal;
 
     protected function rules(){
         return[
@@ -196,10 +197,7 @@ class Facturaciones extends Component
         return Excel::download(new RemesaExport (
             $remesa,
         ), 'remesa.xlsx');
-
     }
-
-
 
     public function deleteSelected(){
         // $prefacturas=Facturacion::findMany($this->selected); funciona muy bien
