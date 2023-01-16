@@ -36,8 +36,8 @@
                 <select name="iva" class="w-full mx-0 px-0 py-0.5 {{ $color }} text-center text-xs font-thin text-gray-500  border-0 rounded-md"
                 {{ $deshabilitado }}>
                     <option value="0.00" {{ $concepto->iva=='0.00' ? 'selected' : ''}} >0%</option>
-                    <option value="0.04" {{ $concepto->iva=='0.04' ? 'selected' : ''}} >4%</option>
-                    <option value="0.10" {{ $concepto->iva=='0.10' ? 'selected' : ''}} >10%</option>
+                    {{-- <option value="0.04" {{ $concepto->iva=='0.04' ? 'selected' : ''}} >4%</option>
+                    <option value="0.10" {{ $concepto->iva=='0.10' ? 'selected' : ''}} >10%</option> --}}
                     <option value="0.21" {{ $concepto->iva=='0.21' ? 'selected' : ''}} >21%</option>
                 </select>
             </div>

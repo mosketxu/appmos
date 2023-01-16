@@ -147,8 +147,8 @@
                     <x-select wire:model.defer="entidad.tipoiva" class="w-full" selectname="tipoiva">
                         <option value="">-- choose --</option>
                         <option value="0.00">0%</option>
-                        <option value="0.04">4%</option>
-                        <option value="0.10">10%</option>
+                        {{-- <option value="0.04">4%</option>
+                        <option value="0.10">10%</option> --}}
                         <option value="0.21">21%</option>
                     </x-select>
                 </div>
