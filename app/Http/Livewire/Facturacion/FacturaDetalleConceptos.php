@@ -70,7 +70,7 @@ class FacturaDetalleConceptos extends Component
             'concepto'=>$this->concepto,
             'tipo'=>$this->tipo,
             'subcuenta'=>$this->subcuenta,
-            'uds'=>$this->uds,
+            'unidades'=>$this->uds,
             'importe'=>$this->importe,
             'iva'=>$this->piva,
             'base'=>$this->base,
