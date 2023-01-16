@@ -9,10 +9,9 @@
                     {{-- <p>Show crear: {{ $showcrear }}</p> --}}
                 </div>
                 <div class="w-6/12 flex mt-1.5 text-sm space-x-3 text-gray-900">
-                    <div class="w-3/12 border ">
+                    {{-- <div class="w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Base 4%:</div>
-                            {{-- <div class="w-1/4 mr-2 text-right">{{ $factura->totales[4][0] }}</div> --}}
                             <div class="w-1/4 mr-2 text-right">{{ $base04 }}</div>
                         </div>
                         <div class="flex">
@@ -29,7 +28,7 @@
                             <div class="w-3/4 ml-2">Iva 10%:</div>
                             <div class="w-1/4 mr-2 text-right">{{ $iva10 }}</div>
                         </div>
-                    </div>
+                    </div> --}}
                     <div class="w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Base 21%:</div>

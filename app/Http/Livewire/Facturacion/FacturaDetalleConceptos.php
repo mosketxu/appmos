@@ -95,12 +95,13 @@ class FacturaDetalleConceptos extends Component
         );
         $factura=Facturacion::find($this->detalle->facturacion_id);
 
-        $factura->pdffactura($factura);
+        if(($factura->numfactura!='' || !is_null($factura->numfactura))){
+            $factura->pdffactura($factura);
+            $vista='facturacion.edit';
+        }else{
+            $vista='facturacion.editprefactura';
+        }
 
-        // $fac=new FacturaImprimirAction;
-        // $fac->execute($factura);
-
-        $vista =($factura->numfactura!='' || !is_null($factura->numfactura)) ? "facturacion.edit": 'facturacion.editprefactura';
         return redirect()->route($vista,$this->detalle->facturacion_id);
 
     }

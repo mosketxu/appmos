@@ -32,8 +32,7 @@ class FacturaCreateAction
         $factura->fichero=substr($fichero, 0, 40);
         $factura->serie=$serie;
         $factura->numfactura=$fac;
-        $detalles=FacturacionDetalle::where('facturacion_id',$factura->i)->count();
-        $factura->facturada=$detalles>0 ? true : false;
+        $factura->facturada= (FacturacionDetalle::where('facturacion_id',$factura->id)->count() > 0) ? 1 : 0;
         $factura->save();
         return $factura;
     }

@@ -78,7 +78,7 @@ class FacturacionDetalleConceptoController extends Controller
         $fd=FacturacionDetalle::find($fdc->facturaciondetalle_id);
         $f=Facturacion::find($fd->facturacion_id);
 
-        $f->pdffactura($f);
+        if(!is_null($f->numfactura) || $f->numfactura!='' ) $f->pdffactura($f);
 
         $notification = array(
             'message' => 'Elemento actualizado satisfactoriamente!',
