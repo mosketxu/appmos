@@ -22,7 +22,7 @@ class PrefacturasExport implements FromCollection,WithHeadings{
 
     public function headings(): array{
     return [
-        ['Empresa','Fecha Factura','Fecha Vencimiento','Concepto','Base','Exento','Iva','Total']
+        ['Empresa','Fecha Factura','Fecha Vencimiento','Concepto','Base','Exento','Iva','Total','Iban']
     ];
 }
 

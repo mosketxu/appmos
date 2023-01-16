@@ -137,7 +137,8 @@ class Prefacturas extends Component
                 'facturacion.fechafactura','facturacion.fechavencimiento',
                 'facturacion_detalles.concepto',
                 'facturacion_detalle_conceptos.concepto','facturacion_detalle_conceptos.base',
-                'facturacion_detalle_conceptos.exenta','facturacion_detalle_conceptos.iva','facturacion_detalle_conceptos.total')
+                'facturacion_detalle_conceptos.exenta','facturacion_detalle_conceptos.iva','facturacion_detalle_conceptos.total',
+                'entidades.iban1',)
             ->searchYear('fechafactura',$this->filtroanyo)
             ->searchMes('fechafactura',$this->filtromes)
             ->orderBy('facturacion.fechafactura')

@@ -46,7 +46,7 @@
                                 <x-icon.invoice class="text-pink-400"></x-icon.invoice> <span>Generar Facturas </span>
                             </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="exportXls"  class="flex items-center space-x-2">
-                                <x-icon.xls class="text-green-800"></x-icon.xls> <span>Export XLS</span>
+                                <x-icon.xls class="text-green-800"></x-icon.xls> <span>Previsión XLS</span>
                             </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="exportSelected" class="flex items-center space-x-2">
                                 <x-icon.csv class="text-green-400"></x-icon.csv> <span>Export Csv</span>
