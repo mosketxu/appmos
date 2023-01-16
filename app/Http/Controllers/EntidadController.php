@@ -60,10 +60,10 @@ class EntidadController extends Controller
         return view('entidad.contactos',compact('entidad'));
     }
 
-    public function createcontacto($contactoId)
-    {
+    public function createcontacto($contactoId){
+        $ruta='entidad.contacto';
         $contacto=Entidad::find($contactoId);
-        return view('entidad.createcontacto',compact('contacto'));
+        return view('entidad.createcontacto',compact('contacto','ruta'));
     }
 
 
