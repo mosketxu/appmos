@@ -39,7 +39,10 @@ class Prefacturas extends Component
 
     public function mount(Entidad $entidad,$ruta){
         $this->filtroanyo=date('Y');
-        $this->filtromes=intval(date('m'));
+        if($entidad->id)
+            $this->filtromes='';
+        else
+            $this->filtromes=intval(date('m'));
         $this->entidad=$entidad;
         $this->ruta=$ruta;
 
@@ -91,6 +94,7 @@ class Prefacturas extends Component
     public function generarSelected(){
         $prefacturas = $this->selectedRowsQuery->get();
         $this->validate();
+
         foreach ($prefacturas as $prefactura) {
             $fac=new FacturaCreateAction;$f=$fac->execute($prefactura);
             $f->pdffactura($f);
@@ -101,7 +105,7 @@ class Prefacturas extends Component
 
     public function generarplan(){
         $this->validate([
-            'anyoplan'=>'required|digits:4|integer|min:2022|max:'.(date('Y')+1),
+            'anyoplan'=>'required|digits:4|integer|gt:2022|max:'.(date('Y')+1),
         ],[
             'anyoplan.required'=>'Es necesario el año del plan a generar',
             'anyoplan.max'=>'Solo se puede generar el plan del año próximo o actual',
@@ -109,6 +113,8 @@ class Prefacturas extends Component
             'anyoplan.integer'=>'El año debe ser numérico y tener 4 dígitos',
             'anyoplan.digits'=>'El año debe ser numérico y tener 4 dígitos',
         ]);
+
+
         $agrupacion=FacturacionConcepto::where('entidad_id',$this->entidad->id)->groupBy('concepto')->get();
         // dd($agrupacion);
         $conceptos=FacturacionConcepto::where('entidad_id',$this->entidad->id)->get();

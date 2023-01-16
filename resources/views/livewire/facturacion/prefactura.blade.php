@@ -1,5 +1,9 @@
 <div class="">
-    @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
+    @if($factura->id)
+        @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
+    @else
+        @livewire('menu',['ruta'=>$ruta])
+    @endif
 
     <div class="flex justify-between mx-5 mt-2">
         <div class="">
@@ -27,7 +31,16 @@
                     <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-1">
                         <div class="w-3/12 form-item">
                             <x-jet-label for="entidad_id">{{ __('Entidad') }} </x-jet-label>
-                            <x-jet-input  type="text" :value="$factura->entidad->entidad" readonly class="w-full bg-gray-100"/>
+                            @if($factura->id)
+                                <x-jet-input  type="text" :value="$factura->entidad->entidad" readonly class="w-full bg-gray-100"/>
+                            @else
+                                <x-select wire:model.lazy="factura.entidad_id" selectname="entidad_id" class="w-full">
+                                    <option value="">--Cliente--</option>
+                                    @foreach ($entidades as $ent )
+                                    <option value="{{ $ent->id }}">{{ $ent->entidad }}</option>
+                                    @endforeach
+                                </x-select>
+                            @endif
                         </div>
                         <div class="w-1/12 form-item">
                             <x-jet-label for="serie">{{ __('Serie') }}</x-jet-label>
@@ -99,7 +112,6 @@
                         </div>
                         <div class="flex-auto pb-3 form-item">
                             <label for="facturada"  title="Facturada"><x-icon.invoice/></label>
-                            {{-- <input type="checkbox" wire:model="factura.facturada" checked class="mx-auto" title="Facturada"/> --}}
                             <input type="checkbox" wire:model="facturada" checked class="mx-auto" title="Facturada"/>
                         </div>
                         <div class="flex-auto pb-3 form-item">
@@ -129,13 +141,19 @@
                     </div>
                 </div>
             </div>
-            <div class="flex mt-2 ml-4 space-x-2">
+            <div class="flex my-2 ml-4 space-x-2">
                 <x-jet-button class="bg-blue-600">{{ __('Guardar') }}</x-jet-button>
-                <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturasentidad',$factura->entidad_id)}}'">{{ __('Volver') }}</x-jet-secondary-button>
+                @if($factura->id)
+                    <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturasentidad',$factura->entidad_id)}}'">{{ __('Volver') }}</x-jet-secondary-button>
+                @else
+                    <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturas')}}'">{{ __('Volver') }}</x-jet-secondary-button>
+                @endif
             </div>
         </form>
     </div>
     {{-- Detalle factura --}}
-    @livewire('facturacion.factura-detalle',['facturacion'=>$factura,'showcrear'=>$factura->facturada],key($factura->id))
+    @if($factura->id)
+        @livewire('facturacion.factura-detalle',['facturacion'=>$factura,'showcrear'=>$factura->facturada],key($factura->id))
+    @endif
 </div>
 

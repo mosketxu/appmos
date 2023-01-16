@@ -42,8 +42,7 @@ class Prefactura extends Component
         ];
     }
 
-    public function mount(Facturacion $facturacion, Entidad $entidad)
-    {
+    public function mount(Facturacion $facturacion, Entidad $entidad){
         $this->factura=$facturacion;
         if ($entidad->id) {
             $this->inicializaPrefactura($entidad);
@@ -59,11 +58,13 @@ class Prefactura extends Component
         $this->factura->facturada= false;
         $this->conceptos=FacturacionConcepto::where('entidad_id',$facturacion->entidad_id)->get();
 
-        if($this->factura->id)
-            $this->titulo= 'Prefactura ' . $this->factura->id .' de '. $this->factura->entidad->entidad;
+        if($entidad->id)
+            if($this->factura->id)
+                $this->titulo= 'Prefactura ' . $this->factura->id .' de '. $this->factura->entidad->entidad;
+            else
+                $this->titulo= 'Nueva Prefactura para '. $this->factura->entidad->entidad;
         else
-            $this->titulo= 'Nueva Prefactura para '. $this->factura->entidad->entidad;
-
+            $this->titulo= 'Nueva Prefactura';
     }
 
     public function render(){

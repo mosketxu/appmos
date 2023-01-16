@@ -23,7 +23,11 @@ class FacturacionController extends Controller
     }
 
     public function createprefactura(Entidad $entidad){
-    return view('facturacion.createprefactura',compact('entidad'));
+
+    if($entidad)
+        return view('facturacion.createprefactura',compact('entidad'));
+    else
+        return view('facturacion.createprefactura');
     }
 
     public function show($entidadId){
