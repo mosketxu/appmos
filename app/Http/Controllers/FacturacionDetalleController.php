@@ -75,9 +75,6 @@ class FacturacionDetalleController extends Controller
         $f->orden=$request->orden;
         $f->save();
 
-        // Facturacion::actualizaimportes($this->f->facturacion_id);
-
-
         $notification = array(
             'message' => 'Elemento actualizado satisfactoriamente!',
             'alert-type' => 'success'
@@ -94,7 +91,8 @@ class FacturacionDetalleController extends Controller
         $f=FacturacionDetalle::find($id);
         $f->delete();
 
-        Facturacion::actualizaimportes($this->f->facturacion_id);
+        $factura=Facturacion::find($f->facturacion_id);
+        $factura->pdffactura($factura);
 
         $notification = array(
             'message' => 'Concepto eliminado satisfactoriamente!',

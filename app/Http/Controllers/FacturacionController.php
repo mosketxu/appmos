@@ -60,9 +60,12 @@ class FacturacionController extends Controller
         $a=$a->toArray();
         $facturadetalles=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->get();
 
-        $base4=$factura->totales[4][0];
+        $base04=$factura->totales[4][0];
         $base10=$factura->totales[10][0];
         $base21=$factura->totales[21][0];
+        $iva04=$factura->totales[4][1];
+        $iva10=$factura->totales[10][1];
+        $iva21=$factura->totales[21][1];
         $base=$factura->totales['t'][0];
         $exenta=$factura->totales['e'][0];
         $suplidos=$factura->totales['s'][0];
@@ -71,7 +74,7 @@ class FacturacionController extends Controller
 
         $pdf = new Dompdf();
 
-        $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','suplidos','totaliva','total'));
+        $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','base04','base10','base21','iva04','iva10','iva21','suplidos','totaliva','total'));
         $pdf->setPaper('a4','portrait');
         return $pdf->stream('factura_'.$factura->numfactura.'.pdf'); //asi lo muestra por pantalla
 

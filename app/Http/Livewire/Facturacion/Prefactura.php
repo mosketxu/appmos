@@ -155,7 +155,8 @@ class Prefactura extends Component
         ]);
 
         $fac=new FacturaCreateAction;$f=$fac->execute($factura);
-        $fac=new FacturaImprimirAction;$fac->execute($f);
+        $factura->pdffactura($factura);
+        // $fac=new FacturaImprimirAction;$fac->execute($f);
         return redirect( route('facturacion.edit',$f) );
     }
 

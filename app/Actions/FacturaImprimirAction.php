@@ -28,6 +28,8 @@ class FacturaImprimirAction
         $totaliva=$factura->totales['t'][2];
         $total=$factura->totales['t'][1];
 
+        // dd($facturacion);
+
 
         $pdf = new Dompdf();
         $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','suplidos','totaliva','total'));

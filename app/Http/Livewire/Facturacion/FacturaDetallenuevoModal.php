@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\Facturacion;
 
+use App\Models\Facturacion;
 use App\Models\FacturacionDetalle;
 use Livewire\Component;
 
@@ -61,7 +62,9 @@ class FacturaDetallenuevoModal extends Component
             'message' => 'Concepto añadido satisfactoriamente!',
             'alert-type' => 'success'
         );
-        return redirect()->route('facturacion.editprefactura',$this->facturaid);
 
+        $factura=Facturacion::find($concepto->facturacion_id);
+        $vista =($factura->numfactura!='' || !is_null($factura->numfactura)) ? "facturacion.edit": 'facturacion.editprefactura';
+        return redirect()->route($vista,$concepto->facturacion_id);
     }
 }

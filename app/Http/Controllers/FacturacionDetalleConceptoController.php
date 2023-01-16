@@ -75,8 +75,10 @@ class FacturacionDetalleConceptoController extends Controller
         $fdc->save();
         $fdc->calculo();
 
-        // $fd=FacturacionDetalle::find($fdc->facturaciondetalle_id);
-        // Facturacion::actualizaimportes($fd->facturacion_id);
+        $fd=FacturacionDetalle::find($fdc->facturaciondetalle_id);
+        $f=Facturacion::find($fd->facturacion_id);
+
+        $f->pdffactura($f);
 
         $notification = array(
             'message' => 'Elemento actualizado satisfactoriamente!',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\FacturaImprimirAction;
 use App\Http\Livewire\Facturacion\FacturaDetalle;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -141,29 +142,10 @@ class Facturacion extends Model
             ->orSearch('facturacion.numfactura',$this->search);
     }
 
-    // public static function actualizaimportes($f){
-    //     $factura=Facturacion::find($f);
-    //     $fdetalles=FacturacionDetalle::where('facturacion_id',$factura->id)->get();
-
-    //     $factura->totaliva='0';
-    //     $factura->base='0';
-    //     $factura->exenta='0';
-    //     $factura->total='0';
-
-    //     foreach ($fdetalles as $fdetalle) {
-    //         $fdetconcep=FacturacionDetalleConcepto::where('facturaciondetalle_id',$fdetalle->id)->get();
-    //         $fdetalle->base=$fdetconcep->sum('base');
-    //         $fdetalle->exenta=$fdetconcep->sum('exenta');
-    //         $fdetalle->totaliva=$fdetconcep->sum('totaliva');
-    //         $fdetalle->total=$fdetconcep->sum('total');
-    //         $fdetalle->save();
-    //         $factura->base=$factura->base + $fdetconcep->sum('base');
-    //         $factura->exenta=$factura->total + $fdetconcep->sum('exenta');
-    //         $factura->totaliva=$factura->totaliva + $fdetconcep->sum('totaliva');
-    //         $factura->total=$factura->total + $fdetconcep->sum('total');
-    //     }
-    //     $factura->save();
-    // }
+    public static function pdffactura($f){
+        $fac=new FacturaImprimirAction;
+        $fac->execute($f);
+    }
 
     public function getTotalesAttribute(){
         $fd=FacturacionDetalle::select('id')->where('facturacion_id', $this->id)->get();

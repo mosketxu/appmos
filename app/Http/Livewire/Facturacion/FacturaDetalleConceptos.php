@@ -2,9 +2,8 @@
 
 namespace App\Http\Livewire\Facturacion;
 
-use App\Models\Facturacion;
-use App\Models\FacturacionDetalle;
-use App\Models\FacturacionDetalleConcepto;
+use App\Models\{Facturacion,FacturacionDetalle,FacturacionDetalleConcepto};
+use App\Actions\FacturaImprimirAction;
 use Livewire\Component;
 
 class FacturaDetalleConceptos extends Component
@@ -94,10 +93,15 @@ class FacturaDetalleConceptos extends Component
             'message' => 'Concepto añadido.',
             'alert-type' => 'success'
         );
+        $factura=Facturacion::find($this->detalle->facturacion_id);
 
-        // $fd=FacturacionDetalle::find($this->detalleid);
-        // $f=$fd->facturacion_id;
-        return redirect()->route('facturacion.editprefactura',$this->detalle->facturacion_id);
+        $factura->pdffactura($factura);
+
+        // $fac=new FacturaImprimirAction;
+        // $fac->execute($factura);
+
+        $vista =($factura->numfactura!='' || !is_null($factura->numfactura)) ? "facturacion.edit": 'facturacion.editprefactura';
+        return redirect()->route($vista,$this->detalle->facturacion_id);
 
     }
 
@@ -107,8 +111,13 @@ class FacturaDetalleConceptos extends Component
 
         if ($borrar) {
             $borrar->delete();
-            // Facturacion::actualizaimportes($this->detalle->facturacion_id);
             $this->dispatchBrowserEvent('notify', 'Concepto eliminado!');
+
+            $factura=Facturacion::find($this->detalle->facturacion_id);
+
+            $factura->pdffactura($factura);
+            // $fac=new FacturaImprimirAction;
+            // $fac->execute($factura);
         }
 
     }

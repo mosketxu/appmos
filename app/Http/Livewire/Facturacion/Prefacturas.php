@@ -93,7 +93,8 @@ class Prefacturas extends Component
         $this->validate();
         foreach ($prefacturas as $prefactura) {
             $fac=new FacturaCreateAction;$f=$fac->execute($prefactura);
-            $fac=new FacturaImprimirAction;$fac->execute($f);
+            $f->pdffactura($f);
+            // $fac=new FacturaImprimirAction;$fac->execute($f);
         }
         return redirect()->route('facturacion.index');
     }

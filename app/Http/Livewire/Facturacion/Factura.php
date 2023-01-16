@@ -7,12 +7,16 @@ namespace App\Http\Livewire\Facturacion;
 use App\Actions\FacturaConceptoStoreAction;
 use App\Actions\FacturaCreateAction;
 use App\Actions\FacturaImprimirAction;
-use App\Models\{Entidad, Facturacion, FacturacionConcepto, MetodoPago};
+use App\Models\{Entidad, Facturacion, FacturacionConcepto, MetodoPago, FacturacionDetalle};
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+
+use function PHPUnit\Framework\isNull;
 
 class Factura extends Component
 {
     public $factura, $conceptos, $facturada, $message, $showgenerar, $nf,$pre,$titulo;
+    public $existe='0';
     public $bloqueado=false;
     public $ruta='facturacion.prefacturas';
 
@@ -57,15 +61,33 @@ class Factura extends Component
     }
 
     public function render(){
+        $this->existe=(Storage::exists('public/'.$this->factura->rutafichero) && ($this->factura->rutafichero!='/')) ? '1' : '0';
+
         $entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
         $pagos=MetodoPago::all();
         return view('livewire.facturacion.factura',compact('entidades','pagos',));
+    }
+
+    public function updatedFacturaFechafactura(){
+        $this->factura->serie= substr($this->factura->fechafactura->format('Y'), -2);
+        if($this->factura->entidad_id ){
+            $ent=Entidad::find($this->factura->entidad_id);
+            $dia = date("d", strtotime($this->factura->fechafactura));
+            $mes = date("m", strtotime($this->factura->fechafactura));
+            //miro si la fecha me obliga a pasar de mes
+            if($ent->diavencimiento<$dia)
+                $mes=$mes+1;
+            $anyo = date("Y", strtotime($this->factura->fechafactura));
+            $this->factura->fechavencimiento=$ent->diavencimiento.'-'.$mes.'-'.$anyo;
+        }
+
     }
 
     public function updatedFacturaEntidadId()
     {
         $entidad=Entidad::find($this->factura->entidad_id);
         $this->conceptos=FacturacionConcepto::where('entidad_id',$entidad->id)->get();
+        $this->factura->serie=$entidad->metodopago_id;
         $this->factura->metodopago_id=$entidad->metodopago_id;
         $this->factura->refcliente=$entidad->refcliente;
         $this->factura->enviar=$entidad->enviar;
@@ -81,16 +103,12 @@ class Factura extends Component
     public function save(){
         $this->validate();
 
-        $i=$this->factura->id? $this->factura->id : 0;
-
-        // $prefacturas = $this->selectedRowsQuery->get();
-        // $this->validate();
-        // foreach ($prefacturas as $prefactura) {
-        //     $fac=new FacturaCreateAction;$f=$fac->execute($prefactura);
-        //     $fac=new FacturaImprimirAction;$fac->execute($f);
-        // }
-        // return redirect()->route('facturacion.index');
-
+        $i=$this->factura->id? $this->factura->id : '0';
+        $detalles=FacturacionDetalle::where('facturacion_id',$i)->count();
+        if($i!='0' && $detalles>0)
+            $this->factura->facturada='1';
+        else
+            $this->factura->facturada='0';
 
         $f=Facturacion::updateOrCreate([
             'id'=>$i
@@ -107,7 +125,7 @@ class Factura extends Component
             'enviar'=>$this->factura->enviar ?? '0',
             'enviada'=>$this->factura->enviada ?? '0',
             'pagada'=>$this->factura->pagada ?? '0',
-            'facturada'=>$this->factura->facturada ?? '1',
+            'facturada'=>$this->factura->facturada,
             'facturable'=>$this->factura->facturable ?? '1',
             'asiento'=>$this->factura->asiento,
             'fechaasiento'=>$this->factura->fechaasiento,
@@ -115,14 +133,12 @@ class Factura extends Component
             'notas'=>$this->factura->notas,
         ]);
 
+
         $fac=new FacturaCreateAction;
-        $factura=$fac->execute($f);
-        //     $fac=new FacturaImprimirAction;$fac->execute($f);
-        // $f->save();
-        if($i!=0){
-            $fac=new FacturaImprimirAction;
-            $fac->execute($f);
-        }
+        $fac->execute($f);
+
+        $f->pdffactura($f);
+
         return redirect()->route('facturacion.edit',$f);
     }
 
@@ -148,14 +164,17 @@ class Factura extends Component
         ]);
         $fac=new FacturaCreateAction;
         $fac->execute($factura);
-        $fac=new FacturaImprimirAction;
-        $fac->execute($factura);
+
+        $factura->pdffactura($factura);
+        // $fac=new FacturaImprimirAction;
+        // $fac->execute($factura);
         $this->redirect( route('facturacion.edit',$factura) );
     }
 
 
     public function delete($facturacionId){
         $facturaBorrar = Facturacion::find($facturacionId);
+
         if ($facturaBorrar) {
             $facturaBorrar->delete();
             $this->dispatchBrowserEvent('notify', 'La factura ha sido eliminada!');
