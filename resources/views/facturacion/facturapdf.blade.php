@@ -85,6 +85,7 @@
                         <tr>
                             <td width="70%" >{{ $detalle->tipo=='1' ? 'Suplidos:' :'' }} {{$detalle->concepto}}</td>
                             <td width="25%" style="text-align: right">
+                                {{-- {{ $detalle->tipo=='1' ? number_format($detalle->exenta,2,',','.') : number_format($detalle->base,2,',','.') }} --}}
                                 {{ $detalle->tipo=='1' ? number_format($detalle->exenta,2,',','.') : ($detalle->iva=='0' ? number_format($detalle->exenta,2,',','.') : number_format($detalle->base,2,',','.')) }}
                                 <span style="font-family: Arial">€</span>
                             </td>
@@ -95,11 +96,13 @@
                     <table style="margin-top: 20px;" width="90%">
                         <tr>
                             <td width="69%"  style="padding-left: 30px">Base imponible:</td>
-                            {{-- <td width="29%" style="text-align: right; " width="50%">{{number_format($base,2,',','.')}} <span style="font-family: Arial">€</span> </td> --}}
-                            <td width="29%" style="text-align: right; " width="50%">
-                                {{-- {{number_format($base,2,',','.')}}  --}}
-                                {{ ($detalle->tipo!='1' && $detalle->iva!='0') ? number_format($detalle->base,2,',','.') : number_format($detalle->exenta,2,',','.')  }}
-                            <span style="font-family: Arial">€</span> </td>
+                            @if($totaliva>0)
+                                <td width="29%" style="text-align: right; " width="50%">
+                                    {{number_format($base,2,',','.')}}
+                                    <span style="font-family: Arial">€</span> </td>
+                            @elseif ($detalle->tipo=='0')
+                                <td width="29%" style="text-align: right; " width="50%">{{number_format($detalle->exenta,2,',','.') }} <span style="font-family: Arial">€</span> </td>
+                            @endif
                         </tr>
                         @if($suplidos)
                         <tr>
@@ -113,7 +116,7 @@
                             <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <span style="font-family: Arial">€</span></td>
                             @else
                             <td width="69%" style="padding-left: 30px">IVA 0% :</td>
-                            <td width="29%" style="text-align: right" width="50%">0.00 <span style="font-family: Arial">€</span></td>
+                            <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <span style="font-family: Arial">€</span></td>
                             @endif
                         </tr>
                         <tr>
