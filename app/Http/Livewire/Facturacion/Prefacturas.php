@@ -23,6 +23,9 @@ class Prefacturas extends Component
     public $filtroanyo='';
     public $filtromes='';
     public $ruta='facturacion.prefacturas';
+    public $diafactura;
+    public $diavencimiento;
+    public $iva;
 
     public $anyoplan='';
 
@@ -104,14 +107,23 @@ class Prefacturas extends Component
     }
 
     public function generarplan(){
+        $this->diafactura=$this->entidad->diafactura;
+        $this->diavencimiento=$this->entidad->diavencimiento;
+        $this->iva=$this->entidad->ivagral;
         $this->validate([
             'anyoplan'=>'required|digits:4|integer|gt:2022|max:'.(date('Y')+1),
+            'diafactura'=>'required',
+            'diavencimiento'=>'required',
+            'iva'=>'required',
         ],[
             'anyoplan.required'=>'Es necesario el año del plan a generar',
             'anyoplan.max'=>'Solo se puede generar el plan del año próximo o actual',
             'anyoplan.min'=>'El año debe ser superior a 2022',
             'anyoplan.integer'=>'El año debe ser numérico y tener 4 dígitos',
             'anyoplan.digits'=>'El año debe ser numérico y tener 4 dígitos',
+            'diafactura.required'=>'Hay que rellenar el dia de factura en la ficha del cliente',
+            'diavencimiento.required'=>'Hay que rellenar el dia de vencimientos en la ficha del cliente',
+            'iva.required'=>'Hay que rellenar el iva en la ficha del cliente',
         ]);
 
 

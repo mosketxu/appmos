@@ -39,7 +39,7 @@
                         <x-dropdown label="Actions">
                             @if ($entidad->id)
                                 <x-dropdown.item type="button" wire:click="$toggle('showPlanModal')" class="flex items-center space-x-2">
-                                    <x-icon.invoice class="text-yellow-400"></x-icon.invoice> <span>Plan de Facturación </span>
+                                    <x-icon.invoice class="text-yellow-400"></x-icon.invoice> <span>Plan de Pre-Facturación </span>
                                 </x-dropdown.item>
                             @endif
                             <x-dropdown.item type="button" wire:click="generarSelected" class="flex items-center space-x-2">
