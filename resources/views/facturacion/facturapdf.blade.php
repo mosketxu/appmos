@@ -45,7 +45,7 @@
                 <tbody>
                     <tr>
                         <td width="49%"></td>
-                        <td width="49%">{{ $factura->entidad->entidad  }}</td>
+                        <td width="49%">{{ $factura->entidad->entidad }}</td>
                     </tr>
                     <tr>
                         <td width="49%"></td>
