@@ -95,12 +95,14 @@
                     {{-- totales --}}
                     <table style="margin-top: 20px;" width="90%">
                         <tr>
-                            <td width="69%"  style="padding-left: 30px">Base imponible:</td>
                             @if($totaliva>0)
+                                <td width="69%"  style="padding-left: 30px">Base imponible (Iva 21%):</td>
                                 <td width="29%" style="text-align: right; " width="50%">
                                     {{number_format($base,2,',','.')}}
                                     <span style="font-family: Arial">€</span> </td>
-                            @elseif ($detalle->tipo=='0')
+                            @endif
+                            @if ($detalle->tipo=='0')
+                                <td width="69%"  style="padding-left: 30px">Base (Iva 0%):</td>
                                 <td width="29%" style="text-align: right; " width="50%">{{number_format($detalle->exenta,2,',','.') }} <span style="font-family: Arial">€</span> </td>
                             @endif
                         </tr>
@@ -115,7 +117,7 @@
                             <td width="69%" style="padding-left: 30px">IVA 21% :</td>
                             <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <span style="font-family: Arial">€</span></td>
                             @else
-                            <td width="69%" style="padding-left: 30px">IVA 0% :</td>
+                            <td width="69%" style="padding-left: 30px">IVA:</td>
                             <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <span style="font-family: Arial">€</span></td>
                             @endif
                         </tr>
