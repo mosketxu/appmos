@@ -78,7 +78,7 @@ class FacturacionController extends Controller
 
         $pdf = new Dompdf();
 
-        $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','base04','base10','base21','iva04','iva10','iva21','suplidos','totaliva','total'));
+        $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','base04','base10','base21','iva04','iva10','iva21','exenta','suplidos','totaliva','total'));
         $pdf->setPaper('a4','portrait');
         return $pdf->stream('factura_'.$factura->numfactura.'.pdf'); //asi lo muestra por pantalla
 
