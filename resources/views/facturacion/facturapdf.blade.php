@@ -101,10 +101,9 @@
                                     {{number_format($base,2,',','.')}}
                                     <span style="font-family: Arial">€</span> </td>
                             @endif
-                            {{ $detalle }}
                             @if ($detalle->tipo=='0')
                                 <td width="69%"  style="padding-left: 30px">Base (Iva 0%):</td>
-                                <td width="29%" style="text-align: right; " width="50%">{{number_format($detalle->exenta,2,',','.') }} <span style="font-family: Arial">€</span> </td>
+                                <td width="29%" style="text-align: right; " width="50%">{{number_format($exenta,2,',','.') }} <span style="font-family: Arial">€</span> </td>
                             @endif
                         </tr>
                         @if($suplidos)
