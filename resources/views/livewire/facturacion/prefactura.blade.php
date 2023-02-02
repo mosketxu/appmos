@@ -23,13 +23,13 @@
         <form wire:submit.prevent="save" >
             <div class="flex">
                 {{-- datos factura --}}
-                <div class="flex-initial w-8/12 py-2 mr-1 bg-white rounded-lg shadow-md">
+                <div class="w-full md:w-8/12 py-2 mr-1 bg-white rounded-lg shadow-md">
                     <div class="px-2 mx-2 my-1 bg-blue-100 rounded-md">
                         <h3 class="font-semibold ">Datos Factura</h3>
                         <x-jet-input  wire:model.defer="factura.id" type="hidden"  id="id" name="id" :value="old('id')"/>
                     </div>
                     <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-1">
-                        <div class="w-3/12 form-item">
+                        <div class="w-3/12 sm:w-full form-item">
                             <x-jet-label for="entidad_id">{{ __('Entidad') }} </x-jet-label>
                             @if($factura->id)
                                 <x-jet-input  type="text" :value="$factura->entidad->entidad" readonly class="w-full bg-gray-100"/>
@@ -42,7 +42,7 @@
                                 </x-select>
                             @endif
                         </div>
-                        <div class="w-1/12 form-item">
+                        <div class="w-1/12 sm:w-full form-item">
                             <x-jet-label for="serie">{{ __('Serie') }}</x-jet-label>
                             <x-select wire:model.defer="factura.serie" selectname="serie" class="w-full">
                                 <option value="">--Serie--</option>
@@ -53,22 +53,22 @@
                                 <option value="25">25</option>
                             </x-select>
                         </div>
-                        <div class="w-2/12 form-item">
+                        <div class="w-2/12 sm:w-full form-item">
                             <x-jet-label for="numfactura">{{ __('Factura') }}</x-jet-label>
                             <x-jet-input  wire:model.defer="nf" type="text"  id="numfactura" name="numfactura" :value="old('numfactura') " readonly class="w-full bg-gray-100"/>
                             <x-jet-input-error for="numfactura" class="mt-2" />
                         </div>
-                        <div class="w-2/12 form-item">
+                        <div class="w-2/12 sm:w-full form-item">
                             <x-jet-label for="fechafactura">{{ __('F.Factura') }}</x-jet-label>
                             <x-jet-input  wire:model.lazy="factura.fechafactura" type="date"  id="fechafactura" name="fechafactura" :value="old('fechafactura') "  class="w-full"/>
                             <x-jet-input-error for="fechafactura" class="mt-2" />
                         </div>
-                        <div class="w-2/12 form-item">
+                        <div class="w-2/12 sm:w-full form-item">
                             <x-jet-label for="fechavencimiento">{{ __('F.Vto.') }}</x-jet-label>
                             <x-jet-input  wire:model.defer="factura.fechavencimiento" type="date"  id="fechavencimiento" name="fechavencimiento" :value="old('fechavencimiento') "  class="w-full"/>
                             <x-jet-input-error for="fechavencimiento" class="mt-2" />
                         </div>
-                        <div class="w-2/12 form-item">
+                        <div class="w-2/12 sm:w-full form-item">
                             <x-jet-label for="metodopago_id">{{ __('M.Pago') }}</x-jet-label>
                             <x-select wire:model.defer="factura.metodopago_id" selectname="metodopago_id" class="w-full">
                                 <option value="">-- choose --</option>
@@ -79,17 +79,17 @@
                         </div>
                     </div>
                     <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-1">
-                        <div class="w-3/6 form-item">
+                        <div class="w-3/6 sm:w-full form-item">
                             <x-jet-label for="mail">{{ __('Mail') }}</x-jet-label>
                             <x-jet-input  wire:model.defer="factura.mail" type="text"  id="mail" name="mail" :value="old('mail') " class="w-full"/>
                             <x-jet-input-error for="mail" class="mt-2" />
                         </div>
-                        <div class="w-1/6 form-item">
+                        <div class="w-1/6 sm:w-full form-item">
                             <x-jet-label for="refcliente">{{ __('Ref.Cliente') }}</x-jet-label>
                             <x-jet-input  wire:model.defer="factura.refcliente" type="text"  id="refcliente" name="refcliente" :value="old('refcliente') "  class="w-full"/>
                             <x-jet-input-error for="refcliente" class="mt-2" />
                         </div>
-                        <div class="w-2/6 form-item">
+                        <div class="w-2/6 sm:w-full form-item">
                             <x-jet-label for="observaciones">{{ __('Observaciones') }}</x-jet-label>
                             <x-jet-input  wire:model.defer="factura.observaciones" type="text"  id="observaciones" name="observaciones" :value="old('observaciones') " class="w-full"/>
                             <x-jet-input-error for="observaciones" class="mt-2" />
@@ -97,7 +97,8 @@
                     </div>
                 </div>
                 {{-- datos control --}}
-                <div class="flex-initial w-4/12 py-2 mr-1 bg-white rounded-lg shadow-md">
+                <div class="hidden md:block w-4/12">
+                <div class="flex-initial py-2 mr-1 bg-white rounded-lg shadow-md">
                     <div class="px-2 mx-2 my-1 bg-red-100 rounded-md">
                         <h3 class="font-semibold ">Datos Control</h3>
                     </div>
@@ -139,6 +140,7 @@
                             <x-jet-input-error for="notas" class="mt-2" />
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
             <div class="flex my-2 ml-4 space-x-2">

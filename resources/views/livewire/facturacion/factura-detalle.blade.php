@@ -29,7 +29,7 @@
                             <div class="w-1/4 mr-2 text-right">{{ $iva10 }}</div>
                         </div>
                     </div> --}}
-                    <div class="w-3/12 border ">
+                    <div class="hidden md:w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Base 21%:</div>
                             <div class="w-1/4 mr-2 text-right">{{ $base21}}</div>
@@ -39,7 +39,7 @@
                             <div class="w-1/4 mr-2 text-right">{{ $iva21 }}</div>
                         </div>
                     </div>
-                    <div class="w-3/12 border ">
+                    <div class="hidden md:w-3/12 border ">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Exento:</div>
                             <div class="w-1/4 mr-2 text-right">{{ $exenta }}</div>
@@ -49,7 +49,7 @@
                             <div class="w-1/4 mr-2 text-right">{{ $suplido }}</div>
                         </div>
                     </div>
-                    <div class="w-3/12 font-bold border">
+                    <div class="w-6/12 md:w-3/12 font-bold border">
                         <div class="flex">
                             <div class="w-3/4 ml-2">Total:</div>
                             <div class="w-1/4 mr-2 text-right">{{ $total }}</div>

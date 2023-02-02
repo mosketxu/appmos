@@ -46,11 +46,11 @@
                                 <x-icon.invoice class="text-pink-400"></x-icon.invoice> <span>Generar Facturas </span>
                             </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="exportXls"  class="flex items-center space-x-2">
-                                <x-icon.xls class="text-green-800"></x-icon.xls> <span>Previsión XLS</span>
+                                <x-icon.xls class="text-green-800"></x-icon.xls> <span>Previsión Facturacion XLS</span>
                             </x-dropdown.item>
-                            <x-dropdown.item type="button" wire:click="exportSelected" class="flex items-center space-x-2">
+                            {{-- <x-dropdown.item type="button" wire:click="exportSelected" class="flex items-center space-x-2">
                                 <x-icon.csv class="text-green-400"></x-icon.csv> <span>Export Csv</span>
-                            </x-dropdown.item>
+                            </x-dropdown.item> --}}
                             <x-dropdown.item type="button" wire:click="$toggle('showDeleteModal')" class="flex items-center space-x-2">
                                 <x-icon.trash class="text-red-400"></x-icon.trash> <span>Delete </span>
                             </x-dropdown.item>
@@ -66,15 +66,15 @@
                             <th class="w-5 py-3 pl-2 font-medium text-center"><x-input.checkbox wire:model="selectPage"/></th>
                             <th class="py-3 font-medium text-center ">#</th>
                             <th class="font-medium text-center w-28">{{ __('F.Factura') }}</th>
-                            <th class="font-medium text-center w-28">{{ __('F.Vto') }}</th>
+                            <th class="hidden sm:table-cell font-medium text-center w-28">{{ __('F.Vto') }}</th>
                             <th class="pl-4 font-medium text-left">{{ __('Entidad') }}</th>
-                            <th class="pl-4 font-medium text-left">{{ __('Ciclo') }} </th>
-                            <th class="pl-4 font-medium text-left">{{ __('Pago') }} </th>
-                            <th class="pl-4 font-medium text-left">{{ __('Email') }}</th>
-                            <th class="w-24 pl-4 font-medium text-left">{{ __('Ref.Cli') }}</th>
-                            <th class="w-24 pr-4 font-medium text-right">{{ __('Base (€)') }}</th>
-                            <th class="w-24 pr-4 font-medium text-right">{{ __('Exenta (€)') }}</th>
-                            <th class="w-24 pr-4 font-medium text-right">{{ __('Iva (€)') }}</th>
+                            <th class="hidden sm:table-cell pl-4 font-medium text-left">{{ __('Ciclo') }} </th>
+                            <th class="hidden sm:table-cell pl-4 font-medium text-left">{{ __('Pago') }} </th>
+                            <th class="hidden sm:table-cell pl-4 font-medium text-left">{{ __('Email') }}</th>
+                            <th class="hidden sm:table-cell w-24 pl-4 font-medium text-left">{{ __('Ref.Cli') }}</th>
+                            <th class="hidden sm:table-cell w-24 pr-4 font-medium text-right">{{ __('Base (€)') }}</th>
+                            <th class="hidden sm:table-cell w-24 pr-4 font-medium text-right">{{ __('Exenta (€)') }}</th>
+                            <th class="hidden sm:table-cell w-24 pr-4 font-medium text-right">{{ __('Iva (€)') }}</th>
                             <th class="w-24 pr-4 font-medium text-right">{{ __('Total (€)') }}</th>
                             {{-- <th class="" title="Enviar"><x-icon.arroba/></th>
                             <th class="" title="Facturable"><x-icon.euro/></th> --}}
@@ -107,31 +107,31 @@
                                 <td>
                                     <input type="text" value="{{ $facturacion->datefra }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
-                                <td>
+                                <td class="hidden sm:table-cell ">
                                     <input type="text" value="{{ $facturacion->datevto }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
                                 <td>
                                     <input type="text" value="{{ $facturacion->entidad }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
-                                <td>
+                                <td class="hidden sm:table-cell ">
                                     <input type="text" value="{{ $facturacion->ciclo->ciclo }}" class="w-full text-xs font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
-                                <td class="text-center">
+                                <td class="hidden sm:table-cell text-center">
                                     <span class="text-sm text-gray-500 ">{{$facturacion->metodopago->metodopagocorto ?? '-'}}</span>
                                 </td>
-                                <td>
+                                <td class="hidden sm:table-cell text-center">
                                     <input type="text" value="{{ $facturacion->mail }}" class="w-full text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
-                                <td>
+                                <td class="hidden sm:table-cell text-center">
                                     <input type="text" value="{{ $facturacion->refcliente }}" class="w-full text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
-                                <td class="text-right">
+                                <td class="hidden sm:table-cell text-right">
                                     <span class="pr-4 text-xs text-blue-500">{{ number_format($facturacion->totalesbase,2) }}</span>
                                 </td>
-                                <td class="text-right">
+                                <td class="hidden sm:table-cell text-right">
                                     <span class="pr-4 text-xs text-blue-500">{{ number_format($facturacion->totalesexenta,2) }}</span>
                                 </td>
-                                <td class="text-right">
+                                <td class="hidden sm:table-cell text-right">
                                     <span class="pr-4 text-xs text-blue-500">{{ number_format($facturacion->totalesiva,2) }}</span>
                                 </td>
                                 <td class="text-right">
