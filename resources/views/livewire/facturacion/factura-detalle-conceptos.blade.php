@@ -36,12 +36,10 @@
                 <select name="iva" class="w-full mx-0 px-0 py-0.5 {{ $color }} text-center text-xs font-thin text-gray-500  border-0 rounded-md"
                 {{ $deshabilitado }}>
                     <option value="0.00" {{ $concepto->iva=='0.00' ? 'selected' : ''}} >0%</option>
-                    {{-- <option value="0.04" {{ $concepto->iva=='0.04' ? 'selected' : ''}} >4%</option>
-                    <option value="0.10" {{ $concepto->iva=='0.10' ? 'selected' : ''}} >10%</option> --}}
                     <option value="0.21" {{ $concepto->iva=='0.21' ? 'selected' : ''}} >21%</option>
                 </select>
             </div>
-            <div class="w-1/12 "><input type="number" name="totaliva" step="any" value="{{ $concepto->base + $concepto->exenta  }}" class="w-full py-0.5 bg-blue-50 text-right text-xs font-thin text-gray-500  border-0 rounded-md" disabled/></div>
+            <div class="w-1/12 "><input type="number" name="totalbase" step="any" value="{{ $concepto->base + $concepto->exenta  }}" class="w-full py-0.5 bg-blue-50 text-right text-xs font-thin text-gray-500  border-0 rounded-md" disabled/></div>
             <div class="w-1/12 "><input type="number" name="totaliva" step="any" value="{{ $concepto->totaliva }}" class="w-full py-0.5 bg-blue-50 text-right text-xs font-thin text-gray-500  border-0 rounded-md" disabled/></div>
             <div class="w-1/12 "><input type="number" name="total" step="any" value="{{ $concepto->total }}" class="w-full py-0.5 bg-blue-50 text-right text-xs font-thin text-gray-500  border-0 rounded-md" disabled/></div>
             <div class="flex items-center justify-center w-1/12 ">
@@ -69,7 +67,7 @@
     @if($deshabilitado =='')
     <form wire:submit.prevent="save">
         <div class="flex space-x-1" wire:loading.class.delay="opacity-50">
-            <div class="w-16 "><input type="number"  wire:model.lazy="orden" name="orden" value="{{ old('orden','0') }}" class="w-full py-0.5 text-xs font-thin text-gray-500  border-0 rounded-md"/></div>
+            <div class="hidden md:w-16 "><input type="number"  wire:model.lazy="orden" name="orden" value="{{ old('orden','0') }}" class="w-full py-0.5 text-xs font-thin text-gray-500  border-0 rounded-md"/></div>
             <div class="w-1/12 ">
                 <x-select selectname="tipo" wire:model.lazy="tipo" class="w-full px-0 py-0.5 mx-0 text-xs font-thin text-left text-gray-500 border-0 rounded-md">
                     @foreach ($tipos as $value=>$label)
@@ -94,8 +92,8 @@
                     <option value="0.00" {{ $piva=='0.00' ? 'selected' : ''}}>0%</option>
                 </x-select>
             </div>
-            <div class="w-1/12 "><input type="number" name="Subtotal" step="any" wire:model='subtotal' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
-            <div class="w-1/12 "><input type="number" name="Iva" step="any" wire:model='iva' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
+            <div class="hidden md:w-1/12 "><input type="number" name="Subtotal" step="any" wire:model='subtotal' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
+            <div class="hidden md:w-1/12 "><input type="number" name="Iva" step="any" wire:model='iva' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
             <div class="w-1/12 "><input type="number" name="Total" step="any" wire:model='total' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
             <div  class="w-1/12 mx-auto text-center text-blue-800">
                 <button type="submit" class="text-center btn btn-primary" name="Guardar">
