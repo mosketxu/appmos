@@ -92,8 +92,8 @@
                     <option value="0.00" {{ $piva=='0.00' ? 'selected' : ''}}>0%</option>
                 </x-select>
             </div>
-            <div class="hidden md:w-1/12 "><input type="number" name="Subtotal" step="any" wire:model='subtotal' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
-            <div class="hidden md:w-1/12 "><input type="number" name="Iva" step="any" wire:model='iva' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
+            <div class="w-1/12 "><input type="number" name="Subtotal" step="any" wire:model='subtotal' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
+            <div class="w-1/12 "><input type="number" name="Iva" step="any" wire:model='iva' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
             <div class="w-1/12 "><input type="number" name="Total" step="any" wire:model='total' class="w-full py-0.5 text-xs bg-blue-50 font-thin text-right text-gray-500  border-0 rounded-md" disabled/></div>
             <div  class="w-1/12 mx-auto text-center text-blue-800">
                 <button type="submit" class="text-center btn btn-primary" name="Guardar">
