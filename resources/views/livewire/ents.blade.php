@@ -21,7 +21,7 @@
             <div class="flex justify-between">
                 <div class="flex w-2/4 space-x-2">
                     <input type="text" wire:model.debounce.500ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
-                    <div class="px-1 text-xs">
+                    <div class="hidden sm:block px-1 text-xs">
                         <label class="px-1 text-gray-600">Clientes</label>
                         <select wire:model="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -29,7 +29,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="px-1 text-xs">
+                    <div class="hidden sm:block px-1 text-xs">
                         <label class="px-1 text-gray-600">Activos</label>
                         <select wire:model="filtroactivo" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -37,7 +37,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="px-1 text-xs">
+                    <div class="hidden sm:block px-1 text-xs">
                         <label class="px-1 text-gray-600">Facturar</label>
                         <select wire:model="filtrofacturar" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -53,22 +53,22 @@
                 <x-table>
                     <x-slot name="head">
                         {{-- <x-table.heading class="p-0 m-0 text-right w-min">{{ __('#') }}</x-table.heading> --}}
-                        <x-table.heading class="text-center">{{ __('Fav') }} </x-table.heading>
+                        <x-table.heading class="hidden md:block text-center">{{ __('Fav') }} </x-table.heading>
                         <x-table.heading class="pl-4 text-left">{{ __('Entidad') }}</x-table.heading>
                         <x-table.heading class="pl-4 text-left">{{ __('Nif') }} </x-table.heading>
-                        <x-table.heading class="pl-4 text-left">{{ __('Mail') }} </x-table.heading>
-                        <x-table.heading class="pl-4 text-center">{{ __('Cliente') }}</x-table.heading>
-                        <x-table.heading class="pl-4 text-center">{{ __('Tipo') }}</x-table.heading>
-                        <x-table.heading class="pl-4 text-center">{{ __('Facturar') }}</x-table.heading>
-                        <x-table.heading class="pl-4 text-center">{{ __('C.Impuestos') }}</x-table.heading>
-                        <x-table.heading class="pl-4 text-center">{{ __('C.Fact.') }}</x-table.heading>
-                        <x-table.heading class="pl-4 text-center">{{ __('Estado') }}</x-table.heading>
+                        <x-table.heading class="hidden md:table-cell pl-4 text-left">{{ __('Mail') }} </x-table.heading>
+                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Cliente') }}</x-table.heading>
+                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Tipo') }}</x-table.heading>
+                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Facturar') }}</x-table.heading>
+                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('C.Impuestos') }}</x-table.heading>
+                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('C.Fact.') }}</x-table.heading>
+                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Estado') }}</x-table.heading>
                         <x-table.heading colspan="2"/>
                     </x-slot>
                     <x-slot name="body">
                         @forelse ($entidades as $entidad)
                             <x-table.row wire:loading.class.delay="opacity-50">
-                                <x-table.cell class="text-right">
+                                <x-table.cell class="hidden md:block text-right">
                                     {{-- <a href="{{ route('entidad.edit',$entidad) }}" wire:click="edit" class="text-xs text-gray-700 transition duration-150 ease-in-out focus:outline-none focus:text-gray-800 focus:underline"> --}}
                                         <span class="inline-flex text-gray-200 align-baseline">
                                             {{ $entidad->id }} &nbsp;
@@ -87,28 +87,28 @@
                                     <input type="text" value="{{ $entidad->nif }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
-                                    <input type="text" value="{{ $entidad->emailgral }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $entidad->emailgral }}" class="hidden md:w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
-                                <x-table.cell class="text-center">
+                                <x-table.cell class="hidden md:table-cell text-center">
                                     @if($entidad->cliente=="1")
                                         <span class="px-2.5 py-0.5 font-bold text-green-400">&#10003;</span>
                                     @endif
                                 </x-table.cell>
-                                <x-table.cell class="text-center">
+                                <x-table.cell class="hidden md:table-cell text-center">
                                     <span class="text-sm text-gray-500 ">{{$entidad->entidadtipo->entidadtipo ?? '-'}}</span>
                                 </x-table.cell>
-                                <x-table.cell class="text-center">
+                                <x-table.cell class="hidden md:table-cell text-center">
                                     @if($entidad->facturar=="1")
                                         <span class="px-2.5 py-0.5 font-bold text-green-400">&#10003;</span>
                                     @endif
                                 </x-table.cell>
-                                <x-table.cell class="text-center">
+                                <x-table.cell class="hidden md:table-cell text-center">
                                     <span class="text-sm text-gray-500 ">{{$entidad->cicloimp->ciclo ?? '-'}}</span>
                                 </x-table.cell>
-                                <x-table.cell class="text-center">
+                                <x-table.cell class="hidden md:table-cell text-center">
                                     <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
                                 </x-table.cell>
-                                <x-table.cell class="text-center">
+                                <x-table.cell class="hidden md:table-cell text-center">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $entidad->status_color[0] }}-100 text-green-800">
                                         {{ $entidad->status_color[1] }}
                                     </span>
