@@ -85,7 +85,7 @@ class Facturaciones extends Component
                 $query->where('enviada',$this->filtroenviada);
                 })
             ->when($this->filtroenviar!='', function ($query){
-                $query->where('facturacion.enviar',$this->filtroenviar);
+                $query->where('entidades.enviar',$this->filtroenviar);
                 })
             ->when($this->filtropagada!='', function ($query){
                 $query->where('pagada',$this->filtropagada);
