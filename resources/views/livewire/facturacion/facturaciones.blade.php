@@ -42,6 +42,14 @@
                             </select>
                         </div>
                         <div class="text-xs">
+                            <label class="px-1 text-gray-600">Enviar</label>
+                            <select wire:model="filtroenviar" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                                <option value="0">No</option>
+                                <option value="1">Sí</option>
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="text-xs">
                             <label class="px-1 text-gray-600">Enviadas</label>
                             <select wire:model="filtroenviada" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                                 <option value="0">No</option>

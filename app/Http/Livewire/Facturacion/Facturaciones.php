@@ -24,6 +24,7 @@ class Facturaciones extends Component
     public $filtrofacturacionPrefacturacion='1';
     public $filtrocontabilizado='';
     public $filtroenviada='';
+    public $filtroenviar='';
     public $filtroremesa='';
     public $filtropagada='';
     public $filtroanyo='';
@@ -57,10 +58,6 @@ class Facturaciones extends Component
         return view('livewire.facturacion.facturaciones',compact('facturaciones'));
     }
 
-    public function eee(){
-        dd('sdf');
-    }
-
     public function replicateFactura($facturaId){
         $factura=Facturacion::find($facturaId);
         $fac=new FacturaReplicarAction;
@@ -86,6 +83,9 @@ class Facturaciones extends Component
             ->where('numfactura','<>','')
             ->when($this->filtroenviada!='', function ($query){
                 $query->where('enviada',$this->filtroenviada);
+                })
+            ->when($this->filtroenviar!='', function ($query){
+                $query->where('facturacion.enviar',$this->filtroenviar);
                 })
             ->when($this->filtropagada!='', function ($query){
                 $query->where('pagada',$this->filtropagada);
