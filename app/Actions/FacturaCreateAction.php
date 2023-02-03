@@ -29,7 +29,7 @@ class FacturaCreateAction
         $ent=str_replace($caracteresmalos,"",$enti);
 
         $fichero=(trim('Fra_Suma_'.$serie.'_'.substr ( $fac ,-5 ).'_'.$ent,' ').'.pdf');
-        $factura->fichero=substr($fichero, 0, 40);
+        $factura->fichero=substr($fichero, 0, 100);
         $factura->serie=$serie;
         $factura->numfactura=$fac;
         $factura->facturada= (FacturacionDetalle::where('facturacion_id',$factura->id)->count() > 0) ? 1 : 0;
