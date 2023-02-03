@@ -137,7 +137,7 @@
                                     <x-input.checkbox wire:model="selected" value="{{ $facturacion->id }}"/>
                                 </td>
                                 <td class="text-right">
-                                    <a href="#" wire:click="edit" class="text-xs text-gray-200 transition duration-150 ease-in-out hover:outline-none hover:text-gray-800 hover:underline">
+                                    <a href="{{ route('facturacion.edit',$facturacion) }}"  class="text-xs text-gray-200 transition duration-150 ease-in-out hover:outline-none hover:text-gray-800 hover:underline">
                                         {{ $facturacion->id }}
                                     </a>
                                 </td>

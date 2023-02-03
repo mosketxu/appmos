@@ -57,6 +57,10 @@ class Facturaciones extends Component
         return view('livewire.facturacion.facturaciones',compact('facturaciones'));
     }
 
+    public function eee(){
+        dd('sdf');
+    }
+
     public function replicateFactura($facturaId){
         $factura=Facturacion::find($facturaId);
         $fac=new FacturaReplicarAction;
