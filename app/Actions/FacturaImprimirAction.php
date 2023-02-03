@@ -13,6 +13,7 @@ class FacturaImprimirAction
 {
 
     public function execute($facturacion){
+
         $factura=Facturacion::with('entidad')->find($facturacion->id);
 
         $a=FacturacionDetalle::select('id')->where('facturacion_id', $facturacion->id)->orderBy('orden')->get();
@@ -28,11 +29,8 @@ class FacturaImprimirAction
         $totaliva=$factura->totales['t'][2];
         $total=$factura->totales['t'][1];
 
-        // dd($facturacion);
-
-
         $pdf = new Dompdf();
-        $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','suplidos','totaliva','total'));
+        $pdf = \PDF::loadView('facturacion.facturapdf', compact('factura','facturadetalles','base','exenta','suplidos','totaliva','total'));
 
 
         Storage::put('public/'.$factura->ruta.'/'.$factura->fichero, $pdf->output());

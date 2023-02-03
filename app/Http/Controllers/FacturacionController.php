@@ -72,6 +72,8 @@ class FacturacionController extends Controller
         $iva21=$factura->totales[21][1];
         $base=$factura->totales['t'][0];
         $exenta=$factura->totales['e'][0];
+
+        dd($exenta);
         $suplidos=$factura->totales['s'][0];
         $totaliva=$factura->totales['t'][2];
         $total=$factura->totales['t'][1];

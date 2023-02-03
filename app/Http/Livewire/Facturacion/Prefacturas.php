@@ -100,6 +100,7 @@ class Prefacturas extends Component
 
         foreach ($prefacturas as $prefactura) {
             $fac=new FacturaCreateAction;$f=$fac->execute($prefactura);
+
             $f->pdffactura($f);
             // $fac=new FacturaImprimirAction;$fac->execute($f);
         }
