@@ -38,7 +38,7 @@ class CreateFacturacionTable extends Migration
             $table->longText('observaciones')->nullable();
             $table->longText('notas')->nullable();
             $table->string('ruta', 100)->nullable();
-            $table->string('fichero', 50)->nullable();
+            $table->string('fichero', 100)->nullable();
             // $table->timestamp('deleted_at')->nullable();
             $table->timestamps();
         });
