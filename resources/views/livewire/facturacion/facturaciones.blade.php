@@ -112,7 +112,7 @@
                             <th class="pl-4 font-medium text-left">{{ __('F.Vto') }}</th>
                             <th class="pl-4 font-medium text-left">{{ __('Entidad') }}</th>
                             <th class="pl-4 font-medium text-left">{{ __('Pago') }} </th>
-                            {{-- <th class="pl-4 font-medium text-left">{{ __('Email') }}</th> --}}
+                            <th class="pl-4 font-medium text-left">{{ __('Email') }}</th>
                             <th class="w-24 pl-4 font-medium text-left">{{ __('Ref.Cli') }}</th>
                             <th class="w-24 pr-4 font-medium text-right">{{ __('Base (€)') }}</th>
                             <th class="w-24 pr-4 font-medium text-right">{{ __('Exenta (€)') }}</th>
@@ -166,9 +166,9 @@
                                 <td class="text-center">
                                     <span class="text-sm text-gray-500 ">{{$facturacion->metodopago->metodopagocorto ?? '-'}}</span>
                                 </td>
-                                {{-- <td>
+                                <td>
                                     <input type="text" value="{{ $facturacion->mail }}" class="w-full text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
-                                </td> --}}
+                                </td>
                                 <td>
                                     <input type="text" value="{{ $facturacion->refcliente }}" class="w-full text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </td>
