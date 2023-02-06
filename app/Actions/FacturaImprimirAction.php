@@ -18,7 +18,7 @@ class FacturaImprimirAction
 
         $a=FacturacionDetalle::select('id')->where('facturacion_id', $facturacion->id)->orderBy('orden')->get();
         $a=$a->toArray();
-        $facturadetalles=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->get();
+        $facturadetalles=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->orderBy('orden')->get();
 
         $base4=$factura->totales[4][0];
         $base10=$factura->totales[10][0];
