@@ -3,6 +3,7 @@
 namespace App\Http\Livewire\Facturacion;
 
 use App\Actions\FacturaReplicarAction;
+use App\Exports\FacturacionControlExport;
 use App\Exports\RemesaExport;
 use App\Models\{Facturacion,Entidad};
 use Livewire\Component;
@@ -176,6 +177,39 @@ class Facturaciones extends Component
         $this->dispatchBrowserEvent('notify', 'CSV Facturas descargado!');
     }
 
+    public function exportControlSelected(){
+
+        $control = Facturacion::query()
+            ->with('entidad')
+            ->join('metodo_pagos','facturacion.metodopago_id','=','metodo_pagos.id')
+            ->join('entidades','facturacion.entidad_id','=','entidades.id')
+            ->leftJoin('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+            ->leftJoin('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+            ->select('entidades.cuentacontable','entidades.entidad',
+                // DB::raw('sum(facturacion_detalle_conceptos.base) as base'),
+                DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 0 THEN facturacion_detalle_conceptos.base END ) ) AS Base"),
+                DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 2 THEN facturacion_detalle_conceptos.base END ) ) AS Otros"),
+                DB::raw('sum(facturacion_detalle_conceptos.exenta) as exenta'),
+                DB::raw('sum(facturacion_detalle_conceptos.totaliva) as iva'),
+                DB::raw('sum(facturacion_detalle_conceptos.total) as total'),
+                'facturacion.numfactura','facturacion.fechavencimiento','metodo_pagos.metodopagocorto',
+                'entidades.porcentajemarta','entidades.porcentajesusana',
+            )
+
+            ->groupBy('facturacion.id')
+            ->where('numfactura','<>','')
+            ->searchYear('fechafactura',$this->filtroanyo)
+            ->searchMes('fechafactura',$this->filtromes)
+            ->get();
+
+            $fichero='control-'.$this->filtroanyo.'-'.$this->filtromes.'.xlsx';
+
+            return Excel::download(new FacturacionControlExport (
+                $control,
+            ), $fichero);
+
+    }
+
     public function exportRemesa(){
         $nada='';
         $f=Facturacion::find('66');
@@ -201,6 +235,7 @@ class Facturaciones extends Component
         return Excel::download(new RemesaExport (
             $remesa,
         ), 'remesa.xlsx');
+
     }
 
     public function deleteSelected(){

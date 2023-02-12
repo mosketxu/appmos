@@ -78,8 +78,11 @@
                             <x-dropdown.item type="button" wire:click="mailSelected" class="flex items-center space-x-2">
                                 <x-icon.arroba class="text-gray-400"></x-icon.arroba> <span>Enviar Mail </span>
                             </x-dropdown.item>
-                            <x-dropdown.item type="button" wire:click="exportSelected" class="flex items-center space-x-2">
+                            {{-- <x-dropdown.item type="button" wire:click="exportSelected" class="flex items-center space-x-2">
                                 <x-icon.csv class="text-green-400"></x-icon.csv><span>Export </span>
+                            </x-dropdown.item> --}}
+                            <x-dropdown.item type="button" wire:click="exportControlSelected" class="flex items-center space-x-2">
+                                <x-icon.xls class="text-green-400"></x-icon.xls><span>Control Fact.</span>
                             </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="exportRemesa" class="flex items-center space-x-2">
                                 <x-icon.xls class="text-yellow-400"></x-icon.xls> <span>Remesa XLS</span>
