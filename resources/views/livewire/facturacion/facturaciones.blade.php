@@ -87,6 +87,9 @@
                             <x-dropdown.item type="button" wire:click="exportRemesa" class="flex items-center space-x-2">
                                 <x-icon.xls class="text-yellow-400"></x-icon.xls> <span>Remesa XLS</span>
                             </x-dropdown.item>
+                            <x-dropdown.item type="button" wire:click="exportFacturacion" class="flex items-center space-x-2">
+                                <x-icon.xls class="text-pink-400"></x-icon.xls> <span>Facturacion XLS</span>
+                            </x-dropdown.item>
                             <x-dropdown.item type="button" wire:click="$toggle('showDeleteModal')" class="flex items-center space-x-2">
                                 <x-icon.trash class="text-red-400"></x-icon.trash> <span>Delete </span>
                             </x-dropdown.item>

@@ -35,6 +35,7 @@ class Facturacion extends Model
     public function facturadetalles(){return $this->hasMany(FacturacionDetalle::class)->orderBy('tipo')->orderBy('orden');}
     public function entidad(){return $this->belongsTo(Entidad::class);}
     public function ciclo(){return $this->belongsTo(Ciclo::class);}
+
     public function conceptos(){
         return $this->hasManyThrough(
             FacturacionDetalleConcepto::class,
@@ -45,73 +46,16 @@ class Facturacion extends Model
             'id');
     }
 
-    public function getFraAttribute()
-    {
-        return 'Fra. '. $this->numfactura . ' Suma';
-    }
-    public function getDateFraAttribute(){
-        if ($this->fechafactura) {
-            return $this->fechafactura->format('d/m/Y');
-        }
-    }
-
-    public function getDateVtoAttribute(){
-        if ($this->fechavencimiento) {
-            return $this->fechavencimiento->format('d/m/Y');
-        }
-    }
-
-    public function getEnviarEstAttribute(){
-        return [
-            '0'=>['red','No'],
-            '1'=>['green','Sí']
-        ][$this->enviar] ?? ['gray',''];
-    }
-
-    public function getEnviadaEstAttribute(){
-        return [
-            '0'=>['red','No'],
-            '1'=>['green','Sí']
-        ][$this->enviada] ?? ['gray',''];
-    }
-
-    public function getPagadaEstAttribute(){
-        return [
-            '0'=>['red','No'],
-            '1'=>['green','Sí']
-        ][$this->pagada] ?? ['gray',''];
-    }
-
-    public function getFacturableEstAttribute(){
-        return [
-            '0'=>['red','No'],
-            '1'=>['green','Sí']
-        ][$this->facturable] ?? ['gray',''];
-    }
-
-    public function getContabilizadaAttribute(){
-        if ($this->asiento){
-            return ['green','Sí'];
-        }else{
-            return ['red','No'];
-        }
-    }
-
-    public function getFacturadoAttribute(){
-        if ($this->numfactura){
-            return ['green','Sí'];
-        }else{
-            return ['red','No'];
-        }
-    }
-
-    public function getFacturadaEstAttribute(){
-        if ($this->asiento){
-            return ['green','Sí'];
-        }else{
-            return ['red','No'];
-        }
-    }
+    public function getFraAttribute(){return 'Fra. '. $this->numfactura . ' Suma';}
+    public function getDateFraAttribute(){if ($this->fechafactura) {return $this->fechafactura->format('d/m/Y');}}
+    public function getDateVtoAttribute(){if ($this->fechavencimiento) {return $this->fechavencimiento->format('d/m/Y');}}
+    public function getEnviarEstAttribute(){return ['0'=>['red','No'],'1'=>['green','Sí']][$this->enviar] ?? ['gray',''];}
+    public function getEnviadaEstAttribute(){return ['0'=>['red','No'],'1'=>['green','Sí']][$this->enviada] ?? ['gray',''];}
+    public function getPagadaEstAttribute(){return ['0'=>['red','No'],'1'=>['green','Sí']][$this->pagada] ?? ['gray',''];}
+    public function getFacturableEstAttribute(){return ['0'=>['red','No'],'1'=>['green','Sí']][$this->facturable] ?? ['gray',''];}
+    public function getContabilizadaAttribute(){if ($this->asiento){return ['green','Sí'];}else{return ['red','No'];}}
+    public function getFacturadoAttribute(){if ($this->numfactura){return ['green','Sí'];}else{return ['red','No'];}}
+    public function getFacturadaEstAttribute(){if ($this->asiento){return ['green','Sí'];}else{return ['red','No'];}}
 
     public function getRutaficheroAttribute(){return $this->ruta.'/'.$this->fichero;}
     public function getFactura5Attribute(){return $this->serie.'_'.substr($this->numfactura,-5);}
@@ -149,7 +93,6 @@ class Facturacion extends Model
         $fac->execute($f);
     }
 
-
     public function getDiezAttribute(){
         $fechav=$this->fechavencimiento->format('d');
         if ($fechav=="10") {
@@ -184,7 +127,6 @@ class Facturacion extends Model
             return "0";
         }
     }
-
 
     public function getTotalesAttribute(){
         $fd=FacturacionDetalle::select('id')->where('facturacion_id', $this->id)->get();

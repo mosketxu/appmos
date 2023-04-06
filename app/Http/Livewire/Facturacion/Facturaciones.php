@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Facturacion;
 
 use App\Actions\FacturaReplicarAction;
 use App\Exports\FacturacionControlExport;
+use App\Exports\FacturacionExport;
 use App\Exports\RemesaExport;
 use App\Models\{Facturacion,Entidad};
 use Livewire\Component;
@@ -168,7 +169,6 @@ class Facturaciones extends Component
         // $this->dispatchBrowserEvent('notify', 'Mails enviados correctamente: '. $sinproblemas. ', Con problemas:'. $conproblemas);
     }
 
-
     public function exportSelected(){
         //toCsv es una macro a n AppServiceProvider
         return response()->streamDownload(function(){
@@ -178,7 +178,6 @@ class Facturaciones extends Component
     }
 
     public function exportControlSelected(){
-
         $control = Facturacion::query()
             ->with('entidad')
             ->join('metodo_pagos','facturacion.metodopago_id','=','metodo_pagos.id')
@@ -193,9 +192,7 @@ class Facturaciones extends Component
                 DB::raw('sum(facturacion_detalle_conceptos.totaliva) as iva'),
                 DB::raw('sum(facturacion_detalle_conceptos.total) as total'),
                 'facturacion.numfactura','facturacion.fechavencimiento','metodo_pagos.metodopagocorto',
-                'entidades.porcentajemarta','entidades.porcentajesusana',
-            )
-
+                'entidades.porcentajemarta','entidades.porcentajesusana',)
             ->groupBy('facturacion.id')
             ->where('numfactura','<>','')
             ->searchYear('fechafactura',$this->filtroanyo)
@@ -212,8 +209,8 @@ class Facturaciones extends Component
 
     public function exportRemesa(){
         $nada='';
-        $f=Facturacion::find('66');
-        $a="Fra.";
+        // $f=Facturacion::find('66');
+        // $a="Fra.";
         $remesa= Facturacion::query()
         ->join('entidades','facturacion.entidad_id','=','entidades.id')
         ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
@@ -238,18 +235,64 @@ class Facturaciones extends Component
 
     }
 
-    public function deleteSelected(){
-        // $prefacturas=Facturacion::findMany($this->selected); funciona muy bien
+    public function exportFacturacion(){
+        $nada='';
 
+        $facturacion= Facturacion::query()
+        ->join('entidades','facturacion.entidad_id','=','entidades.id')
+        ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+        ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+        ->select(DB::raw("'' AS Serie"),
+            "facturacion.numfactura as 'Factura'",
+            "facturacion.fechafactura as 'Fecha'",
+            "facturacion.fechafactura as 'FechaOperacion'",
+            "entidades.cuentacontable as 'CodigoCuenta'",
+            "entidades.nif as 'CIFEUROPEO'",
+            "entidades.entidad as 'Cliente'",
+            DB::raw("'' AS 'Comentario SII'"),
+            DB::raw("'705000' AS 'Contrapartida'"),
+            DB::raw("'' AS 'CodigoTransaccion'"),
+            DB::raw("'' AS 'ClaveOperaciónFact'"),
+            DB::raw("sum(facturacion_detalle_conceptos.total) as 'Importe Factura'"),
+            DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 0 THEN facturacion_detalle_conceptos.base END ) ) AS 'Base Imponible1'"),
+            DB::raw("'21' AS '%Iva1'"),
+            DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 0 THEN facturacion_detalle_conceptos.totaliva END ) ) AS 'Cuota Iva1'"),
+            // DB::raw("SUM(facturacion_detalle_conceptos.totaliva) as 'Cuota Iva1'"),
+            DB::raw("'' AS '%RecEq1'"),
+            DB::raw("'' AS 'Cuota Rec1'"),
+            DB::raw("'' AS 'CodigoRetencion'"),
+            DB::raw("'' AS 'Base Ret'"),
+            DB::raw("'' AS '%Retención'"),
+            DB::raw("'' AS 'Cuota Retención'"),
+            DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 2 THEN facturacion_detalle_conceptos.base END ) ) AS 'Base Imponible2'"),
+            DB::raw("'21' AS '%Iva2'"),
+            DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 2 THEN facturacion_detalle_conceptos.totaliva END ) ) AS 'Cuota Iva2'"),
+            DB::raw("'' AS '%RecEq2'"),
+            DB::raw("'' AS 'Cuota Rec2'"),
+            DB::raw("sum(facturacion_detalle_conceptos.exenta) as 'BaseImponible3'"),
+            DB::raw("'0' AS '%Iva3'"),
+            DB::raw("'0' AS 'Cuota Iva3'")
+        )
+        ->where('facturacion.numfactura','<>','')
+        ->groupBy('facturacion.id')
+        ->orderBy('entidades.entidad')
+        ->get();
+        // ->first();
+
+        return Excel::download(new FacturacionExport (
+            $facturacion,
+        ), 'facturacion.xlsx');
+
+    }
+
+    public function deleteSelected(){
         $deleteCount = $this->selectedRowsQuery->count();
         $this->selectedRowsQuery->delete();
         $this->showDeleteModal = false;
-
         $this->dispatchBrowserEvent('notify', $deleteCount . ' Facturas eliminadas!');
     }
 
-    public function delete($facturacionId)
-    {
+    public function delete($facturacionId){
         $facturacion = Facturacion::find($facturacionId);
         if ($facturacion) {
             $facturacion->delete();
