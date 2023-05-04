@@ -61,7 +61,7 @@
                     </tr>
                     <tr>
                         <td width="49%"></td>
-                        <td width="49%">{{ $factura->entidad->nif  }}</td>
+                        <td width="49%">Nif/Cif: {{ $factura->entidad->nif  }}</td>
                     </tr>
                 </tbody>
             </table>
