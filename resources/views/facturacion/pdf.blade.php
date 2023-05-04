@@ -75,7 +75,7 @@
             <br>
             <div class="flex justify-end mx-20 ">
                 <div class="w-7/12 text-left"></div>
-                <div class="w-5/12 text-left ">CID:{{ $factura->entidad->nif  }}</div>
+                <div class="w-5/12 text-left ">CIF/NIF:{{ $factura->entidad->nif  }}</div>
             </div>
         </div>
 

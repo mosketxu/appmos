@@ -270,8 +270,8 @@ class Facturaciones extends Component
             DB::raw("'' AS '%RecEq2'"),
             DB::raw("'' AS 'Cuota Rec2'"),
             DB::raw("sum(facturacion_detalle_conceptos.exenta) as 'BaseImponible3'"),
-            DB::raw("'0' AS '%Iva3'"),
-            DB::raw("'0' AS 'Cuota Iva3'")
+            DB::raw("'' AS '%Iva3'"),
+            DB::raw("'' AS 'Cuota Iva3'")
         )
         ->where('facturacion.numfactura','<>','')
         ->groupBy('facturacion.id')
