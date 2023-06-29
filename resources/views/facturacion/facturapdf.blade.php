@@ -87,7 +87,7 @@
                             <td width="25%" style="text-align: right">
                                 {{-- {{ $detalle->tipo=='1' ? number_format($detalle->exenta,2,',','.') : number_format($detalle->base,2,',','.') }} --}}
                                 {{ $detalle->tipo=='1' ? number_format($detalle->exenta,2,',','.') : ($detalle->iva=='0' ? number_format($detalle->exenta,2,',','.') : number_format($detalle->base,2,',','.')) }}
-                                <span style="font-family: Arial">€</span>
+                                <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px">
                             </td>
                         </tr>
                         @endforeach
@@ -99,34 +99,34 @@
                                 <td width="69%"  style="padding-left: 200px">Base (Iva 21%):</td>
                                 <td width="29%" style="text-align: right; " width="50%">
                                     {{number_format($base,2,',','.')}}
-                                    <span style="font-family: Arial">€</span>
+                                    <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px">
                                 </td>
                             </tr>
                         @endif
                         @if ($exenta>0)
                             <tr>
                                 <td width="69%"  style="padding-left: 200px">Base (Iva 0%):</td>
-                                <td width="29%" style="text-align: right; " width="50%">{{number_format($exenta,2,',','.') }} <span style="font-family: Arial">€</span> </td>
+                                <td width="29%" style="text-align: right; " width="50%">{{number_format($exenta,2,',','.') }} <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px"> </td>
                             </tr>
                         @endif
                         @if($suplidos>0)
                             <tr>
                                 <td width="69%" style="padding-left: 200px">Suplidos:</td>
-                                <td width="29%" style="text-align: right" width="50%">{{number_format($suplidos,2,',','.')}} <span style="font-family: Arial">€</span></td>
+                                <td width="29%" style="text-align: right" width="50%">{{number_format($suplidos,2,',','.')}} <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px"></td>
                             </tr>
                             @endif
                         <tr>
                         @if($totaliva>0)
                             <td width="69%" style="padding-left: 200px">IVA 21% :</td>
-                            <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <span style="font-family: Arial">€</span></td>
+                            <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px"></td>
                         @else
                             <td width="69%" style="padding-left: 200px">IVA:</td>
-                            <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <span style="font-family: Arial">€</span></td>
+                            <td width="29%" style="text-align: right" width="50%">{{number_format($totaliva,2,',','.')}} <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px"></td>
                             @endif
                         </tr>
                         <tr>
                             <td width="69%" style="padding-left: 200px">Total:</td>
-                            <td width="29%" style="text-align: right" width="50%">{{number_format($total,2,',','.')}} <span style="font-family: Arial">€</span></td>
+                            <td width="29%" style="text-align: right" width="50%">{{number_format($total,2,',','.')}} <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px"></td>
                         </tr>
                     </table>
                 @endif
