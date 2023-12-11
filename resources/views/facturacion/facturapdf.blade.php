@@ -83,11 +83,16 @@
                     <table style="margin-top: 20px;" width="90%">
                         @foreach($facturadetalles as $detalle)
                         <tr>
-                            <td width="70%" >{{ $detalle->tipo=='1' ? 'Suplidos:' :'' }} {{$detalle->concepto}}</td>
+                            <td width="70%" >
+                               <p style="padding-bottom: 0px; padding-top: 0px;">{!! nl2br(e($detalle->tipo=='1' ? 'Suplidos:' :'' . $detalle->concepto)) !!}</p>
+                                {{-- {{ $detalle->tipo=='1' ? 'Suplidos:' :'' }} {{$detalle->concepto}} --}}
+                            </td>
                             <td width="25%" style="text-align: right">
                                 {{-- {{ $detalle->tipo=='1' ? number_format($detalle->exenta,2,',','.') : number_format($detalle->base,2,',','.') }} --}}
+                                @if($detalle->exenta + $detalle->base !='0')
                                 {{ $detalle->tipo=='1' ? number_format($detalle->exenta,2,',','.') : ($detalle->iva=='0' ? number_format($detalle->exenta,2,',','.') : number_format($detalle->base,2,',','.')) }}
                                 <img src="{{asset('img/euro.png')}}" class="mt-2 " width="8px">
+                                @endif
                             </td>
                         </tr>
                         @endforeach
