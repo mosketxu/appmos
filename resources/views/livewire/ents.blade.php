@@ -6,7 +6,7 @@
 
         <h1 class="text-2xl font-semibold text-gray-900">Entidades</h1>
 
-        <div class="py-1 space-y-4">
+        <div class="py-1">
             @if (session()->has('message'))
                 <div id="alert" class="relative px-6 py-2 mb-2 text-white bg-red-200 border-red-500 rounded border-1">
                     <span class="inline-block mx-8 align-middle">
@@ -21,7 +21,7 @@
             <div class="flex justify-between">
                 <div class="flex w-2/4 space-x-2">
                     <input type="text" wire:model.debounce.500ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
-                    <div class="hidden sm:block px-1 text-xs">
+                    <div class="hidden px-1 text-xs sm:block">
                         <label class="px-1 text-gray-600">Clientes</label>
                         <select wire:model="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -29,7 +29,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="hidden sm:block px-1 text-xs">
+                    <div class="hidden px-1 text-xs sm:block">
                         <label class="px-1 text-gray-600">Activos</label>
                         <select wire:model="filtroactivo" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -37,7 +37,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="hidden sm:block px-1 text-xs">
+                    <div class="hidden px-1 text-xs sm:block">
                         <label class="px-1 text-gray-600">Facturar</label>
                         <select wire:model="filtrofacturar" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -49,100 +49,76 @@
                 <x-button.button  onclick="location.href = '{{ route('entidad.nueva',$ruta) }}'" color="blue"><x-icon.plus/>{{ __('Nueva Entidad') }}</x-button.button>
             </div>
             {{-- tabla entidades --}}
-            <div class="flex-col space-y-4">
-                <x-table>
-                    <x-slot name="head">
-                        {{-- <x-table.heading class="p-0 m-0 text-right w-min">{{ __('#') }}</x-table.heading> --}}
-                        <x-table.heading class="hidden md:block text-center">{{ __('Fav') }} </x-table.heading>
-                        <x-table.heading class="pl-4 text-left">{{ __('Entidad') }}</x-table.heading>
-                        <x-table.heading class="pl-4 text-left">{{ __('Nif') }} </x-table.heading>
-                        <x-table.heading class="hidden md:table-cell pl-4 text-left">{{ __('Mail') }} </x-table.heading>
-                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Cliente') }}</x-table.heading>
-                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Tipo') }}</x-table.heading>
-                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Facturar') }}</x-table.heading>
-                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('C.Impuestos') }}</x-table.heading>
-                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('C.Fact.') }}</x-table.heading>
-                        <x-table.heading class="hidden md:table-cell pl-4 text-center">{{ __('Estado') }}</x-table.heading>
-                        <x-table.heading colspan="2"/>
-                    </x-slot>
-                    <x-slot name="body">
-                        @forelse ($entidades as $entidad)
-                            <x-table.row wire:loading.class.delay="opacity-50">
-                                <x-table.cell class="hidden md:block text-right">
-                                    {{-- <a href="{{ route('entidad.edit',$entidad) }}" wire:click="edit" class="text-xs text-gray-700 transition duration-150 ease-in-out focus:outline-none focus:text-gray-800 focus:underline"> --}}
-                                        <span class="inline-flex text-gray-200 align-baseline">
-                                            {{ $entidad->id }} &nbsp;
-                                            @if ($entidad->favorito)
-                                                <x-icon.star-solid class="text-yellow-500"></x-icon.star-solid>
-                                            @else
-                                                <x-icon.star class="text-gray-500 "></x-icon.star>
-                                            @endif
-                                        </span>
-                                    {{-- </a> --}}
-                                </x-table.cell>
-                                <x-table.cell>
-                                    <input type="text" value="{{ $entidad->entidad }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
-                                </x-table.cell>
-                                <x-table.cell>
-                                    <input type="text" value="{{ $entidad->nif }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
-                                </x-table.cell>
-                                <x-table.cell>
-                                    <input type="text" value="{{ $entidad->emailgral }}" class="hidden md:w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
-                                </x-table.cell>
-                                <x-table.cell class="hidden md:table-cell text-center">
-                                    @if($entidad->cliente=="1")
-                                        <span class="px-2.5 py-0.5 font-bold text-green-400">&#10003;</span>
-                                    @endif
-                                </x-table.cell>
-                                <x-table.cell class="hidden md:table-cell text-center">
-                                    <span class="text-sm text-gray-500 ">{{$entidad->entidadtipo->entidadtipo ?? '-'}}</span>
-                                </x-table.cell>
-                                <x-table.cell class="hidden md:table-cell text-center">
-                                    @if($entidad->facturar=="1")
-                                        <span class="px-2.5 py-0.5 font-bold text-green-400">&#10003;</span>
-                                    @endif
-                                </x-table.cell>
-                                <x-table.cell class="hidden md:table-cell text-center">
-                                    <span class="text-sm text-gray-500 ">{{$entidad->cicloimp->ciclo ?? '-'}}</span>
-                                </x-table.cell>
-                                <x-table.cell class="hidden md:table-cell text-center">
-                                    <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
-                                </x-table.cell>
-                                <x-table.cell class="hidden md:table-cell text-center">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $entidad->status_color[0] }}-100 text-green-800">
-                                        {{ $entidad->status_color[1] }}
-                                    </span>
-                                </x-table.cell>
-                                <x-table.cell class="px-4">
-                                    <div class="flex items-center justify-center space-x-3">
-                                        <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
-                                        <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
-                                        <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
-                                        {{-- <x-icon.bars-a href="{{ route('entidad.facturacionconceptos',$entidad)}}"  title="Conceptos"/> --}}
-                                        <x-icon.bars-a href="{{ route('facturacionconcepto.entidad',$entidad)}}"  title="Conceptos"/>
-                                        <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
-                                        <x-icon.euro-a href="{{ route('facturacion.show',$entidad)}}"  title="Facturas"/>
-                                        <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1"/>
-                                    </div>
-                                </x-table.cell>
-                            </x-table.row>
-                        @empty
-                            <x-table.row>
-                                <x-table.cell colspan="10">
-                                    <div class="flex items-center justify-center">
-                                        <x-icon.inbox class="w-8 h-8 text-gray-300"/>
-                                        <span class="py-5 text-xl font-medium text-gray-500">
-                                            No se han encontrado entidades...
-                                        </span>
-                                    </div>
-                                </x-table.cell>
-                            </x-table.row>
-                        @endforelse
-                    </x-slot>
-                </x-table>
-                <div>
-                    {{ $entidades->links() }}
+            <div class="flex w-full mt-1 bg-blue-100 rounded-t-md">
+                <div class="hidden pl-2 md:w-10 md:flex">{{ __('Fav') }} </div>
+                <div class="w-6/12 pl-2 md:w-3/12 ">{{ __('Entidad') }}</div>
+                <div class="hidden md:w-1/12">{{ __('Nif') }} </div>
+                <div class="hidden md:w-1/12 md:flex">{{ __('Facturar') }}</div>
+                <div class="hidden md:w-1/12 md:flex">{{ __('Forma Pago') }}</div>
+                <div class="hidden md:w-1/12 md:flex">{{ __('C.Impuestos') }}</div>
+                <div class="hidden md:w-1/12 md:flex">{{ __('C.Fact.') }}</div>
+                <div class="hidden md:w-1/12 md:flex">{{ __('Estado') }}</div>
+                <div class="w-6/12 md:w-2/12"></div>
+            </div>
+            @forelse ($entidades as $entidad)
+            <div class="flex w-full py-0 space-x-1 space-y-1 text-sm font-thin text-gray-500 truncate" wire:loading.class.delay="opacity-50">
+                <div class="items-center hidden ml-2 text-xs text-gray-200 md:w-10 md:flex">
+                        {{-- {{ $entidad->id }} &nbsp; --}}
+                        @if ($entidad->favorito)
+                            <x-icon.star-solid class="text-yellow-500"></x-icon.star-solid>
+                        @else
+                            <x-icon.star class="text-gray-500 "></x-icon.star>
+                        @endif
+                    </span>
                 </div>
+                <div class="w-6/12 md:w-3/12">
+                    <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
+                </div>
+                <div class="hidden p-1 m-1 md:w-1/12">
+                    <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
+                </div>
+                <div class="hidden md:w-1/12 md:flex">
+                    @if($entidad->facturar=="1")
+                        <span class="px-2.5 py-0.5 font-bold text-green-400">&#10003;</span>
+                    @endif
+                </div>
+                <div class="hidden md:w-1/12 md:flex">
+                    <span class="text-sm text-gray-500 ">{{$entidad->metodopago->metodopagocorto ?? '-'}}</span>
+                </div>
+                <div class="hidden md:w-1/12 md:flex">
+                    <span class="text-sm text-gray-500 ">{{$entidad->cicloimp->ciclo ?? '-'}}</span>
+                </div>
+
+                <div class="hidden md:w-1/12 md:flex">
+                    <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
+                </div>
+                <div class="hidden md:w-1/12 md:flex">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $entidad->status_color[0] }}-100 text-green-800">
+                        {{ $entidad->status_color[1] }}
+                    </span>
+                </div>
+                <div class="w-6/12 md:w-2/12">
+                    <div class="flex items-center justify-center space-x-3">
+                        <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
+                        <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
+                        <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
+                        <x-icon.bars-a href="{{ route('facturacionconcepto.entidad',$entidad)}}"  title="Conceptos"/>
+                        <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
+                        <x-icon.euro-a href="{{ route('facturacion.show',$entidad)}}"  title="Facturas"/>
+                        <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1"/>
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="flex items-center justify-center">
+                <x-icon.inbox class="w-8 h-8 text-gray-300"/>
+                <span class="py-5 text-xl font-medium text-gray-500">
+                    No se han encontrado entidades...
+                </span>
+            </div>
+            @endforelse
+            <div>
+                {{ $entidades->links() }}
             </div>
         </div>
     </div>
