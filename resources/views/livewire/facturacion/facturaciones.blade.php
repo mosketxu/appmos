@@ -220,6 +220,7 @@
                                         <x-icon.edit-a href="{{ route('facturacion.edit',$facturacion) }}" title="Factura"/>
                                         <a href = '{{asset('storage/'.$facturacion->rutafichero)}}'  target='_blank'  class="" title="PDF"><x-icon.pdf class=""></x-icon.pdf></a>
                                         <a href="{{route('facturacion.pdffactura',[$facturacion->id])}}" target="_blank" title="Imprimir factura"><x-icon.pdf class="text-green-500 hover:text-red-700"/></a>
+                                        <a href="{{route('facturacion.pdffacturalineasimple',[$facturacion->id])}}" target="_blank" title="Imprimir factura linea simple"><x-icon.pdf class="text-yellow-600 hover:text-red-700" title="Imprimir factura linea simple"/></a>
                                         <x-icon.copy-a wire:click="replicateFactura({{ $facturacion->id }})" onclick="confirm('¿Estás seguro de querer copiar la factura?') || event.stopImmediatePropagation()" class="text-purple-500" title="Copiar Factura" />
                                         <x-icon.delete-a wire:click.prevent="delete({{ $facturacion->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="" title="Borrar"/>
                                     </div>

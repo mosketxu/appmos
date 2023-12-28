@@ -87,7 +87,35 @@ class FacturacionController extends Controller
 
     }
 
+    public function pdffacturalineasimple($facturaid){
 
+        $factura=Facturacion::with('entidad')->find($facturaid);
+        $a=FacturacionDetalle::select('id')->where('facturacion_id', $facturaid)->orderBy('orden')->get();
+        $a=$a->toArray();
+        $facturadetalles=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->orderBy('orden')->get();
+
+        $base04=$factura->totales[4][0];
+        $base10=$factura->totales[10][0];
+        $base21=$factura->totales[21][0];
+        $iva04=$factura->totales[4][1];
+        $iva10=$factura->totales[10][1];
+        $iva21=$factura->totales[21][1];
+        $base=$factura->totales['t'][0];
+        $exenta=$factura->totales['e'][0];
+
+        // dd($exenta);
+        $suplidos=$factura->totales['s'][0];
+        $totaliva=$factura->totales['t'][2];
+        $total=$factura->totales['t'][1];
+
+        $pdf = new Dompdf();
+
+        $pdf = \PDF::loadView('facturacion.pdffacturalineasimple', compact('factura','facturadetalles','base','base04','base10','base21','iva04','iva10','iva21','exenta','suplidos','totaliva','total'));
+        $pdf->setPaper('a4','portrait');
+        return $pdf->stream('factura_'.$factura->numfactura.'.pdf'); //asi lo muestra por pantalla
+
+
+    }
     public function downfacturas(){
         $facturas=Facturacion::get();
 
