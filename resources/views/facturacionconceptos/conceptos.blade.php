@@ -1,5 +1,5 @@
 <div class="">
-    @livewire('menu',['entidad'=>$entidad],key($entidad->id))
+    @livewire('menu',['entidad'=>$entidad,'ruta'=>$ruta],key($entidad->id))
 
     <div class="p-1 mx-2">
         <div class="flex justify-between space-x-1">

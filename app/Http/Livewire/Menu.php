@@ -15,9 +15,9 @@ class Menu extends Component
     public $filtroentidad;
 
 
-    public function mount(Entidad $entidad)
-    {
+    public function mount(Entidad $entidad,$ruta){
         $this->entmenu=$entidad;
+        if($ruta!='') $this->ruta=$ruta;
     }
 
 
@@ -28,8 +28,7 @@ class Menu extends Component
     }
 
 
-    public function updatedFiltroentidad()
-    {
+    public function updatedFiltroentidad(){
         $e=Entidad::find($this->filtroentidad);
         return redirect()->route($this->ruta,$e);
     }

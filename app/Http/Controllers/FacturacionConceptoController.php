@@ -21,7 +21,8 @@ class FacturacionConceptoController extends Controller
     public function conceptosentidad(Entidad $entidad){
         $ciclosfact=Ciclo::get();
         $conceptos=FacturacionConcepto::where('entidad_id',$entidad->id)->with('detalles')->get();
-        return view('facturacionconceptos.index',compact(['entidad','conceptos','ciclosfact']));
+        $ruta="facturacionconcepto.entidad";
+        return view('facturacionconceptos.index',compact(['entidad','conceptos','ciclosfact','ruta']));
     }
 
     /**
