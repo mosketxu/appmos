@@ -52,7 +52,7 @@
             <div class="flex w-full mt-1 bg-blue-100 rounded-t-md">
                 <div class="hidden pl-2 md:w-10 md:flex">{{ __('Fav') }} </div>
                 <div class="w-6/12 pl-2 md:w-3/12 ">{{ __('Entidad') }}</div>
-                <div class="hidden md:w-1/12">{{ __('Nif') }} </div>
+                <div class="w-1/12 md:w-1/12">{{ __('Nif') }} </div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('Facturar') }}</div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('Forma Pago') }}</div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('C.Impuestos') }}</div>
@@ -74,7 +74,7 @@
                 <div class="w-6/12 md:w-3/12">
                     <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
-                <div class="hidden p-1 m-1 md:w-1/12">
+                <div class="w-1/12 p-1 m-1 md:w-1/12">
                     <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
                 <div class="hidden md:w-1/12 md:flex">
