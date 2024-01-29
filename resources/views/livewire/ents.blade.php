@@ -20,7 +20,7 @@
 
             <div class="flex justify-between">
                 <div class="flex w-2/4 space-x-2">
-                    <input type="text" wire:model.debounce.500ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
+                    <input type="text" wire:model.lazy="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
                     <div class="hidden px-1 text-xs sm:block">
                         <label class="px-1 text-gray-600">Clientes</label>
                         <select wire:model="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
