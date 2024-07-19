@@ -112,27 +112,27 @@
                 <h3 class="font-semibold ">Datos Bancarios</h3>
             </div>
             <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
-                <div class="w-full form-item">
+                <div class="w-1/12 form-item">
                     <x-jet-label for="banco1" >{{ __('Banco 1') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.banco1" type="text" id="banco1" name="banco1" :value="old('banco1')" class="w-full"/>
                 </div>
-                <div class="w-full form-item">
+                <div class="w-3/12 form-item">
                     <x-jet-label for="iban1" >{{ __('Iban 1') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.iban1" type="text" id="iban1" name="iban1" :value="old('iban1')" class="w-full"/>
                 </div>
-                <div class="w-full form-item">
+                <div class="w-1/12 form-item">
                     <x-jet-label for="banco2" >{{ __('Banco 2') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.banco2" type="text" id="banco2" name="banco2" :value="old('banco2')" class="w-full"/>
                 </div>
-                <div class="w-full form-item">
+                <div class="w-3/12 form-item">
                     <x-jet-label for="iban2" >{{ __('Iban 2') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.iban2" type="text" id="iban2" name="iban2" :value="old('iban2')" class="w-full"/>
                 </div>
-                <div class="w-full form-item">
+                <div class="w-1/12 form-item">
                     <x-jet-label for="banco3" >{{ __('Banco 3') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.banco3" type="text" id="banco3" name="banco3" :value="old('banco3')" class="w-full"/>
                 </div>
-                <div class="w-full form-item">
+                <div class="w-3/12 form-item">
                     <x-jet-label for="iban3" >{{ __('Iban 3') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.iban3" type="text" id="iban3" name="iban3" :value="old('iban3')" class="w-full"/>
                 </div>
