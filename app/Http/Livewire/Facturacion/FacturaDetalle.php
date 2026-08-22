@@ -85,7 +85,10 @@ class FacturaDetalle extends Component
 
         $detalle = $this->detalles[$detalleIndex] ?? NULL;
         if (!is_null($detalle)) {
-            $p=FacturacionDetalle::find($detalle['id']);
+            $p=FacturacionDetalle::where('facturacion_id',$this->facturacion->id)->find($detalle['id']);
+            if (is_null($p)) {
+                return;
+            }
             $p->orden=$detalle['orden'];
             $p->tipo=$detalle['tipo'];
             $p->concepto=$detalle['concepto'];
@@ -111,7 +114,7 @@ class FacturaDetalle extends Component
 
     public function delete($facturadetalleId)
     {
-        $facturadetalleBorrar = FacturacionDetalle::find($facturadetalleId);
+        $facturadetalleBorrar = FacturacionDetalle::where('facturacion_id',$this->facturacion->id)->find($facturadetalleId);
 
         if ($facturadetalleBorrar) {
             $facturadetalleBorrar->delete();

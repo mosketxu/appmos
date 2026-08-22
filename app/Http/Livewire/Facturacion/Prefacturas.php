@@ -162,6 +162,10 @@ class Prefacturas extends Component
                 'entidades.iban1','metodo_pagos.metodopagocorto')
             ->searchYear('fechafactura',$this->filtroanyo)
             ->searchMes('fechafactura',$this->filtromes)
+            ->where('facturacion.entidad_id',$this->entidad->id)
+            ->where(function ($query) {
+                $query->where('facturacion.numfactura','')->orWhereNull('facturacion.numfactura');
+            })
             ->orderBy('facturacion.fechafactura')
             ->orderBy('entidades.entidad')
             ->get();

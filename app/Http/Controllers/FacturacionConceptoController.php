@@ -42,7 +42,7 @@ class FacturacionConceptoController extends Controller
             'ciclo_id'=>'required',
             'concepto'=>'required',
             'importe'=>'nullable',
-            'ciclocorrespondiente'=>'ciclocorrespondiente',
+              'ciclocorrespondiente'=>'required|integer|min:1',
             ]);
 
         FacturacionConcepto::insert([
@@ -57,7 +57,7 @@ class FacturacionConceptoController extends Controller
             'message' => 'Elemento creado satisfactoriamente!',
             'alert-type' => 'success'
         );
-        return redirect('store')->with($notification);
+          return redirect()->back()->with($notification);
     }
 
 

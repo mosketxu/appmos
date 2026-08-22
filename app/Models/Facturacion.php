@@ -69,23 +69,27 @@ class Facturacion extends Model
             //     DB::raw('sum(unidades * importe * (1+ iva)) as totales'))
             ->select('facturacion.*', 'entidades.entidad', 'entidades.nif','entidades.emailadm')
             ->where('numfactura','<>','')
-            ->when($this->filtroenviada!='', function ($query){
-                $query->where('enviada',$this->filtroenviada);
+            ->when($filtroenviada!='', function ($query) use ($filtroenviada){
+                $query->where('enviada',$filtroenviada);
                 })
-            ->when($this->filtropagada!='', function ($query){
-                $query->where('pagada',$this->filtropagada);
+            ->when($filtropagada!='', function ($query) use ($filtropagada){
+                $query->where('pagada',$filtropagada);
                 })
-            ->when($this->filtrofacturado!='', function ($query){
-                if($this->filtrofacturado=='0'){
+            ->when($filtrofacturado!='', function ($query) use ($filtrofacturado){
+                if($filtrofacturado=='0'){
                     $query->where('asiento','0');
                 }else{
                     $query->where('asiento','>','0');
                 }
             })
-            ->searchYear('fechafactura',$this->filtroanyo)
-            ->searchMes('fechafactura',$this->filtromes)
-            ->search('entidades.entidad',$this->search)
-            ->orSearch('facturacion.numfactura',$this->search);
+            ->searchYear('fechafactura',$filtroanyo)
+            ->searchMes('fechafactura',$filtromes)
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery->where('entidades.entidad','like','%'.$search.'%')
+                        ->orWhere('facturacion.numfactura','like','%'.$search.'%');
+                });
+            });
     }
 
     public static function pdffactura($f){

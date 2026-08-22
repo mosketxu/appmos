@@ -13,9 +13,6 @@ class AddColumnsToFacturacionConceptoDetallesTable extends Migration
      */
     public function up()
     {
-        Schema::table('facturacion_conceptodetalles', function (Blueprint $table) {
-            $table->string('unidades')->after('concepto');
-        });
     }
 
     /**
@@ -25,8 +22,5 @@ class AddColumnsToFacturacionConceptoDetallesTable extends Migration
      */
     public function down()
     {
-        Schema::table('facturacion_conceptodetalles', function (Blueprint $table) {
-            $table->dropColumn('unidades');
-        });
     }
 }

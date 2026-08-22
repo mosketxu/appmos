@@ -11,6 +11,10 @@ use App\Http\Controllers\{
 use App\Models\FacturacionConceptodetalle;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/', function () {
+    return view('welcome');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -22,12 +26,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
-    Route::get('/', function () {return view('entidades');})->name('entidades');
+    Route::get('/entidades', function () {return view('entidades');})->name('entidades');
     Route::get('/dashboard', function () {return view('entidades');})->name('dashboard');
 
     // entidades

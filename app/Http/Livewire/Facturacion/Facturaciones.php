@@ -107,8 +107,12 @@ class Facturaciones extends Component
             })
             ->searchYear('fechafactura',$this->filtroanyo)
             ->searchMes('fechafactura',$this->filtromes)
-            ->search('entidades.entidad',$this->search)
-            ->orSearch('facturacion.numfactura',$this->search)
+              ->when($this->search, function ($query) {
+                  $query->where(function ($searchQuery) {
+                      $searchQuery->where('entidades.entidad','like','%'.$this->search.'%')
+                          ->orWhere('facturacion.numfactura','like','%'.$this->search.'%');
+                  });
+              })
             ->orderBy('facturacion.numfactura','desc')
             ->orderBy('facturacion.id','desc');
             // ->paginate(5); solo contemplo la query, no el resultado. Luego pongo el resultado: get, paginate o lo que quiera
@@ -195,6 +199,10 @@ class Facturaciones extends Component
                 'entidades.porcentajemarta','entidades.porcentajesusana',)
             ->groupBy('facturacion.id')
             ->where('numfactura','<>','')
+            ->where('facturacion.entidad_id',$this->entidad->id)
+            ->when(!$this->selectAll, function ($query) {
+                $query->whereIn('facturacion.id', $this->selected);
+            })
             ->searchYear('fechafactura',$this->filtroanyo)
             ->searchMes('fechafactura',$this->filtromes)
             ->get();
@@ -224,6 +232,7 @@ class Facturaciones extends Component
             "facturacion.numfactura as IdFactura",
             "facturacion.metodopago_id")
         ->groupBy('facturacion.id')
+        ->where('facturacion.entidad_id',$this->entidad->id)
         ->where('fechavencimiento',$this->filtroremesa)
         ->where('facturacion.metodopago_id','2')
         ->orderBy('entidades.entidad')
@@ -274,6 +283,9 @@ class Facturaciones extends Component
             DB::raw("'' AS 'Cuota Iva3'")
         )
         ->where('facturacion.numfactura','<>','')
+        ->where('facturacion.entidad_id',$this->entidad->id)
+        ->searchYear('facturacion.fechafactura',$this->filtroanyo)
+        ->searchMes('facturacion.fechafactura',$this->filtromes)
         ->groupBy('facturacion.id')
         ->orderBy('entidades.entidad')
         ->get();

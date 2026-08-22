@@ -6,10 +6,18 @@ use App\Http\Livewire\Factura;
 use App\Models\Facturacion;
 use App\Models\FacturacionDetalle;
 use App\Models\FacturacionDetalleConcepto;
+use Illuminate\Support\Facades\DB;
 
 class FacturaConceptoStoreAction
 {
     public function execute($factura,$concepto)
+    {
+        return DB::transaction(function () use ($factura, $concepto) {
+            return $this->executeWithoutTransaction($factura, $concepto);
+        });
+    }
+
+    private function executeWithoutTransaction($factura,$concepto)
     {
         $sumaId=!$factura->entidad->suma_id ? '1' :$factura->entidad->suma_id;
         $per='';

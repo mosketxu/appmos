@@ -3,12 +3,14 @@
 namespace App\Actions;
 
 use App\Models\{Entidad, Facturacion,FacturacionConcepto, FacturacionConceptodetalle, FacturacionDetalle};
+use Illuminate\Support\Facades\DB;
 
 class PrefacturaCreateAction
 {
     public function execute(FacturacionConcepto $concepto, Entidad $entidad, $anyoplan)
     {
-        $ciclos=$concepto->ciclo->ciclos;
+        return DB::transaction(function () use ($concepto, $entidad, $anyoplan) {
+            $ciclos=$concepto->ciclo->ciclos;
 
         for ($i=0; $i < $ciclos ; $i++) {
 
@@ -41,8 +43,8 @@ class PrefacturaCreateAction
             $fc->execute($fac,$concepto);
 
         }
-    $mensaje='Exito';
-        return $mensaje;
+            return 'Exito';
+        });
     }
 
     public function diaultimo($dia,$mes){

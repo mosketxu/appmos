@@ -63,6 +63,7 @@ class FacturaDetalleConceptos extends Component
     public function updatedImporte(){$this->calculo();}
 
     public function save(){
+        $this->validate();
         $this->calculo();
         $fdc=FacturacionDetalleConcepto::create([
             'facturaciondetalle_id'=>$this->detalleid,
@@ -95,7 +96,7 @@ class FacturaDetalleConceptos extends Component
         );
         $factura=Facturacion::find($this->detalle->facturacion_id);
 
-        if(($factura->numfactura!='' || !is_null($factura->numfactura))){
+        if($factura->numfactura !== '' && !is_null($factura->numfactura)){
             $factura->pdffactura($factura);
             $vista='facturacion.edit';
         }else{
@@ -108,7 +109,7 @@ class FacturaDetalleConceptos extends Component
 
     public function delete($conceptoid)
     {
-        $borrar = FacturacionDetalleConcepto::find($conceptoid);
+        $borrar = FacturacionDetalleConcepto::where('facturaciondetalle_id',$this->detalleid)->find($conceptoid);
 
         if ($borrar) {
             $borrar->delete();

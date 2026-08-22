@@ -106,7 +106,7 @@ class Ent extends Component
         }else{
             $this->validate([
                 'entidad.entidad'=>'required|unique:entidades,entidad',
-                'entidad.nif'=>'max:12|unique:entidades,entidad',
+                    'entidad.nif'=>'nullable|max:12|unique:entidades,nif',
                 ]
             );
             $i=$this->entidad->id;

@@ -5,18 +5,26 @@ namespace App\Actions;
 use App\Models\Entidad;
 use App\Models\Facturacion;
 use App\Models\FacturacionDetalle;
+use Illuminate\Support\Facades\DB;
 
 class FacturaCreateAction
 {
     public function execute(Facturacion $factura){
+        return DB::transaction(function () use ($factura) {
+            return $this->executeWithinTransaction($factura);
+        });
+    }
 
-
+    private function executeWithinTransaction(Facturacion $factura){
         $serie= !$factura->serie ? substr($factura->fechafactura->format('Y'), -2) : $factura->serie;
         $factura->metodopago_id= !$factura->metodopago_id ? '1' : $factura->metodopago_id;
 
 
         if (!$factura->numfactura){
-            $fac=Facturacion::where('serie', $serie)->max('numfactura') ;
+            $fac=Facturacion::where('serie', $serie)
+                ->orderByDesc('numfactura')
+                ->lockForUpdate()
+                ->value('numfactura');
             $fac= $fac ? $fac + 1 : ($serie * 100000 +1) ;
         }else{
             $fac=$factura->numfactura;

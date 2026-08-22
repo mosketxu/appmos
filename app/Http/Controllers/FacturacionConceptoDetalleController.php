@@ -62,8 +62,6 @@ class FacturacionConceptoDetalleController extends Controller
             'importe'=>$request->importe,
         ]);
 
-        $this->validate($request, $rules,$messages);
-
         $notification = array(
             'message' => 'Elemento añadido satisfactoriamente!',
             'alert-type' => 'success'
