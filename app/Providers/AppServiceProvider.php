@@ -45,14 +45,22 @@ class AppServiceProvider extends ServiceProvider
         Builder::macro('toCsv', function () {
             $results = $this->get();
             if ($results->count() < 1) return;
-            $titles = implode(',', array_keys((array) $results->first()->getAttributes()));
-            $values = $results->map(function ($result) {
-                return implode(',', collect($result->getAttributes())->map(function ($thing) {
-                    return '"'.$thing.'"';
-                })->toArray());
-            });
-            $values->prepend($titles);
-            return $values->implode("\n");
+
+            $sanitizeCell = function ($value) {
+                if (is_string($value) && preg_match('/^[=+\-@\t\r]/', $value)) {
+                    return "'".$value;
+                }
+                return $value;
+            };
+
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, array_keys($results->first()->getAttributes()));
+            foreach ($results as $result) {
+                fputcsv($handle, array_map($sanitizeCell, $result->getAttributes()));
+            }
+
+            fclose($handle);
         });
     }
 }
