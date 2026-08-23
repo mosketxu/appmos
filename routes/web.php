@@ -16,7 +16,7 @@ Route::get('/', function () {
         return redirect()->route('entidades');
     }
 
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 /*
