@@ -54,7 +54,7 @@ class Factura extends Component
     {
         $this->factura=array_merge(
             array_fill_keys($facturacion->getFillable(), null),
-            ['id' => $facturacion->id],
+            ['id' => $facturacion->id, 'rutafichero' => $facturacion->rutafichero],
             $facturacion->toArray()
         );
         $this->showgenerar = $facturacion->facturada ? false : true;
@@ -67,9 +67,12 @@ class Factura extends Component
     public function render(){
         $this->existe=(Storage::exists('public/'.$this->factura['rutafichero']) && ($this->factura['rutafichero']!='/')) ? '1' : '0';
 
+        $facturaModel = ($this->factura['id'] ?? null) ? Facturacion::find($this->factura['id']) : new Facturacion();
+        $entidadSeleccionada = ($this->factura['entidad_id'] ?? null) ? Entidad::find($this->factura['entidad_id']) : null;
+
         $entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
         $pagos=MetodoPago::all();
-        return view('livewire.facturacion.factura',compact('entidades','pagos',));
+        return view('livewire.facturacion.factura',compact('entidades','pagos','facturaModel','entidadSeleccionada'));
     }
 
     public function updatedFacturaFechafactura(){
@@ -149,7 +152,7 @@ class Factura extends Component
     public function agregarconcepto(FacturacionConcepto $concepto){
         if($this->factura['id']){
             $fac= new FacturaConceptoStoreAction;
-            $fac->execute($this->factura,$concepto);
+            $fac->execute(Facturacion::find($this->factura['id']),$concepto);
             $this->dispatch('detallerefresh');
         }else{
             $this->dispatch('notifyred', 'Debes crear la Pre-factura primero');

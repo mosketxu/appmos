@@ -31,7 +31,7 @@ class FacturaDetalle extends Component
     ];
 
     public function mount(Facturacion $factura){
-        // $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)
+        // $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion['id'])
         //     ->orderBy('orden')
         //     ->get()
         //     ->toArray();
@@ -39,11 +39,10 @@ class FacturaDetalle extends Component
 
     public function render(){
 
-        // dd($this->facturacion->facturada);
-        $this->showcrear=$this->facturacion->facturada =='0'? true : false;
+        $this->showcrear=$this->facturacion['facturada'] =='0'? true : false;
         $this->deshabilitado= $this->showcrear==true ? '' : 'disabled' ;
-        $factura=Facturacion::with('conceptos')->find($this->facturacion->id);
-        if($this->facturacion->id){
+        $factura=Facturacion::with('conceptos')->find($this->facturacion['id']);
+        if($this->facturacion['id']){
             $this->base=$factura->conceptos->sum('base');
             $this->base21=$factura->conceptos->where('iva','0.21')->sum('base');
             $this->iva21=$factura->conceptos->where('iva','0.21')->sum('totaliva');
@@ -57,11 +56,11 @@ class FacturaDetalle extends Component
             $this->total=$factura->conceptos->sum('total');
         }
 
-        $a=FacturacionDetalle::select('id')->where('facturacion_id', $this->facturacion->id)->orderBy('orden')->get();
+        $a=FacturacionDetalle::select('id')->where('facturacion_id', $this->facturacion['id'])->orderBy('orden')->get();
         $a=$a->toArray();
         $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$a)->get();
 
-        $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion->id)->orderBy('orden')->get();
+        $this->detalles = FacturacionDetalle::where('facturacion_id', $this->facturacion['id'])->orderBy('orden')->get();
 
         $showcrear=$this->showcrear;
         return view('livewire.facturacion.factura-detalle',compact(['factura','showcrear']));
@@ -85,7 +84,7 @@ class FacturaDetalle extends Component
 
         $detalle = $this->detalles[$detalleIndex] ?? NULL;
         if (!is_null($detalle)) {
-            $p=FacturacionDetalle::where('facturacion_id',$this->facturacion->id)->find($detalle['id']);
+            $p=FacturacionDetalle::where('facturacion_id',$this->facturacion['id'])->find($detalle['id']);
             if (is_null($p)) {
                 return;
             }
@@ -114,7 +113,7 @@ class FacturaDetalle extends Component
 
     public function delete($facturadetalleId)
     {
-        $facturadetalleBorrar = FacturacionDetalle::where('facturacion_id',$this->facturacion->id)->find($facturadetalleId);
+        $facturadetalleBorrar = FacturacionDetalle::where('facturacion_id',$this->facturacion['id'])->find($facturadetalleId);
 
         if ($facturadetalleBorrar) {
             $facturadetalleBorrar->delete();
