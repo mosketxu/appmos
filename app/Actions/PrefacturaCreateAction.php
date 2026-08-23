@@ -38,6 +38,7 @@ class PrefacturaCreateAction
                 'observaciones'=>$entidad->observaciones,
                 'notas'=>$entidad->notas,
             ]);
+            $fac->setRelation('entidad', $entidad);
 
             $fc=new FacturaConceptoStoreAction;
             $fc->execute($fac,$concepto);

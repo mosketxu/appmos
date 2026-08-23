@@ -61,8 +61,8 @@ class Prefacturas extends Component
         return Facturacion::query()
             ->with('metodopago','ciclo')
             ->join('entidades','facturacion.entidad_id','=','entidades.id')
-            ->join('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
-            ->join('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
+            ->leftJoin('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
+            ->leftJoin('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
             // ->select('facturacion.id','facturacion.fechafactura','facturacion.ciclo_id','facturacion.fechavencimiento','facturacion.enviada','facturacion.facturada',
             ->select('facturacion.*',
                     'entidades.entidad','entidades.emailadm',
