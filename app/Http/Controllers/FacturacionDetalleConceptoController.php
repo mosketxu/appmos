@@ -38,7 +38,7 @@ class FacturacionDetalleConceptoController extends Controller
      */
     public function store($request)
     {
-        dd($request);
+        //
     }
 
     /**

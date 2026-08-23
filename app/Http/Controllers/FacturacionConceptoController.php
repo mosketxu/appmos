@@ -32,7 +32,6 @@ class FacturacionConceptoController extends Controller
      */
     public function create()
     {
-        dd('create');
         //
     }
 
@@ -70,7 +69,7 @@ class FacturacionConceptoController extends Controller
      */
     public function show($id)
     {
-        dd('lleg');
+        //
     }
 
     /**

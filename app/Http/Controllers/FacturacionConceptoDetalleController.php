@@ -89,7 +89,6 @@ class FacturacionConceptoDetalleController extends Controller
      */
     public function edit($id)
     {
-        dd('edit');
         //
     }
 
