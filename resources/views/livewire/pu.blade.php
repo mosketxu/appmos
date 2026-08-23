@@ -25,8 +25,40 @@
                 {{-- <x-button.primary href="{{ route('pu.create') }}" class="py-0 my-0"><x-icon.plus/> Nueva</x-button.primary> --}}
             </div>
 
-            {{-- tabla pus --}}
-            <div class="flex-col space-y-4">
+            {{-- tabla pus (movil: tarjeta de 3 lineas por registro) --}}
+            <div class="space-y-2 md:hidden">
+                @forelse ($pus as $pu)
+                    <div class="p-3 space-y-1 bg-white border border-gray-200 rounded-lg shadow-sm" wire:loading.class.delay="opacity-50">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-gray-700 truncate">{{ $pu->destino }}</span>
+                            <div class="flex items-center flex-shrink-0 ml-2 space-x-3">
+                                <x-icon.edit-a wire:click="edit({{ $pu->id }})" href="#"/>
+                                <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 truncate">
+                            {{ $pu->url }}
+                            @if($pu->us) <span class="text-gray-400">·</span> {{ $pu->us }} @endif
+                            @if($pu->us2) <span class="text-gray-400">·</span> {{ $pu->us2 }} @endif
+                        </div>
+                        <div class="text-xs text-gray-400 truncate">
+                            @if($pu->ps) {{ __('ps') }}: {{ $pu->ps }} @endif
+                            @if($pu->ps && $pu->observaciones) <span class="text-gray-300">·</span> @endif
+                            {{ $pu->observaciones }}
+                        </div>
+                    </div>
+                @empty
+                    <div class="flex items-center justify-center">
+                        <x-icon.inbox class="w-8 h-8 text-gray-300"/>
+                        <span class="py-5 text-xl font-medium text-gray-500">
+                            No se han encontrado registros...
+                        </span>
+                    </div>
+                @endforelse
+            </div>
+
+            {{-- tabla pus (escritorio) --}}
+            <div class="hidden md:block md:space-y-4">
                 <x-table>
                     <x-slot name="head">
                         <x-table.heading class="pl-4 text-left">{{ __('Destino') }}</x-table.heading>
