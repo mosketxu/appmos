@@ -28,24 +28,41 @@
             {{-- tabla pus (movil: tarjeta de 3 lineas por registro) --}}
             <div class="space-y-2 md:hidden">
                 @forelse ($pus as $pu)
-                    <div class="p-3 space-y-1 bg-white border border-gray-200 rounded-lg shadow-sm" wire:loading.class.delay="opacity-50">
-                        <div class="flex items-center justify-between">
-                            <span class="font-medium text-gray-700 truncate">{{ $pu->destino }}</span>
-                            <div class="flex items-center flex-shrink-0 ml-2 space-x-3">
+                    <div class="p-3 space-y-2 bg-white border border-gray-200 rounded-lg shadow-sm" wire:loading.class.delay="opacity-50">
+                        <div class="flex items-start justify-between">
+                            <div class="min-w-0">
+                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('Destino') }}</span>
+                                <span class="block font-medium text-gray-700 truncate">{{ $pu->destino }}</span>
+                            </div>
+                            <div class="flex items-center flex-shrink-0 pt-3 ml-2 space-x-3">
                                 <x-icon.edit-a wire:click="edit({{ $pu->id }})" href="#"/>
                                 <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
                             </div>
                         </div>
-                        <div class="text-xs text-gray-500 truncate">
-                            {{ $pu->url }}
-                            @if($pu->us) <span class="text-gray-400">·</span> {{ $pu->us }} @endif
-                            @if($pu->us2) <span class="text-gray-400">·</span> {{ $pu->us2 }} @endif
+                        <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+                            <div class="min-w-0">
+                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('Url') }}</span>
+                                <span class="block text-xs text-gray-600 truncate">{{ $pu->url ?: '—' }}</span>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('us') }}</span>
+                                <span class="block text-xs text-gray-600 truncate">{{ $pu->us ?: '—' }}</span>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('us2') }}</span>
+                                <span class="block text-xs text-gray-600 truncate">{{ $pu->us2 ?: '—' }}</span>
+                            </div>
+                            <div class="min-w-0">
+                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('ps') }}</span>
+                                <span class="block text-xs text-gray-600 truncate">{{ $pu->ps ?: '—' }}</span>
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-400 truncate">
-                            @if($pu->ps) {{ __('ps') }}: {{ $pu->ps }} @endif
-                            @if($pu->ps && $pu->observaciones) <span class="text-gray-300">·</span> @endif
-                            {{ $pu->observaciones }}
-                        </div>
+                        @if($pu->observaciones)
+                            <div class="min-w-0">
+                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('Observaciones') }}</span>
+                                <span class="block text-xs text-gray-600 truncate">{{ $pu->observaciones }}</span>
+                            </div>
+                        @endif
                     </div>
                 @empty
                     <div class="flex items-center justify-center">
