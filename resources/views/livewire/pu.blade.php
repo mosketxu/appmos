@@ -18,7 +18,7 @@
             @endif
             <div class="flex justify-between">
                 <div class="flex w-2/4 space-x-2">
-                    <input type="text" wire:model="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
+                    <input type="text" wire:model.live.debounce.1000ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
                 </div>
                 <x-button.primary wire:click="create"><x-icon.plus/> Nueva Pu</x-button.primary>
 
@@ -31,7 +31,7 @@
                     <div class="p-3 space-y-2 bg-white border border-gray-200 rounded-lg shadow-sm" wire:loading.class.delay="opacity-50">
                         <div class="flex items-start justify-between">
                             <div class="min-w-0">
-                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('Destino') }}</span>
+                                <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Destino') }}</span>
                                 <span class="block font-medium text-gray-700 truncate">{{ $pu->destino }}</span>
                             </div>
                             <div class="flex items-center flex-shrink-0 pt-3 ml-2 space-x-3">
@@ -41,25 +41,25 @@
                         </div>
                         <div class="grid grid-cols-2 gap-x-3 gap-y-2">
                             <div class="min-w-0">
-                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('Url') }}</span>
+                                <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Url') }}</span>
                                 <span class="block text-xs text-gray-600 truncate">{{ $pu->url ?: '—' }}</span>
                             </div>
                             <div class="min-w-0">
-                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('us') }}</span>
+                                <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('us') }}</span>
                                 <span class="block text-xs text-gray-600 truncate">{{ $pu->us ?: '—' }}</span>
                             </div>
                             <div class="min-w-0">
-                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('us2') }}</span>
+                                <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('us2') }}</span>
                                 <span class="block text-xs text-gray-600 truncate">{{ $pu->us2 ?: '—' }}</span>
                             </div>
                             <div class="min-w-0">
-                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('ps') }}</span>
+                                <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('ps') }}</span>
                                 <span class="block text-xs text-gray-600 truncate">{{ $pu->ps ?: '—' }}</span>
                             </div>
                         </div>
                         @if($pu->observaciones)
                             <div class="min-w-0">
-                                <span class="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">{{ __('Observaciones') }}</span>
+                                <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Observaciones') }}</span>
                                 <span class="block text-xs text-gray-600 truncate">{{ $pu->observaciones }}</span>
                             </div>
                         @endif
