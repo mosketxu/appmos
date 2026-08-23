@@ -53,6 +53,34 @@ class FacturacionDomainTest extends TestCase
         $this->assertSame(0, $entidadQueries);
     }
 
+    public function test_prefactura_generation_caps_february_correctly_on_leap_and_non_leap_years(): void
+    {
+        $entity = Entidad::create([
+            'entidad' => 'Entidad fin de mes',
+            'diafactura' => 31,
+            'diavencimiento' => 31,
+            'enviar' => false,
+            'tipoiva' => 0.21,
+        ]);
+        $cycle = Ciclo::findOrFail(DB::table('ciclos')->insertGetId(['ciclo' => 'Mensual', 'ciclos' => 2]));
+        $concepto = FacturacionConcepto::create([
+            'entidad_id' => $entity->id,
+            'ciclo_id' => $cycle->id,
+            'ciclocorrespondiente' => '0',
+            'concepto' => 'Cuota mensual',
+            'importe' => 100,
+        ]);
+
+        (new PrefacturaCreateAction)->execute($concepto, $entity, 2028);
+        $febreroBisiesto = Facturacion::where('entidad_id', $entity->id)->orderBy('id')->get()[1];
+        $this->assertSame('2028-02-29', $febreroBisiesto->fechafactura->format('Y-m-d'));
+
+        Facturacion::where('entidad_id', $entity->id)->delete();
+        (new PrefacturaCreateAction)->execute($concepto, $entity, 2026);
+        $febreroNormal = Facturacion::where('entidad_id', $entity->id)->orderBy('id')->get()[1];
+        $this->assertSame('2026-02-28', $febreroNormal->fechafactura->format('Y-m-d'));
+    }
+
     public function test_prefactura_without_concepts_still_appears_in_the_listing(): void
     {
         $this->actingAs(User::factory()->create());
