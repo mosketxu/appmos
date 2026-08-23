@@ -117,7 +117,7 @@
                         </div>
                         <div class="flex-auto pb-3 form-item">
                             <label for="facturada"  title="Facturada"><x-icon.invoice/></label>
-                            <input type="checkbox" wire:model="factura.facturada" checked class="mx-auto" title="Facturada"/>
+                            <input type="checkbox" wire:model.live="factura.facturada" checked class="mx-auto" title="Facturada"/>
                         </div>
                         <div class="flex-auto pb-3 form-item">
                             <label for="pagada" title="Pagada"><x-icon.money/></label>

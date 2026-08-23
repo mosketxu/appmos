@@ -23,7 +23,7 @@
                     <input type="text" wire:model.live.debounce.1000ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
                     <div class="hidden px-1 text-xs sm:block">
                         <label class="px-1 text-gray-600">Clientes</label>
-                        <select wire:model="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                        <select wire:model.live="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
                             <option value="1">Sí</option>
                             <option value="">Todos</option>
@@ -31,7 +31,7 @@
                     </div>
                     <div class="hidden px-1 text-xs sm:block">
                         <label class="px-1 text-gray-600">Activos</label>
-                        <select wire:model="filtroactivo" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                        <select wire:model.live="filtroactivo" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
                             <option value="1">Sí</option>
                             <option value="">Todos</option>
@@ -39,7 +39,7 @@
                     </div>
                     <div class="hidden px-1 text-xs sm:block">
                         <label class="px-1 text-gray-600">Facturar</label>
-                        <select wire:model="filtrofacturar" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                        <select wire:model.live="filtrofacturar" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
                             <option value="1">Sí</option>
                             <option value="">Todos</option>

@@ -14,19 +14,19 @@
                     <div class="inline-flex space-x-2">
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">&nbsp;</label>
-                            <input type="search" wire:model.debounce.750ms="search" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Búsqueda Entidad/Factura" autofocus/>
+                            <input type="search" wire:model.live.debounce.750ms="search" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Búsqueda Entidad/Factura" autofocus/>
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Año</label>
-                            <input type="search" wire:model.debounce.750ms="filtroanyo" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Año"/>
+                            <input type="search" wire:model.live.debounce.750ms="filtroanyo" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Año"/>
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Mes</label>
-                            <input type="search" wire:model.debounce.750ms="filtromes" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Mes (número)"/>
+                            <input type="search" wire:model.live.debounce.750ms="filtromes" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Mes (número)"/>
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Facturable</label>
-                            <select wire:model="filtrofacturable" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                            <select wire:model.live="filtrofacturable" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                                 <option value="0">No</option>
                                 <option value="1">Sí</option>
                                 <option value="">Todos</option>
@@ -63,7 +63,7 @@
                 <div class="min-w-full overflow-hidden overflow-x-auto align-middle shadow min-vh-100 sm:rounded-lg">
                     <thead class="text-xs leading-4 tracking-wider text-gray-500 bg-blue-50 ">
                         <tr class="">
-                            <th class="w-5 py-3 pl-2 font-medium text-center"><x-input.checkbox wire:model="selectPage"/></th>
+                            <th class="w-5 py-3 pl-2 font-medium text-center"><x-input.checkbox wire:model.live="selectPage"/></th>
                             <th class="py-3 font-medium text-center ">#</th>
                             <th class="font-medium text-center w-28">{{ __('F.Factura') }}</th>
                             <th class="hidden sm:table-cell font-medium text-center w-28">{{ __('F.Vto') }}</th>
@@ -97,7 +97,7 @@
                         @forelse ($facturaciones as $facturacion)
                             <tr wire:loading.class.delay="opacity-10" wire:key="fila-{{ $facturacion->id }}">
                                 <td  class="w-5 py-3 pl-2 font-medium text-center">
-                                    <x-input.checkbox wire:model="selected" value="{{ $facturacion->id }}"/>
+                                    <x-input.checkbox wire:model.live="selected" value="{{ $facturacion->id }}"/>
                                 </td>
                                 <td class="text-right">
                                     <a href="#" wire:click="edit" class="text-xs text-gray-200 transition duration-150 ease-in-out hover:outline-none hover:text-gray-800 hover:underline">

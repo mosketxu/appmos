@@ -15,19 +15,19 @@
                     <div class="inline-flex space-x-2">
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">&nbsp;</label>
-                            <input type="search" wire:model="search" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Búsqueda Entidad/Factura" autofocus/>
+                            <input type="search" wire:model.live.debounce.1000ms="search" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Búsqueda Entidad/Factura" autofocus/>
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Año</label>
-                            <input type="search" wire:model="filtroanyo" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Año"/>
+                            <input type="search" wire:model.live.debounce.1000ms="filtroanyo" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Año"/>
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Mes</label>
-                            <input type="search" wire:model="filtromes" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Mes (número)"/>
+                            <input type="search" wire:model.live.debounce.1000ms="filtromes" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none" placeholder="Mes (número)"/>
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Facturado</label>
-                            <select wire:model="filtrofacturado" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                            <select wire:model.live="filtrofacturado" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                                 <option value="0">No</option>
                                 <option value="1">Sí</option>
                                 <option value="">Todos</option>
@@ -35,7 +35,7 @@
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Contabilizado</label>
-                            <select wire:model="filtrocontabilizado" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                            <select wire:model.live="filtrocontabilizado" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                                 <option value="0">No</option>
                                 <option value="1">Sí</option>
                                 <option value="">Todos</option>
@@ -43,7 +43,7 @@
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Enviar</label>
-                            <select wire:model="filtroenviar" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                            <select wire:model.live="filtroenviar" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                                 <option value="0">No</option>
                                 <option value="1">Sí</option>
                                 <option value="">Todos</option>
@@ -51,7 +51,7 @@
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Enviadas</label>
-                            <select wire:model="filtroenviada" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                            <select wire:model.live="filtroenviada" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                                 <option value="0">No</option>
                                 <option value="1">Sí</option>
                                 <option value="">Todos</option>
@@ -59,7 +59,7 @@
                         </div>
                         <div class="inline-block text-xs form-group">
                             <label class="px-1 text-gray-600">Pagadas</label>
-                            <select wire:model="filtropagada" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                            <select wire:model.live="filtropagada" class="w-full py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                                 <option value="0">No</option>
                                 <option value="1">Sí</option>
                                 <option value="">Todos</option>
@@ -67,7 +67,7 @@
                         </div>
                         <div class="text-xs">
                             <label class="px-1 text-gray-600">Fecha Remesa</label>
-                            <input type="date" wire:model="filtroremesa" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none"/>
+                            <input type="date" wire:model.live="filtroremesa" class="w-full py-2 text-xs text-gray-600 placeholder-gray-300 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none"/>
                         </div>
                     </div>
                     <div class="inline-flex mt-3 space-x-2">
@@ -111,7 +111,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="text-xs leading-4 tracking-wider text-gray-500 bg-blue-50 ">
                         <tr class="">
-                            <th class="w-5 py-3 pl-2 font-medium text-center"><x-input.checkbox wire:model="selectPage"/></th>
+                            <th class="w-5 py-3 pl-2 font-medium text-center"><x-input.checkbox wire:model.live="selectPage"/></th>
                             <th class="py-3 font-medium text-center ">#</th>
                             <th class="font-medium text-left">{{ __('Factura') }}</th>
                             <th class="pl-4 font-medium text-left ">{{ __('F.Factura') }}</th>
@@ -148,7 +148,7 @@
                         @forelse ($facturaciones as $facturacion)
                             <tr wire:loading.class.delay="opacity-50" wire:key="fila-{{ $facturacion->id }}">
                                 <td  class="w-5 py-3 pl-2 font-medium text-center">
-                                    <x-input.checkbox wire:model="selected" value="{{ $facturacion->id }}"/>
+                                    <x-input.checkbox wire:model.live="selected" value="{{ $facturacion->id }}"/>
                                 </td>
                                 <td class="text-right">
                                     <a href="{{ route('facturacion.edit',$facturacion) }}"  class="text-xs text-gray-200 transition duration-150 ease-in-out hover:outline-none hover:text-gray-800 hover:underline">

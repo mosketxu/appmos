@@ -8,7 +8,7 @@
         <div class="py-1 space-y-4">
             <div class="flex justify-between">
                 <div class="flex w-2/4 space-x-2">
-                    <input type="text" wire:model="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
+                    <input type="text" wire:model.live.debounce.1000ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
                 </div>
                 {{-- <x-button.primary href="#" class="py-1"><x-icon.plus/> Nueva</x-button.primary> --}}
             </div>
