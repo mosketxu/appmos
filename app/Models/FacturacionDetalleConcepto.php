@@ -18,7 +18,7 @@ class FacturacionDetalleConcepto extends Model
         '2'=>'Otros',
     ];
 
-    public function detalle(){return $this->belongsTo(FacturacionDetalle::class);}
+    public function detalle(){return $this->belongsTo(FacturacionDetalle::class,'facturaciondetalle_id');}
 
     public function calculo(){
         $this->totaliva=round($this->unidades*$this->importe*$this->iva,2);

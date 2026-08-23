@@ -26,6 +26,8 @@ class Facturacion extends Model
         'fechavencimiento' => 'date:Y-m-d',
     ];
 
+    protected $calculatedConceptos;
+
     protected $fillable=['numfactura','serie','entidad_id','ciclo_id','totaliva','base','exenta','total','fechafactura','fechavencimiento','metodopago_id','refcliente','mail',
     'facturada','enviar','enviada','pagada','facturable','asiento','fechaasiento','observaciones','notas','ruta','fichero'];
 
@@ -59,6 +61,19 @@ class Facturacion extends Model
 
     public function getRutaficheroAttribute(){return $this->ruta.'/'.$this->fichero;}
     public function getFactura5Attribute(){return $this->serie.'_'.substr($this->numfactura,-5);}
+
+    protected function conceptosParaCalculo()
+    {
+        if (is_null($this->calculatedConceptos)) {
+            $this->calculatedConceptos = $this->relationLoaded('conceptos')
+                ? $this->getRelation('conceptos')
+                : FacturacionDetalleConcepto::whereHas('detalle', function ($query) {
+                    $query->where('facturacion_id', $this->id);
+                })->get();
+        }
+
+        return $this->calculatedConceptos;
+    }
 
     public function scopeFacturas(Builder $query, $filtroenviada, $filtropagada, $filtrofacturado,$filtroanyo,$filtromes ,$search) : Builder{
         return $query->join('entidades','facturacion.entidad_id','=','entidades.id')
@@ -100,10 +115,7 @@ class Facturacion extends Model
     public function getDiezAttribute(){
         $fechav=$this->fechavencimiento->format('d');
         if ($fechav=="10") {
-            $fd=FacturacionDetalle::select('id')->where('facturacion_id', $this->id)->get();
-            $fd=$fd->toArray();
-            $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id', $fd)->get();
-            return $fdc->sum('total');
+            return $this->conceptosParaCalculo()->sum('total');
         }else{
             return "0";
         }
@@ -111,10 +123,7 @@ class Facturacion extends Model
 
     public function getVeinticincoAttribute(){
         if ($this->fechavencimiento->format('d')=="25") {
-            $fd=FacturacionDetalle::select('id')->where('facturacion_id', $this->id)->get();
-            $fd=$fd->toArray();
-            $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id', $fd)->get();
-            return $fdc->sum('total');
+            return $this->conceptosParaCalculo()->sum('total');
         }else{
             return "0";
         }
@@ -123,19 +132,14 @@ class Facturacion extends Model
     public function getOtrosAttribute(){
         $fechav=$this->fechavencimiento->format('d');
         if ($fechav!="25" && $fechav!="10") {
-            $fd=FacturacionDetalle::select('id')->where('facturacion_id', $this->id)->get();
-            $fd=$fd->toArray();
-            $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id', $fd)->get();
-            return $fdc->sum('total');
+            return $this->conceptosParaCalculo()->sum('total');
         }else{
             return "0";
         }
     }
 
     public function getTotalesAttribute(){
-        $fd=FacturacionDetalle::select('id')->where('facturacion_id', $this->id)->get();
-        $fd=$fd->toArray();
-        $fdc=FacturacionDetalleConcepto::whereIn('facturaciondetalle_id',$fd)->get();
+        $fdc=$this->conceptosParaCalculo();
         $base0=$fdc->where('iva','0.00')->sum('base');
         $base4=$fdc->where('iva','0.04')->sum('base');
         $iva4=$fdc->where('iva','0.04')->sum('totaliva');
