@@ -9,7 +9,7 @@ class MetodoPago extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['metodoPago','metodopagocorto'];
+    protected $fillable = ['metodopago','metodopagocorto'];
 
     public $incrementing = false;
     public $timestamps = false;

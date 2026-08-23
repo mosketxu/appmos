@@ -15,6 +15,7 @@ use App\Mail\MailFactura;
 use ZipArchive;
 use File;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
 class Facturaciones extends Component
@@ -153,8 +154,7 @@ class Facturaciones extends Component
         $facturas = $this->selectedRowsQuery->get();
 
         foreach ($facturas as $factura) {
-            $fileName='storage/'.$factura->rutafichero;
-            if (!file_exists($fileName) || !$factura->mail) {
+            if (!Storage::disk('public')->exists($factura->rutafichero) || !$factura->mail) {
                 array_push($conproblemas,$factura->factura5);
             }else{
                 $sinproblemas++;
