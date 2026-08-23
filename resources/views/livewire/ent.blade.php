@@ -1,5 +1,5 @@
 <div class="">
-    @livewire('menu',['entidad'=>$entidad,'ruta'=>$ruta],key($entidad->id))
+    @livewire('menu',['entidad'=>$entidadModel,'ruta'=>$ruta],key($entidadModel->id))
 
     <div class="p-1 mx-2">
         @if($contactoId)
@@ -7,8 +7,8 @@
         <input type="hidden" wire:model="contactoId"/>
         @else
             @if($entidad)
-                <h1 class="text-2xl font-semibold text-gray-900">Entidad: {{ $entidad->entidad }}
-                    @if($entidad->nif) <span class="text-lg text-gray-500 "> ({{  $entidad->nif }})</span> @endif
+                <h1 class="text-2xl font-semibold text-gray-900">Entidad: {{ $entidad['entidad'] }}
+                    @if($entidad['nif']) <span class="text-lg text-gray-500 "> ({{  $entidad['nif'] }})</span> @endif
                 </h1>
             @else
             <h1 class="text-2xl font-semibold text-gray-900">Nueva Entidad</h1>

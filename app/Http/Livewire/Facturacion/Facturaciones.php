@@ -170,7 +170,7 @@ class Facturaciones extends Component
 
         session()->flash('message', 'Mails enviados correctamente: '. $sinproblemas. ', Con problemas: '. $conproblema);
         return redirect(route('facturacion.index'));
-        // $this->dispatchBrowserEvent('notify', 'Mails enviados correctamente: '. $sinproblemas. ', Con problemas:'. $conproblemas);
+        // $this->dispatch('notify', 'Mails enviados correctamente: '. $sinproblemas. ', Con problemas:'. $conproblemas);
     }
 
     public function exportSelected(){
@@ -178,7 +178,7 @@ class Facturaciones extends Component
         return response()->streamDownload(function(){
             echo $this->selectedRowsQuery->toCsv();
         },'prefacturas.csv');
-        $this->dispatchBrowserEvent('notify', 'CSV Facturas descargado!');
+        $this->dispatch('notify', 'CSV Facturas descargado!');
     }
 
     public function exportControlSelected(){
@@ -301,7 +301,7 @@ class Facturaciones extends Component
         $deleteCount = $this->selectedRowsQuery->count();
         $this->selectedRowsQuery->delete();
         $this->showDeleteModal = false;
-        $this->dispatchBrowserEvent('notify', $deleteCount . ' Facturas eliminadas!');
+        $this->dispatch('notify', $deleteCount . ' Facturas eliminadas!');
     }
 
     public function delete($facturacionId){
@@ -309,7 +309,7 @@ class Facturaciones extends Component
         if ($facturacion) {
             $facturacion->delete();
             // session()->flash('message', $facturacion->entidad.' eliminado!');
-            $this->dispatchBrowserEvent('notify', 'La línea de facturación: '.$facturacion->id.'-'.$facturacion->numfactura.' ha sido eliminada!');
+            $this->dispatch('notify', 'La línea de facturación: '.$facturacion->id.'-'.$facturacion->numfactura.' ha sido eliminada!');
         }
     }
 }

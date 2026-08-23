@@ -49,7 +49,7 @@ class Ents extends Component
         if ($entidad) {
             $entidad->delete();
             // session()->flash('message', $entidad->entidad.' eliminado!');
-            $this->dispatchBrowserEvent('notify', 'La entidad: '.$entidad->entidad.' ha sido eliminada!');
+            $this->dispatch('notify', 'La entidad: '.$entidad->entidad.' ha sido eliminada!');
         }
     }
 }

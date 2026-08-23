@@ -43,104 +43,111 @@ class Prefactura extends Component
     }
 
     public function mount(Facturacion $facturacion, Entidad $entidad){
-        $this->factura=$facturacion;
+        $this->factura=array_merge(
+            array_fill_keys($facturacion->getFillable(), null),
+            ['id' => $facturacion->id],
+            $facturacion->toArray()
+        );
         if ($entidad->id) {
             $this->inicializaPrefactura($entidad);
             $this->ent=$entidad;
         }else{
             $this->ent= $facturacion->entidad;
         }
-        if(!$this->factura->serie) $this->factura->serie=substr(date('Y'),-2);
-        $this->factura->enviar=1;
-        $this->factura->enviada=0;
-        $this->factura->pagada=0;
-        $this->factura->facturable=1;
-        $this->factura->facturada= false;
+        if(!$this->factura['serie']) $this->factura['serie']=substr(date('Y'),-2);
+        $this->factura['enviar']=1;
+        $this->factura['enviada']=0;
+        $this->factura['pagada']=0;
+        $this->factura['facturable']=1;
+        $this->factura['facturada']= false;
         $this->conceptos=FacturacionConcepto::where('entidad_id',$facturacion->entidad_id)->get();
 
         if($entidad->id)
-            if($this->factura->id)
-                $this->titulo= 'Prefactura ' . $this->factura->id .' de '. $this->factura->entidad->entidad;
+            if($this->factura['id'])
+                $this->titulo= 'Prefactura ' . $this->factura['id'] .' de '. $facturacion->entidad->entidad;
             else
-                $this->titulo= 'Nueva Prefactura para '. $this->factura->entidad->entidad;
+                $this->titulo= 'Nueva Prefactura para '. $facturacion->entidad->entidad;
         else
             $this->titulo= 'Nueva Prefactura';
     }
 
     public function render(){
+        $facturaModel = ($this->factura['id'] ?? null) ? Facturacion::find($this->factura['id']) : new Facturacion();
+        $entidadSeleccionada = ($this->factura['entidad_id'] ?? null) ? Entidad::find($this->factura['entidad_id']) : null;
+
         $entidades=Entidad::where('estado','1')->where('cliente','1')->where('facturar','1')->orderBy('entidad')->get();
         $pagos=MetodoPago::all();
-        return view('livewire.facturacion.prefactura',compact('entidades','pagos',));
+        return view('livewire.facturacion.prefactura',compact('entidades','pagos','facturaModel','entidadSeleccionada'));
     }
 
 
     public function updatedFacturaFechafactura(){
 
-        if($this->factura->entidad_id ){
-            $dia = date("d", strtotime($this->factura->fechafactura));
-            $mes = date("m", strtotime($this->factura->fechafactura));
+        if($this->factura['entidad_id'] ){
+            $dia = date("d", strtotime($this->factura['fechafactura']));
+            $mes = date("m", strtotime($this->factura['fechafactura']));
             //miro si la fecha me obliga a pasar de mes
             if($this->ent->diavencimiento<$dia)
                 $mes=$mes+1;
-            $anyo = date("Y", strtotime($this->factura->fechafactura));
-            $this->factura->fechavencimiento=$this->ent->diavencimiento.'-'.$mes.'-'.$anyo;
+            $anyo = date("Y", strtotime($this->factura['fechafactura']));
+            $this->factura['fechavencimiento']=$this->ent->diavencimiento.'-'.$mes.'-'.$anyo;
         }
     }
 
     public function updatedFacturaEntidadId()
     {
-        $this->conceptos=FacturacionConcepto::where('entidad_id',$this->factura->entidad_id)->get();
-        $entidad=Entidad::find($this->factura->entidad_id);
+        $this->conceptos=FacturacionConcepto::where('entidad_id',$this->factura['entidad_id'])->get();
+        $entidad=Entidad::find($this->factura['entidad_id']);
         $mes = date("m", strtotime(date("d-m-Y")));
         $anyo = date("Y", strtotime(date("d-m-Y")));
-        if(!$this->factura->fechafactura){
-            $this->factura->fechafactura=$entidad->diafactura.'-'.$mes.'-'.$anyo;
-            $this->factura->fechavencimiento=$entidad->diavencimiento.'-'.$mes.'-'.$anyo;
+        if(!$this->factura['fechafactura']){
+            $this->factura['fechafactura']=$entidad->diafactura.'-'.$mes.'-'.$anyo;
+            $this->factura['fechavencimiento']=$entidad->diavencimiento.'-'.$mes.'-'.$anyo;
         }
-        if(!$this->factura->metodopago_id)
-            $this->factura->metodopago_id=$entidad->metodopago_id;
-        if(!$this->factura->refcliente)
-            $this->factura->refcliente=$entidad->refcliente;
-        if(!$this->factura->enviar)
-            $this->factura->enviar=$entidad->enviar;
+        if(!$this->factura['metodopago_id'])
+            $this->factura['metodopago_id']=$entidad->metodopago_id;
+        if(!$this->factura['refcliente'])
+            $this->factura['refcliente']=$entidad->refcliente;
+        if(!$this->factura['enviar'])
+            $this->factura['enviar']=$entidad->enviar;
     }
 
     public function save(){
         $this->validate();
-        $i=$this->factura->id;
+        $i=$this->factura['id'];
         $fac=Facturacion::updateOrCreate([
             'id'=>$i
             ],
             [
-                'numfactura'=>$this->factura->numfactura,
-                'serie'=>$this->factura->serie,
-                'entidad_id'=>$this->factura->entidad_id,
-                'fechafactura'=>$this->factura->fechafactura,
-                'fechavencimiento'=>$this->factura->fechavencimiento,
-                'metodopago_id'=>$this->factura->metodopago_id,
-                'refcliente'=>$this->factura->refcliente,
-                'mail'=>$this->factura->mail,
-                'enviar'=>$this->factura->enviar,
-                'enviada'=>$this->factura->enviada,
-                'pagada'=>$this->factura->pagada,
-                'facturada'=>$this->factura->facturada,
-                'facturable'=>$this->factura->facturable,
-                'asiento'=>$this->factura->asiento,
-                'fechaasiento'=>$this->factura->fechaasiento,
-                'observaciones'=>$this->factura->observaciones,
-                'notas'=>$this->factura->notas,
+                'numfactura'=>$this->factura['numfactura'],
+                'serie'=>$this->factura['serie'],
+                'entidad_id'=>$this->factura['entidad_id'],
+                'fechafactura'=>$this->factura['fechafactura'],
+                'fechavencimiento'=>$this->factura['fechavencimiento'],
+                'metodopago_id'=>$this->factura['metodopago_id'],
+                'refcliente'=>$this->factura['refcliente'],
+                'mail'=>$this->factura['mail'],
+                'enviar'=>$this->factura['enviar'],
+                'enviada'=>$this->factura['enviada'],
+                'pagada'=>$this->factura['pagada'],
+                'facturada'=>$this->factura['facturada'],
+                'facturable'=>$this->factura['facturable'],
+                'asiento'=>$this->factura['asiento'],
+                'fechaasiento'=>$this->factura['fechaasiento'],
+                'observaciones'=>$this->factura['observaciones'],
+                'notas'=>$this->factura['notas'],
             ]
         );
         $this->redirect( route('facturacion.editprefactura',$fac) );
     }
 
     public function agregarconcepto(FacturacionConcepto $concepto){
-        if($this->factura->id){
+        if($this->factura['id']){
             $con=new FacturaConceptoStoreAction;
-            $c=$con->execute($this->factura,$concepto);
-            $this->emit('detallerefresh');
+            $c=$con->execute(Facturacion::find($this->factura['id']),$concepto);
+            $this->dispatch('detallerefresh');
         }else{
-            $this->dispatchBrowserEvent('notifyred', 'Debes crear la Pre-factura primero');
+            $this->dispatch('notifyred', 'Debes crear la Pre-factura primero');
         }
     }
 
@@ -163,10 +170,10 @@ class Prefactura extends Component
 
     public function inicializaPrefactura(Entidad $entidad)
     {
-        $this->factura->entidad_id=$entidad->id;
-        if(!$this->factura->metodopago_id) $this->factura->metodopago_id=$entidad->metodopago_id;
-        if(!$this->factura->mail) $this->factura->mail=$entidad->emailadm;
-        if(!$this->factura->refcliente) $this->factura->refcliente=$entidad->referenciacliente;
+        $this->factura['entidad_id']=$entidad->id;
+        if(!$this->factura['metodopago_id']) $this->factura['metodopago_id']=$entidad->metodopago_id;
+        if(!$this->factura['mail']) $this->factura['mail']=$entidad->emailadm;
+        if(!$this->factura['refcliente']) $this->factura['refcliente']=$entidad->referenciacliente;
     }
 
     public function delete($facturacionId)
@@ -174,7 +181,7 @@ class Prefactura extends Component
         $facturaBorrar = Facturacion::find($facturacionId);
         if ($facturaBorrar) {
             $facturaBorrar->delete();
-            $this->dispatchBrowserEvent('notify', 'La factura ha sido eliminada!');
+            $this->dispatch('notify', 'La factura ha sido eliminada!');
         }
     }
 }

@@ -1,6 +1,6 @@
 <div class="">
-    @if($factura->entidad && $factura->numfactura)
-        @livewire('menu',['entidad'=>$factura->entidad,'ruta'=>$ruta],key($factura->entidad->id))
+    @if($facturaModel->entidad && $factura['numfactura'])
+        @livewire('menu',['entidad'=>$facturaModel->entidad,'ruta'=>$ruta],key($facturaModel->entidad->id))
     @endif
 
     <div class="flex justify-between mx-5 mt-2">
@@ -13,7 +13,7 @@
             </div>
             <div class="">
                 @if($existe=='1')
-                    <a href = '{{asset('storage/'.$factura->rutafichero)}}'  target='_blank'><x-icon.pdf class="w-6 text-gray-400" title="PDF"/></a>
+                    <a href = '{{asset('storage/'.$factura['rutafichero'])}}'  target='_blank'><x-icon.pdf class="w-6 text-gray-400" title="PDF"/></a>
                 @else
                     <x-icon.eye-slash class="mt-1 text-red-500 w-7" title="No hay pdf"></x-icon.eye-slash>
                 @endif
@@ -37,8 +37,8 @@
                     <div class="flex flex-col mx-2 space-y-2 md:space-y-0 md:flex-row md:space-x-1">
                         <div class="w-3/12 form-item">
                             <x-jet-label for="entidad_id">{{ __('Entidad') }} </x-jet-label>
-                            @if($factura->entidad_id)
-                                <x-input.text class="w-full py-1.5 text-sm" value="{{ $factura->entidad->entidad }}" disabled/>
+                            @if($factura['entidad_id'])
+                                <x-input.text class="w-full py-1.5 text-sm" value="{{ $entidadSeleccionada->entidad ?? '' }}" disabled/>
                             @else
                                 <x-select wire:model.lazy="factura.entidad_id" selectname="entidad_id" class="w-full" disabled="{{ $bloqueado }}">
                                     <option value="">--Selecciona--</option>
@@ -125,7 +125,7 @@
                         </div>
                         <div class="flex-auto pb-3 form-item">
                             <label for="contabilizada" title="Contabilizada"><x-icon.sage/></label>
-                            <input type="checkbox" {{ $factura->contabilizada[1]=="No" ? '' : 'checked' }} class="mx-auto"/>
+                            <input type="checkbox" {{ empty($factura['asiento']) ? '' : 'checked' }} class="mx-auto"/>
                         </div>
                         <div class="flex-auto pb-3 form-item">
                             <label for="facturable" title="Facturable"><x-icon.euro/></label>
@@ -147,7 +147,7 @@
                 </div>
             </div>
             <div class="flex mt-2 ml-4 space-x-4">
-                @if($factura->facturada==False)
+                @if($factura['facturada']==False)
                     <div class="space-x-3">
                         <x-jet-button class="bg-blue-600">{{ __('Guardar') }}</x-jet-button>
                     </div>
@@ -161,7 +161,7 @@
 
     <hr class="my-2">
 
-    @livewire('facturacion.factura-detalle',['facturacion'=>$factura,'showcrear'=>$factura->facturada],key($factura->id))
+    @livewire('facturacion.factura-detalle',['facturacion'=>$factura,'showcrear'=>$factura['facturada']],key($factura['id']))
 
 </div>
 

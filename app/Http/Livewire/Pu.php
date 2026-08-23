@@ -13,7 +13,8 @@ class Pu extends Component
     public $showEditModal = false;
     public $showDeleteModal = false;
     public $ruta='entidad.pu';
-    public ModelPu $editing;
+    public $editing = [];
+    public $editingId = null;
 
     public function rules() {
         return [
@@ -52,31 +53,35 @@ class Pu extends Component
 
 
     public function makeBlankPu(){
-        return ModelPu::make([
+        $this->editingId = null;
+
+        return [
             'destino' => '',
             'url' => '',
             'us' => '',
             'us2' => '',
             'ps' => '',
             'observaciones' => '',
-        ]);
+        ];
     }
 
     public function create(){
-        if ($this->editing->getKey()) $this->editing = $this->makeBlankPu();
+        if ($this->editingId) $this->editing = $this->makeBlankPu();
         $this->showEditModal = true;
     }
 
     public function edit(ModelPu $pu){
-        if ($this->editing->isNot($pu)) $this->editing = $pu;
+        if ($this->editingId !== $pu->id) {
+            $this->editing = $pu->only(['entidad_id', 'destino', 'url', 'us', 'us2', 'ps', 'observaciones']);
+            $this->editingId = $pu->id;
+        }
         $this->showEditModal = true;
     }
 
     public function save(){
-        // dd('lego');
         $this->validate();
-        $this->editing->entidad_id=$this->entidad->id;
-        $this->editing->save();
+        $this->editing['entidad_id'] = $this->entidad->id;
+        ModelPu::updateOrCreate(['id' => $this->editingId], $this->editing);
         $this->showEditModal = false;
     }
 
@@ -86,7 +91,7 @@ class Pu extends Component
         if ($pu) {
             $pu->delete();
             // session()->flash('message', $entidad->entidad.' eliminado!');
-            $this->dispatchBrowserEvent('notify', 'La Pu ha sido eliminada!');
+            $this->dispatch('notify', 'La Pu ha sido eliminada!');
         }
     }
 

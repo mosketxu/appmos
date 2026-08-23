@@ -29,7 +29,7 @@ class ConceptoDetalles extends Component{
         if ($borrar) {
             $borrar->delete();
             // Facturacion::actualizaimportes($this->detalle->facturacion_id);
-            $this->dispatchBrowserEvent('notify', 'Concepto eliminado!');
+            $this->dispatch('notify', 'Concepto eliminado!');
         }
 
     }

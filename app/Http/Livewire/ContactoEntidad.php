@@ -52,7 +52,7 @@ class ContactoEntidad extends Component
                 'comentarios'=>$this->comentario,
                 // ''
             ]);
-            $this->dispatchBrowserEvent('notify', 'Contacto añadido con éxito');
+            $this->dispatch('notify', 'Contacto añadido con éxito');
 
             $this->reset('contacto');
             $this->reset('departamento');
@@ -67,7 +67,7 @@ class ContactoEntidad extends Component
 
         if ($contactoBorrar) {
             $contactoBorrar->delete();
-            $this->dispatchBrowserEvent('notify', 'El contacto '.$e->entidad.'ha sido eliminado!');
+            $this->dispatch('notify', 'El contacto '.$e->entidad.'ha sido eliminado!');
         }
     }
 
