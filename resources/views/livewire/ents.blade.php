@@ -51,14 +51,14 @@
             {{-- tabla entidades --}}
             <div class="flex w-full mt-1 bg-blue-100 rounded-t-md">
                 <div class="hidden pl-2 md:w-10 md:flex">{{ __('Fav') }} </div>
-                <div class="w-6/12 pl-2 md:w-3/12 ">{{ __('Entidad') }}</div>
-                <div class="w-1/12 md:w-1/12">{{ __('Nif') }} </div>
+                <div class="w-7/12 pl-2 md:w-3/12 ">{{ __('Entidad') }}</div>
+                <div class="hidden md:block md:w-1/12">{{ __('Nif') }} </div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('Facturar') }}</div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('Forma Pago') }}</div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('C.Impuestos') }}</div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('C.Fact.') }}</div>
                 <div class="hidden md:w-1/12 md:flex">{{ __('Estado') }}</div>
-                <div class="w-6/12 md:w-2/12"></div>
+                <div class="w-5/12 md:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
             <div class="flex w-full py-0 space-x-1 space-y-1 text-sm font-thin text-gray-500 truncate" wire:loading.class.delay="opacity-50">
@@ -71,10 +71,10 @@
                         @endif
                     </span>
                 </div>
-                <div class="w-6/12 md:w-3/12">
+                <div class="w-7/12 md:w-3/12">
                     <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
-                <div class="w-1/12 p-1 m-1 md:w-1/12">
+                <div class="hidden p-1 m-1 md:block md:w-1/12">
                     <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
                 <div class="hidden md:w-1/12 md:flex">
@@ -97,8 +97,8 @@
                         {{ $entidad->status_color[1] }}
                     </span>
                 </div>
-                <div class="w-6/12 md:w-2/12">
-                    <div class="flex items-center justify-center space-x-3">
+                <div class="w-5/12 md:w-2/12">
+                    <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 md:flex-nowrap md:space-x-3">
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
                         <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
