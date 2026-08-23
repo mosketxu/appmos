@@ -138,9 +138,9 @@ class Prefactura extends Component
         if($this->factura->id){
             $con=new FacturaConceptoStoreAction;
             $c=$con->execute($this->factura,$concepto);
-            $this->emit('detallerefresh');
+            $this->dispatch('detallerefresh');
         }else{
-            $this->dispatchBrowserEvent('notifyred', 'Debes crear la Pre-factura primero');
+            $this->dispatch('notifyred', 'Debes crear la Pre-factura primero');
         }
     }
 
@@ -174,7 +174,7 @@ class Prefactura extends Component
         $facturaBorrar = Facturacion::find($facturacionId);
         if ($facturaBorrar) {
             $facturaBorrar->delete();
-            $this->dispatchBrowserEvent('notify', 'La factura ha sido eliminada!');
+            $this->dispatch('notify', 'La factura ha sido eliminada!');
         }
     }
 }

@@ -127,9 +127,9 @@
                             <select wire:model.defer="editing.ciclocorrespondiente"
                                 class="block w-full p-2 transition duration-150 border border-blue-300 rounded-lg form-input hover:border-blue-300 focus:border-blue-300 active:border-blue-300'" >
                                 <option value="">-- choose --</option>
-                                <option value="1"  {{ $editing->ciclocorrespondiente=='1' ? 'selected' : '' }}  >Anterior</option>
-                                <option value="0" {{ $editing->ciclocorrespondiente=='0' ? 'selected' : '' }} >Corriente</option>
-                                <option value="2" {{ $editing->ciclocorrespondiente=='2' ? 'selected' : '' }} >Ninguno</option>
+                                <option value="1"  {{ $editing['ciclocorrespondiente']=='1' ? 'selected' : '' }}  >Anterior</option>
+                                <option value="0" {{ $editing['ciclocorrespondiente']=='0' ? 'selected' : '' }} >Corriente</option>
+                                <option value="2" {{ $editing['ciclocorrespondiente']=='2' ? 'selected' : '' }} >Ninguno</option>
                             </select>
                             @error('editing.ciclocorrespondiente') <span class="text-red-500">{{ $message }}</span>@enderror
                         </div>

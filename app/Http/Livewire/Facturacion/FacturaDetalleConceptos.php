@@ -113,7 +113,7 @@ class FacturaDetalleConceptos extends Component
 
         if ($borrar) {
             $borrar->delete();
-            $this->dispatchBrowserEvent('notify', 'Concepto eliminado!');
+            $this->dispatch('notify', 'Concepto eliminado!');
 
             $factura=Facturacion::find($this->detalle->facturacion_id);
 

@@ -69,7 +69,7 @@ class FacturaDetalle extends Component
 
     public function funshowdetalle(){
         $this->showcrear=true;
-        $this->emit('detallerefresh');
+        $this->dispatch('detallerefresh');
     }
 
     public function editDetalle($detalleIndex){
@@ -109,7 +109,7 @@ class FacturaDetalle extends Component
         $this->editedDetalleField = null;
         $f=Facturacion::find($p->facturacion_id);
         if($f->numerofactura) $f->imprimirfactura();
-        $this->emit('detallerefresh');
+        $this->dispatch('detallerefresh');
     }
 
     public function delete($facturadetalleId)
@@ -121,7 +121,7 @@ class FacturaDetalle extends Component
             $f=Facturacion::find($facturadetalleBorrar->facturacion_id);
             if($f->numfactura) $f->imprimirfactura();
 
-            $this->dispatchBrowserEvent('notify', 'Detalle de factura eliminado!');
+            $this->dispatch('notify', 'Detalle de factura eliminado!');
         }
     }
 

@@ -144,7 +144,7 @@ class Prefacturas extends Component
             echo $this->selectedRowsQuery->toCsv();
         },'prefacturas.csv');
 
-        $this->dispatchBrowserEvent('notify', 'CSV Prefacturas descargado!');
+        $this->dispatch('notify', 'CSV Prefacturas descargado!');
     }
 
     public function exportXls(){
@@ -182,7 +182,7 @@ class Prefacturas extends Component
         $this->selectedRowsQuery->delete();
         $this->showDeleteModal = false;
 
-        $this->dispatchBrowserEvent('notify', $deleteCount . ' Prefacturas eliminadas!');
+        $this->dispatch('notify', $deleteCount . ' Prefacturas eliminadas!');
     }
 
     public function delete($facturacionId){
@@ -190,7 +190,7 @@ class Prefacturas extends Component
         if ($facturacion) {
             $facturacion->delete();
             // session()->flash('message', $facturacion->entidad.' eliminado!');
-            $this->dispatchBrowserEvent('notify', 'La línea de pre-factura: '.$facturacion->id.'-'.$facturacion->numfactura.' ha sido eliminada!');
+            $this->dispatch('notify', 'La línea de pre-factura: '.$facturacion->id.'-'.$facturacion->numfactura.' ha sido eliminada!');
         }
     }
 }

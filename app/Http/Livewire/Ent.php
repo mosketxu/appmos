@@ -69,7 +69,11 @@ class Ent extends Component
 
     public function mount(Entidad $entidad, Entidad $contacto,$ruta)
     {
-        $this->entidad=$entidad;
+        $this->entidad=array_merge(
+            array_fill_keys($entidad->getFillable(), null),
+            ['id' => $entidad->id],
+            $entidad->toArray()
+        );
         $this->contacto=$contacto;
         $this->ruta=$ruta;
     }
@@ -79,95 +83,97 @@ class Ent extends Component
         $contacto=$this->contacto;
         $this->contactoId=$contacto->id;
 
+        $entidadModel = ($this->entidad['id'] ?? null) ? Entidad::find($this->entidad['id']) : new Entidad();
+
         $metodopagos=MetodoPago::all();
         $sumas=Suma::all();
         $provincias=Provincia::all();
         $paises=Pais::all();
-        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises'));
+        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises','entidadModel'));
     }
 
     public function save()
     {
-        if(!$this->entidad->facturar) $this->entidad->facturar=false;
-        if(!$this->entidad->enviar) $this->entidad->enviar=false;
-        if(!$this->entidad->iva) $this->entidad->iva='0.21';
-        if($this->entidad->id){
-            $i=$this->entidad->id;
+        if(!($this->entidad['facturar'] ?? null)) $this->entidad['facturar']=false;
+        if(!($this->entidad['enviar'] ?? null)) $this->entidad['enviar']=false;
+        if(!($this->entidad['iva'] ?? null)) $this->entidad['iva']='0.21';
+        if($this->entidad['id'] ?? null){
+            $i=$this->entidad['id'];
             $this->validate([
                 'entidad.entidad'=>[
                     'required',
-                    Rule::unique('entidades','entidad')->ignore($this->entidad->id)],
+                    Rule::unique('entidades','entidad')->ignore($this->entidad['id'])],
                 'entidad.nif'=>['nullable',
                     'max:12',
-                    Rule::unique('entidades','nif')->ignore($this->entidad->id)],
+                    Rule::unique('entidades','nif')->ignore($this->entidad['id'])],
                 ]
             );
-            $mensaje=$this->entidad->entidad . " actualizada satisfactoriamente";
+            $mensaje=$this->entidad['entidad'] . " actualizada satisfactoriamente";
         }else{
             $this->validate([
                 'entidad.entidad'=>'required|unique:entidades,entidad',
                     'entidad.nif'=>'nullable|max:12|unique:entidades,nif',
                 ]
             );
-            $i=$this->entidad->id;
-            $mensaje=$this->entidad->entidad . " creada satisfactoriamente";
+            $i=$this->entidad['id'] ?? null;
+            $mensaje=$this->entidad['entidad'] . " creada satisfactoriamente";
         }
 
         $ent=Entidad::updateOrCreate([
             'id'=>$i
             ],
             [
-            'entidad'=>$this->entidad->entidad,
-            'nif'=>$this->entidad->nif,
-            'direccion'=>$this->entidad->direccion,
-            'codpostal'=>$this->entidad->codpostal,
-            'localidad'=>$this->entidad->localidad,
-            'provincia_id'=>$this->entidad->provincia_id,
-            'pais_id'=>$this->entidad->pais_id,
-            'tfno'=>$this->entidad->tfno,
-            'emailgral'=>$this->entidad->emailgral,
-            'emailadm'=>$this->entidad->emailadm,
-            'web'=>$this->entidad->web,
-            'cliente'=>$this->entidad->cliente,
-            'cicloimpuesto_id'=>$this->entidad->cicloimpuesto_id,
-            'ciclofacturacion_id'=>$this->entidad->ciclofacturacion_id,
-            'metodopago_id'=>$this->entidad->metodopago_id,
-            'estado'=>$this->entidad->estado,
-            'facturar'=>$this->entidad->facturar,
-            'enviar'=>$this->entidad->enviar,
-            'idioma'=>$this->entidad->idioma,
-            'banco1'=>$this->entidad->banco1,
-            'banco2'=>$this->entidad->banco2,
-            'banco3'=>$this->entidad->banco3,
-            'iban1'=>$this->entidad->iban1,
-            'iban2'=>$this->entidad->iban2,
-            'iban3'=>$this->entidad->iban3,
-            'diafactura'=>$this->entidad->diafactura,
-            'diavencimiento'=>$this->entidad->diavencimiento,
-            'referenciacliente'=>$this->entidad->referenciacliente,
-            'tipoiva'=>$this->entidad->tipoiva,
-            'suma_id'=>$this->entidad->suma_id,
-            'porcentajemarta'=>$this->entidad->porcentajemarta,
-            'porcentajesusana'=>$this->entidad->porcentajesusana,
-            'favorito'=>$this->entidad->favorito,
-            'observaciones'=>$this->entidad->observaciones,
-            'cuentacontable'=>$this->entidad->cuentacontable,
+            'entidad'=>$this->entidad['entidad'],
+            'nif'=>$this->entidad['nif'],
+            'direccion'=>$this->entidad['direccion'],
+            'codpostal'=>$this->entidad['codpostal'],
+            'localidad'=>$this->entidad['localidad'],
+            'provincia_id'=>$this->entidad['provincia_id'],
+            'pais_id'=>$this->entidad['pais_id'],
+            'tfno'=>$this->entidad['tfno'],
+            'emailgral'=>$this->entidad['emailgral'],
+            'emailadm'=>$this->entidad['emailadm'],
+            'web'=>$this->entidad['web'],
+            'cliente'=>$this->entidad['cliente'],
+            'cicloimpuesto_id'=>$this->entidad['cicloimpuesto_id'],
+            'ciclofacturacion_id'=>$this->entidad['ciclofacturacion_id'],
+            'metodopago_id'=>$this->entidad['metodopago_id'],
+            'estado'=>$this->entidad['estado'],
+            'facturar'=>$this->entidad['facturar'],
+            'enviar'=>$this->entidad['enviar'],
+            'idioma'=>$this->entidad['idioma'],
+            'banco1'=>$this->entidad['banco1'],
+            'banco2'=>$this->entidad['banco2'],
+            'banco3'=>$this->entidad['banco3'],
+            'iban1'=>$this->entidad['iban1'],
+            'iban2'=>$this->entidad['iban2'],
+            'iban3'=>$this->entidad['iban3'],
+            'diafactura'=>$this->entidad['diafactura'],
+            'diavencimiento'=>$this->entidad['diavencimiento'],
+            'referenciacliente'=>$this->entidad['referenciacliente'],
+            'tipoiva'=>$this->entidad['tipoiva'],
+            'suma_id'=>$this->entidad['suma_id'],
+            'porcentajemarta'=>$this->entidad['porcentajemarta'],
+            'porcentajesusana'=>$this->entidad['porcentajesusana'],
+            'favorito'=>$this->entidad['favorito'],
+            'observaciones'=>$this->entidad['observaciones'],
+            'cuentacontable'=>$this->entidad['cuentacontable'],
             ]
         );
-        if(!$this->entidad->id){
-            $this->entidad->id=$ent->id;
+        if(!($this->entidad['id'] ?? null)){
+            $this->entidad['id']=$ent->id;
         }
 
         if($this->contactoId){
             ContactoEntidad::create([
-                 'contacto_id'=>$this->entidad->id,
+                 'contacto_id'=>$this->entidad['id'],
                  'entidad_id'=>$this->contactoId,
                  'departamento'=>$this->departamento,
                  'comentarios'=>$this->comentario,
             ]);
-            $this->dispatchBrowserEvent('notify', 'Contacto añadido con éxito');
+            $this->dispatch('notify', 'Contacto añadido con éxito');
         }
-        $this->emitSelf('notify-saved');
+        $this->dispatch('notify-saved');
     }
 
 

@@ -9,7 +9,7 @@ class Pu extends Model
 {
     use HasFactory;
 
-    protected $fillable=['destino','url','us','us2','ps','observaciones'];
+    protected $fillable=['entidad_id','destino','url','us','us2','ps','observaciones'];
 
     public function entidad()
     {

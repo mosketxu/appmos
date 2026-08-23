@@ -10,7 +10,8 @@ class FacturacionConceptos extends Component
     public $entidad;
     public $showEditModal = false;
     public $showDeleteModal = false;
-    public FacturacionConcepto $editing;
+    public $editing = [];
+    public $editingId = null;
     public $ruta='entidad.facturacionconceptos';
     public $detalleid;
     public $concepto;
@@ -44,25 +45,25 @@ class FacturacionConceptos extends Component
     }
 
     public function makeBlank(){
-        return FacturacionConcepto::make([
+        $this->editingId = null;
+
+        return [
             'concepto' => '',
-            // 'importe' => '0',
             'ciclo_id' => '',
             'ciclocorrespondiente' => '',
-            // 'agrupacion' => '0',
-        ]);
+        ];
     }
 
     public function create(){
-        // dd('sdf');
-        if ($this->editing->getKey()) $this->editing = $this->makeBlank();
+        if ($this->editingId) $this->editing = $this->makeBlank();
         $this->showEditModal = true;
     }
 
     public function edit(FacturacionConceptodetalle $detalle){
         $concepto=FacturacionConcepto::find($detalle->facturacionconcepto_id);
-        if ($this->editing->isNot($concepto)){
-            $this->editing = $concepto;
+        if ($this->editingId !== $concepto->id){
+            $this->editing = $concepto->only(['concepto', 'ciclo_id', 'ciclocorrespondiente']);
+            $this->editingId = $concepto->id;
             $this->detalleid = $detalle->id;
             $this->concepto = $detalle->concepto;
             $this->importe = $detalle->importe;
@@ -74,9 +75,13 @@ class FacturacionConceptos extends Component
     public function save(){
         $this->validate();
 
-        $this->editing->entidad_id=$this->entidad->id;
-        if($this->editing->id){
-            $this->editing->save();
+        if($this->editingId){
+            FacturacionConcepto::whereKey($this->editingId)->update([
+                'entidad_id' => $this->entidad->id,
+                'ciclo_id' => $this->editing['ciclo_id'],
+                'concepto' => $this->editing['concepto'],
+                'ciclocorrespondiente' => $this->editing['ciclocorrespondiente'],
+            ]);
             $detalle=FacturacionConceptodetalle::find($this->detalleid);
             $detalle->concepto=$this->concepto;
             $detalle->importe=$this->importe;
@@ -85,10 +90,9 @@ class FacturacionConceptos extends Component
         }else{
             $f=FacturacionConcepto::create([
                 'entidad_id'=>$this->entidad->id,
-                'ciclo_id'=>$this->editing->ciclo_id,
-                'concepto'=>$this->editing->concepto,
-                'ciclocorrespondiente'=>$this->editing->ciclocorrespondiente,
-                // 'importe'=>'0',
+                'ciclo_id'=>$this->editing['ciclo_id'],
+                'concepto'=>$this->editing['concepto'],
+                'ciclocorrespondiente'=>$this->editing['ciclocorrespondiente'],
                 ]);
             $d=FacturacionConceptodetalle::create([
                 'facturacionconcepto_id'=>$f->id,
@@ -105,7 +109,7 @@ class FacturacionConceptos extends Component
         $concepto = FacturacionConcepto::find($conceptoId);
         if ($concepto) {
             $concepto->delete();
-            $this->dispatchBrowserEvent('notify', 'El concepto ha sido eliminado!');
+            $this->dispatch('notify', 'El concepto ha sido eliminado!');
         }
     }
 }
