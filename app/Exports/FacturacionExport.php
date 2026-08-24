@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Facturacion;
+use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -26,7 +27,7 @@ class FacturacionExport implements FromCollection,WithHeadings{
     /**
     * @return \Illuminate\Support\Collection
     */
-    public function collection()
+    public function collection(): Enumerable
     {
         return $this->facturacion;
     }

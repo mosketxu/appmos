@@ -19,7 +19,7 @@ class FacturacionImport implements ToModel
     *
     * @return \Illuminate\Database\Eloquent\Model|null
     */
-    public function model(array $row)
+    public function model(array $row): \App\Models\Facturacion
     {
         // dd($row[4]);
         return new Facturacion([

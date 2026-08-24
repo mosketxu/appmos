@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Facturacion;
+use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 
 class RemesaExport implements FromCollection
@@ -17,7 +18,7 @@ class RemesaExport implements FromCollection
     /**
     * @return \Illuminate\Support\Collection
     */
-    public function collection()
+    public function collection(): Enumerable
     {
         return $this->remesa;
     }

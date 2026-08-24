@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Illuminate\Support\Enumerable;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class PrefacturasExport implements FromCollection,WithHeadings{
@@ -29,7 +30,7 @@ class PrefacturasExport implements FromCollection,WithHeadings{
     /**
     * @return \Illuminate\Support\Collection
     */
-    public function collection()
+    public function collection(): Enumerable
     {
         return $this->prefacturas;
     }
