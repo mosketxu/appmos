@@ -59,7 +59,9 @@ return [
             'strict' => false,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // PHP 8.5 deprecates the driver-specific PDO::MYSQL_ATTR_* constants
+                // in favour of the Pdo\Mysql enum-style constants (available since PHP 8.4).
+                Pdo\Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 
