@@ -15,6 +15,7 @@
                     <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                         {{ __('Entidades') }}
                     </x-jet-nav-link>
+                    {{-- Menú Facturación oculto a petición
                     <div class="relative mt-3 ">
                         <x-jet-dropdown align="center" width="w-36" >
                             <x-slot name="trigger">
@@ -39,6 +40,7 @@
                             </x-slot>
                         </x-jet-dropdown>
                     </div>
+                    --}}
                 </div>
             </div>
 
@@ -149,9 +151,11 @@
             <x-jet-responsive-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                 {{ __('Entidades') }}
             </x-jet-responsive-nav-link>
+            {{-- Menú Facturación oculto a petición
             <x-jet-responsive-nav-link href="{{ route('facturacion.index') }}" :active="request()->routeIs('facturacion.index')">
                 {{ __('Facturación') }}
             </x-jet-responsive-nav-link>
+            --}}
         </div>
 
         <!-- Responsive Settings Options -->

@@ -50,19 +50,19 @@
             </div>
             {{-- tabla entidades --}}
             <div class="flex w-full mt-1 bg-blue-100 rounded-t-md">
-                <div class="hidden pl-2 md:w-10 md:flex">{{ __('Fav') }} </div>
-                <div class="w-7/12 pl-2 md:w-3/12 ">{{ __('Entidad') }}</div>
-                <div class="hidden md:block md:w-1/12">{{ __('Nif') }} </div>
-                <div class="hidden md:w-1/12 md:flex">{{ __('Facturar') }}</div>
-                <div class="hidden md:w-1/12 md:flex">{{ __('Forma Pago') }}</div>
-                <div class="hidden md:w-1/12 md:flex">{{ __('C.Impuestos') }}</div>
-                <div class="hidden md:w-1/12 md:flex">{{ __('C.Fact.') }}</div>
-                <div class="hidden md:w-1/12 md:flex">{{ __('Estado') }}</div>
-                <div class="w-5/12 md:w-2/12"></div>
+                <div class="hidden pl-2 lg:w-10 lg:flex">{{ __('Fav') }} </div>
+                <div class="w-7/12 pl-2 lg:w-3/12 ">{{ __('Entidad') }}</div>
+                <div class="hidden lg:block lg:w-1/12">{{ __('Nif') }} </div>
+                <div class="hidden lg:w-1/12 lg:flex">{{ __('Facturar') }}</div>
+                <div class="hidden lg:w-1/12 lg:flex">{{ __('Forma Pago') }}</div>
+                <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Impuestos') }}</div>
+                <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Fact.') }}</div>
+                <div class="hidden lg:w-1/12 lg:flex">{{ __('Estado') }}</div>
+                <div class="w-5/12 lg:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
             <div class="flex w-full py-0 space-x-1 space-y-1 text-sm font-thin text-gray-500 truncate" wire:loading.class.delay="opacity-50">
-                <div class="items-center hidden ml-2 text-xs text-gray-200 md:w-10 md:flex">
+                <div class="items-center hidden ml-2 text-xs text-gray-200 lg:w-10 lg:flex">
                         {{-- {{ $entidad->id }} &nbsp; --}}
                         @if ($entidad->favorito)
                             <x-icon.star-solid class="text-yellow-500"></x-icon.star-solid>
@@ -71,40 +71,42 @@
                         @endif
                     </span>
                 </div>
-                <div class="w-7/12 md:w-3/12">
+                <div class="w-7/12 lg:w-3/12">
                     <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
-                <div class="hidden p-1 m-1 md:block md:w-1/12">
+                <div class="hidden p-1 m-1 lg:block lg:w-1/12">
                     <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
-                <div class="hidden md:w-1/12 md:flex">
+                <div class="hidden lg:w-1/12 lg:flex">
                     @if($entidad->facturar=="1")
                         <span class="px-2.5 py-0.5 font-bold text-green-400">&#10003;</span>
                     @endif
                 </div>
-                <div class="hidden md:w-1/12 md:flex">
+                <div class="hidden lg:w-1/12 lg:flex">
                     <span class="text-sm text-gray-500 ">{{$entidad->metodopago->metodopagocorto ?? '-'}}</span>
                 </div>
-                <div class="hidden md:w-1/12 md:flex">
+                <div class="hidden lg:w-1/12 lg:flex">
                     <span class="text-sm text-gray-500 ">{{$entidad->cicloimp->ciclo ?? '-'}}</span>
                 </div>
 
-                <div class="hidden md:w-1/12 md:flex">
+                <div class="hidden lg:w-1/12 lg:flex">
                     <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
                 </div>
-                <div class="hidden md:w-1/12 md:flex">
+                <div class="hidden lg:w-1/12 lg:flex">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $entidad->status_color[0] }}-100 text-green-800">
                         {{ $entidad->status_color[1] }}
                     </span>
                 </div>
-                <div class="w-5/12 md:w-2/12">
-                    <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 md:flex-nowrap md:space-x-3">
+                <div class="w-5/12 lg:w-2/12">
+                    <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:flex-nowrap lg:space-x-3">
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
                         <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
                         <x-icon.bars-a href="{{ route('facturacionconcepto.entidad',$entidad)}}"  title="Conceptos"/>
+                        {{-- Ocultos a petición: botones Prefactura y Factura
                         <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
                         <x-icon.euro-a href="{{ route('facturacion.show',$entidad)}}"  title="Facturas"/>
+                        --}}
                         <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1"/>
                     </div>
                 </div>
