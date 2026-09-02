@@ -102,7 +102,6 @@
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
                         <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
-                        <x-icon.bars-a href="{{ route('facturacionconcepto.entidad',$entidad)}}"  title="Conceptos"/>
                         {{-- Ocultos a petición: botones Prefactura y Factura
                         <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
                         <x-icon.euro-a href="{{ route('facturacion.show',$entidad)}}"  title="Facturas"/>
