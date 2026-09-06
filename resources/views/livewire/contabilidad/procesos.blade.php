@@ -1,4 +1,7 @@
-<div class="p-4 space-y-6">
+<div class="">
+    @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.procesos'])
+
+    <div class="p-4 space-y-6">
 
     <h1 class="text-2xl font-semibold text-gray-900">Procesos de Contabilidad (Fashion IQ)</h1>
 
@@ -122,4 +125,5 @@
         <div wire:loading class="mt-2 text-sm text-yellow-400">Ejecutando…</div>
     </div>
 
+    </div>
 </div>

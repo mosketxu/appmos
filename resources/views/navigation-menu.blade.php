@@ -5,21 +5,18 @@
             <div class="flex">
                 <!-- Logo -->
                 <div class="flex items-center flex-shrink-0">
-                    <a href="{{ route('menu') }}">
+                    <a href="{{ route('entidades') }}">
                         <x-jet-application-mark class="block w-auto h-9" />
                     </a>
                 </div>
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                    <x-jet-nav-link href="{{ route('menu') }}" :active="request()->routeIs('menu')">
-                        {{ __('Menú') }}
-                    </x-jet-nav-link>
+                    {{-- <x-jet-nav-link href="{{ route('dashboard') }}" :active="request()->routeIs('dashboard')">
+                        {{ __('Dashboard') }}
+                    </x-jet-nav-link> --}}
                     <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                         {{ __('Entidades') }}
-                    </x-jet-nav-link>
-                    <x-jet-nav-link href="{{ route('contabilidad.procesos') }}" :active="request()->routeIs('contabilidad.procesos')">
-                        {{ __('Contabilidad') }}
                     </x-jet-nav-link>
                     <div class="relative mt-3 ">
                         <x-jet-dropdown align="center" width="w-36" >
@@ -106,14 +103,8 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-jet-responsive-nav-link href="{{ route('menu') }}" :active="request()->routeIs('menu')">
-                {{ __('Menú') }}
-            </x-jet-responsive-nav-link>
             <x-jet-responsive-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                 {{ __('Entidades') }}
-            </x-jet-responsive-nav-link>
-            <x-jet-responsive-nav-link href="{{ route('contabilidad.procesos') }}" :active="request()->routeIs('contabilidad.procesos')">
-                {{ __('Contabilidad') }}
             </x-jet-responsive-nav-link>
             <x-jet-responsive-nav-link href="{{ route('facturacion.index') }}" :active="request()->routeIs('facturacion.index')">
                 {{ __('Facturación') }}
