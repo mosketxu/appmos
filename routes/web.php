@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (auth()->check()) {
-        return redirect()->route('entidades');
+        return redirect()->route('menu');
     }
 
     return redirect()->route('login');
@@ -31,6 +31,19 @@ Route::get('/', function () {
 */
 
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+    // Menú general: punto de entrada con enlaces a cada apartado (se amplía
+    // aquí según se vayan creando más secciones).
+    Route::get('/menu', function () {
+        $apartados = [
+            ['label' => 'Entidades', 'href' => route('entidades'), 'descripcion' => 'Clientes, contactos y datos de facturación.'],
+            ['label' => 'Contabilidad', 'href' => route('contabilidad.procesos'), 'descripcion' => 'Procesos de Fashion IQ: Anaplan, Laboral, Monthly sales, RentasVariables.'],
+            ['label' => 'Facturación', 'href' => route('facturacion.index'), 'descripcion' => 'Facturas emitidas.'],
+            ['label' => 'Pre-Facturación', 'href' => route('facturacion.prefacturas'), 'descripcion' => 'Prefacturas pendientes de emitir.'],
+        ];
+
+        return view('menu', compact('apartados'));
+    })->name('menu');
+
     Route::get('/entidades', function () {return view('entidades');})->name('entidades');
     Route::get('/dashboard', function () {return view('entidades');})->name('dashboard');
 
