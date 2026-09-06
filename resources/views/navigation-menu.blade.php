@@ -18,6 +18,9 @@
                     <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                         {{ __('Entidades') }}
                     </x-jet-nav-link>
+                    <x-jet-nav-link href="{{ route('contabilidad.procesos') }}" :active="request()->routeIs('contabilidad.procesos')">
+                        {{ __('Contabilidad') }}
+                    </x-jet-nav-link>
                     <div class="relative mt-3 ">
                         <x-jet-dropdown align="center" width="w-36" >
                             <x-slot name="trigger">
@@ -105,6 +108,9 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-jet-responsive-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                 {{ __('Entidades') }}
+            </x-jet-responsive-nav-link>
+            <x-jet-responsive-nav-link href="{{ route('contabilidad.procesos') }}" :active="request()->routeIs('contabilidad.procesos')">
+                {{ __('Contabilidad') }}
             </x-jet-responsive-nav-link>
             <x-jet-responsive-nav-link href="{{ route('facturacion.index') }}" :active="request()->routeIs('facturacion.index')">
                 {{ __('Facturación') }}
