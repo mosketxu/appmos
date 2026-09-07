@@ -149,6 +149,17 @@ class Procesos extends Component
      */
     protected function ejecutarScript(array $args, int $timeout, string $etiqueta): void
     {
+        // Pedido explícito del usuario (2026-09-07): estos scripts solo tienen
+        // sentido en un PC con los ficheros de OneDrive de verdad (AlexMiniPC,
+        // PortalExomen...). En el VPS de producción (app-mos.com) el código se
+        // despliega igual (para que la pantalla se vea), pero bloqueado -- ver
+        // config/contabilidad.php.
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->salida .= '⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.';
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nOpción no válida. Solo ejecutable desde un terminal autorizado.");
+            return;
+        }
+
         try {
             $result = Process::path($this->scriptDir())->timeout($timeout)->run($args);
             $this->salida .= trim($result->output() . "\n" . $result->errorOutput());
