@@ -27,8 +27,8 @@ class Procesos extends Component
     public string $rvTienda = 'BCN';
     public int $rvMesInicio;
     public int $rvMesFin;
-    public bool $rvReal = false;
-    public bool $rvEnviarReal = false;
+    public bool $rvReal = true; // marcado por defecto (pedido del usuario 2026-09-07), igual que $modoReal
+    public bool $rvEnviarReal = false; // el envío de correo real sigue siendo opt-in por seguridad
     public string $rvEmailPrueba = '';
     public bool $rvCorreccion = false;
 
