@@ -28,6 +28,7 @@ class Procesos extends Component
     public int $rvMesInicio;
     public int $rvMesFin;
     public bool $rvReal = false;
+    public bool $rvEnviarReal = false;
     public string $rvEmailPrueba = '';
     public bool $rvCorreccion = false;
 
@@ -44,6 +45,27 @@ class Procesos extends Component
     }
 
     /**
+     * `node --jitless ...` en vez de `node ...`. Encontrado 2026-09-07: el
+     * servicio systemd de apache2 tiene `MemoryDenyWriteExecute=yes`
+     * (hardening por defecto de Ubuntu), que bloquea el JIT de V8 heredado
+     * por cualquier hijo de Apache -- Node moría con
+     * `ProcessSignaledException: signal "5"` (SIGTRAP) nada más arrancar en
+     * CUALQUIER script. Mismo síntoma que el aviso ya presente desde hace
+     * meses en /appmos-error.log sobre el JIT de PCRE de PHP fallando por
+     * "security restrictions". `--jitless` desactiva el JIT de V8 (solo
+     * intérprete) y evita la mprotect(PROT_EXEC) que el sandbox bloquea; para
+     * estos scripts (E/S y regex sobre ficheros pequeños, nada de bucles
+     * pesados) el coste de rendimiento es despreciable. Alternativa
+     * descartada: quitar `MemoryDenyWriteExecute` del servicio de Apache
+     * entero solo para esto debilitaría el sandbox de TODO Apache, no merece
+     * la pena.
+     */
+    protected function nodeCmd(string $script, array $rest = []): array
+    {
+        return ['node', '--jitless', $script, ...$rest];
+    }
+
+    /**
      * Orden fijo (es el orden en que se ejecutan si se marcan varios a la vez).
      */
     protected function procesos(): array
@@ -52,9 +74,9 @@ class Procesos extends Component
             'anaplan_split' => [
                 'label' => 'Anaplan · separar por canal',
                 'script' => 'sysSplit.js',
-                'soportaReal' => false,
+                'soportaReal' => true,
                 'siempreReal' => false,
-                'ayuda' => 'Genera _test_output_sysSplit_MM.xlsx. Nunca toca ficheros reales.',
+                'ayuda' => 'Real: guarda Anaplan/SyS MM Split.xlsx (backup de la versión anterior si ya existía). Prueba: _test_output_sysSplit_MM.xlsx.',
             ],
             'anaplan_consolida' => [
                 'label' => 'Anaplan · consolidar en SyS 2026',
@@ -73,9 +95,9 @@ class Procesos extends Component
             'laboral' => [
                 'label' => 'Laboral · imputación de costes',
                 'script' => 'imputacionCostes.js',
-                'soportaReal' => false,
+                'soportaReal' => true,
                 'siempreReal' => false,
-                'ayuda' => 'Genera _test_output_imputacionCostes_MM.xlsx. Nunca toca el fichero real de Laboral.',
+                'ayuda' => 'Real: escribe sobre el fichero de imputación de costes original de Laboral 2026/MM/ (con backup). Prueba: _test_output_imputacionCostes_MM.xlsx.',
             ],
             'monthly_sales' => [
                 'label' => 'Monthly sales',
@@ -111,6 +133,50 @@ class Procesos extends Component
         $this->salida = '';
     }
 
+    /**
+     * Ejecuta `$args` en `scriptDir()` y añade la salida a `$this->salida`.
+     * Pedido explícito del usuario (2026-09-07, tras toparse con una página
+     * rota tal cual porque el log de Laravel no era escribible): CUALQUIER
+     * fallo -- el proceso, el propio `report()` del error si el log también
+     * fallara, o cualquier otra excepción -- se convierte en un aviso dentro
+     * de la salida en pantalla, nunca en un error que rompa la página.
+     *
+     * `$etiqueta` identifica el proceso en el aviso modal de fin (pedido
+     * explícito 2026-09-07: "que salga una ventana avisando que ha acabado,
+     * una por cada proceso, que la tenga que cerrar yo" -- `alert()` de JS,
+     * que bloquea hasta que el usuario le da a OK, evento
+     * `proceso-terminado` escuchado en la vista).
+     */
+    protected function ejecutarScript(array $args, int $timeout, string $etiqueta): void
+    {
+        try {
+            $result = Process::path($this->scriptDir())->timeout($timeout)->run($args);
+            $this->salida .= trim($result->output() . "\n" . $result->errorOutput());
+            if ($result->successful()) {
+                $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
+            } else {
+                $this->salida .= "\n\n⚠️ El proceso terminó con código de salida " . $result->exitCode() . '.';
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código " . $result->exitCode() . "). Mira la caja de Salida para el detalle.");
+            }
+        } catch (\Throwable $e) {
+            // Pedido explícito del usuario (2026-09-07): nada de mensaje genérico --
+            // que salga tal cual (clase, mensaje, fichero:línea, comando exacto y las
+            // primeras líneas de la traza) para poder copiarlo y pegarlo aquí.
+            $this->salida .= "\n\n⚠️ EXCEPCIÓN AL EJECUTAR (cópialo tal cual):\n"
+                . get_class($e) . ': ' . $e->getMessage() . "\n"
+                . 'en ' . $e->getFile() . ':' . $e->getLine() . "\n"
+                . 'comando: ' . implode(' ', array_map(fn ($a) => "'" . $a . "'", $args)) . "\n"
+                . "traza:\n" . implode("\n", array_slice(explode("\n", $e->getTraceAsString()), 0, 8));
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nExcepción al ejecutar. Mira la caja de Salida para el detalle.");
+            try {
+                report($e);
+            } catch (\Throwable $ignored) {
+                // Si ni siquiera se puede registrar el error (p.ej. el propio log
+                // sin permisos de escritura), no debe romper la pantalla por eso.
+            }
+        }
+    }
+
     protected function ejecutarUno(string $id): void
     {
         $procesos = $this->procesos();
@@ -120,17 +186,17 @@ class Procesos extends Component
         $p = $procesos[$id];
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
 
-        $args = ['node', $p['script'], $mm];
+        $args = $this->nodeCmd($p['script'], [$mm]);
         $usaReal = $p['siempreReal'] || ($p['soportaReal'] && $this->modoReal);
         if ($p['soportaReal'] && $this->modoReal) {
             $args[] = '--real';
         }
 
         $etiquetaModo = $p['siempreReal'] ? 'SIEMPRE REAL' : ($usaReal ? 'REAL' : 'prueba');
-        $this->salida .= "\n\n===== {$p['label']} (mes {$mm}, {$etiquetaModo}) =====\n";
+        $etiqueta = "{$p['label']} (mes {$mm}, {$etiquetaModo})";
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
 
-        $result = Process::path($this->scriptDir())->timeout(180)->run($args);
-        $this->salida .= trim($result->output() . "\n" . $result->errorOutput());
+        $this->ejecutarScript($args, 180, $etiqueta);
     }
 
     // -- RentasVariables (formularios aparte) -------------------------------
@@ -138,29 +204,29 @@ class Procesos extends Component
     public function ejecutarRvCalculos(): void
     {
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
-        $args = ['node', 'calculosRentasVariables.js', $mm, '--no-open'];
+        $args = $this->nodeCmd('calculosRentasVariables.js', [$mm, '--no-open']);
         if ($this->rvReal) {
             $args[] = '--real';
         }
-        $this->salida .= "\n\n===== RentasVariables · Cálculos (mes {$mm}, " . ($this->rvReal ? 'REAL' : 'prueba') . ") =====\n";
-        $result = Process::path($this->scriptDir())->timeout(180)->run($args);
-        $this->salida .= trim($result->output() . "\n" . $result->errorOutput());
+        $etiqueta = 'RentasVariables · Cálculos (mes ' . $mm . ', ' . ($this->rvReal ? 'REAL' : 'prueba') . ')';
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->ejecutarScript($args, 180, $etiqueta);
     }
 
     public function ejecutarRvDeclaracion(): void
     {
         $mi = str_pad((string) $this->rvMesInicio, 2, '0', STR_PAD_LEFT);
         $mf = str_pad((string) $this->rvMesFin, 2, '0', STR_PAD_LEFT);
-        $args = ['node', 'rentasVariablesDeclaracion.js', $this->rvTienda, $mi];
+        $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$this->rvTienda, $mi]);
         if ($mf !== $mi) {
             $args[] = $mf;
         }
         if ($this->rvReal) {
             $args[] = '--real';
         }
-        $this->salida .= "\n\n===== RentasVariables · Declaración {$this->rvTienda} ({$mi}-{$mf}, " . ($this->rvReal ? 'REAL' : 'prueba') . ") =====\n";
-        $result = Process::path($this->scriptDir())->timeout(180)->run($args);
-        $this->salida .= trim($result->output() . "\n" . $result->errorOutput());
+        $etiqueta = "RentasVariables · Declaración {$this->rvTienda} ({$mi}-{$mf}, " . ($this->rvReal ? 'REAL' : 'prueba') . ')';
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->ejecutarScript($args, 180, $etiqueta);
     }
 
     public function ejecutarRvEnvio(): void
@@ -169,7 +235,7 @@ class Procesos extends Component
         if ($this->rvCorreccion) {
             $args[] = '--correction';
         }
-        if ($this->rvReal) {
+        if ($this->rvEnviarReal) {
             $args[] = '--real';
         } elseif ($this->rvEmailPrueba !== '') {
             $args[] = '--test';
@@ -178,9 +244,9 @@ class Procesos extends Component
             $this->salida .= "\n\n===== RentasVariables · Envío {$this->rvTienda} =====\nERROR: pon un correo de prueba o marca 'enviar de verdad'.\n";
             return;
         }
-        $this->salida .= "\n\n===== RentasVariables · Envío {$this->rvTienda} (" . ($this->rvReal ? 'REAL, a los destinatarios de verdad' : 'prueba a ' . $this->rvEmailPrueba) . ") =====\n";
-        $result = Process::path($this->scriptDir())->timeout(120)->run($args);
-        $this->salida .= trim($result->output() . "\n" . $result->errorOutput());
+        $etiqueta = "RentasVariables · Envío {$this->rvTienda} (" . ($this->rvEnviarReal ? 'REAL, a los destinatarios de verdad' : 'prueba a ' . $this->rvEmailPrueba) . ')';
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->ejecutarScript($args, 120, $etiqueta);
     }
 
     public function render()
