@@ -20,7 +20,7 @@ class Procesos extends Component
 {
     public int $mes;
     public array $marcados = [];
-    public bool $modoReal = false;
+    public bool $modoReal = true; // marcado por defecto (pedido del usuario 2026-09-07)
     public string $salida = '';
 
     // RentasVariables (formularios aparte, no encajan en el check general)
