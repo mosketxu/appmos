@@ -161,6 +161,12 @@ class Procesos extends Component
                 'soportaReal' => true,
                 'ayuda' => 'Añade el resumen (con formato #,##0.00) dentro del fichero de imputación de costes de Laboral 2026/MM/.',
             ],
+            'adyen' => [
+                'label' => 'Adyen · reparto de costes',
+                'script' => 'adyenReparto.js',
+                'soportaReal' => true,
+                'ayuda' => 'Lee la factura PDF de Adyen del mes (__Fras Recibidas FIQ 2026/MM_2026/Adyen) y reparte su coste entre las tiendas dentro del settlement_report_aggregate_...xlsx (tabla SUMIFS + cálculos).',
+            ],
         ];
     }
 

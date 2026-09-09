@@ -94,19 +94,18 @@
     </div>
 
     <div class="p-4 bg-white border rounded-lg shadow">
-        <div class="flex flex-wrap items-center mb-3 gap-x-3">
-            <h2 class="text-lg font-semibold text-gray-900">RentasVariables</h2>
-            <div class="flex items-center gap-x-2">
-                <label class="text-xs font-medium text-gray-600">Mes</label>
-                <select wire:model="rvMes" class="border-gray-300 rounded-md shadow-sm">
-                    @foreach (range(1, 12) as $m)<option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
-                </select>
-            </div>
-        </div>
-
         <div class="flex flex-wrap gap-8">
-            {{-- IZQUIERDA 35%: Cálculos + Declaración --}}
+            {{-- IZQUIERDA 35%: título + Mes + Cálculos + Declaración --}}
             <div style="flex:0 0 35%;min-width:280px">
+                <div class="flex flex-wrap items-center mb-3 gap-x-3">
+                    <h2 class="text-lg font-semibold text-gray-900">RentasVariables</h2>
+                    <div class="flex items-center gap-x-2">
+                        <label class="text-xs font-medium text-gray-600">Mes</label>
+                        <select wire:model="rvMes" class="border-gray-300 rounded-md shadow-sm">
+                            @foreach (range(1, 12) as $m)<option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
+                        </select>
+                    </div>
+                </div>
                 <h3 class="mb-2 text-sm font-semibold text-gray-700">Cálculos + Declaración a arrendador</h3>
                 <span class="block text-xs font-medium text-gray-600">Tiendas con arrendador (Declaración)</span>
                 <div class="mt-1 space-y-1">
