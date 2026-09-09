@@ -159,13 +159,14 @@
                 {{-- tarjetas de producción --}}
                 <div class="flex flex-col mt-2 gap-y-1">
                     @foreach ($this->rvTiendasArrendador as $k => $label)
-                        <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-start p-2 border border-gray-200 rounded gap-x-2 gap-y-1">
-                            <div class="pt-5 text-sm font-semibold text-gray-800 w-14">{{ $label }}</div>
-                            <div style="flex:3 1 0;min-width:130px">
+                        <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-start p-2 border border-gray-200 rounded gap-x-3 gap-y-1">
+                            <div class="pt-5 mr-1 text-sm font-semibold text-gray-800 w-14">{{ $label }}</div>
+                            {{-- anchos FIJOS -> las dos tarjetas quedan idénticas (simétricas) --}}
+                            <div style="width:190px">
                                 <label class="block text-xs font-medium text-gray-600">Para</label>
                                 <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="w-full text-sm border-gray-300 rounded shadow-sm">
                             </div>
-                            <div style="flex:4 1 0;min-width:170px">
+                            <div style="width:260px">
                                 <label class="block text-xs font-medium text-gray-600">CC</label>
                                 <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="w-full text-sm border-gray-300 rounded shadow-sm">
                             </div>
@@ -177,11 +178,11 @@
                                     wire:target="ejecutarRvEnvio('{{ $k }}')"
                                     onclick="return confirm('¿Mandar el correo de {{ $label }} a sus destinatarios REALES?')"
                                 >
-                                    <span wire:loading.remove wire:target="ejecutarRvEnvio('{{ $k }}')">Enviar {{ $label }}</span>
+                                    <span wire:loading.remove wire:target="ejecutarRvEnvio('{{ $k }}')">Enviar</span>
                                     <span wire:loading wire:target="ejecutarRvEnvio('{{ $k }}')">⏳ Enviando…</span>
                                 </x-button.secondary>
                                 <label class="flex items-center mt-1 text-xs text-gray-700 whitespace-nowrap">
-                                    <input type="checkbox" wire:model="rvEnvio.{{ $k }}.correccion" class="mr-1 border-gray-300 rounded"> corrección
+                                    <input type="checkbox" wire:model="rvEnvio.{{ $k }}.correccion" class="mr-1 border-gray-300 rounded"> Corrección
                                 </label>
                             </div>
                         </div>
