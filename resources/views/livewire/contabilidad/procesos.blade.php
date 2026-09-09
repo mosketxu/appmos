@@ -25,28 +25,27 @@
 
     <h1 class="text-2xl font-semibold text-gray-900">Procesos de Contabilidad (Fashion IQ)</h1>
 
-    <div class="flex items-end gap-4 p-4 bg-white border rounded-lg shadow">
-        <div>
-            <label class="block text-sm font-medium text-gray-700">Mes</label>
-            <select wire:model="mes" class="mt-1 border-gray-300 rounded-md shadow-sm">
-                @foreach (range(1, 12) as $m)
-                    <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
-                @endforeach
-            </select>
-        </div>
-        <x-button.primary
-            wire:click="ejecutarMarcados"
-            wire:loading.attr="disabled"
-            wire:target="ejecutarMarcados"
-            onclick="return confirm('¿Ejecutar los procesos marcados (escriben sobre los ficheros reales), en orden, para el mes seleccionado?')"
-        >
-            <span wire:loading.remove wire:target="ejecutarMarcados">▶ Ejecutar marcados</span>
-            <span wire:loading wire:target="ejecutarMarcados">⏳ Ejecutando…</span>
-        </x-button.primary>
-        <x-button.secondary wire:click="limpiarSalida">Limpiar salida</x-button.secondary>
-    </div>
-
     <div class="overflow-hidden bg-white border rounded-lg shadow">
+        <div class="flex items-end p-4 border-b border-gray-200 gap-x-4 bg-gray-50">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Mes</label>
+                <select wire:model="mes" class="mt-1 border-gray-300 rounded-md shadow-sm">
+                    @foreach (range(1, 12) as $m)
+                        <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <x-button.primary
+                wire:click="ejecutarMarcados"
+                wire:loading.attr="disabled"
+                wire:target="ejecutarMarcados"
+                onclick="return confirm('¿Ejecutar los procesos marcados (escriben sobre los ficheros reales), en orden, para el mes seleccionado?')"
+            >
+                <span wire:loading.remove wire:target="ejecutarMarcados">▶ Ejecutar marcados</span>
+                <span wire:loading wire:target="ejecutarMarcados">⏳ Ejecutando…</span>
+            </x-button.primary>
+            <x-button.secondary wire:click="limpiarSalida">Limpiar salida</x-button.secondary>
+        </div>
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
