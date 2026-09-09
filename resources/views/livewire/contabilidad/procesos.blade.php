@@ -99,7 +99,7 @@
 
         <div class="flex flex-wrap gap-8">
             {{-- IZQUIERDA: Cálculos + Declaración --}}
-            <div class="flex-1" style="min-width:300px">
+            <div style="flex:0 0 40%;min-width:300px">
                 <h3 class="mb-2 text-sm font-semibold text-gray-700">Cálculos + Declaración a arrendador</h3>
                 <div class="flex flex-wrap items-start gap-4">
                     <div>
@@ -152,7 +152,7 @@
             </div>
 
             {{-- DERECHA: Envío del correo --}}
-            <div class="flex-1" style="min-width:320px">
+            <div style="flex:0 0 40%;min-width:320px">
                 <h3 class="mb-1 text-sm font-semibold text-gray-700">Envío del correo</h3>
                 <p class="mb-2 text-xs text-gray-500">El botón <strong>Enviar</strong> de cada tienda manda YA a sus destinatarios reales (único aviso: el confirm). <strong>Enviar a correo de prueba</strong> manda los dos ficheros a la dirección de prueba. Los destinatarios son editables.</p>
 
