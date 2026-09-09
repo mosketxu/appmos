@@ -24,19 +24,70 @@ class Procesos extends Component
     public string $salida = '';
 
     // RentasVariables (formularios aparte, no encajan en el check general)
-    public string $rvTienda = 'BCN';
+    //
+    // Tres acciones con alcances distintos (ver PROCESO_GENERAL.md en
+    // Contabilidad/monthlyFIQ):
+    //  - Cálculos    -> SIEMPRE las 4 tiendas con renta variable (La Roca,
+    //                   Las Rozas, Málaga, Barcelona). No depende de $rvTiendas.
+    //  - Declaración -> solo BCN / MAL (únicas con arrendador externo).
+    //  - Envío       -> solo BCN / MAL, un envío por tienda con sus destinatarios.
+    /** Tiendas marcadas para "Declaración a arrendador". Valores: 'BCN', 'MAL'. */
+    public array $rvTiendas = ['BCN', 'MAL'];
     public int $rvMesInicio;
     public int $rvMesFin;
     public bool $rvReal = true; // marcado por defecto (pedido del usuario 2026-09-07), igual que $modoReal
-    public bool $rvEnviarReal = false; // el envío de correo real sigue siendo opt-in por seguridad
+
+    // Envío del correo: estado por tienda con destinatarios EDITABLES en pantalla
+    // (pedido del usuario 2026-09-09). Precargados en mount() con los mismos
+    // valores por defecto que enviarRentasVariables.py::TIENDAS -- ese script
+    // sigue siendo la autoridad del envío real y su red de seguridad si aquí
+    // se dejan vacíos. Forma: ['BCN' => ['to'=>..,'cc'=>..,'correccion'=>false], ...].
+    //
+    // Sin casilla "enviar de verdad" (pedido del usuario 2026-09-09): el botón
+    // "Enviar" de cada tienda manda YA a sus destinatarios reales (único gate:
+    // el confirm()). Aparte, un botón "Enviar a correo de prueba" manda los DOS
+    // ficheros (Barcelona + Málaga) a $rvEmailPrueba.
+    public array $rvEnvio = [];
     public string $rvEmailPrueba = '';
-    public bool $rvCorreccion = false;
+
+    /**
+     * Destinatarios por defecto por tienda. Duplicado a propósito de
+     * enviarRentasVariables.py::TIENDAS (mismo criterio "procesos aislados" del
+     * resto del código); si cambian los reales, se tocan LOS DOS sitios.
+     */
+    protected function rvDestinatariosPorDefecto(): array
+    {
+        return [
+            'BCN' => [
+                'to' => 'ahernandez@mohg.com',
+                'cc' => 'xruano@mohg.com, mfernandez@mohg.com',
+                'correccion' => false,
+            ],
+            'MAL' => [
+                'to' => 'Turnover.Malaga@mcarthurglen.com',
+                'cc' => 'Stefania.Nicolai@mcarthurglen.com',
+                'correccion' => false,
+            ],
+        ];
+    }
+
+    /** Tiendas de RentasVariables con arrendador externo (Declaración + Envío). */
+    protected function rvTiendasArrendador(): array
+    {
+        return ['BCN' => 'Barcelona', 'MAL' => 'Málaga'];
+    }
 
     public function mount(): void
     {
         $this->mes = (int) date('n');
         $this->rvMesInicio = $this->mes;
         $this->rvMesFin = $this->mes;
+        $this->rvEnvio = $this->rvDestinatariosPorDefecto();
+    }
+
+    public function getRvTiendasArrendadorProperty(): array
+    {
+        return $this->rvTiendasArrendador();
     }
 
     protected function scriptDir(): string
@@ -228,36 +279,91 @@ class Procesos extends Component
     {
         $mi = str_pad((string) $this->rvMesInicio, 2, '0', STR_PAD_LEFT);
         $mf = str_pad((string) $this->rvMesFin, 2, '0', STR_PAD_LEFT);
-        $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$this->rvTienda, $mi]);
-        if ($mf !== $mi) {
-            $args[] = $mf;
-        }
-        if ($this->rvReal) {
-            $args[] = '--real';
-        }
-        $etiqueta = "RentasVariables · Declaración {$this->rvTienda} ({$mi}-{$mf}, " . ($this->rvReal ? 'REAL' : 'prueba') . ')';
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->ejecutarScript($args, 180, $etiqueta);
-    }
 
-    public function ejecutarRvEnvio(): void
-    {
-        $args = ['python3', 'enviarRentasVariables.py', $this->rvTienda];
-        if ($this->rvCorreccion) {
-            $args[] = '--correction';
-        }
-        if ($this->rvEnviarReal) {
-            $args[] = '--real';
-        } elseif ($this->rvEmailPrueba !== '') {
-            $args[] = '--test';
-            $args[] = $this->rvEmailPrueba;
-        } else {
-            $this->salida .= "\n\n===== RentasVariables · Envío {$this->rvTienda} =====\nERROR: pon un correo de prueba o marca 'enviar de verdad'.\n";
+        $tiendas = array_values(array_intersect(
+            array_keys($this->rvTiendasArrendador()),
+            $this->rvTiendas
+        ));
+        if (empty($tiendas)) {
+            $this->salida .= "\n\n===== RentasVariables · Declaración =====\nERROR: no hay ninguna tienda marcada (Barcelona / Málaga).\n";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ RentasVariables · Declaración\nNo hay ninguna tienda marcada.");
             return;
         }
-        $etiqueta = "RentasVariables · Envío {$this->rvTienda} (" . ($this->rvEnviarReal ? 'REAL, a los destinatarios de verdad' : 'prueba a ' . $this->rvEmailPrueba) . ')';
+
+        foreach ($tiendas as $tienda) {
+            $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$tienda, $mi]);
+            if ($mf !== $mi) {
+                $args[] = $mf;
+            }
+            if ($this->rvReal) {
+                $args[] = '--real';
+            }
+            $etiqueta = "RentasVariables · Declaración {$tienda} ({$mi}-{$mf}, " . ($this->rvReal ? 'REAL' : 'prueba') . ')';
+            $this->salida .= "\n\n===== {$etiqueta} =====\n";
+            $this->ejecutarScript($args, 180, $etiqueta);
+        }
+    }
+
+    /** Envío REAL a los destinatarios de UNA tienda (botón "Enviar" de su fila). */
+    public function ejecutarRvEnvio(string $tienda): void
+    {
+        if (! isset($this->rvTiendasArrendador()[$tienda])) {
+            return;
+        }
+        $cfg = $this->rvEnvio[$tienda] ?? [];
+        $to = trim($cfg['to'] ?? '');
+        $cc = trim($cfg['cc'] ?? '');
+
+        if ($to === '') {
+            $this->salida .= "\n\n===== RentasVariables · Envío {$tienda} =====\nERROR: el 'Para' está vacío.\n";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ RentasVariables · Envío {$tienda}\nEl 'Para' está vacío.");
+            return;
+        }
+
+        $args = ['python3', 'enviarRentasVariables.py', $tienda];
+        if (! empty($cfg['correccion'])) {
+            $args[] = '--correction';
+        }
+        $args[] = '--real';
+        $args[] = '--to';
+        $args[] = $to;
+        $args[] = '--cc';
+        $args[] = $cc;
+
+        $etiqueta = "RentasVariables · Envío {$tienda} (REAL, a {$to})";
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $this->ejecutarScript($args, 120, $etiqueta);
+    }
+
+    /**
+     * Envío de PRUEBA: manda los DOS ficheros (Barcelona + Málaga) al correo de
+     * prueba. Una llamada al script por tienda, en modo --test (todo va a esa
+     * dirección; los To/CC editados solo salen en la vista previa del script).
+     */
+    public function ejecutarRvEnvioPrueba(): void
+    {
+        $email = trim($this->rvEmailPrueba);
+        if ($email === '') {
+            $this->salida .= "\n\n===== RentasVariables · Envío a correo de prueba =====\nERROR: pon un correo de prueba.\n";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ RentasVariables · Envío a correo de prueba\nPon un correo de prueba.");
+            return;
+        }
+
+        foreach (array_keys($this->rvTiendasArrendador()) as $tienda) {
+            $cfg = $this->rvEnvio[$tienda] ?? [];
+            $args = ['python3', 'enviarRentasVariables.py', $tienda, '--test', $email];
+            if (! empty($cfg['correccion'])) {
+                $args[] = '--correction';
+            }
+            $args[] = '--to';
+            $args[] = trim($cfg['to'] ?? '');
+            $args[] = '--cc';
+            $args[] = trim($cfg['cc'] ?? '');
+
+            $etiqueta = "RentasVariables · Envío PRUEBA {$tienda} (a {$email})";
+            $this->salida .= "\n\n===== {$etiqueta} =====\n";
+            $this->ejecutarScript($args, 120, $etiqueta);
+        }
     }
 
     public function render()
