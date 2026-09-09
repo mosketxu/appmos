@@ -44,8 +44,7 @@ class Procesos extends Component
     // Siempre real: ya no hay check "Proceso real" (pedido 2026-09-09).
     /** Tiendas marcadas para la Declaración a arrendador. Valores: 'BCN', 'MAL'. */
     public array $rvTiendas = ['BCN', 'MAL'];
-    public int $rvMesInicio;
-    public int $rvMesFin;
+    public int $rvMes; // un solo mes (pedido del usuario 2026-09-09: fuera el rango DE/A)
 
     // Envío del correo: estado por tienda con destinatarios EDITABLES en pantalla
     // (pedido del usuario 2026-09-09). Precargados en mount() con los mismos
@@ -90,8 +89,7 @@ class Procesos extends Component
     public function mount(): void
     {
         $this->mes = (int) date('n');
-        $this->rvMesInicio = $this->mes;
-        $this->rvMesFin = $this->mes;
+        $this->rvMes = $this->mes;
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
     }
 
@@ -285,7 +283,6 @@ class Procesos extends Component
         $scripts = $p['scripts'] ?? [$p['script']];
 
         $this->resultados[$id] = []; // se refresca en cada ejecución
-        $rutasVistas = [];
         foreach ($scripts as $script) {
             $args = $this->nodeCmd($script, [$mm]);
             if ($p['soportaReal']) {
@@ -294,16 +291,21 @@ class Procesos extends Component
             $sufijo = count($scripts) > 1 ? " · {$script}" : '';
             $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, REAL)";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            foreach ($this->ejecutarScript($args, 180, $etiqueta) as $ruta) {
-                if (isset($rutasVistas[$ruta])) {
-                    continue;
-                }
-                $rutasVistas[$ruta] = true;
-                $this->resultados[$id][] = [
-                    'ruta' => $this->rutaWindows($ruta),
-                    'url' => $this->fileUrl($ruta),
-                ];
+            $this->anexarResultados($id, $this->ejecutarScript($args, 180, $etiqueta));
+        }
+    }
+
+    /** Añade rutas RESULT_FILE a $resultados[$key] (ruta Windows + file:// url), sin duplicar. */
+    protected function anexarResultados(string $key, array $rutas): void
+    {
+        $yaEstan = array_column($this->resultados[$key] ?? [], 'ruta');
+        foreach ($rutas as $ruta) {
+            $win = $this->rutaWindows($ruta);
+            if (in_array($win, $yaEstan, true)) {
+                continue;
             }
+            $yaEstan[] = $win;
+            $this->resultados[$key][] = ['ruta' => $win, 'url' => $this->fileUrl($ruta)];
         }
     }
 
@@ -311,25 +313,22 @@ class Procesos extends Component
 
     /**
      * Cálculos + Declaración a arrendador en un solo botón (pedido del usuario
-     * 2026-09-09: "unifica cálculos y declaración"). Siempre real.
-     * Usa el rango Mes inicio–Mes fin:
-     *  1. calculosRentasVariables.js una vez por cada mes del rango
-     *     (rellena CalculosRentasVbles2026.xlsx -- las 4 tiendas).
-     *  2. rentasVariablesDeclaracion.js por cada tienda marcada (BCN/MAL),
-     *     para todo el rango (rellena el fichero del arrendador).
+     * 2026-09-09: "unifica cálculos y declaración"). Un solo mes ($rvMes),
+     * siempre real:
+     *  1. calculosRentasVariables.js <rvMes> (rellena CalculosRentasVbles2026.xlsx
+     *     -- las 4 tiendas).
+     *  2. rentasVariablesDeclaracion.js <tienda> <rvMes> por cada tienda marcada
+     *     (BCN/MAL) -- rellena el fichero del arrendador.
      */
     public function ejecutarRvCalculosYDeclaracion(): void
     {
-        $mi = min((int) $this->rvMesInicio, (int) $this->rvMesFin);
-        $mf = max((int) $this->rvMesInicio, (int) $this->rvMesFin);
+        $this->resultados['rv'] = [];
+        $mm = str_pad((string) $this->rvMes, 2, '0', STR_PAD_LEFT);
 
-        for ($m = $mi; $m <= $mf; $m++) {
-            $mm = str_pad((string) $m, 2, '0', STR_PAD_LEFT);
-            $args = $this->nodeCmd('calculosRentasVariables.js', [$mm, '--no-open', '--real']);
-            $etiqueta = "RentasVariables · Cálculos (mes {$mm}, REAL)";
-            $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            $this->ejecutarScript($args, 180, $etiqueta);
-        }
+        $args = $this->nodeCmd('calculosRentasVariables.js', [$mm, '--no-open', '--real']);
+        $etiqueta = "RentasVariables · Cálculos (mes {$mm}, REAL)";
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->anexarResultados('rv', $this->ejecutarScript($args, 180, $etiqueta));
 
         $tiendas = array_values(array_intersect(
             array_keys($this->rvTiendasArrendador()),
@@ -340,17 +339,11 @@ class Procesos extends Component
             return;
         }
 
-        $miS = str_pad((string) $mi, 2, '0', STR_PAD_LEFT);
-        $mfS = str_pad((string) $mf, 2, '0', STR_PAD_LEFT);
         foreach ($tiendas as $tienda) {
-            $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$tienda, $miS]);
-            if ($mfS !== $miS) {
-                $args[] = $mfS;
-            }
-            $args[] = '--real';
-            $etiqueta = "RentasVariables · Declaración {$tienda} ({$miS}-{$mfS}, REAL)";
+            $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$tienda, $mm, '--real']);
+            $etiqueta = "RentasVariables · Declaración {$tienda} (mes {$mm}, REAL)";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            $this->ejecutarScript($args, 180, $etiqueta);
+            $this->anexarResultados('rv', $this->ejecutarScript($args, 180, $etiqueta));
         }
     }
 

@@ -97,100 +97,108 @@
     <div class="p-4 bg-white border rounded-lg shadow">
         <h2 class="mb-3 text-lg font-semibold text-gray-900">RentasVariables</h2>
 
-        <div class="flex flex-wrap items-start gap-6">
-            <div>
-                <span class="block text-sm font-medium text-gray-700">Tiendas con arrendador (para la Declaración)</span>
-                <div class="mt-1 space-y-1">
-                    <label class="flex items-center text-sm text-gray-700">
-                        <input type="checkbox" wire:model="rvTiendas" value="BCN" class="mr-2 border-gray-300 rounded"> Barcelona
-                    </label>
-                    <label class="flex items-center text-sm text-gray-700">
-                        <input type="checkbox" wire:model="rvTiendas" value="MAL" class="mr-2 border-gray-300 rounded"> Málaga
-                    </label>
-                    <label class="flex items-center text-sm text-gray-400" title="Entra en Cálculos, pero no tiene arrendador externo al que declarar/enviar">
-                        <input type="checkbox" checked disabled class="mr-2 border-gray-300 rounded"> La Roca <span class="ml-1 text-xs">(solo Cálculos)</span>
-                    </label>
-                    <label class="flex items-center text-sm text-gray-400" title="Entra en Cálculos, pero no tiene arrendador externo al que declarar/enviar">
-                        <input type="checkbox" checked disabled class="mr-2 border-gray-300 rounded"> Las Rozas <span class="ml-1 text-xs">(solo Cálculos)</span>
-                    </label>
-                </div>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Mes inicio</label>
-                <select wire:model="rvMesInicio" class="mt-1 border-gray-300 rounded-md shadow-sm">
-                    @foreach (range(1, 12) as $m)<option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Mes fin</label>
-                <select wire:model="rvMesFin" class="mt-1 border-gray-300 rounded-md shadow-sm">
-                    @foreach (range(1, 12) as $m)<option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
-                </select>
-            </div>
-        </div>
-
-        <div class="flex flex-wrap items-start gap-4 mt-4">
-            <x-button.secondary
-                wire:click="ejecutarRvCalculosYDeclaracion"
-                wire:loading.attr="disabled"
-                wire:target="ejecutarRvCalculosYDeclaracion"
-                onclick="return confirm('Cálculos (4 tiendas) + Declaración a arrendador de las marcadas, para el rango de meses. Escribe sobre los ficheros reales. ¿Seguro?')"
-            >
-                <span wire:loading.remove wire:target="ejecutarRvCalculosYDeclaracion">Cálculos + Declaración a arrendador</span>
-                <span wire:loading wire:target="ejecutarRvCalculosYDeclaracion">⏳ Ejecutando…</span>
-            </x-button.secondary>
-            <p class="text-xs text-gray-500 max-w-md">Un paso: rellena <strong>CalculosRentasVbles2026.xlsx</strong> (siempre las 4 tiendas: La Roca, Las Rozas, Málaga, Barcelona) para cada mes del rango, y luego el fichero del arrendador de las tiendas marcadas arriba. Siempre escribe de verdad.</p>
-        </div>
-
-        <div class="max-w-4xl pt-4 mt-4 border-t border-gray-200">
-            <h3 class="mb-2 text-sm font-semibold text-gray-700">Envío del correo (independiente del proceso de arriba)</h3>
-            <p class="mb-3 text-xs text-gray-500">El botón <strong>Enviar</strong> de cada fila manda YA el correo a los destinatarios reales de esa tienda (único aviso: la ventana de confirmación). El botón <strong>Enviar a correo de prueba</strong> manda los dos ficheros (Barcelona y Málaga) a la dirección de prueba, con el mismo cuerpo de correo. Los destinatarios se pueden editar; lo que quede en los campos es lo que se usa.</p>
-
-            <div class="flex flex-wrap items-end gap-3">
-                <div>
-                    <label class="block text-xs font-medium text-gray-600">Correo de prueba</label>
-                    <input type="email" wire:model="rvEmailPrueba" placeholder="tucorreo@ejemplo.com" class="mt-1 text-sm border-gray-300 rounded-md shadow-sm">
-                </div>
-                <x-button.secondary
-                    wire:click="ejecutarRvEnvioPrueba"
-                    wire:loading.attr="disabled"
-                    wire:target="ejecutarRvEnvioPrueba"
-                    onclick="return confirm('¿Mandar los ficheros de Barcelona y Málaga al correo de prueba?')"
-                >
-                    <span wire:loading.remove wire:target="ejecutarRvEnvioPrueba">Enviar a correo de prueba (Barcelona + Málaga)</span>
-                    <span wire:loading wire:target="ejecutarRvEnvioPrueba">⏳ Enviando…</span>
-                </x-button.secondary>
-            </div>
-
-            <div class="flex flex-col gap-2 mt-4">
-                @foreach ($this->rvTiendasArrendador as $k => $label)
-                    <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-end gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                        <div class="w-20 pb-1.5 text-sm font-semibold text-gray-800">{{ $label }}</div>
-                        {{-- Tailwind 2 (el que usa appmos) no soporta valores
-                             arbitrarios tipo flex-[4_1_0%]/min-w-[240px] -> se
-                             ponen inline. CC 1/3 más ancho que Para. --}}
-                        <div style="flex:3 1 0;min-width:180px">
-                            <label class="block text-xs font-medium text-gray-600">Para</label>
-                            <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm">
+        <div class="flex flex-wrap gap-8">
+            {{-- IZQUIERDA: Cálculos + Declaración --}}
+            <div class="flex-1" style="min-width:300px">
+                <h3 class="mb-2 text-sm font-semibold text-gray-700">Cálculos + Declaración a arrendador</h3>
+                <div class="flex flex-wrap items-start gap-4">
+                    <div>
+                        <span class="block text-xs font-medium text-gray-600">Tiendas con arrendador (Declaración)</span>
+                        <div class="mt-1 space-y-1">
+                            <label class="flex items-center text-sm text-gray-700">
+                                <input type="checkbox" wire:model="rvTiendas" value="BCN" class="mr-2 border-gray-300 rounded"> Barcelona
+                            </label>
+                            <label class="flex items-center text-sm text-gray-700">
+                                <input type="checkbox" wire:model="rvTiendas" value="MAL" class="mr-2 border-gray-300 rounded"> Málaga
+                            </label>
+                            <label class="flex items-center text-sm text-gray-400" title="Entra en Cálculos, pero no tiene arrendador externo">
+                                <input type="checkbox" checked disabled class="mr-2 border-gray-300 rounded"> La Roca <span class="ml-1 text-xs">(solo Cálculos)</span>
+                            </label>
+                            <label class="flex items-center text-sm text-gray-400" title="Entra en Cálculos, pero no tiene arrendador externo">
+                                <input type="checkbox" checked disabled class="mr-2 border-gray-300 rounded"> Las Rozas <span class="ml-1 text-xs">(solo Cálculos)</span>
+                            </label>
                         </div>
-                        <div style="flex:4 1 0;min-width:240px">
-                            <label class="block text-xs font-medium text-gray-600">CC</label>
-                            <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm">
-                        </div>
-                        <label class="flex items-center pb-1.5 text-xs text-gray-700 whitespace-nowrap">
-                            <input type="checkbox" wire:model="rvEnvio.{{ $k }}.correccion" class="mr-1.5 border-gray-300 rounded"> corrección
-                        </label>
-                        <x-button.secondary
-                            wire:click="ejecutarRvEnvio('{{ $k }}')"
-                            wire:loading.attr="disabled"
-                            wire:target="ejecutarRvEnvio('{{ $k }}')"
-                            onclick="return confirm('¿Mandar el correo de {{ $label }} a sus destinatarios REALES?')"
-                        >
-                            <span wire:loading.remove wire:target="ejecutarRvEnvio('{{ $k }}')">Enviar {{ $label }}</span>
-                            <span wire:loading wire:target="ejecutarRvEnvio('{{ $k }}')">⏳ Enviando…</span>
-                        </x-button.secondary>
                     </div>
-                @endforeach
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">Mes</label>
+                        <select wire:model="rvMes" class="mt-1 border-gray-300 rounded-md shadow-sm">
+                            @foreach (range(1, 12) as $m)<option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <x-button.secondary
+                        wire:click="ejecutarRvCalculosYDeclaracion"
+                        wire:loading.attr="disabled"
+                        wire:target="ejecutarRvCalculosYDeclaracion"
+                        onclick="return confirm('Cálculos (4 tiendas) + Declaración a arrendador de las marcadas, para el mes seleccionado. Escribe sobre los ficheros reales. ¿Seguro?')"
+                    >
+                        <span wire:loading.remove wire:target="ejecutarRvCalculosYDeclaracion">Cálculos + Declaración a arrendador</span>
+                        <span wire:loading wire:target="ejecutarRvCalculosYDeclaracion">⏳ Ejecutando…</span>
+                    </x-button.secondary>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Rellena <strong>CalculosRentasVbles2026.xlsx</strong> (siempre las 4 tiendas) del mes, y luego el fichero del arrendador de las marcadas. Siempre real.</p>
+
+                @if (! empty($resultados['rv']))
+                    <div class="flex flex-col mt-2 gap-y-1">
+                        @foreach ($resultados['rv'] as $r)
+                            <a href="{{ $r['url'] }}"
+                               class="text-xs text-blue-700 underline break-all font-mono"
+                               title="Enlace al fichero. Si el navegador no lo abre, clic derecho → Copiar dirección del enlace y pégala en el explorador.">📄 {{ $r['ruta'] }}</a>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
+            {{-- DERECHA: Envío del correo --}}
+            <div class="flex-1" style="min-width:320px">
+                <h3 class="mb-1 text-sm font-semibold text-gray-700">Envío del correo</h3>
+                <p class="mb-2 text-xs text-gray-500">El botón <strong>Enviar</strong> de cada tienda manda YA a sus destinatarios reales (único aviso: el confirm). <strong>Enviar a correo de prueba</strong> manda los dos ficheros a la dirección de prueba. Los destinatarios son editables.</p>
+
+                <div class="flex flex-wrap items-end gap-2">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">Correo de prueba</label>
+                        <input type="email" wire:model="rvEmailPrueba" placeholder="tucorreo@ejemplo.com" class="mt-1 text-sm border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <x-button.secondary
+                        wire:click="ejecutarRvEnvioPrueba"
+                        wire:loading.attr="disabled"
+                        wire:target="ejecutarRvEnvioPrueba"
+                        onclick="return confirm('¿Mandar los ficheros de Barcelona y Málaga al correo de prueba?')"
+                    >
+                        <span wire:loading.remove wire:target="ejecutarRvEnvioPrueba">Enviar a correo de prueba</span>
+                        <span wire:loading wire:target="ejecutarRvEnvioPrueba">⏳ Enviando…</span>
+                    </x-button.secondary>
+                </div>
+
+                <div class="flex flex-col mt-3 gap-y-1">
+                    @foreach ($this->rvTiendasArrendador as $k => $label)
+                        <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-end p-2 border border-gray-200 rounded gap-x-2 gap-y-1 bg-gray-50">
+                            <div class="pb-1 text-sm font-semibold text-gray-800 w-14">{{ $label }}</div>
+                            <div style="flex:3 1 0;min-width:130px">
+                                <label class="block text-xs font-medium text-gray-600">Para</label>
+                                <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="w-full text-sm border-gray-300 rounded shadow-sm">
+                            </div>
+                            <div style="flex:4 1 0;min-width:170px">
+                                <label class="block text-xs font-medium text-gray-600">CC</label>
+                                <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="w-full text-sm border-gray-300 rounded shadow-sm">
+                            </div>
+                            <label class="flex items-center pb-1 text-xs text-gray-700 whitespace-nowrap">
+                                <input type="checkbox" wire:model="rvEnvio.{{ $k }}.correccion" class="mr-1 border-gray-300 rounded"> corr.
+                            </label>
+                            <x-button.secondary
+                                wire:click="ejecutarRvEnvio('{{ $k }}')"
+                                wire:loading.attr="disabled"
+                                wire:target="ejecutarRvEnvio('{{ $k }}')"
+                                onclick="return confirm('¿Mandar el correo de {{ $label }} a sus destinatarios REALES?')"
+                            >
+                                <span wire:loading.remove wire:target="ejecutarRvEnvio('{{ $k }}')">Enviar {{ $label }}</span>
+                                <span wire:loading wire:target="ejecutarRvEnvio('{{ $k }}')">⏳ Enviando…</span>
+                            </x-button.secondary>
+                        </div>
+                    @endforeach
+                </div>
             </div>
         </div>
     </div>
