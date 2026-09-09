@@ -118,10 +118,20 @@ class Procesos extends Component
 
     /**
      * Orden fijo (es el orden en que se ejecutan si se marcan varios a la vez).
+     * "Monthly sales" va PRIMERO (pedido del usuario 2026-09-09: se lo saltó
+     * por tenerlo el último). No depende de la salida de los demás -- lee
+     * SyS MM.xlsx, Ctrol Dinamico y Laboral directamente.
      */
     protected function procesos(): array
     {
         return [
+            'monthly_sales' => [
+                'label' => 'Monthly sales',
+                'script' => 'monthlyFIQ.js',
+                'soportaReal' => true,
+                'siempreReal' => true,
+                'ayuda' => '⚠️ SIEMPRE escribe sobre el fichero real de Monthly y sobre Ctrol Dinamico (con backup automático). No tiene modo de prueba.',
+            ],
             'anaplan_split' => [
                 'label' => 'Anaplan · separar por canal',
                 'script' => 'sysSplit.js',
@@ -149,13 +159,6 @@ class Procesos extends Component
                 'soportaReal' => true,
                 'siempreReal' => false,
                 'ayuda' => 'Real: escribe sobre el fichero de imputación de costes original de Laboral 2026/MM/ (con backup). Prueba: _test_output_imputacionCostes_MM.xlsx.',
-            ],
-            'monthly_sales' => [
-                'label' => 'Monthly sales',
-                'script' => 'monthlyFIQ.js',
-                'soportaReal' => true,
-                'siempreReal' => true,
-                'ayuda' => '⚠️ SIEMPRE escribe sobre el fichero real de Monthly y sobre Ctrol Dinamico (con backup automático). No tiene modo de prueba.',
             ],
         ];
     }
