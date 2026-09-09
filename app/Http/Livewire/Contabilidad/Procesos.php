@@ -88,7 +88,11 @@ class Procesos extends Component
 
     public function mount(): void
     {
-        $this->mes = (int) date('n');
+        // Por defecto, el mes ANTERIOR al actual (pedido del usuario 2026-09-09:
+        // "que por defecto el mes sea el de la fecha actual menos 1"). Aplica al
+        // desplegable de arriba y al de RentasVariables.
+        $m = (int) date('n') - 1;
+        $this->mes = $m < 1 ? 12 : $m;
         $this->rvMes = $this->mes;
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
     }
