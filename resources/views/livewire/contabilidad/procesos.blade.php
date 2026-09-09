@@ -34,15 +34,11 @@
                 @endforeach
             </select>
         </div>
-        <div class="flex items-center">
-            <input type="checkbox" wire:model="modoReal" id="modoReal" class="border-gray-300 rounded">
-            <label for="modoReal" class="ml-2 text-sm text-gray-700">Modo real (si no, genera copias de prueba)</label>
-        </div>
         <x-button.primary
             wire:click="ejecutarMarcados"
             wire:loading.attr="disabled"
             wire:target="ejecutarMarcados"
-            onclick="return confirm('¿Ejecutar los procesos marcados, en orden, para el mes seleccionado?')"
+            onclick="return confirm('¿Ejecutar los procesos marcados (escriben sobre los ficheros reales), en orden, para el mes seleccionado?')"
         >
             <span wire:loading.remove wire:target="ejecutarMarcados">▶ Ejecutar marcados</span>
             <span wire:loading wire:target="ejecutarMarcados">⏳ Ejecutando…</span>
@@ -68,32 +64,18 @@
                         </td>
                         <td class="px-4 py-2 font-medium text-gray-900 align-top">
                             {{ $p['label'] }}
-                            @if ($p['siempreReal'])
-                                <span class="px-2 py-0.5 ml-2 text-xs font-semibold text-red-800 bg-red-100 rounded">SIEMPRE REAL</span>
-                            @endif
                         </td>
                         <td class="px-4 py-2 align-top">
                             <div class="flex items-start gap-x-3">
-                                @if ($p['siempreReal'])
-                                    <x-button.secondary
-                                        wire:click="ejecutar('{{ $id }}')"
-                                        wire:loading.attr="disabled"
-                                        wire:target="ejecutar('{{ $id }}')"
-                                        onclick="return confirm('Esto escribe SIEMPRE sobre el fichero real (con backup automático). ¿Seguro?')"
-                                    >
-                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
-                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
-                                    </x-button.secondary>
-                                @else
-                                    <x-button.secondary
-                                        wire:click="ejecutar('{{ $id }}')"
-                                        wire:loading.attr="disabled"
-                                        wire:target="ejecutar('{{ $id }}')"
-                                    >
-                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
-                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
-                                    </x-button.secondary>
-                                @endif
+                                <x-button.secondary
+                                    wire:click="ejecutar('{{ $id }}')"
+                                    wire:loading.attr="disabled"
+                                    wire:target="ejecutar('{{ $id }}')"
+                                    onclick="return confirm('Esto escribe sobre los ficheros reales. ¿Seguro?')"
+                                >
+                                    <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
+                                    <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
+                                </x-button.secondary>
                                 @if (! empty($resultados[$id]))
                                     <div class="flex flex-col min-w-0 gap-y-1 pt-1.5">
                                         @foreach ($resultados[$id] as $r)
@@ -117,7 +99,7 @@
 
         <div class="flex flex-wrap items-start gap-6">
             <div>
-                <span class="block text-sm font-medium text-gray-700">Tiendas (para la Declaración a arrendador)</span>
+                <span class="block text-sm font-medium text-gray-700">Tiendas con arrendador (para la Declaración)</span>
                 <div class="mt-1 space-y-1">
                     <label class="flex items-center text-sm text-gray-700">
                         <input type="checkbox" wire:model="rvTiendas" value="BCN" class="mr-2 border-gray-300 rounded"> Barcelona
@@ -145,29 +127,19 @@
                     @foreach (range(1, 12) as $m)<option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
                 </select>
             </div>
-            <div class="flex items-center pt-6">
-                <input type="checkbox" wire:model="rvReal" id="rvReal" class="border-gray-300 rounded">
-                <label for="rvReal" class="ml-2 text-sm text-gray-700">Proceso real (declaración/cálculos escriben de verdad)</label>
-            </div>
         </div>
 
-        <div class="flex flex-wrap items-end gap-4 mt-4">
-            <div>
-                <x-button.secondary wire:click="ejecutarRvCalculos" wire:loading.attr="disabled" wire:target="ejecutarRvCalculos">
-                    <span wire:loading.remove wire:target="ejecutarRvCalculos">Cálculos (usa "Mes" de arriba)</span>
-                    <span wire:loading wire:target="ejecutarRvCalculos">⏳ Ejecutando…</span>
-                </x-button.secondary>
-                <p class="mt-1 text-xs text-gray-500 max-w-xs">Cálculos procesa <strong>siempre</strong> las 4 tiendas (La Roca, Las Rozas, Málaga, Barcelona); no depende de la selección de tiendas.</p>
-            </div>
+        <div class="flex flex-wrap items-start gap-4 mt-4">
             <x-button.secondary
-                wire:click="ejecutarRvDeclaracion"
+                wire:click="ejecutarRvCalculosYDeclaracion"
                 wire:loading.attr="disabled"
-                wire:target="ejecutarRvDeclaracion"
-                onclick="return confirm('¿Rellenar la declaración de las tiendas marcadas (Barcelona / Málaga) para el rango de meses indicado?')"
+                wire:target="ejecutarRvCalculosYDeclaracion"
+                onclick="return confirm('Cálculos (4 tiendas) + Declaración a arrendador de las marcadas, para el rango de meses. Escribe sobre los ficheros reales. ¿Seguro?')"
             >
-                <span wire:loading.remove wire:target="ejecutarRvDeclaracion">Declaración a arrendador</span>
-                <span wire:loading wire:target="ejecutarRvDeclaracion">⏳ Ejecutando…</span>
+                <span wire:loading.remove wire:target="ejecutarRvCalculosYDeclaracion">Cálculos + Declaración a arrendador</span>
+                <span wire:loading wire:target="ejecutarRvCalculosYDeclaracion">⏳ Ejecutando…</span>
             </x-button.secondary>
+            <p class="text-xs text-gray-500 max-w-md">Un paso: rellena <strong>CalculosRentasVbles2026.xlsx</strong> (siempre las 4 tiendas: La Roca, Las Rozas, Málaga, Barcelona) para cada mes del rango, y luego el fichero del arrendador de las tiendas marcadas arriba. Siempre escribe de verdad.</p>
         </div>
 
         <div class="max-w-4xl pt-4 mt-4 border-t border-gray-200">

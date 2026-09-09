@@ -20,8 +20,9 @@ class Procesos extends Component
 {
     public int $mes;
     public array $marcados = [];
-    public bool $modoReal = true; // marcado por defecto (pedido del usuario 2026-09-07)
     public string $salida = '';
+    // Ya no hay check "Modo real" (pedido del usuario 2026-09-09: "siempre va a
+    // ser real"). Todos los procesos que soportan --real lo pasan siempre.
 
     /**
      * Ficheros resultado de la última ejecución de cada proceso, para enseñar
@@ -31,19 +32,20 @@ class Procesos extends Component
      */
     public array $resultados = [];
 
-    // RentasVariables (formularios aparte, no encajan en el check general)
-    //
-    // Tres acciones con alcances distintos (ver PROCESO_GENERAL.md en
-    // Contabilidad/monthlyFIQ):
-    //  - Cálculos    -> SIEMPRE las 4 tiendas con renta variable (La Roca,
-    //                   Las Rozas, Málaga, Barcelona). No depende de $rvTiendas.
-    //  - Declaración -> solo BCN / MAL (únicas con arrendador externo).
-    //  - Envío       -> solo BCN / MAL, un envío por tienda con sus destinatarios.
-    /** Tiendas marcadas para "Declaración a arrendador". Valores: 'BCN', 'MAL'. */
+    // RentasVariables (formularios aparte, no encajan en el check general).
+    // Dos acciones (ver PROCESO_GENERAL.md en Contabilidad/monthlyFIQ):
+    //  - Cálculos + Declaración (un solo botón, pedido del usuario 2026-09-09):
+    //      * calculosRentasVariables.js -> SIEMPRE las 4 tiendas con renta
+    //        variable (La Roca, Las Rozas, Málaga, Barcelona). No depende de
+    //        $rvTiendas.
+    //      * rentasVariablesDeclaracion.js -> solo las tiendas marcadas de
+    //        $rvTiendas (BCN / MAL, únicas con arrendador externo).
+    //  - Envío -> solo BCN / MAL, un envío por tienda con sus destinatarios.
+    // Siempre real: ya no hay check "Proceso real" (pedido 2026-09-09).
+    /** Tiendas marcadas para la Declaración a arrendador. Valores: 'BCN', 'MAL'. */
     public array $rvTiendas = ['BCN', 'MAL'];
     public int $rvMesInicio;
     public int $rvMesFin;
-    public bool $rvReal = true; // marcado por defecto (pedido del usuario 2026-09-07), igual que $modoReal
 
     // Envío del correo: estado por tienda con destinatarios EDITABLES en pantalla
     // (pedido del usuario 2026-09-09). Precargados en mount() con los mismos
@@ -132,13 +134,14 @@ class Procesos extends Component
      */
     protected function procesos(): array
     {
+        // Todos escriben sobre los ficheros reales (ya no hay check "Modo real"
+        // ni copias de seguridad -- pedido del usuario 2026-09-09).
         return [
             'monthly_sales' => [
                 'label' => 'Monthly sales',
                 'script' => 'monthlyFIQ.js',
                 'soportaReal' => true,
-                'siempreReal' => false,
-                'ayuda' => 'Real: sobrescribe el fichero de Monthly y escribe el Base en Ctrol Dinamico. Prueba: _test_output_NN_<Mes>.xlsx (no toca Ctrol Dinamico).',
+                'ayuda' => 'Sobrescribe el fichero de Monthly del mes y escribe el Base en Ctrol Dinamico.',
             ],
             'anaplan' => [
                 'label' => 'Anaplan · proceso completo',
@@ -148,15 +151,13 @@ class Procesos extends Component
                 // el orden importa.
                 'scripts' => ['sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js'],
                 'soportaReal' => true,
-                'siempreReal' => false,
-                'ayuda' => 'Separar por canal → consolidar en SyS 2026 → informe de desviaciones. Real: escribe sobre los ficheros de Anaplan/ (con backup). Prueba: _test_output_*.',
+                'ayuda' => 'Separar por canal → consolidar en SyS 2026 → informe de desviaciones. Escribe sobre los ficheros de Anaplan/.',
             ],
             'laboral' => [
                 'label' => 'Laboral · imputación de costes',
                 'script' => 'imputacionCostes.js',
                 'soportaReal' => true,
-                'siempreReal' => false,
-                'ayuda' => 'Real: escribe sobre el fichero de imputación de costes original de Laboral 2026/MM/ (con backup). Prueba: _test_output_imputacionCostes_MM.xlsx.',
+                'ayuda' => 'Añade el resumen (con formato #,##0.00) dentro del fichero de imputación de costes de Laboral 2026/MM/.',
             ],
         ];
     }
@@ -282,18 +283,16 @@ class Procesos extends Component
         // Un proceso puede lanzar varios scripts seguidos ('scripts' => [...]);
         // 'script' => '...' es el caso de uno solo.
         $scripts = $p['scripts'] ?? [$p['script']];
-        $usaReal = $p['siempreReal'] || ($p['soportaReal'] && $this->modoReal);
-        $etiquetaModo = $p['siempreReal'] ? 'SIEMPRE REAL' : ($usaReal ? 'REAL' : 'prueba');
 
         $this->resultados[$id] = []; // se refresca en cada ejecución
         $rutasVistas = [];
         foreach ($scripts as $script) {
             $args = $this->nodeCmd($script, [$mm]);
-            if ($p['soportaReal'] && $this->modoReal) {
-                $args[] = '--real';
+            if ($p['soportaReal']) {
+                $args[] = '--real'; // siempre real (ya no hay check "Modo real")
             }
             $sufijo = count($scripts) > 1 ? " · {$script}" : '';
-            $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, {$etiquetaModo})";
+            $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, REAL)";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
             foreach ($this->ejecutarScript($args, 180, $etiqueta) as $ruta) {
                 if (isset($rutasVistas[$ruta])) {
@@ -310,42 +309,46 @@ class Procesos extends Component
 
     // -- RentasVariables (formularios aparte) -------------------------------
 
-    public function ejecutarRvCalculos(): void
+    /**
+     * Cálculos + Declaración a arrendador en un solo botón (pedido del usuario
+     * 2026-09-09: "unifica cálculos y declaración"). Siempre real.
+     * Usa el rango Mes inicio–Mes fin:
+     *  1. calculosRentasVariables.js una vez por cada mes del rango
+     *     (rellena CalculosRentasVbles2026.xlsx -- las 4 tiendas).
+     *  2. rentasVariablesDeclaracion.js por cada tienda marcada (BCN/MAL),
+     *     para todo el rango (rellena el fichero del arrendador).
+     */
+    public function ejecutarRvCalculosYDeclaracion(): void
     {
-        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
-        $args = $this->nodeCmd('calculosRentasVariables.js', [$mm, '--no-open']);
-        if ($this->rvReal) {
-            $args[] = '--real';
-        }
-        $etiqueta = 'RentasVariables · Cálculos (mes ' . $mm . ', ' . ($this->rvReal ? 'REAL' : 'prueba') . ')';
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->ejecutarScript($args, 180, $etiqueta);
-    }
+        $mi = min((int) $this->rvMesInicio, (int) $this->rvMesFin);
+        $mf = max((int) $this->rvMesInicio, (int) $this->rvMesFin);
 
-    public function ejecutarRvDeclaracion(): void
-    {
-        $mi = str_pad((string) $this->rvMesInicio, 2, '0', STR_PAD_LEFT);
-        $mf = str_pad((string) $this->rvMesFin, 2, '0', STR_PAD_LEFT);
+        for ($m = $mi; $m <= $mf; $m++) {
+            $mm = str_pad((string) $m, 2, '0', STR_PAD_LEFT);
+            $args = $this->nodeCmd('calculosRentasVariables.js', [$mm, '--no-open', '--real']);
+            $etiqueta = "RentasVariables · Cálculos (mes {$mm}, REAL)";
+            $this->salida .= "\n\n===== {$etiqueta} =====\n";
+            $this->ejecutarScript($args, 180, $etiqueta);
+        }
 
         $tiendas = array_values(array_intersect(
             array_keys($this->rvTiendasArrendador()),
             $this->rvTiendas
         ));
         if (empty($tiendas)) {
-            $this->salida .= "\n\n===== RentasVariables · Declaración =====\nERROR: no hay ninguna tienda marcada (Barcelona / Málaga).\n";
-            $this->dispatch('proceso-terminado', mensaje: "⚠️ RentasVariables · Declaración\nNo hay ninguna tienda marcada.");
+            $this->salida .= "\n\n(Declaración a arrendador: no hay ninguna tienda marcada -- Barcelona / Málaga -- así que solo se han hecho los Cálculos.)\n";
             return;
         }
 
+        $miS = str_pad((string) $mi, 2, '0', STR_PAD_LEFT);
+        $mfS = str_pad((string) $mf, 2, '0', STR_PAD_LEFT);
         foreach ($tiendas as $tienda) {
-            $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$tienda, $mi]);
-            if ($mf !== $mi) {
-                $args[] = $mf;
+            $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$tienda, $miS]);
+            if ($mfS !== $miS) {
+                $args[] = $mfS;
             }
-            if ($this->rvReal) {
-                $args[] = '--real';
-            }
-            $etiqueta = "RentasVariables · Declaración {$tienda} ({$mi}-{$mf}, " . ($this->rvReal ? 'REAL' : 'prueba') . ')';
+            $args[] = '--real';
+            $etiqueta = "RentasVariables · Declaración {$tienda} ({$miS}-{$mfS}, REAL)";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
             $this->ejecutarScript($args, 180, $etiqueta);
         }
