@@ -73,7 +73,7 @@
                             @endif
                         </td>
                         <td class="px-4 py-2 align-top">
-                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <div class="flex items-start gap-x-3">
                                 @if ($p['siempreReal'])
                                     <x-button.secondary
                                         wire:click="ejecutar('{{ $id }}')"
@@ -94,11 +94,15 @@
                                         <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
                                     </x-button.secondary>
                                 @endif
-                                @foreach ($resultados[$id] ?? [] as $r)
-                                    <a href="{{ $r['url'] }}"
-                                       class="text-xs text-blue-700 underline break-all font-mono"
-                                       title="Enlace al fichero. Si el navegador no lo abre, clic derecho → Copiar dirección del enlace y pégala en el explorador de Windows.">📄 {{ $r['ruta'] }}</a>
-                                @endforeach
+                                @if (! empty($resultados[$id]))
+                                    <div class="flex flex-col min-w-0 gap-y-1 pt-1.5">
+                                        @foreach ($resultados[$id] as $r)
+                                            <a href="{{ $r['url'] }}"
+                                               class="text-xs text-blue-700 underline break-all font-mono"
+                                               title="Enlace al fichero. Si el navegador no lo abre, clic derecho → Copiar dirección del enlace y pégala en el explorador de Windows.">📄 {{ $r['ruta'] }}</a>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </div>
                         </td>
                         <td class="px-4 py-2 text-sm text-gray-500 align-top">{{ $p['ayuda'] }}</td>

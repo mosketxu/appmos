@@ -137,8 +137,8 @@ class Procesos extends Component
                 'label' => 'Monthly sales',
                 'script' => 'monthlyFIQ.js',
                 'soportaReal' => true,
-                'siempreReal' => true,
-                'ayuda' => '⚠️ SIEMPRE escribe sobre el fichero real de Monthly y sobre Ctrol Dinamico (con backup automático). No tiene modo de prueba.',
+                'siempreReal' => false,
+                'ayuda' => 'Real: sobrescribe el fichero de Monthly y escribe el Base en Ctrol Dinamico. Prueba: _test_output_NN_<Mes>.xlsx (no toca Ctrol Dinamico).',
             ],
             'anaplan' => [
                 'label' => 'Anaplan · proceso completo',
