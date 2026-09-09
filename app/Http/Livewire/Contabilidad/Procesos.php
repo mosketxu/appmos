@@ -132,26 +132,16 @@ class Procesos extends Component
                 'siempreReal' => true,
                 'ayuda' => '⚠️ SIEMPRE escribe sobre el fichero real de Monthly y sobre Ctrol Dinamico (con backup automático). No tiene modo de prueba.',
             ],
-            'anaplan_split' => [
-                'label' => 'Anaplan · separar por canal',
-                'script' => 'sysSplit.js',
+            'anaplan' => [
+                'label' => 'Anaplan · proceso completo',
+                // Un solo botón = los 3 pasos seguidos, en este orden (pedido del
+                // usuario 2026-09-09: siempre se lanzan juntos). "desviaciones"
+                // lee el SyS 2026.xlsx que "consolida" acaba de escribir, así que
+                // el orden importa.
+                'scripts' => ['sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js'],
                 'soportaReal' => true,
                 'siempreReal' => false,
-                'ayuda' => 'Real: guarda Anaplan/SyS MM Split.xlsx (backup de la versión anterior si ya existía). Prueba: _test_output_sysSplit_MM.xlsx.',
-            ],
-            'anaplan_consolida' => [
-                'label' => 'Anaplan · consolidar en SyS 2026',
-                'script' => 'anaplanConsolida.js',
-                'soportaReal' => true,
-                'siempreReal' => false,
-                'ayuda' => 'Vuelca el SaldoP de cada cuenta en Anaplan/SyS 2026.xlsx.',
-            ],
-            'anaplan_desviaciones' => [
-                'label' => 'Anaplan · informe de desviaciones',
-                'script' => 'anaplanDesviaciones.js',
-                'soportaReal' => true,
-                'siempreReal' => false,
-                'ayuda' => 'Compara el mes con el anterior (o la media, cuentas prioritarias) y resalta en amarillo.',
+                'ayuda' => 'Separar por canal → consolidar en SyS 2026 → informe de desviaciones. Real: escribe sobre los ficheros de Anaplan/ (con backup). Prueba: _test_output_*.',
             ],
             'laboral' => [
                 'label' => 'Laboral · imputación de costes',
@@ -251,17 +241,22 @@ class Procesos extends Component
         $p = $procesos[$id];
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
 
-        $args = $this->nodeCmd($p['script'], [$mm]);
+        // Un proceso puede lanzar varios scripts seguidos ('scripts' => [...]);
+        // 'script' => '...' es el caso de uno solo.
+        $scripts = $p['scripts'] ?? [$p['script']];
         $usaReal = $p['siempreReal'] || ($p['soportaReal'] && $this->modoReal);
-        if ($p['soportaReal'] && $this->modoReal) {
-            $args[] = '--real';
-        }
-
         $etiquetaModo = $p['siempreReal'] ? 'SIEMPRE REAL' : ($usaReal ? 'REAL' : 'prueba');
-        $etiqueta = "{$p['label']} (mes {$mm}, {$etiquetaModo})";
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
 
-        $this->ejecutarScript($args, 180, $etiqueta);
+        foreach ($scripts as $script) {
+            $args = $this->nodeCmd($script, [$mm]);
+            if ($p['soportaReal'] && $this->modoReal) {
+                $args[] = '--real';
+            }
+            $sufijo = count($scripts) > 1 ? " · {$script}" : '';
+            $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, {$etiquetaModo})";
+            $this->salida .= "\n\n===== {$etiqueta} =====\n";
+            $this->ejecutarScript($args, 180, $etiqueta);
+        }
     }
 
     // -- RentasVariables (formularios aparte) -------------------------------
