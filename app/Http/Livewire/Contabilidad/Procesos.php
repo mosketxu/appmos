@@ -23,6 +23,14 @@ class Procesos extends Component
     public bool $modoReal = true; // marcado por defecto (pedido del usuario 2026-09-07)
     public string $salida = '';
 
+    /**
+     * Ficheros resultado de la última ejecución de cada proceso, para enseñar
+     * un enlace en la pantalla (pedido del usuario 2026-09-09). Forma:
+     * ['monthly_sales' => [['ruta' => 'E:\\...\\x.xlsx', 'url' => 'file:///E:/.../x.xlsx'], ...]].
+     * Los scripts los marcan con una línea "RESULT_FILE: <ruta absoluta>".
+     */
+    public array $resultados = [];
+
     // RentasVariables (formularios aparte, no encajan en el check general)
     //
     // Tres acciones con alcances distintos (ver PROCESO_GENERAL.md en
@@ -158,6 +166,24 @@ class Procesos extends Component
         return $this->procesos();
     }
 
+    /** /mnt/e/Foo/Bar  ->  E:\Foo\Bar  (para enseñar/copiar la ruta en Windows). */
+    protected function rutaWindows(string $p): string
+    {
+        if (preg_match('#^/mnt/([a-z])/(.*)$#i', $p, $m)) {
+            return strtoupper($m[1]) . ':\\' . str_replace('/', '\\', $m[2]);
+        }
+        return $p;
+    }
+
+    /** /mnt/e/Foo/Bar  ->  file:///E:/Foo/Bar  (enlace del navegador). */
+    protected function fileUrl(string $p): string
+    {
+        if (preg_match('#^/mnt/([a-z])/(.*)$#i', $p, $m)) {
+            return 'file:///' . strtoupper($m[1]) . ':/' . str_replace('%2F', '/', rawurlencode($m[2]));
+        }
+        return 'file://' . $p;
+    }
+
     public function ejecutar(string $id): void
     {
         $this->ejecutarUno($id);
@@ -190,8 +216,12 @@ class Procesos extends Component
      * una por cada proceso, que la tenga que cerrar yo" -- `alert()` de JS,
      * que bloquea hasta que el usuario le da a OK, evento
      * `proceso-terminado` escuchado en la vista).
+     *
+     * Devuelve las rutas absolutas que el script haya marcado con líneas
+     * "RESULT_FILE: <ruta>" (esas líneas NO se muestran en la caja de Salida;
+     * se enseñan como enlace al lado del botón -- pedido del usuario 2026-09-09).
      */
-    protected function ejecutarScript(array $args, int $timeout, string $etiqueta): void
+    protected function ejecutarScript(array $args, int $timeout, string $etiqueta): array
     {
         // Pedido explícito del usuario (2026-09-07): estos scripts solo tienen
         // sentido en un PC con los ficheros de OneDrive de verdad (AlexMiniPC,
@@ -201,12 +231,18 @@ class Procesos extends Component
         if (! config('contabilidad.ejecucion_local')) {
             $this->salida .= '⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.';
             $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nOpción no válida. Solo ejecutable desde un terminal autorizado.");
-            return;
+            return [];
         }
 
+        $resultFiles = [];
         try {
             $result = Process::path($this->scriptDir())->timeout($timeout)->run($args);
-            $this->salida .= trim($result->output() . "\n" . $result->errorOutput());
+            $texto = trim($result->output() . "\n" . $result->errorOutput());
+            if (preg_match_all('/^RESULT_FILE:\s*(.+?)\s*$/m', $texto, $m)) {
+                $resultFiles = array_map('trim', $m[1]);
+                $texto = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', $texto));
+            }
+            $this->salida .= $texto;
             if ($result->successful()) {
                 $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
             } else {
@@ -230,6 +266,8 @@ class Procesos extends Component
                 // sin permisos de escritura), no debe romper la pantalla por eso.
             }
         }
+
+        return $resultFiles;
     }
 
     protected function ejecutarUno(string $id): void
@@ -247,6 +285,8 @@ class Procesos extends Component
         $usaReal = $p['siempreReal'] || ($p['soportaReal'] && $this->modoReal);
         $etiquetaModo = $p['siempreReal'] ? 'SIEMPRE REAL' : ($usaReal ? 'REAL' : 'prueba');
 
+        $this->resultados[$id] = []; // se refresca en cada ejecución
+        $rutasVistas = [];
         foreach ($scripts as $script) {
             $args = $this->nodeCmd($script, [$mm]);
             if ($p['soportaReal'] && $this->modoReal) {
@@ -255,7 +295,16 @@ class Procesos extends Component
             $sufijo = count($scripts) > 1 ? " · {$script}" : '';
             $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, {$etiquetaModo})";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            $this->ejecutarScript($args, 180, $etiqueta);
+            foreach ($this->ejecutarScript($args, 180, $etiqueta) as $ruta) {
+                if (isset($rutasVistas[$ruta])) {
+                    continue;
+                }
+                $rutasVistas[$ruta] = true;
+                $this->resultados[$id][] = [
+                    'ruta' => $this->rutaWindows($ruta),
+                    'url' => $this->fileUrl($ruta),
+                ];
+            }
         }
     }
 

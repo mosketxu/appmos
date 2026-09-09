@@ -56,45 +56,52 @@
                 <tr>
                     <th class="px-4 py-2"></th>
                     <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Proceso</th>
+                    <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Ejecutar / resultado</th>
                     <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Detalle</th>
-                    <th class="px-4 py-2"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
                 @foreach ($this->procesos as $id => $p)
                     <tr wire:key="proceso-{{ $id }}">
-                        <td class="px-4 py-2">
+                        <td class="px-4 py-2 align-top">
                             <input type="checkbox" wire:model="marcados" value="{{ $id }}" class="border-gray-300 rounded">
                         </td>
-                        <td class="px-4 py-2 font-medium text-gray-900">
+                        <td class="px-4 py-2 font-medium text-gray-900 align-top">
                             {{ $p['label'] }}
                             @if ($p['siempreReal'])
                                 <span class="px-2 py-0.5 ml-2 text-xs font-semibold text-red-800 bg-red-100 rounded">SIEMPRE REAL</span>
                             @endif
                         </td>
-                        <td class="px-4 py-2 text-sm text-gray-500">{{ $p['ayuda'] }}</td>
-                        <td class="px-4 py-2 text-right">
-                            @if ($p['siempreReal'])
-                                <x-button.secondary
-                                    wire:click="ejecutar('{{ $id }}')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="ejecutar('{{ $id }}')"
-                                    onclick="return confirm('Esto escribe SIEMPRE sobre el fichero real (con backup automático). ¿Seguro?')"
-                                >
-                                    <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
-                                    <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
-                                </x-button.secondary>
-                            @else
-                                <x-button.secondary
-                                    wire:click="ejecutar('{{ $id }}')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="ejecutar('{{ $id }}')"
-                                >
-                                    <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
-                                    <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
-                                </x-button.secondary>
-                            @endif
+                        <td class="px-4 py-2 align-top">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                @if ($p['siempreReal'])
+                                    <x-button.secondary
+                                        wire:click="ejecutar('{{ $id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="ejecutar('{{ $id }}')"
+                                        onclick="return confirm('Esto escribe SIEMPRE sobre el fichero real (con backup automático). ¿Seguro?')"
+                                    >
+                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
+                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
+                                    </x-button.secondary>
+                                @else
+                                    <x-button.secondary
+                                        wire:click="ejecutar('{{ $id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="ejecutar('{{ $id }}')"
+                                    >
+                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
+                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
+                                    </x-button.secondary>
+                                @endif
+                                @foreach ($resultados[$id] ?? [] as $r)
+                                    <a href="{{ $r['url'] }}"
+                                       class="text-xs text-blue-700 underline break-all font-mono"
+                                       title="Enlace al fichero. Si el navegador no lo abre, clic derecho → Copiar dirección del enlace y pégala en el explorador de Windows.">📄 {{ $r['ruta'] }}</a>
+                                @endforeach
+                            </div>
                         </td>
+                        <td class="px-4 py-2 text-sm text-gray-500 align-top">{{ $p['ayuda'] }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -183,11 +190,14 @@
                 @foreach ($this->rvTiendasArrendador as $k => $label)
                     <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-end gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
                         <div class="w-20 pb-1.5 text-sm font-semibold text-gray-800">{{ $label }}</div>
-                        <div class="flex-[3_1_0%] min-w-[180px]">
+                        {{-- Tailwind 2 (el que usa appmos) no soporta valores
+                             arbitrarios tipo flex-[4_1_0%]/min-w-[240px] -> se
+                             ponen inline. CC 1/3 más ancho que Para. --}}
+                        <div style="flex:3 1 0;min-width:180px">
                             <label class="block text-xs font-medium text-gray-600">Para</label>
                             <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm">
                         </div>
-                        <div class="flex-[4_1_0%] min-w-[240px]">
+                        <div style="flex:4 1 0;min-width:240px">
                             <label class="block text-xs font-medium text-gray-600">CC</label>
                             <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="w-full mt-1 text-sm border-gray-300 rounded-md shadow-sm">
                         </div>
