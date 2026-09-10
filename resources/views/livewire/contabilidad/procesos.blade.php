@@ -79,9 +79,7 @@
                                 @if (! empty($resultados[$id]))
                                     <div class="flex flex-col min-w-0 gap-y-1 pt-1.5">
                                         @foreach ($resultados[$id] as $r)
-                                            <a href="{{ $r['url'] }}"
-                                               class="text-xs text-blue-700 underline break-all font-mono"
-                                               title="Enlace al fichero. Si el navegador no lo abre, clic derecho → Copiar dirección del enlace y pégala en el explorador de Windows.">📄 {{ $r['ruta'] }}</a>
+                                            <x-contabilidad.resultado-fichero :r="$r" :res-key="$id" :idx="$loop->index" />
                                         @endforeach
                                     </div>
                                 @endif
@@ -139,9 +137,7 @@
                 @if (! empty($resultados['rv']))
                     <div class="flex flex-col mt-2 gap-y-1">
                         @foreach ($resultados['rv'] as $r)
-                            <a href="{{ $r['url'] }}"
-                               class="text-xs text-blue-700 underline break-all font-mono"
-                               title="Enlace al fichero. Si el navegador no lo abre, clic derecho → Copiar dirección del enlace y pégala en el explorador.">📄 {{ $r['ruta'] }}</a>
+                            <x-contabilidad.resultado-fichero :r="$r" res-key="rv" :idx="$loop->index" />
                         @endforeach
                     </div>
                 @endif
