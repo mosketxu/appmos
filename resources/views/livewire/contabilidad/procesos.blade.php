@@ -108,7 +108,6 @@
                     </div>
                 </div>
                 <h3 class="mb-2 text-sm font-semibold text-gray-700">Cálculos + Declaración a arrendador</h3>
-                <span class="block text-xs font-medium text-gray-600">Tiendas con arrendador (Declaración)</span>
                 <div class="mt-1 space-y-1">
                     <label class="flex items-center text-sm text-gray-700">
                         <input type="checkbox" wire:model="rvTiendas" value="BCN" class="mr-2 border-gray-300 rounded"> Barcelona
@@ -135,7 +134,7 @@
                         <span wire:loading wire:target="ejecutarRvCalculosYDeclaracion">⏳ Ejecutando…</span>
                     </x-button.secondary>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">Rellena <strong>CalculosRentasVbles2026.xlsx</strong> (siempre las 4 tiendas) del mes, y luego el fichero del arrendador de las marcadas. Siempre real.</p>
+                <p class="mt-1 text-xs text-gray-500">Rellena CalculosRentasVbles2026.xlsx del mes y el fichero del turnover de BCN y MAL.</p>
 
                 @if (! empty($resultados['rv']))
                     <div class="flex flex-col mt-2 gap-y-1">
@@ -214,7 +213,7 @@
          distinto según haya datos o no; con "Borrar salida" justo encima. --}}
     <div class="w-full" style="flex:35 1 0;min-width:0">
         <div class="sticky top-4">
-            <div class="flex justify-end mb-2">
+            <div class="flex justify-start mb-2">
                 <x-button.secondary wire:click="limpiarSalida">Borrar salida</x-button.secondary>
             </div>
             <div class="p-4 rounded-lg shadow {{ $salida !== '' ? 'bg-gray-900' : 'bg-white border border-gray-200' }}">

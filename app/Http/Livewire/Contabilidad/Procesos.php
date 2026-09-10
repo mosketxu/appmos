@@ -143,26 +143,26 @@ class Procesos extends Component
                 'label' => 'Monthly sales',
                 'script' => 'monthlyFIQ.js',
                 'soportaReal' => true,
-                'ayuda' => 'Sobrescribe el fichero de Monthly del mes y escribe el Base en Ctrol Dinamico.',
+                'ayuda' => 'Prepara Monthly Sales y sincroniza con Ctrol Dinamico.',
             ],
             'anaplan' => [
-                'label' => 'Anaplan · proceso completo',
+                'label' => 'Anaplan',
                 // Un solo botón = los 3 pasos seguidos, en este orden (pedido del
                 // usuario 2026-09-09: siempre se lanzan juntos). "desviaciones"
                 // lee el SyS 2026.xlsx que "consolida" acaba de escribir, así que
                 // el orden importa.
                 'scripts' => ['sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js'],
                 'soportaReal' => true,
-                'ayuda' => 'Separar por canal → consolidar en SyS 2026 → informe de desviaciones. Escribe sobre los ficheros de Anaplan/.',
+                'ayuda' => 'Separa por canal y consolida en SyS 2026 indicando desviaciones.',
             ],
             'laboral' => [
-                'label' => 'Laboral · imputación de costes',
+                'label' => 'Laboral',
                 'script' => 'imputacionCostes.js',
                 'soportaReal' => true,
-                'ayuda' => 'Añade el resumen (con formato #,##0.00) dentro del fichero de imputación de costes de Laboral 2026/MM/.',
+                'ayuda' => 'Prepara asiento nóminas y personal de Anaplan.',
             ],
             'adyen' => [
-                'label' => 'Adyen · reparto de costes',
+                'label' => 'Adyen',
                 'script' => 'adyenReparto.js',
                 'soportaReal' => true,
                 'ayuda' => 'Lee la factura PDF de Adyen del mes (__Fras Recibidas FIQ 2026/MM_2026/Adyen) y reparte su coste entre las tiendas dentro del settlement_report_aggregate_...xlsx (tabla SUMIFS + cálculos).',
