@@ -23,7 +23,7 @@
 
     <div class="p-4">
     <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
-    <div class="flex-1 min-w-0 space-y-6">
+    <div class="space-y-6" style="flex:65 1 0;min-width:0">
 
     <h1 class="text-2xl font-semibold text-gray-900">Procesos mensuales de Fashion IQ BCN</h1>
 
@@ -46,7 +46,6 @@
                 <span wire:loading.remove wire:target="ejecutarMarcados">▶ Ejecutar marcados</span>
                 <span wire:loading wire:target="ejecutarMarcados">⏳ Ejecutando…</span>
             </x-button.primary>
-            <x-button.secondary wire:click="limpiarSalida">Limpiar salida</x-button.secondary>
         </div>
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -149,8 +148,8 @@
                 @endif
             </div>
 
-            {{-- DERECHA 50%: Envío del correo --}}
-            <div style="flex:0 0 50%;min-width:340px">
+            {{-- DERECHA: Envío del correo -- ocupa el resto que quede libre --}}
+            <div style="flex:1 1 340px;min-width:340px">
                 <div class="flex flex-wrap items-baseline gap-x-3">
                     <h3 class="text-sm font-semibold text-gray-700">Envío del correo</h3>
                     <p class="flex-1 text-xs text-gray-500" style="min-width:220px">El botón <strong>Enviar</strong> de cada tienda manda YA a sus destinatarios reales (único aviso: el confirm). <strong>Enviar a correo de prueba</strong> manda los dos ficheros a la dirección de prueba. Destinatarios editables.</p>
@@ -212,12 +211,17 @@
     </div>{{-- /columna izquierda --}}
 
     {{-- Salida: a la derecha del todo, arranca a la altura del título; color
-         distinto según haya datos o no. --}}
-    <div class="w-full xl:w-96 xl:flex-none">
-        <div class="sticky top-4 p-4 rounded-lg shadow {{ $salida !== '' ? 'bg-gray-900' : 'bg-white border border-gray-200' }}">
-            <h2 class="mb-2 text-sm font-semibold {{ $salida !== '' ? 'text-gray-300' : 'text-gray-400' }}">Salida</h2>
-            <pre class="overflow-auto text-xs whitespace-pre-wrap {{ $salida !== '' ? 'text-green-400' : 'text-gray-400' }}" style="max-height:calc(100vh - 7rem)" wire:loading.class="opacity-50">{{ $salida ?: '(sin ejecuciones todavía)' }}</pre>
-            <div wire:loading class="mt-2 text-sm text-yellow-400">Ejecutando…</div>
+         distinto según haya datos o no; con "Borrar salida" justo encima. --}}
+    <div class="w-full" style="flex:35 1 0;min-width:0">
+        <div class="sticky top-4">
+            <div class="flex justify-end mb-2">
+                <x-button.secondary wire:click="limpiarSalida">Borrar salida</x-button.secondary>
+            </div>
+            <div class="p-4 rounded-lg shadow {{ $salida !== '' ? 'bg-gray-900' : 'bg-white border border-gray-200' }}">
+                <h2 class="mb-2 text-sm font-semibold {{ $salida !== '' ? 'text-gray-300' : 'text-gray-400' }}">Salida</h2>
+                <pre class="overflow-auto text-xs whitespace-pre-wrap {{ $salida !== '' ? 'text-green-400' : 'text-gray-400' }}" style="max-height:calc(100vh - 9rem)" wire:loading.class="opacity-50">{{ $salida ?: '(sin ejecuciones todavía)' }}</pre>
+                <div wire:loading class="mt-2 text-sm text-yellow-400">Ejecutando…</div>
+            </div>
         </div>
     </div>
 
