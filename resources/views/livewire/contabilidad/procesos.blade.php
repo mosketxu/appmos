@@ -166,8 +166,8 @@
                     @endforeach
                 </div>
 
-                {{-- correo de prueba: debajo de las dos tiendas, separado, sin fondo gris --}}
-                <div class="flex flex-wrap items-center pt-3 mt-3 border-t border-gray-200 gap-x-2 gap-y-2">
+                {{-- correo de prueba: debajo de las dos tiendas, sin línea ni fondo --}}
+                <div class="flex flex-wrap items-center mt-3 gap-x-2 gap-y-2">
                     <label class="text-xs font-medium text-gray-600 shrink-0">Correo de prueba</label>
                     <input type="email" wire:model="rvEmailPrueba" placeholder="tucorreo@ejemplo.com" class="flex-1 text-sm border-gray-300 rounded-md shadow-sm" style="min-width:220px">
                     <x-button.secondary
