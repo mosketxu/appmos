@@ -95,10 +95,8 @@
         <div class="flex flex-wrap gap-8">
             {{-- IZQUIERDA 35%: Cálculos + Turnover (usa el "Mes" del título) --}}
             <div style="flex:0 0 35%;min-width:280px">
-                <div class="flex flex-wrap items-baseline mb-3 gap-x-3">
-                    <h2 class="text-lg font-semibold text-gray-900">RentasVariables</h2>
-                    <p class="flex-1 text-xs text-gray-500" style="min-width:200px">Rellena CalculosRentasVbles2026.xlsx del mes y el fichero del turnover de BCN y MAL.</p>
-                </div>
+                <h2 class="text-lg font-semibold text-gray-900">Rentas Variables</h2>
+                <p class="mt-1 mb-3 text-xs text-gray-500">Rellena CalculosRentasVbles2026.xlsx del mes y el fichero del turnover de BCN y MAL.</p>
                 <div class="mt-1 space-y-1">
                     <label class="flex items-center text-sm text-gray-700">
                         <input type="checkbox" wire:model="rvTiendas" value="BCN" class="mr-2 border-gray-300 rounded"> Barcelona
