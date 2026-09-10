@@ -193,35 +193,6 @@ class Procesos extends Component
         return 'file://' . $p;
     }
 
-    /**
-     * Abre el fichero resultado con su aplicación por defecto (Excel). Los
-     * navegadores BLOQUEAN los enlaces file:// desde una página http://, así
-     * que el "abrir" lo hace el servidor (que es la misma máquina) lanzando
-     * `cmd.exe /c start`. Best-effort: si falla, deja la ruta en la Salida
-     * para abrirla a mano.
-     */
-    public function abrirFichero(string $key, int $idx): void
-    {
-        $ruta = $this->resultados[$key][$idx]['cruda'] ?? null;
-        if ($ruta === null) {
-            return;
-        }
-        if (! config('contabilidad.ejecucion_local')) {
-            $this->dispatch('proceso-terminado', mensaje: "⚠️ Solo se puede abrir desde un terminal autorizado.");
-            return;
-        }
-        $win = $this->rutaWindows($ruta);
-        try {
-            // /bin/sh -c 'cmd.exe /c start "" "E:\..."' -- las barras invertidas
-            // de la ruta Windows sobreviven dentro de las comillas dobles de sh.
-            Process::run('cmd.exe /c start "" "' . str_replace('"', '', $win) . '"');
-        } catch (\Throwable $e) {
-            $this->salida .= "\n\n⚠️ No he podido abrir el fichero desde el servidor (" . $e->getMessage() . ").\n"
-                . "  Ábrelo a mano:\n  " . $win;
-            $this->dispatch('proceso-terminado', mensaje: "⚠️ No se pudo abrir el fichero.\nÁbrelo a mano:\n" . $win);
-        }
-    }
-
     public function ejecutar(string $id): void
     {
         $this->ejecutarUno($id);
@@ -344,7 +315,7 @@ class Procesos extends Component
                 continue;
             }
             $yaEstan[] = $win;
-            $this->resultados[$key][] = ['ruta' => $win, 'url' => $this->fileUrl($ruta), 'cruda' => $ruta];
+            $this->resultados[$key][] = ['ruta' => $win, 'url' => $this->fileUrl($ruta)];
         }
     }
 

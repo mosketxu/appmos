@@ -1,28 +1,18 @@
 {{-- Una línea "fichero resultado" en la pantalla de Procesos.
 
-     Los navegadores BLOQUEAN los enlaces file:// desde una página http://, así
-     que un <a href="file://..."> no abre nada al hacer clic. Aquí:
-       - "abrir"  -> lo abre el servidor (misma máquina) con cmd.exe /c start,
-                     por índice (nada de rutas en el wire:click, sin líos de
-                     comillas/barras).
-       - "copiar" -> copia la ruta Windows al portapapeles para pegarla en el
-                     explorador o en el diálogo Abrir de Excel.
+     Los navegadores bloquean los enlaces file:// desde una página http://, así
+     que en vez de intentar abrir el fichero, al hacer clic en el enlace se
+     copia su ruta Windows al portapapeles (para pegarla en el Explorador o en
+     el diálogo "Abrir" de Excel).
 
-     Props: r = ['ruta'=>'E:\...', 'url'=>'file:///...', 'cruda'=>'/mnt/e/...'],
-            resKey = clave en $resultados, idx = posición dentro de esa clave. --}}
-@props(['r', 'resKey', 'idx'])
+     Prop: r = ['ruta' => 'E:\...\fichero.xlsx', ...]. --}}
+@props(['r'])
 
-<div class="flex flex-wrap items-start text-xs gap-x-2" x-data="{ copiado: false }">
-    <span class="font-mono text-gray-700 break-all">📄 {{ $r['ruta'] }}</span>
-    <button type="button"
-            class="text-blue-700 underline shrink-0 hover:text-blue-900"
-            wire:click="abrirFichero('{{ $resKey }}', {{ (int) $idx }})"
-            wire:loading.attr="disabled"
-            wire:target="abrirFichero('{{ $resKey }}', {{ (int) $idx }})">abrir</button>
-    <button type="button"
-            class="text-blue-700 underline shrink-0 hover:text-blue-900"
-            data-ruta="{{ $r['ruta'] }}"
-            x-on:click="navigator.clipboard && navigator.clipboard.writeText($el.dataset.ruta); copiado = true; setTimeout(() => copiado = false, 1500)">
-        <span x-show="!copiado">copiar</span><span x-show="copiado">✓ copiada</span>
-    </button>
+<div x-data="{ copiado: false }" class="text-xs">
+    <a href="#" role="button"
+       class="font-mono text-blue-700 underline break-all hover:text-blue-900"
+       data-ruta="{{ $r['ruta'] }}"
+       title="Clic para copiar la ruta al portapapeles"
+       x-on:click.prevent="navigator.clipboard && navigator.clipboard.writeText($el.dataset.ruta); copiado = true; setTimeout(() => copiado = false, 1500)">📄 {{ $r['ruta'] }}</a>
+    <span x-show="copiado" style="display:none" class="ml-1 font-sans text-green-600">✓ ruta copiada</span>
 </div>

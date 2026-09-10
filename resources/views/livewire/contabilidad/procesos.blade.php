@@ -79,7 +79,7 @@
                                 @if (! empty($resultados[$id]))
                                     <div class="flex flex-col min-w-0 gap-y-1 pt-1.5">
                                         @foreach ($resultados[$id] as $r)
-                                            <x-contabilidad.resultado-fichero :r="$r" :res-key="$id" :idx="$loop->index" />
+                                            <x-contabilidad.resultado-fichero :r="$r" />
                                         @endforeach
                                     </div>
                                 @endif
@@ -105,7 +105,7 @@
                         </select>
                     </div>
                 </div>
-                <h3 class="mb-2 text-sm font-semibold text-gray-700">Cálculos + Declaración a arrendador</h3>
+                <h3 class="mb-2 text-sm font-semibold text-gray-700">Cálculos + Turnover</h3>
                 <div class="mt-1 space-y-1">
                     <label class="flex items-center text-sm text-gray-700">
                         <input type="checkbox" wire:model="rvTiendas" value="BCN" class="mr-2 border-gray-300 rounded"> Barcelona
@@ -126,9 +126,9 @@
                         wire:click="ejecutarRvCalculosYDeclaracion"
                         wire:loading.attr="disabled"
                         wire:target="ejecutarRvCalculosYDeclaracion"
-                        onclick="return confirm('Cálculos (4 tiendas) + Declaración a arrendador de las marcadas, para el mes seleccionado. Escribe sobre los ficheros reales. ¿Seguro?')"
+                        onclick="return confirm('Cálculos (4 tiendas) + Turnover de las tiendas marcadas, para el mes seleccionado. Escribe sobre los ficheros reales. ¿Seguro?')"
                     >
-                        <span wire:loading.remove wire:target="ejecutarRvCalculosYDeclaracion">Cálculos + Declaración a arrendador</span>
+                        <span wire:loading.remove wire:target="ejecutarRvCalculosYDeclaracion">Cálculos + Turnover</span>
                         <span wire:loading wire:target="ejecutarRvCalculosYDeclaracion">⏳ Ejecutando…</span>
                     </x-button.secondary>
                 </div>
@@ -137,7 +137,7 @@
                 @if (! empty($resultados['rv']))
                     <div class="flex flex-col mt-2 gap-y-1">
                         @foreach ($resultados['rv'] as $r)
-                            <x-contabilidad.resultado-fichero :r="$r" res-key="rv" :idx="$loop->index" />
+                            <x-contabilidad.resultado-fichero :r="$r" />
                         @endforeach
                     </div>
                 @endif
@@ -147,41 +147,34 @@
             <div style="flex:1 1 340px;min-width:340px">
                 <div class="flex flex-wrap items-baseline gap-x-3">
                     <h3 class="text-sm font-semibold text-gray-700">Envío del correo</h3>
-                    <p class="flex-1 text-xs text-gray-500" style="min-width:220px">El botón <strong>Enviar</strong> de cada tienda manda YA a sus destinatarios reales (único aviso: el confirm). <strong>Enviar a correo de prueba</strong> manda los dos ficheros a la dirección de prueba. Destinatarios editables.</p>
+                    <p class="flex-1 text-xs text-gray-500" style="min-width:220px">El botón <strong>Enviar</strong> de cada tienda manda YA a sus destinatarios reales. <strong>Enviar a correo de prueba</strong> manda los dos ficheros a la dirección de prueba. Destinatarios editables.</p>
                 </div>
 
                 {{-- tarjetas de producción --}}
                 <div class="flex flex-col mt-2 gap-y-1">
                     @foreach ($this->rvTiendasArrendador as $k => $label)
-                        <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-start p-2 border border-gray-200 rounded gap-x-3 gap-y-1">
-                            <div class="pt-1 text-sm font-semibold text-gray-800 shrink-0 w-14">{{ $label }}</div>
-                            {{-- To/CC con la etiqueta a la izquierda del input y los
-                                 inputs ocupando todo el ancho hasta el botón --}}
-                            <div class="flex-1 space-y-1" style="min-width:200px">
-                                <div class="flex items-center gap-x-2">
-                                    <label class="w-6 text-xs font-medium text-right text-gray-600 shrink-0">To</label>
-                                    <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
-                                </div>
-                                <div class="flex items-center gap-x-2">
-                                    <label class="w-6 text-xs font-medium text-right text-gray-600 shrink-0">CC</label>
-                                    <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-center shrink-0">
-                                <x-button.secondary
-                                    style="padding-top:.25rem;padding-bottom:.25rem"
-                                    wire:click="ejecutarRvEnvio('{{ $k }}')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="ejecutarRvEnvio('{{ $k }}')"
-                                    onclick="return confirm('¿Mandar el correo de {{ $label }} a sus destinatarios REALES?')"
-                                >
-                                    <span wire:loading.remove wire:target="ejecutarRvEnvio('{{ $k }}')">Enviar</span>
-                                    <span wire:loading wire:target="ejecutarRvEnvio('{{ $k }}')">⏳ Enviando…</span>
-                                </x-button.secondary>
-                                <label class="flex items-center mt-1 text-xs text-gray-700 whitespace-nowrap">
-                                    <input type="checkbox" wire:model="rvEnvio.{{ $k }}.correccion" class="mr-1 border-gray-300 rounded"> Corrección
-                                </label>
-                            </div>
+                        {{-- To, input, CC, input y el botón en la MISMA fila;
+                             "Corrección" debajo (w-full fuerza el salto de línea). --}}
+                        <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-center p-2 border border-gray-200 rounded gap-x-2 gap-y-1">
+                            <div class="text-sm font-semibold text-gray-800 shrink-0 w-14">{{ $label }}</div>
+                            <label class="text-xs font-medium text-gray-600 shrink-0">To</label>
+                            <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                            <label class="text-xs font-medium text-gray-600 shrink-0">CC</label>
+                            <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                            <x-button.secondary
+                                class="shrink-0"
+                                style="padding-top:.25rem;padding-bottom:.25rem"
+                                wire:click="ejecutarRvEnvio('{{ $k }}')"
+                                wire:loading.attr="disabled"
+                                wire:target="ejecutarRvEnvio('{{ $k }}')"
+                                onclick="return confirm('¿Mandar el correo de {{ $label }} a sus destinatarios REALES?')"
+                            >
+                                <span wire:loading.remove wire:target="ejecutarRvEnvio('{{ $k }}')">Enviar</span>
+                                <span wire:loading wire:target="ejecutarRvEnvio('{{ $k }}')">⏳ Enviando…</span>
+                            </x-button.secondary>
+                            <label class="flex items-center w-full text-xs text-gray-700">
+                                <input type="checkbox" wire:model="rvEnvio.{{ $k }}.correccion" class="mr-1 border-gray-300 rounded"> Corrección
+                            </label>
                         </div>
                     @endforeach
                 </div>
