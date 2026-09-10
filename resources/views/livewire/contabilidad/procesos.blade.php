@@ -28,10 +28,10 @@
     <h1 class="text-2xl font-semibold text-gray-900">Procesos mensuales de Fashion IQ BCN</h1>
 
     <div class="overflow-hidden bg-white border rounded-lg shadow">
-        <div class="flex items-end p-4 border-b border-gray-200 gap-x-4 bg-gray-50">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Mes</label>
-                <select wire:model="mes" class="mt-1 border-gray-300 rounded-md shadow-sm">
+        <div class="flex flex-wrap items-center p-4 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
+            <div class="flex items-center gap-x-2">
+                <label class="text-sm font-medium text-gray-700">Mes</label>
+                <select wire:model="mes" class="border-gray-300 rounded-md shadow-sm">
                     @foreach (range(1, 12) as $m)
                         <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
                     @endforeach
@@ -154,17 +154,20 @@
                 <div class="flex flex-col mt-2 gap-y-1">
                     @foreach ($this->rvTiendasArrendador as $k => $label)
                         <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-start p-2 border border-gray-200 rounded gap-x-3 gap-y-1">
-                            <div class="pt-5 mr-1 text-sm font-semibold text-gray-800 w-14">{{ $label }}</div>
-                            {{-- anchos FIJOS -> las dos tarjetas quedan idénticas (simétricas) --}}
-                            <div style="width:190px">
-                                <label class="block text-xs font-medium text-gray-600">Para</label>
-                                <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="w-full text-sm border-gray-300 rounded shadow-sm">
+                            <div class="pt-1 text-sm font-semibold text-gray-800 shrink-0 w-14">{{ $label }}</div>
+                            {{-- To/CC con la etiqueta a la izquierda del input y los
+                                 inputs ocupando todo el ancho hasta el botón --}}
+                            <div class="flex-1 space-y-1" style="min-width:200px">
+                                <div class="flex items-center gap-x-2">
+                                    <label class="w-6 text-xs font-medium text-right text-gray-600 shrink-0">To</label>
+                                    <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                                </div>
+                                <div class="flex items-center gap-x-2">
+                                    <label class="w-6 text-xs font-medium text-right text-gray-600 shrink-0">CC</label>
+                                    <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                                </div>
                             </div>
-                            <div style="width:260px">
-                                <label class="block text-xs font-medium text-gray-600">CC</label>
-                                <input type="text" wire:model="rvEnvio.{{ $k }}.cc" class="w-full text-sm border-gray-300 rounded shadow-sm">
-                            </div>
-                            <div class="flex flex-col items-center pt-4">
+                            <div class="flex flex-col items-center shrink-0">
                                 <x-button.secondary
                                     style="padding-top:.25rem;padding-bottom:.25rem"
                                     wire:click="ejecutarRvEnvio('{{ $k }}')"
@@ -184,11 +187,9 @@
                 </div>
 
                 {{-- correo de prueba: debajo de las dos tiendas, separado, sin fondo gris --}}
-                <div class="flex flex-wrap items-end pt-3 mt-3 border-t border-gray-200 gap-x-2 gap-y-1">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600">Correo de prueba</label>
-                        <input type="email" wire:model="rvEmailPrueba" placeholder="tucorreo@ejemplo.com" class="mt-1 text-sm border-gray-300 rounded-md shadow-sm">
-                    </div>
+                <div class="flex flex-wrap items-center pt-3 mt-3 border-t border-gray-200 gap-x-2 gap-y-2">
+                    <label class="text-xs font-medium text-gray-600 shrink-0">Correo de prueba</label>
+                    <input type="email" wire:model="rvEmailPrueba" placeholder="tucorreo@ejemplo.com" class="flex-1 text-sm border-gray-300 rounded-md shadow-sm" style="min-width:220px">
                     <x-button.secondary
                         wire:click="ejecutarRvEnvioPrueba"
                         wire:loading.attr="disabled"
