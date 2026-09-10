@@ -26,7 +26,7 @@
     <div class="space-y-6" style="flex:65 1 0;min-width:0">
 
     <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3">
-        <span>Procesos de Fashion IQ el mes:</span>
+        <span>Procesos de Fashion IQ del mes:</span>
         <select wire:model="mes" class="text-base font-normal border-gray-300 rounded-md shadow-sm">
             @foreach (range(1, 12) as $m)
                 <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
