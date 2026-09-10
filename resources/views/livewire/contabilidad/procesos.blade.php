@@ -135,10 +135,7 @@
 
             {{-- DERECHA: Envío del correo -- ocupa el resto que quede libre --}}
             <div style="flex:1 1 340px;min-width:340px">
-                <div class="flex flex-wrap items-baseline gap-x-3">
-                    <h3 class="text-sm font-semibold text-gray-700">Envío del correo</h3>
-                    <p class="flex-1 text-xs text-gray-500" style="min-width:220px">El botón <strong>Enviar</strong> de cada tienda manda YA a sus destinatarios reales. <strong>Enviar a correo de prueba</strong> manda los dos ficheros a la dirección de prueba. Destinatarios editables.</p>
-                </div>
+                <h3 class="text-sm font-semibold text-gray-700">Envío del correo</h3>
 
                 {{-- tarjetas de producción --}}
                 <div class="flex flex-col mt-2 gap-y-1">
