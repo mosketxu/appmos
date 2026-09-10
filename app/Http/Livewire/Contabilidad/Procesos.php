@@ -44,7 +44,8 @@ class Procesos extends Component
     // Siempre real: ya no hay check "Proceso real" (pedido 2026-09-09).
     /** Tiendas marcadas para la Declaración a arrendador. Valores: 'BCN', 'MAL'. */
     public array $rvTiendas = ['BCN', 'MAL'];
-    public int $rvMes; // un solo mes (pedido del usuario 2026-09-09: fuera el rango DE/A)
+    // RentasVariables usa el mismo "$mes" que el resto (un solo desplegable en
+    // el título, pedido del usuario 2026-09-10).
 
     // Envío del correo: estado por tienda con destinatarios EDITABLES en pantalla
     // (pedido del usuario 2026-09-09). Precargados en mount() con los mismos
@@ -89,11 +90,9 @@ class Procesos extends Component
     public function mount(): void
     {
         // Por defecto, el mes ANTERIOR al actual (pedido del usuario 2026-09-09:
-        // "que por defecto el mes sea el de la fecha actual menos 1"). Aplica al
-        // desplegable de arriba y al de RentasVariables.
+        // "que por defecto el mes sea el de la fecha actual menos 1").
         $m = (int) date('n') - 1;
         $this->mes = $m < 1 ? 12 : $m;
-        $this->rvMes = $this->mes;
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
     }
 
@@ -322,18 +321,17 @@ class Procesos extends Component
     // -- RentasVariables (formularios aparte) -------------------------------
 
     /**
-     * Cálculos + Declaración a arrendador en un solo botón (pedido del usuario
-     * 2026-09-09: "unifica cálculos y declaración"). Un solo mes ($rvMes),
-     * siempre real:
-     *  1. calculosRentasVariables.js <rvMes> (rellena CalculosRentasVbles2026.xlsx
+     * Cálculos + Turnover en un solo botón (pedido del usuario 2026-09-09:
+     * "unifica cálculos y declaración"). Usa el "$mes" del título, siempre real:
+     *  1. calculosRentasVariables.js <mes> (rellena CalculosRentasVbles2026.xlsx
      *     -- las 4 tiendas).
-     *  2. rentasVariablesDeclaracion.js <tienda> <rvMes> por cada tienda marcada
-     *     (BCN/MAL) -- rellena el fichero del arrendador.
+     *  2. rentasVariablesDeclaracion.js <tienda> <mes> por cada tienda marcada
+     *     (BCN/MAL) -- rellena el fichero del arrendador (turnover).
      */
     public function ejecutarRvCalculosYDeclaracion(): void
     {
         $this->resultados['rv'] = [];
-        $mm = str_pad((string) $this->rvMes, 2, '0', STR_PAD_LEFT);
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
 
         $args = $this->nodeCmd('calculosRentasVariables.js', [$mm, '--no-open', '--real']);
         $etiqueta = "RentasVariables · Cálculos (mes {$mm}, REAL)";

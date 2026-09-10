@@ -25,18 +25,17 @@
     <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
     <div class="space-y-6" style="flex:65 1 0;min-width:0">
 
-    <h1 class="text-2xl font-semibold text-gray-900">Procesos mensuales de Fashion IQ BCN</h1>
+    <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3">
+        <span>Procesos de Fashion IQ el mes:</span>
+        <select wire:model="mes" class="text-base font-normal border-gray-300 rounded-md shadow-sm">
+            @foreach (range(1, 12) as $m)
+                <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
+            @endforeach
+        </select>
+    </h1>
 
     <div class="overflow-hidden bg-white border rounded-lg shadow">
         <div class="flex flex-wrap items-center p-4 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
-            <div class="flex items-center gap-x-2">
-                <label class="text-sm font-medium text-gray-700">Mes</label>
-                <select wire:model="mes" class="border-gray-300 rounded-md shadow-sm">
-                    @foreach (range(1, 12) as $m)
-                        <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
-                    @endforeach
-                </select>
-            </div>
             <x-button.primary
                 wire:click="ejecutarMarcados"
                 wire:loading.attr="disabled"
@@ -94,17 +93,9 @@
 
     <div class="p-4 bg-white border rounded-lg shadow">
         <div class="flex flex-wrap gap-8">
-            {{-- IZQUIERDA 35%: título + Mes + Cálculos + Declaración --}}
+            {{-- IZQUIERDA 35%: Cálculos + Turnover (usa el "Mes" del título) --}}
             <div style="flex:0 0 35%;min-width:280px">
-                <div class="flex flex-wrap items-center mb-3 gap-x-3">
-                    <h2 class="text-lg font-semibold text-gray-900">RentasVariables</h2>
-                    <div class="flex items-center gap-x-2">
-                        <label class="text-xs font-medium text-gray-600">Mes</label>
-                        <select wire:model="rvMes" class="border-gray-300 rounded-md shadow-sm">
-                            @foreach (range(1, 12) as $m)<option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
-                        </select>
-                    </div>
-                </div>
+                <h2 class="mb-3 text-lg font-semibold text-gray-900">RentasVariables</h2>
                 <h3 class="mb-2 text-sm font-semibold text-gray-700">Cálculos + Turnover</h3>
                 <div class="mt-1 space-y-1">
                     <label class="flex items-center text-sm text-gray-700">
