@@ -147,7 +147,7 @@
                         {{-- To, input, CC, input y el botón en la MISMA fila;
                              "Corrección" debajo (w-full fuerza el salto de línea). --}}
                         <div wire:key="rv-envio-{{ $k }}" class="flex flex-wrap items-center p-2 border border-gray-200 rounded gap-x-2 gap-y-1">
-                            <div class="text-sm font-semibold text-gray-800 shrink-0 w-14">{{ $label }}</div>
+                            <div class="mr-4 text-sm font-semibold text-gray-800 shrink-0 w-14">{{ $label }}</div>
                             <label class="text-xs font-medium text-gray-600 shrink-0">To</label>
                             <input type="text" wire:model="rvEnvio.{{ $k }}.to" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
                             <label class="text-xs font-medium text-gray-600 shrink-0">CC</label>
