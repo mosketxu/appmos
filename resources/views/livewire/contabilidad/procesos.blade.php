@@ -21,9 +21,11 @@
 
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.procesos'])
 
-    <div class="p-4 space-y-6">
+    <div class="p-4">
+    <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
+    <div class="flex-1 min-w-0 space-y-6">
 
-    <h1 class="text-2xl font-semibold text-gray-900">Procesos de Contabilidad (Fashion IQ)</h1>
+    <h1 class="text-2xl font-semibold text-gray-900">Procesos mensuales de Fashion IQ BCN</h1>
 
     <div class="overflow-hidden bg-white border rounded-lg shadow">
         <div class="flex items-end p-4 border-b border-gray-200 gap-x-4 bg-gray-50">
@@ -207,11 +209,18 @@
         </div>
     </div>
 
-    <div class="p-4 bg-gray-900 rounded-lg shadow">
-        <h2 class="mb-2 text-sm font-semibold text-gray-300">Salida</h2>
-        <pre class="overflow-x-auto text-xs text-green-400 whitespace-pre-wrap max-h-96" wire:loading.class="opacity-50">{{ $salida ?: '(sin ejecuciones todavía)' }}</pre>
-        <div wire:loading class="mt-2 text-sm text-yellow-400">Ejecutando…</div>
+    </div>{{-- /columna izquierda --}}
+
+    {{-- Salida: a la derecha del todo, arranca a la altura del título; color
+         distinto según haya datos o no. --}}
+    <div class="w-full xl:w-96 xl:flex-none">
+        <div class="sticky top-4 p-4 rounded-lg shadow {{ $salida !== '' ? 'bg-gray-900' : 'bg-white border border-gray-200' }}">
+            <h2 class="mb-2 text-sm font-semibold {{ $salida !== '' ? 'text-gray-300' : 'text-gray-400' }}">Salida</h2>
+            <pre class="overflow-auto text-xs whitespace-pre-wrap {{ $salida !== '' ? 'text-green-400' : 'text-gray-400' }}" style="max-height:calc(100vh - 7rem)" wire:loading.class="opacity-50">{{ $salida ?: '(sin ejecuciones todavía)' }}</pre>
+            <div wire:loading class="mt-2 text-sm text-yellow-400">Ejecutando…</div>
+        </div>
     </div>
 
+    </div>{{-- /flex 2 columnas --}}
     </div>
 </div>
