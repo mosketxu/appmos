@@ -165,7 +165,7 @@ class Procesos extends Component
                 'label' => 'Adyen',
                 'script' => 'adyenReparto.js',
                 'soportaReal' => true,
-                'ayuda' => 'Lee la factura PDF de Adyen del mes (__Fras Recibidas FIQ 2026/MM_2026/Adyen) y reparte su coste entre las tiendas dentro del settlement_report_aggregate_...xlsx (tabla SUMIFS + cálculos).',
+                'ayuda' => 'Lee la factura de Adyen y reparte el coste entre las tiendas a partir del reporte de la web de Adyen.',
             ],
         ];
     }
