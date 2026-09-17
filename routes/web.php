@@ -37,6 +37,9 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Contabilidad (Fashion IQ): lanzar los scripts Node/Python de monthlyFIQ
     Route::get('/contabilidad/procesos', function () {return view('contabilidad.procesos');})->name('contabilidad.procesos');
 
+    // Contabilidad (Facturación PDF): lanzar procesar_facturas.py de Suma/Balerga
+    Route::get('/contabilidad/facturacion-pdf', function () {return view('contabilidad.facturacion-pdf');})->name('contabilidad.facturacion-pdf');
+
     // entidades
     // Route::get('/entidad/facturacionconceptos/{entidad}', [EntidadController::class, 'facturacionconceptos'])->name('entidad.facturacionconceptos');
     Route::get('/entidad/pu/{entidad}', [EntidadController::class, 'pus'])->name('entidad.pu');

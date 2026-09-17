@@ -20,6 +20,7 @@
     </div>
 
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.procesos'])
+    @include('livewire.contabilidad._subnav')
 
     <div class="p-4">
     <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
