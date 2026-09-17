@@ -24,37 +24,158 @@
 
     <h1 class="text-2xl font-semibold text-gray-900">Facturación PDF</h1>
     <p class="text-sm text-gray-500">
-        Suma y Balerga son procesos independientes: cada uno se procesa y se envía por separado.
-        «Procesar (vista previa)» parte los PDF y muestra el plan de correos sin mandar nada.
-        «Procesar y enviar» hace lo mismo y además manda los correos reales.
+        Suma y Balerga son procesos independientes. Dos fases separadas: primero
+        <strong>Separar PDFs</strong> (parte el PDF-listado en facturas individuales, no toca el correo
+        en absoluto), y luego, ya con el resultado a la vista, <strong>Enviar correos</strong> (acción
+        aparte, con confirmación).
     </p>
 
     <div class="grid gap-6 sm:grid-cols-2">
         @foreach ($this->clientes as $id => $c)
+            @php($e = $estado[$id] ?? ['fase' => 'vacio', 'nombreOriginal' => null])
             <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow">
                 <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
                 <p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>
-                <div class="flex flex-wrap gap-2">
-                    <x-button.secondary
-                        wire:click="procesar('{{ $id }}')"
-                        wire:loading.attr="disabled"
-                        wire:target="procesar('{{ $id }}')"
-                    >
-                        <span wire:loading.remove wire:target="procesar('{{ $id }}')">Procesar (vista previa)</span>
-                        <span wire:loading wire:target="procesar('{{ $id }}')">⏳ Procesando…</span>
-                    </x-button.secondary>
-                    <x-button.primary
-                        wire:click="procesarYEnviar('{{ $id }}')"
-                        wire:loading.attr="disabled"
-                        wire:target="procesarYEnviar('{{ $id }}')"
-                        onclick="return confirm('Esto manda los correos de {{ $c['label'] }} de verdad a los destinatarios reales. ¿Seguro?')"
-                    >
-                        <span wire:loading.remove wire:target="procesarYEnviar('{{ $id }}')">Procesar y enviar (REAL)</span>
-                        <span wire:loading wire:target="procesarYEnviar('{{ $id }}')">⏳ Enviando…</span>
-                    </x-button.primary>
-                </div>
+
+                @if ($e['fase'] === 'vacio')
+                    {{-- Fase 0: elegir/subir el PDF --}}
+                    <label class="block mb-2 text-xs font-medium text-gray-600">PDF-listado del mes</label>
+                    <input type="file" wire:model="archivo.{{ $id }}" accept="application/pdf"
+                           class="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm">
+                    @error("archivo.{$id}")
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                    @enderror
+                    <div wire:loading wire:target="archivo.{{ $id }}" class="mt-1 text-xs text-gray-400">Subiendo…</div>
+
+                    <div class="mt-3">
+                        <x-button.primary
+                            wire:click="separarPdf('{{ $id }}')"
+                            wire:loading.attr="disabled"
+                            wire:target="separarPdf('{{ $id }}'), archivo.{{ $id }}"
+                        >
+                            <span wire:loading.remove wire:target="separarPdf('{{ $id }}')">Fase 1 · Separar PDFs</span>
+                            <span wire:loading wire:target="separarPdf('{{ $id }}')">⏳ Separando…</span>
+                        </x-button.primary>
+                    </div>
+                @else
+                    {{-- Fase 1 hecha (o Fase 2 hecha): qué archivo se procesó, y las acciones que tocan --}}
+                    <div class="p-2 mb-3 text-xs border rounded bg-gray-50 text-gray-700">
+                        <div>📄 <span class="font-medium">{{ $e['nombreOriginal'] }}</span></div>
+                        <div class="mt-1">
+                            @if ($e['fase'] === 'separado')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Separado, sin enviar</span>
+                            @else
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">Enviado</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        @if ($e['fase'] === 'separado')
+                            <x-button.primary
+                                wire:click="enviarCorreos('{{ $id }}')"
+                                wire:loading.attr="disabled"
+                                wire:target="enviarCorreos('{{ $id }}')"
+                                onclick="return confirm('Esto manda los correos de {{ $c['label'] }} de verdad a los destinatarios reales. ¿Seguro?')"
+                            >
+                                <span wire:loading.remove wire:target="enviarCorreos('{{ $id }}')">Fase 2 · Enviar correos (REAL)</span>
+                                <span wire:loading wire:target="enviarCorreos('{{ $id }}')">⏳ Enviando…</span>
+                            </x-button.primary>
+                        @endif
+                        <x-button.secondary
+                            wire:click="empezarDeNuevo('{{ $id }}')"
+                            wire:loading.attr="disabled"
+                            wire:target="empezarDeNuevo('{{ $id }}')"
+                        >
+                            Empezar de nuevo (otro PDF)
+                        </x-button.secondary>
+                    </div>
+                @endif
             </div>
         @endforeach
+    </div>
+
+    {{-- Destinatarios: solo lectura, con filtro y enlace al Excel real --}}
+    <div class="p-4 bg-white border rounded-lg shadow">
+        <h2 class="text-lg font-semibold text-gray-900">Destinatarios</h2>
+        <p class="mt-1 mb-3 text-xs text-gray-500">
+            Solo lectura -- para añadir clientes nuevos o corregir un dato, se abre el Excel real
+            (enlace abajo, tras cargar la lista).
+        </p>
+
+        <div class="flex flex-col gap-6 sm:flex-row">
+            @foreach ($this->clientes as $id => $c)
+                @php($d = $destinatarios[$id] ?? null)
+                <div wire:key="destinatarios-{{ $id }}" class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 class="text-sm font-semibold text-gray-800">{{ $c['label'] }}</h3>
+                        <x-button.secondary
+                            class="!py-1 !px-2 text-xs"
+                            wire:click="cargarDestinatarios('{{ $id }}')"
+                            wire:loading.attr="disabled"
+                            wire:target="cargarDestinatarios('{{ $id }}')"
+                        >
+                            <span wire:loading.remove wire:target="cargarDestinatarios('{{ $id }}')">{{ $d ? 'Recargar' : 'Cargar lista' }}</span>
+                            <span wire:loading wire:target="cargarDestinatarios('{{ $id }}')">⏳ Cargando…</span>
+                        </x-button.secondary>
+                    </div>
+
+                    @if ($d && isset($d['error']))
+                        <p class="text-xs text-red-600">⚠️ {{ $d['error'] }}</p>
+                    @elseif ($d)
+                        @foreach (($d['avisos'] ?? []) as $aviso)
+                            <p class="text-xs text-amber-600">⚠️ {{ $aviso }}</p>
+                        @endforeach
+
+                        <div class="flex flex-wrap items-center gap-3 my-2 text-xs">
+                            <label class="flex items-center gap-1">
+                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="todos"> Todos ({{ count($d['filas']) }})
+                            </label>
+                            <label class="flex items-center gap-1">
+                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="si"> Enviar = sí ({{ count(array_filter($d['filas'], fn($f) => $f['enviar'])) }})
+                            </label>
+                            <label class="flex items-center gap-1">
+                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="no"> Enviar = no ({{ count(array_filter($d['filas'], fn($f) => ! $f['enviar'])) }})
+                            </label>
+                            @if (! empty($d['xlsxUrl']))
+                                <a href="{{ $d['xlsxUrl'] }}" class="ml-auto text-indigo-600 hover:underline" title="{{ $d['xlsxPathWindows'] }}">Abrir en Excel ↗</a>
+                            @endif
+                        </div>
+
+                        <div class="overflow-auto border rounded" style="max-height:22rem">
+                            <table class="min-w-full text-xs divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-2 py-1 text-left">Cliente</th>
+                                        <th class="px-2 py-1 text-left">Mail</th>
+                                        <th class="px-2 py-1 text-left">Idioma</th>
+                                        <th class="px-2 py-1 text-left">Enviar</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @forelse ($this->destinatariosFiltrados[$id] as $fila)
+                                        <tr>
+                                            <td class="px-2 py-1">{{ $fila['cliente'] }}</td>
+                                            <td class="px-2 py-1 break-all">{{ $fila['mail'] }}</td>
+                                            <td class="px-2 py-1">{{ $fila['idioma'] ?: 'ES' }}</td>
+                                            <td class="px-2 py-1">
+                                                @if ($fila['enviar'])
+                                                    <span class="text-green-700">sí</span>
+                                                @else
+                                                    <span class="text-gray-400">no</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="4" class="px-2 py-3 text-center text-gray-400">Sin filas para este filtro.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
     </div>
 
     </div>{{-- /columna izquierda --}}
