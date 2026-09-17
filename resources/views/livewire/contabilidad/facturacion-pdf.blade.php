@@ -68,6 +68,13 @@
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">Enviado</span>
                             @endif
                         </div>
+                        @if (! empty($resultados[$id]))
+                            <div class="flex flex-col mt-2 gap-y-1">
+                                @foreach ($resultados[$id] as $r)
+                                    <x-contabilidad.resultado-fichero :r="$r" />
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
 
                     <div class="flex flex-wrap gap-2">
@@ -137,10 +144,12 @@
                             <label class="flex items-center gap-1">
                                 <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="no"> Enviar = no ({{ count(array_filter($d['filas'], fn($f) => ! $f['enviar'])) }})
                             </label>
-                            @if (! empty($d['xlsxUrl']))
-                                <a href="{{ $d['xlsxUrl'] }}" class="ml-auto text-indigo-600 hover:underline" title="{{ $d['xlsxPathWindows'] }}">Abrir en Excel ↗</a>
-                            @endif
                         </div>
+                        @if (! empty($d['xlsxPathWindows']))
+                            <div class="mb-2">
+                                <x-contabilidad.resultado-fichero :r="['ruta' => $d['xlsxPathWindows']]" />
+                            </div>
+                        @endif
 
                         <div class="overflow-auto border rounded" style="max-height:22rem">
                             <table class="min-w-full text-xs divide-y divide-gray-200">

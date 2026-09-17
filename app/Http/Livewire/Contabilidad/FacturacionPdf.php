@@ -43,6 +43,14 @@ class FacturacionPdf extends Component
 
     public string $salida = '';
 
+    /**
+     * Carpeta de resultados de la última ejecución de cada cliente, para
+     * enseñar el enlace igual que en Procesos FIQ (ver
+     * Contabilidad\Procesos::$resultados). Forma:
+     * ['Suma' => [['ruta' => 'E:\\...\\2026-09', 'url' => 'file:///E:/...'], ...]].
+     */
+    public array $resultados = [];
+
     /** Destinatarios cargados por cliente (ver cargarDestinatarios). */
     public array $destinatarios = [];
 
@@ -142,6 +150,7 @@ class FacturacionPdf extends Component
         }
         $this->estado[$cliente] = ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null];
         $this->archivo[$cliente] = null;
+        $this->resultados[$cliente] = [];
     }
 
     /**
@@ -181,7 +190,9 @@ class FacturacionPdf extends Component
         $args[] = $enviar ? '--send' : '--no-mail';
 
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        return $this->ejecutarScript($args, 180, $etiqueta);
+        $res = $this->ejecutarScript($args, 180, $etiqueta);
+        $this->anexarResultados($cliente, $res['archivos']);
+        return $res['ok'];
     }
 
     // -- Destinatarios (solo lectura) -------------------------------------
@@ -263,24 +274,36 @@ class FacturacionPdf extends Component
      * cualquier otra excepción) se convierte en un aviso en pantalla, nunca
      * en un error que rompa la página.
      */
-    protected function ejecutarScript(array $args, int $timeout, string $etiqueta): bool
+    /**
+     * Devuelve ['ok' => bool, 'archivos' => rutas absolutas marcadas por el
+     * script con líneas "RESULT_FILE: <ruta>" (no se muestran en la caja de
+     * Salida; se enseñan como enlace aparte -- mismo mecanismo que
+     * Contabilidad\Procesos).
+     */
+    protected function ejecutarScript(array $args, int $timeout, string $etiqueta): array
     {
         if (! config('contabilidad.ejecucion_local')) {
             $this->salida .= '⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.';
             $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nOpción no válida. Solo ejecutable desde un terminal autorizado.");
-            return false;
+            return ['ok' => false, 'archivos' => []];
         }
 
         try {
             $result = Process::path($this->scriptDir())->timeout($timeout)->run($args);
-            $this->salida .= trim($result->output()."\n".$result->errorOutput());
+            $texto = trim($result->output()."\n".$result->errorOutput());
+            $archivos = [];
+            if (preg_match_all('/^RESULT_FILE:\s*(.+?)\s*$/m', $texto, $m)) {
+                $archivos = array_map('trim', $m[1]);
+                $texto = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', $texto));
+            }
+            $this->salida .= $texto;
             if ($result->successful()) {
                 $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
-                return true;
+                return ['ok' => true, 'archivos' => $archivos];
             }
             $this->salida .= "\n\n⚠️ El proceso terminó con código de salida ".$result->exitCode().'.';
             $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código ".$result->exitCode().'). Mira la caja de Salida para el detalle.');
-            return false;
+            return ['ok' => false, 'archivos' => $archivos];
         } catch (\Throwable $e) {
             $this->salida .= "\n\n⚠️ EXCEPCIÓN AL EJECUTAR (cópialo tal cual):\n"
                 .get_class($e).': '.$e->getMessage()."\n"
@@ -293,7 +316,21 @@ class FacturacionPdf extends Component
             } catch (\Throwable $ignored) {
                 // Si ni siquiera se puede registrar el error, no debe romper la pantalla por eso.
             }
-            return false;
+            return ['ok' => false, 'archivos' => []];
+        }
+    }
+
+    /** Añade rutas RESULT_FILE a $resultados[$cliente] (ruta Windows + copiar), sin duplicar. */
+    protected function anexarResultados(string $cliente, array $rutas): void
+    {
+        $yaEstan = array_column($this->resultados[$cliente] ?? [], 'ruta');
+        foreach ($rutas as $ruta) {
+            $win = $this->rutaWindows($ruta);
+            if (in_array($win, $yaEstan, true)) {
+                continue;
+            }
+            $yaEstan[] = $win;
+            $this->resultados[$cliente][] = ['ruta' => $win, 'url' => $this->fileUrl($ruta)];
         }
     }
 
