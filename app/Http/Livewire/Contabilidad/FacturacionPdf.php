@@ -62,6 +62,20 @@ class FacturacionPdf extends Component
         return '/mnt/e/Claude/FacturacionPDFyMail';
     }
 
+    /**
+     * El python3 de sistema de esta máquina no trae pip ni paquetes de
+     * terceros (openpyxl, pypdf, pdfplumber, pymupdf...), así que el
+     * proyecto tiene su propio venv (`.venv`, con `pip install -r
+     * requirements.txt` ya hecho, no versionado). Si por lo que sea no
+     * existe (otra máquina con Python del sistema completo), se cae al
+     * python3 del PATH.
+     */
+    protected function pythonBin(): string
+    {
+        $venvPython = $this->scriptDir().'/.venv/bin/python3';
+        return is_file($venvPython) ? $venvPython : 'python3';
+    }
+
     protected function clientes(): array
     {
         return [
@@ -186,7 +200,7 @@ class FacturacionPdf extends Component
             return false;
         }
 
-        $args = ['python3', 'procesar_facturas.py', '--client', $cliente, '--input', $rutaCopia];
+        $args = [$this->pythonBin(), 'procesar_facturas.py', '--client', $cliente, '--input', $rutaCopia];
         $args[] = $enviar ? '--send' : '--no-mail';
 
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
@@ -209,7 +223,7 @@ class FacturacionPdf extends Component
 
         try {
             $result = Process::path($this->scriptDir())->timeout(60)
-                ->run(['python3', 'herramientas/listar_destinatarios.py', '--client', $cliente]);
+                ->run([$this->pythonBin(), 'herramientas/listar_destinatarios.py', '--client', $cliente]);
 
             if (! $result->successful()) {
                 $this->destinatarios[$cliente] = ['error' => trim($result->errorOutput()."\n".$result->output())];
