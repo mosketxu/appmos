@@ -33,6 +33,7 @@
     <div class="grid gap-6 sm:grid-cols-2">
         @foreach ($this->clientes as $id => $c)
             @php($e = $estado[$id] ?? ['fase' => 'vacio', 'nombreOriginal' => null])
+            @php($d = $destinatarios[$id] ?? null)
             <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow">
                 <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
                 <p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>
@@ -98,24 +99,11 @@
                         </x-button.secondary>
                     </div>
                 @endif
-            </div>
-        @endforeach
-    </div>
 
-    {{-- Destinatarios: solo lectura, con filtro y enlace al Excel real --}}
-    <div class="p-4 bg-white border rounded-lg shadow">
-        <h2 class="text-lg font-semibold text-gray-900">Destinatarios</h2>
-        <p class="mt-1 mb-3 text-xs text-gray-500">
-            Solo lectura -- para añadir clientes nuevos o corregir un dato, se abre el Excel real
-            (enlace abajo, tras cargar la lista).
-        </p>
-
-        <div class="flex flex-col gap-6 sm:flex-row">
-            @foreach ($this->clientes as $id => $c)
-                @php($d = $destinatarios[$id] ?? null)
-                <div wire:key="destinatarios-{{ $id }}" class="flex-1 min-w-0">
+                {{-- Destinatarios de este cliente: solo lectura, con filtro y enlace al Excel real --}}
+                <div class="pt-4 mt-4 border-t">
                     <div class="flex flex-wrap items-center gap-2 mb-2">
-                        <h3 class="text-sm font-semibold text-gray-800">{{ $c['label'] }}</h3>
+                        <h3 class="text-sm font-semibold text-gray-800">Destinatarios</h3>
                         <x-button.secondary
                             class="!py-1 !px-2 text-xs"
                             wire:click="cargarDestinatarios('{{ $id }}')"
@@ -126,6 +114,9 @@
                             <span wire:loading wire:target="cargarDestinatarios('{{ $id }}')">⏳ Cargando…</span>
                         </x-button.secondary>
                     </div>
+                    <p class="mb-2 text-xs text-gray-500">
+                        Solo lectura -- para corregir un dato se abre el Excel real (enlace tras cargar la lista).
+                    </p>
 
                     @if ($d && isset($d['error']))
                         <p class="text-xs text-red-600">⚠️ {{ $d['error'] }}</p>
@@ -183,8 +174,8 @@
                         </div>
                     @endif
                 </div>
-            @endforeach
-        </div>
+            </div>
+        @endforeach
     </div>
 
     </div>{{-- /columna izquierda --}}
