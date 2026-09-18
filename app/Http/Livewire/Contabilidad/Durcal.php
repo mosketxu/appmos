@@ -2,8 +2,10 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Pantalla para lanzar, desde Appmos, Contabilidad/Durcal/activarDurcal.py:
@@ -15,15 +17,24 @@ use Livewire\Component;
  *      2026.xlsx" para amortizar en 36 meses.
  * Ver PROCESO_GENERAL.md en Contabilidad/Durcal para el detalle.
  *
- * Por ahora coge el fichero de nómina fijo de la carpeta de OneDrive (no
- * hay subida desde el navegador todavía -- pedido explícito del usuario
+ * El script sigue escribiendo siempre sobre la ruta fija de OneDrive (la
+ * que determina el desplegable de mes) -- pedido explícito del usuario
  * 2026-09-18: "para este ejemplo ve directo a la carpeta, pero en un
- * futuro quiero un input que me pida el fichero").
+ * futuro quiero un input que me pida el fichero". El input de fichero no
+ * sustituye la ruta fija, es una confirmación visual antes de ejecutar:
+ * hay que subir el .XLS del mes elegido y su nombre tiene que coincidir
+ * con el esperado, si no "Ejecutar" no deja avanzar (ver
+ * $archivoCoincide / nombreEsperado()).
  */
 class Durcal extends Component
 {
+    use WithFileUploads;
+
     public int $mes;
     public string $salida = '';
+
+    /** Fichero subido solo para confirmar visualmente que es el correcto antes de ejecutar (ver clase). */
+    public $archivo = null;
 
     /** Ficheros resultado de la última ejecución (mismo mecanismo que Contabilidad\Procesos). */
     public array $resultados = [];
@@ -32,6 +43,22 @@ class Durcal extends Component
     {
         $m = (int) date('n') - 1;
         $this->mes = $m < 1 ? 12 : $m;
+    }
+
+    /** Nombre exacto que debe tener el fichero de nómina del mes elegido, ver PROCESO_GENERAL.md. */
+    protected function nombreEsperado(): string
+    {
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        return "{$mm} 00602_DURCAL SOFTWARE, S.L..XLS";
+    }
+
+    /** null = sin subir todavía, true/false = si el nombre subido coincide con el esperado para el mes elegido. */
+    public function getArchivoCoincideProperty(): ?bool
+    {
+        if (! $this->archivo instanceof UploadedFile) {
+            return null;
+        }
+        return strcasecmp($this->archivo->getClientOriginalName(), $this->nombreEsperado()) === 0;
     }
 
     protected function scriptDir(): string
@@ -53,12 +80,21 @@ class Durcal extends Component
 
     public function ejecutar(): void
     {
+        $this->validate(['archivo' => 'required|file'], [
+            'archivo.required' => 'Sube primero el fichero de nómina del mes para confirmar que es el correcto.',
+        ]);
+        if ($this->archivoCoincide !== true) {
+            $this->addError('archivo', 'El fichero subido ("'.$this->archivo->getClientOriginalName().'") no es "'.$this->nombreEsperado().'". Revisa el mes o el fichero antes de ejecutar.');
+            return;
+        }
+
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
         $this->resultados = [];
         $etiqueta = "Durcal · Activación (mes {$mm}, REAL)";
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $archivos = $this->ejecutarScript([$this->pythonBin(), 'activarDurcal.py', $mm, '--real'], 180, $etiqueta);
         $this->anexarResultados($archivos);
+        $this->archivo = null;
     }
 
     /** /mnt/e/Foo/Bar -> E:\Foo\Bar */

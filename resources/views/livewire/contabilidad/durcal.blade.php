@@ -32,22 +32,40 @@
     </h1>
 
     <p class="text-sm text-gray-500">
-        Coge el fichero de nómina del mes directamente de
-        <code class="px-1 bg-gray-100 rounded">OneDrive\_Clientes\2026\Durcal 2026\Laboral</code>,
-        activa sueldos + SS.EMPRESA de los empleados marcados "ACTIVAR" en
+        Activa sueldos + SS.EMPRESA de los empleados marcados "ACTIVAR" en
         <code class="px-1 bg-gray-100 rounded">Datos\personal.xlsx</code> repartidos por proyecto, rellena la
         tabla de resultado en el propio fichero de nómina, y da de alta las filas de amortización a 36 meses en
         <code class="px-1 bg-gray-100 rounded">Amortizacion Alpify 2026.xlsx</code>. Escribe siempre sobre los
-        ficheros reales.
+        ficheros reales de
+        <code class="px-1 bg-gray-100 rounded">OneDrive\_Clientes\2026\Durcal 2026\Laboral</code> —
+        sube abajo el fichero de nómina del mes elegido solo para confirmar que es el correcto antes de ejecutar.
     </p>
 
     <div class="overflow-hidden bg-white border rounded-lg shadow">
+        <div class="p-4 border-b border-gray-200 bg-gray-50">
+            <label class="block mb-2 text-xs font-medium text-gray-600">
+                Fichero de nómina del mes (solo para confirmar, se sigue escribiendo sobre el real de OneDrive)
+            </label>
+            <input type="file" wire:model="archivo" accept=".xls,.xlsx"
+                   class="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm">
+            <div wire:loading wire:target="archivo" class="mt-1 text-xs text-gray-400">Subiendo…</div>
+            @error('archivo')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+            @if ($archivo && $this->archivoCoincide === true)
+                <p class="mt-1 text-xs text-green-700">✔ Coincide con el fichero esperado del mes.</p>
+            @endif
+        </div>
         <div class="flex flex-wrap items-center p-4 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
             <x-button.primary
                 wire:click="ejecutar"
                 wire:loading.attr="disabled"
-                wire:target="ejecutar"
-                onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsx reales. ¿Seguro?')"
+                wire:target="ejecutar, archivo"
+                @if ($this->archivoCoincide === true)
+                    onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsx reales. ¿Seguro?')"
+                @else
+                    disabled
+                @endif
             >
                 <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar</span>
                 <span wire:loading wire:target="ejecutar">⏳ Ejecutando…</span>
