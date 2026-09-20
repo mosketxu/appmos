@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Livewire\Component;
 
@@ -146,7 +147,7 @@ class Procesos extends Component
     protected function nodeBin(): string
     {
         $candidatos = array_merge(
-            glob(getenv('HOME').'/.nvm/versions/node/*/bin/node') ?: [],
+            glob($this->homeDir().'/.nvm/versions/node/*/bin/node') ?: [],
             ['/usr/local/bin/node', '/usr/bin/node']
         );
         foreach ($candidatos as $c) {
@@ -156,6 +157,28 @@ class Procesos extends Component
         }
 
         return 'node';
+    }
+
+    /**
+     * `getenv('HOME')` devuelve `false` bajo el apache2.service de systemd
+     * (no hereda el entorno de ningún shell de login, así que nvm nunca ha
+     * "exportado" nada ahí) -- por eso `nodeBin()` seguía cayendo al `node`
+     * a pelo aunque el fichero ya tuviera el fix. `posix_getpwuid` consulta
+     * `/etc/passwd` directamente y no depende de variables de entorno.
+     */
+    protected function homeDir(): string
+    {
+        if ($home = getenv('HOME')) {
+            return $home;
+        }
+        if (function_exists('posix_getpwuid')) {
+            $info = @posix_getpwuid(posix_geteuid());
+            if (! empty($info['dir'])) {
+                return $info['dir'];
+            }
+        }
+
+        return '/home/mosketxu';
     }
 
     protected function nodeCmd(string $script, array $rest = []): array
@@ -292,6 +315,13 @@ class Procesos extends Component
             } else {
                 $this->salida .= "\n\n⚠️ El proceso terminó con código de salida " . $result->exitCode() . '.';
                 $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código " . $result->exitCode() . "). Mira la caja de Salida para el detalle.");
+                // 2026-09-20: pedido del usuario -- que quede en storage/logs/laravel.log
+                // (Log::warning, no report()) para poder leerlo directamente en vez de
+                // depender de que se pegue la caja de Salida cada vez.
+                Log::warning("Contabilidad/Procesos: {$etiqueta} salió con código {$result->exitCode()}", [
+                    'comando' => $args,
+                    'salida' => $texto,
+                ]);
             }
         } catch (\Throwable $e) {
             // Pedido explícito del usuario (2026-09-07): nada de mensaje genérico --
