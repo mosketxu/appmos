@@ -135,9 +135,32 @@ class Procesos extends Component
      * entero solo para esto debilitaría el sandbox de TODO Apache, no merece
      * la pena.
      */
+    /**
+     * 2026-09-20: `node` de este PC viene de nvm
+     * (`~/.nvm/versions/node/*\/bin/node`), que no está en el PATH mínimo que
+     * ve Apache bajo systemd ("sh: 1: exec: node: not found") -- mismo tipo
+     * de gotcha que `pythonBin()` en FacturacionPdf.php. Si no se encuentra
+     * ninguna instalación de nvm (otra máquina con node de sistema), se cae
+     * al `node` del PATH tal cual.
+     */
+    protected function nodeBin(): string
+    {
+        $candidatos = array_merge(
+            glob(getenv('HOME').'/.nvm/versions/node/*/bin/node') ?: [],
+            ['/usr/local/bin/node', '/usr/bin/node']
+        );
+        foreach ($candidatos as $c) {
+            if (is_file($c) && is_executable($c)) {
+                return $c;
+            }
+        }
+
+        return 'node';
+    }
+
     protected function nodeCmd(string $script, array $rest = []): array
     {
-        return ['node', '--jitless', $script, ...$rest];
+        return [$this->nodeBin(), '--jitless', $script, ...$rest];
     }
 
     /**
