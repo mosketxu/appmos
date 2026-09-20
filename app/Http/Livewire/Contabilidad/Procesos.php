@@ -101,8 +101,21 @@ class Procesos extends Component
         return $this->rvTiendasArrendador();
     }
 
+    /**
+     * 2026-09-20: la carpeta Claude vive en una unidad distinta según el PC
+     * (`/mnt/e/Claude` en uno, `/mnt/f/Claude` en otro -- letra de unidad de
+     * Windows, no algo que controlemos). Se prueban las dos, igual que
+     * monthlyFIQ.js hace con Clientes/_Clientes; si aparece una tercera
+     * variante, añadirla aquí sin quitar las anteriores.
+     */
     protected function scriptDir(): string
     {
+        foreach (['/mnt/e/Claude/Contabilidad/monthlyFIQ', '/mnt/f/Claude/Contabilidad/monthlyFIQ'] as $dir) {
+            if (is_dir($dir)) {
+                return $dir;
+            }
+        }
+
         return '/mnt/e/Claude/Contabilidad/monthlyFIQ';
     }
 

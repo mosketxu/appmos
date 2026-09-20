@@ -57,8 +57,18 @@ class FacturacionPdf extends Component
     /** Filtro de la lista de destinatarios por cliente: 'todos' | 'si' | 'no'. */
     public array $filtroEnviar = [];
 
+    /**
+     * 2026-09-20: misma unidad-de-disco variable que en Contabilidad\Procesos
+     * (`/mnt/e/Claude` en un PC, `/mnt/f/Claude` en otro).
+     */
     protected function scriptDir(): string
     {
+        foreach (['/mnt/e/Claude/FacturacionPDFyMail', '/mnt/f/Claude/FacturacionPDFyMail'] as $dir) {
+            if (is_dir($dir)) {
+                return $dir;
+            }
+        }
+
         return '/mnt/e/Claude/FacturacionPDFyMail';
     }
 
