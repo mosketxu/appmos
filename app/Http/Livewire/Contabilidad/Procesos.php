@@ -144,10 +144,20 @@ class Procesos extends Component
      * ninguna instalación de nvm (otra máquina con node de sistema), se cae
      * al `node` del PATH tal cual.
      */
+    /**
+     * 2026-09-20, segunda vuelta: Apache corre estos scripts como `www-data`
+     * (no como `mosketxu`), y el home de `www-data` es `/var/www` -- así que
+     * ni `getenv('HOME')` ni `posix_getpwuid(posix_geteuid())` (probado y
+     * descartado: devuelve el usuario del PROCESO, no el dueño de nvm) sirven
+     * para encontrar el nvm de `mosketxu`. Se prueban ambos por si algún día
+     * se lanza desde un shell de `mosketxu` con HOME real, pero la ruta fija
+     * es la que de verdad hace falta aquí.
+     */
     protected function nodeBin(): string
     {
         $candidatos = array_merge(
-            glob($this->homeDir().'/.nvm/versions/node/*/bin/node') ?: [],
+            glob(getenv('HOME').'/.nvm/versions/node/*/bin/node') ?: [],
+            glob('/home/mosketxu/.nvm/versions/node/*/bin/node') ?: [],
             ['/usr/local/bin/node', '/usr/bin/node']
         );
         foreach ($candidatos as $c) {
@@ -157,28 +167,6 @@ class Procesos extends Component
         }
 
         return 'node';
-    }
-
-    /**
-     * `getenv('HOME')` devuelve `false` bajo el apache2.service de systemd
-     * (no hereda el entorno de ningún shell de login, así que nvm nunca ha
-     * "exportado" nada ahí) -- por eso `nodeBin()` seguía cayendo al `node`
-     * a pelo aunque el fichero ya tuviera el fix. `posix_getpwuid` consulta
-     * `/etc/passwd` directamente y no depende de variables de entorno.
-     */
-    protected function homeDir(): string
-    {
-        if ($home = getenv('HOME')) {
-            return $home;
-        }
-        if (function_exists('posix_getpwuid')) {
-            $info = @posix_getpwuid(posix_geteuid());
-            if (! empty($info['dir'])) {
-                return $info['dir'];
-            }
-        }
-
-        return '/home/mosketxu';
     }
 
     protected function nodeCmd(string $script, array $rest = []): array
