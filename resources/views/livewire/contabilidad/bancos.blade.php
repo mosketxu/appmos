@@ -42,7 +42,9 @@
                     si hace falta el mayor de otra cuenta que haga de banco (p.ej. <code class="px-1 bg-gray-100 rounded">551002</code>),
                     y el plan de cuentas. Sus filas nuevas se añaden a
                     <code class="px-1 bg-gray-100 rounded">Bancos\{{ $cliente }}\Base\Base {{ $cliente }}.xlsx</code>;
-                    lo que ya estaba no se repite.
+                    lo que ya estaba no se repite. La pestaña <b>Maestro</b> de ese fichero junta todos los
+                    apuntes en una fila por concepto (limpio de "Transferencia a", "Fra", nº de tarjeta…) y
+                    contrapartida: es contra lo que se comparará lo que se suba a SAGE.
                 </p>
 
                 <div
