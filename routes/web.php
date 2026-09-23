@@ -43,6 +43,9 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Contabilidad (Durcal): activación de sueldos/SS por proyecto y amortización
     Route::get('/contabilidad/durcal', function () {return view('contabilidad.durcal');})->name('contabilidad.durcal');
 
+    // Contabilidad (Bancos): conciliación de extractos bancarios -> bancos.xlsx para SAGE
+    Route::get('/contabilidad/bancos', function () {return view('contabilidad.bancos');})->name('contabilidad.bancos');
+
     // entidades
     // Route::get('/entidad/facturacionconceptos/{entidad}', [EntidadController::class, 'facturacionconceptos'])->name('entidad.facturacionconceptos');
     Route::get('/entidad/pu/{entidad}', [EntidadController::class, 'pus'])->name('entidad.pu');
