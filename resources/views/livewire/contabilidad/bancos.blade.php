@@ -87,16 +87,15 @@
                     <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
                 @enderror
 
-                @if (! empty($resultados))
-                    <div class="flex flex-col min-w-0 mt-3 gap-y-1">
-                        @foreach ($resultados as $r)
-                            <x-contabilidad.resultado-fichero :r="$r" />
-                        @endforeach
-                    </div>
-                @endif
             </div>
 
             <div class="p-4">
+                @if ($hayBase)
+                    <div class="mb-3 text-xs">
+                        <button type="button" wire:click="descargar(@js('Base/Base '.$cliente.'.xlsx'))" class="text-blue-700 underline hover:text-blue-900">⬇ Descargar Base {{ $cliente }}.xlsx</button>
+                        <span class="text-gray-400">(Maestro, Variables, cuentas y plan)</span>
+                    </div>
+                @endif
                 <h3 class="mb-1 text-xs font-semibold text-gray-600">Últimos recibidos (Base\Recibidos)</h3>
                 @forelse ($recibidos as $f)
                     <div class="text-xs text-gray-800">{{ $f }}</div>
@@ -105,6 +104,84 @@
                 @endforelse
             </div>
         </div>
+
+        <div class="overflow-hidden bg-white border rounded-lg shadow">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <h2 class="mb-1 text-sm font-semibold text-gray-700">Extracto a procesar → bancos{{ $cuenta ?: '572xxx' }}.xlsx</h2>
+                <p class="mb-3 text-xs text-gray-500">
+                    Elige la cuenta del banco y sube su extracto. La contrapartida de cada movimiento se busca en la base:
+                    Variables (a mano) → Maestro → Plan de cuentas. Si no hay una única cuenta posible se deja en blanco;
+                    los conceptos sin ninguna coincidencia se añaden a la pestaña Variables de la base para rellenarlos.
+                </p>
+
+                @if (! $hayBase || empty($cuentas))
+                    <p class="text-sm text-amber-700">Primero sube arriba los ficheros base (mayores 572… / 551… y plan de cuentas).</p>
+                @else
+                    <div class="flex flex-wrap items-start gap-4">
+                        <div>
+                            <label class="block mb-1 text-xs font-medium text-gray-600">Cuenta del banco</label>
+                            <select wire:model.live="cuenta" class="text-sm border-gray-300 rounded-md shadow-sm">
+                                <option value="">— elige —</option>
+                                @foreach ($cuentas as $codigo => $nombreCuenta)
+                                    <option value="{{ $codigo }}">{{ $codigo }}{{ $nombreCuenta !== '' ? ' · '.$nombreCuenta : '' }}</option>
+                                @endforeach
+                            </select>
+                            @error('cuenta')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="flex-1 min-w-[16rem]"
+                             x-data="{ encima: false }"
+                             x-on:dragover.prevent="encima = true"
+                             x-on:dragleave.prevent="encima = false"
+                             x-on:drop.prevent="encima = false; $event.dataTransfer.files.length && $wire.upload('extracto', $event.dataTransfer.files[0])">
+                            <label class="block mb-1 text-xs font-medium text-gray-600">Extracto del banco</label>
+                            <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
+                                   class="flex items-center gap-2 px-3 py-2 text-sm border-2 border-dashed rounded-md cursor-pointer">
+                                <input type="file" wire:model="extracto" accept=".xlsx,.xls" class="hidden">
+                                <span>📄</span>
+                                <span class="text-gray-700">
+                                    @if ($extracto)
+                                        {{ $extracto->getClientOriginalName() }}
+                                    @else
+                                        Arrastra aquí el extracto o haz clic para elegirlo
+                                    @endif
+                                </span>
+                            </label>
+                            <div wire:loading wire:target="extracto" class="mt-1 text-xs text-gray-400">Subiendo…</div>
+                            @error('extracto')
+                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="pt-5">
+                            <x-button.primary
+                                wire:click="conciliar"
+                                wire:loading.attr="disabled"
+                                wire:target="conciliar, extracto"
+                                :disabled="$cuenta === '' || ! $extracto"
+                            >
+                                <span wire:loading.remove wire:target="conciliar">▶ Generar bancos{{ $cuenta }}.xlsx</span>
+                                <span wire:loading wire:target="conciliar">⏳ Procesando…</span>
+                            </x-button.primary>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        @if (! empty($resultados))
+            <div class="p-4 border rounded-lg shadow bg-green-50 border-green-200">
+                <h2 class="mb-1 text-sm font-semibold text-green-800">Resultado de la última ejecución</h2>
+                @foreach ($resultados as $r)
+                    <div class="flex flex-wrap items-center gap-x-3">
+                        <button type="button" wire:click="descargar(@js($r['relativa']))" class="text-sm text-blue-700 underline hover:text-blue-900">⬇ Descargar {{ basename(str_replace('\\', '/', $r['ruta'])) }}</button>
+                        <x-contabilidad.resultado-fichero :r="$r" />
+                    </div>
+                @endforeach
+            </div>
+        @endif
 
         <div class="grid gap-4 md:grid-cols-2">
             <div class="p-4 bg-white border rounded-lg shadow">
@@ -118,7 +195,9 @@
             <div class="p-4 bg-white border rounded-lg shadow">
                 <h2 class="mb-2 text-sm font-semibold text-gray-700">Generados en Output</h2>
                 @forelse ($generados as $f)
-                    <div class="text-sm text-gray-800">{{ $f }}</div>
+                    <div class="text-sm">
+                        <button type="button" wire:click="descargar(@js('Output/'.$f))" class="text-blue-700 underline hover:text-blue-900">⬇ {{ $f }}</button>
+                    </div>
                 @empty
                     <div class="text-sm text-gray-400">(ninguno)</div>
                 @endforelse

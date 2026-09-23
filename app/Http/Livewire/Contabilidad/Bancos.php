@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Contabilidad;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -18,8 +19,11 @@ use Livewire\WithFileUploads;
  * Se guardan tal cual en <Cliente>/Base/Recibidos (con fecha/hora delante) y
  * bancos_base.py añade sus filas nuevas a <Cliente>/Base/Base <Cliente>.xlsx.
  *
- * La conciliación (bancos_conciliacion.py) todavía pide la partida de cada
- * extracto por consola, así que aún no se lanza desde aquí.
+ * Luego, para cada extracto del banco: se elige la cuenta (combo con las
+ * cuentas 572/551... cargadas en la base), se sube el extracto y
+ * bancos_conciliacion.py --partida <cuenta> genera Output/bancos<cuenta>.xlsx
+ * buscando la contrapartida en Variables -> Maestro -> Plan cuentas de la base.
+ * El extracto se archiva en Input/input_old como siempre.
  */
 class Bancos extends Component
 {
@@ -30,6 +34,10 @@ class Bancos extends Component
 
     /** Ficheros recién subidos (input o arrastrados); se procesan en cuanto terminan de subir. */
     public array $subidas = [];
+
+    /** Extracto del banco a conciliar y cuenta (partida) a la que pertenece. */
+    public $extracto = null;
+    public string $cuenta = '';
 
     /** Ficheros resultado de la última ejecución (mismo mecanismo que Contabilidad\Procesos). */
     public array $resultados = [];
@@ -85,6 +93,121 @@ class Bancos extends Component
     public function updatedCliente(): void
     {
         $this->resultados = [];
+        $this->cuenta = '';
+        $this->extracto = null;
+    }
+
+    protected function basePath(): string
+    {
+        return $this->baseDir().'/'.$this->cliente.'/Base/Base '.$this->cliente.'.xlsx';
+    }
+
+    /**
+     * Cuentas de banco cargadas en la base: las pestañas con código de cuenta
+     * (572003, 551002...), con su nombre sacado de la pestaña "Plan cuentas".
+     * [codigo => nombre]
+     */
+    protected function cuentasBanco(): array
+    {
+        if (! $this->clienteValido() || ! is_file($this->basePath())) {
+            return [];
+        }
+        try {
+            $reader = IOFactory::createReader('Xlsx');
+            $reader->setReadDataOnly(true);
+            $codigos = array_values(array_filter($reader->listWorksheetNames($this->basePath()), fn ($n) => preg_match('/^\d{6,}$/', $n)));
+            $nombres = [];
+            if ($codigos) {
+                $reader->setLoadSheetsOnly(['Plan cuentas']);
+                $hoja = $reader->load($this->basePath())->getSheetByName('Plan cuentas');
+                foreach ($hoja ? $hoja->toArray(null, false, false) : [] as $fila) {
+                    if (in_array((string) ($fila[0] ?? ''), $codigos, true)) {
+                        $nombres[(string) $fila[0]] = (string) ($fila[1] ?? '');
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            return [];
+        }
+        sort($codigos);
+        $out = [];
+        foreach ($codigos as $c) {
+            $out[$c] = $nombres[$c] ?? '';
+        }
+        return $out;
+    }
+
+    /** Si el nombre del extracto empieza por una de las cuentas, se preselecciona. */
+    public function updatedExtracto(): void
+    {
+        $this->resetErrorBag('extracto');
+        if ($this->extracto instanceof UploadedFile && $this->cuenta === ''
+            && preg_match('/^(\d{6,})/', $this->extracto->getClientOriginalName(), $m)
+            && array_key_exists($m[1], $this->cuentasBanco())) {
+            $this->cuenta = $m[1];
+        }
+    }
+
+    public function conciliar(): void
+    {
+        $this->resetErrorBag(['extracto', 'cuenta']);
+        $etiqueta = "Bancos · {$this->cliente} · bancos{$this->cuenta}";
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado($etiqueta);
+            return;
+        }
+        if (! $this->clienteValido()) {
+            $this->addError('extracto', 'Elige primero un cliente.');
+            return;
+        }
+        if (! array_key_exists($this->cuenta, $this->cuentasBanco())) {
+            $this->addError('cuenta', 'Elige la cuenta del banco.');
+            return;
+        }
+        if (! $this->extracto instanceof UploadedFile) {
+            $this->addError('extracto', 'Sube el extracto del banco.');
+            return;
+        }
+        $nombre = str_replace(['/', '\\'], '_', $this->extracto->getClientOriginalName());
+        if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls'], true)) {
+            $this->addError('extracto', 'El extracto tiene que ser un Excel (.xlsx / .xls).');
+            return;
+        }
+
+        $dir = $this->baseDir().'/'.$this->cliente.'/Input';
+        if (! is_dir($dir) && ! @mkdir($dir, 0777, true)) {
+            $this->addError('extracto', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
+            return;
+        }
+        $destino = "{$dir}/{$nombre}";
+        if (file_exists($destino)) {
+            $destino = "{$dir}/".date('Ymd-His')." {$nombre}";
+        }
+        if (! @copy($this->extracto->getRealPath(), $destino)) {
+            $this->addError('extracto', "No se ha podido guardar {$nombre} en {$this->rutaWindows($dir)}.");
+            return;
+        }
+
+        $this->resultados = [];
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $archivos = $this->ejecutarScript([$this->pythonBin(), 'bancos_conciliacion.py', $this->cliente, '--partida', $this->cuenta, $destino], 180, $etiqueta);
+        $this->anexarResultados($archivos);
+        $this->extracto = null;
+    }
+
+    /** Descarga un fichero de la carpeta del cliente (Output/..., Base/...). */
+    public function descargar(string $relativa)
+    {
+        if (! $this->clienteValido()) {
+            return null;
+        }
+        $raiz = realpath($this->baseDir().'/'.$this->cliente);
+        $ruta = realpath($raiz.'/'.$relativa);
+        if (! $raiz || ! $ruta || ! str_starts_with($ruta, $raiz.'/') || ! is_file($ruta)) {
+            $this->addError('extracto', "No se encuentra {$relativa}.");
+            return null;
+        }
+        return response()->download($ruta, basename($ruta));
     }
 
     public function updatedSubidas(): void
@@ -181,7 +304,9 @@ class Bancos extends Component
                 continue;
             }
             $yaEstan[] = $win;
-            $this->resultados[] = ['ruta' => $win, 'url' => $this->fileUrl($ruta)];
+            $raiz = $this->baseDir().'/'.$this->cliente.'/';
+            $relativa = str_starts_with($ruta, $raiz) ? substr($ruta, strlen($raiz)) : basename($ruta);
+            $this->resultados[] = ['ruta' => $win, 'url' => $this->fileUrl($ruta), 'relativa' => $relativa];
         }
     }
 
@@ -240,6 +365,8 @@ class Bancos extends Component
         return view('livewire.contabilidad.bancos', [
             'clientes' => $this->clientes(),
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
+            'cuentas' => $this->cuentasBanco(),
+            'hayBase' => $this->clienteValido() && is_file($this->basePath()),
             'pendientes' => $this->ficheros('Input'),
             'generados' => $this->ficheros('Output'),
         ]);
