@@ -175,6 +175,25 @@ class Procesos extends Component
     }
 
     /**
+     * 2026-09-23: `node` de WINDOWS vía cmd.exe (interop de WSL), para scripts
+     * que controlan el Chrome de Windows (anaplanWeb/subirAnaplan.js: se conecta
+     * a localhost:9222 y usa el portapapeles de Windows, inalcanzables desde el
+     * node de WSL). Bajo Apache el interop falla en silencio (rc=1, sin salida)
+     * porque falta WSL_INTEROP: ver windowsEnv(). Se ejecuta con cwd = carpeta
+     * del script (cmd.exe traduce /mnt/e/... a E:\...).
+     */
+    protected function windowsCmd(string $script, array $rest = []): array
+    {
+        return ['/mnt/c/Windows/System32/cmd.exe', '/c', 'node', basename($script), ...$rest];
+    }
+
+    /** `/run/WSL/1_interop` es el enlace estable al socket de interop del init de WSL. */
+    protected function windowsEnv(): array
+    {
+        return ['WSL_INTEROP' => '/run/WSL/1_interop'];
+    }
+
+    /**
      * Orden fijo (es el orden en que se ejecutan si se marcan varios a la vez).
      * "Monthly sales" va PRIMERO (pedido del usuario 2026-09-09: se lo saltó
      * por tenerlo el último). No depende de la salida de los demás -- lee
@@ -200,6 +219,17 @@ class Procesos extends Component
                 'scripts' => ['sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js'],
                 'soportaReal' => true,
                 'ayuda' => 'Separa por canal y consolida en SyS 2026 indicando desviaciones.',
+            ],
+            // 2026-09-23: pega las pestañas *_Anaplan de SyS MM.xlsx en la web de
+            // Anaplan controlando el Chrome abierto con abrirChromeAnaplan.bat
+            // (Playwright). Corre con el node de WINDOWS (ver windowsCmd()).
+            'anaplan_web' => [
+                'label' => 'Anaplan · subir a la web',
+                'script' => 'anaplanWeb/subirAnaplan.js',
+                'windows' => true,
+                'timeout' => 900,
+                'soportaReal' => true,
+                'ayuda' => 'Pega U_Anaplan y las tiendas en la web de Anaplan y comprueba fila a fila. Antes: abrir Chrome con anaplanWeb\abrirChromeAnaplan.bat, entrar en Anaplan y poner el mes en "LTB-Upload for LE" y "for AC". Mientras corre, no tocar esa ventana.',
             ],
             'laboral' => [
                 'label' => 'Laboral',
@@ -276,7 +306,7 @@ class Procesos extends Component
      * "RESULT_FILE: <ruta>" (esas líneas NO se muestran en la caja de Salida;
      * se enseñan como enlace al lado del botón -- pedido del usuario 2026-09-09).
      */
-    protected function ejecutarScript(array $args, int $timeout, string $etiqueta): array
+    protected function ejecutarScript(array $args, int $timeout, string $etiqueta, ?string $cwd = null, array $env = []): array
     {
         // Pedido explícito del usuario (2026-09-07): estos scripts solo tienen
         // sentido en un PC con los ficheros de OneDrive de verdad (AlexMiniPC,
@@ -291,8 +321,10 @@ class Procesos extends Component
 
         $resultFiles = [];
         try {
-            $result = Process::path($this->scriptDir())->timeout($timeout)->run($args);
+            $result = Process::path($cwd ?? $this->scriptDir())->env($env)->input('')->timeout($timeout)->run($args);
             $texto = trim($result->output() . "\n" . $result->errorOutput());
+            // Ruido del interop de WSL al lanzar cmd.exe sin consola: no es un error.
+            $texto = trim(preg_replace('/^Exception: ios_base::clear.*(\r?\n)?/m', '', $texto));
             if (preg_match_all('/^RESULT_FILE:\s*(.+?)\s*$/m', $texto, $m)) {
                 $resultFiles = array_map('trim', $m[1]);
                 $texto = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', $texto));
@@ -347,14 +379,26 @@ class Procesos extends Component
 
         $this->resultados[$id] = []; // se refresca en cada ejecución
         foreach ($scripts as $script) {
-            $args = $this->nodeCmd($script, [$mm]);
+            $windows = ! empty($p['windows']);
+            $args = $windows ? $this->windowsCmd($script, [$mm]) : $this->nodeCmd($script, [$mm]);
             if ($p['soportaReal']) {
                 $args[] = '--real'; // siempre real (ya no hay check "Modo real")
             }
             $sufijo = count($scripts) > 1 ? " · {$script}" : '';
             $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, REAL)";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            $this->anexarResultados($id, $this->ejecutarScript($args, 180, $etiqueta));
+            if ($windows && ! is_dir($this->scriptDir() . '/' . dirname($script) . '/node_modules/playwright-core')) {
+                $this->salida .= '⚠️ Falta playwright-core en ' . dirname($script) . ' de este PC: ejecuta allí (en Windows) "npm install".';
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nFalta playwright-core en este PC.");
+                continue;
+            }
+            $this->anexarResultados($id, $this->ejecutarScript(
+                $args,
+                $p['timeout'] ?? 180,
+                $etiqueta,
+                $windows ? $this->scriptDir() . '/' . dirname($script) : null,
+                $windows ? $this->windowsEnv() : []
+            ));
         }
     }
 
