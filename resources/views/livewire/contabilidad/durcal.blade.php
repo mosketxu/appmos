@@ -61,11 +61,8 @@
                 wire:click="ejecutar"
                 wire:loading.attr="disabled"
                 wire:target="ejecutar, archivo"
-                @if ($this->archivoCoincide === true)
-                    onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsx reales. ¿Seguro?')"
-                @else
-                    disabled
-                @endif
+                :disabled="$this->archivoCoincide !== true"
+                onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsx reales. ¿Seguro?')"
             >
                 <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar</span>
                 <span wire:loading wire:target="ejecutar">⏳ Ejecutando…</span>
