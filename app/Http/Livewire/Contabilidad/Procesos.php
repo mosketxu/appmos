@@ -229,7 +229,7 @@ class Procesos extends Component
                 'windows' => true,
                 'timeout' => 900,
                 'soportaReal' => true,
-                'ayuda' => 'Pega U_Anaplan y las tiendas en la web de Anaplan y comprueba fila a fila. Antes: abrir Chrome con anaplanWeb\abrirChromeAnaplan.bat, entrar en Anaplan y poner el mes en "LTB-Upload for LE" y "for AC". Mientras corre, no tocar esa ventana.',
+                'ayuda' => 'Pega U_Anaplan y las tiendas en la web de Anaplan, comprueba fila a fila y revisa "All Check Reports". Abre él solo Chrome, las pestañas y el mes; si Anaplan pide login, entra en esa ventana y sigue solo (espera 5 min). Mientras corre, no tocar esa ventana.',
             ],
             'laboral' => [
                 'label' => 'Laboral',
