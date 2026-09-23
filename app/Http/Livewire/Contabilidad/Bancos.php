@@ -13,6 +13,7 @@ use Livewire\WithFileUploads;
  *
  * Al empezar cada proceso se suben (botón o arrastrando) los ficheros base:
  *   - uno por cuenta de banco, mayor de SAGE con nombre 572xxx...
+ *   - puntualmente, el mayor de otra cuenta que hace de banco (551002...),
  *   - el plan de cuentas del cliente.
  * Se guardan tal cual en <Cliente>/Base/Recibidos (con fecha/hora delante) y
  * bancos_base.py añade sus filas nuevas a <Cliente>/Base/Base <Cliente>.xlsx.

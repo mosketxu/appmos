@@ -38,7 +38,8 @@
             <div class="p-4 border-b border-gray-200 bg-gray-50">
                 <h2 class="mb-1 text-sm font-semibold text-gray-700">Ficheros base del proceso</h2>
                 <p class="mb-3 text-xs text-gray-500">
-                    Uno por cada cuenta de banco (mayor de SAGE, nombre <code class="px-1 bg-gray-100 rounded">572…</code>)
+                    Uno por cada cuenta de banco (mayor de SAGE, nombre <code class="px-1 bg-gray-100 rounded">572…</code>),
+                    si hace falta el mayor de otra cuenta que haga de banco (p.ej. <code class="px-1 bg-gray-100 rounded">551002</code>),
                     y el plan de cuentas. Sus filas nuevas se añaden a
                     <code class="px-1 bg-gray-100 rounded">Bancos\{{ $cliente }}\Base\Base {{ $cliente }}.xlsx</code>;
                     lo que ya estaba no se repite.
