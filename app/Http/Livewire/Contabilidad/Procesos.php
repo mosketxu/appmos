@@ -334,7 +334,7 @@ class Procesos extends Component
                 $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
             } else {
                 $this->salida .= "\n\n⚠️ El proceso terminó con código de salida " . $result->exitCode() . '.';
-                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código " . $result->exitCode() . "). Mira la caja de Salida para el detalle.");
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código " . $result->exitCode() . "). Mira la caja de Salida: cada ⚠️ dice qué hacer (👉) si el proceso lo sabe.");
                 // 2026-09-20: pedido del usuario -- que quede en storage/logs/laravel.log
                 // (Log::warning, no report()) para poder leerlo directamente en vez de
                 // depender de que se pegue la caja de Salida cada vez.
@@ -388,8 +388,13 @@ class Procesos extends Component
             $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, REAL)";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
             if ($windows && ! is_dir($this->scriptDir() . '/' . dirname($script) . '/node_modules/playwright-core')) {
-                $this->salida .= '⚠️ Falta playwright-core en ' . dirname($script) . ' de este PC: ejecuta allí (en Windows) "npm install".';
-                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nFalta playwright-core en este PC.");
+                $dirWin = $this->rutaWindows($this->scriptDir() . '/' . dirname($script));
+                $this->salida .= "⚠️ Falta playwright-core en este PC (se instala una sola vez).\n"
+                    . "   👉 Qué hacer: abre una consola de Windows (cmd) y ejecuta:\n"
+                    . "      cd /d \"{$dirWin}\"\n"
+                    . "      npm install\n"
+                    . '   y vuelve a pulsar el botón.';
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nFalta instalar playwright-core en este PC. En la caja de Salida tienes los comandos.");
                 continue;
             }
             $this->anexarResultados($id, $this->ejecutarScript(
