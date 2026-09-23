@@ -109,8 +109,10 @@
             <div class="p-4 border-b border-gray-200 bg-gray-50">
                 <h2 class="mb-1 text-sm font-semibold text-gray-700">Extracto a procesar → bancos{{ $cuenta ?: '572xxx' }}.xlsx</h2>
                 <p class="mb-3 text-xs text-gray-500">
-                    Elige la cuenta del banco y sube su extracto. La contrapartida de cada movimiento se busca en la base:
-                    Variables (a mano) → Maestro → Plan de cuentas. Si no hay una única cuenta posible se deja en blanco;
+                    Elige la cuenta del banco y sube su extracto. Se quitan los movimientos que ya están en el mayor de
+                    esa cuenta (y los que aparezcan en los otros mayores cargados, que se listan en la Salida).
+                    La contrapartida de cada movimiento se busca en la base:
+                    Variables (a mano) → Maestro → Plan de cuentas → palabras distintivas. Si no hay una única cuenta posible se deja en blanco;
                     los conceptos sin ninguna coincidencia se añaden a la pestaña Variables de la base para rellenarlos.
                 </p>
 
