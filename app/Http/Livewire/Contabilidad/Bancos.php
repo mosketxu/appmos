@@ -82,12 +82,17 @@ class Bancos extends Component
     {
         [$ok, $out] = $this->config_py(['listar']);
         $datos = $ok ? json_decode($out, true) : null;
-        $this->config = is_array($datos) ? $datos : ['textos' => [], 'genericas' => []];
+        $this->config = is_array($datos) ? $datos : ['textos' => [], 'genericas' => [], 'abreviaturas' => []];
     }
 
     public function anadirConfig(string $clave, string $texto, string $comentario = ''): void
     {
         $this->editarConfig(['anadir', $clave, $texto, $comentario]);
+    }
+
+    public function anadirAbreviatura(string $texto, string $abreviatura, string $comentario = ''): void
+    {
+        $this->editarConfig(['anadir', 'abreviaturas', $texto, $abreviatura, $comentario]);
     }
 
     public function borrarConfig(string $clave, string $texto): void

@@ -188,10 +188,10 @@
         <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: true }">
             <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
                 <button type="button" x-on:click="abierto = ! abierto" class="text-sm font-semibold text-gray-700">
-                    <span x-text="abierto ? '▾' : '▸'"></span> Palabras a quitar / genéricas
+                    <span x-text="abierto ? '▾' : '▸'"></span> Palabras a quitar / genéricas / abreviaturas
                     <span class="font-normal text-gray-400">(comunes a todos los clientes · Doc_y_Config\Configuracion.xlsx)</span>
                 </button>
-                <span wire:loading.flex wire:target="anadirConfig, borrarConfig, probarConcepto" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando… (y rehaciendo el Maestro si cambia "Textos a quitar")</span>
+                <span wire:loading.flex wire:target="anadirConfig, anadirAbreviatura, borrarConfig, probarConcepto" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando… (y rehaciendo el Maestro si cambia "Textos a quitar")</span>
             </div>
             <div x-show="abierto" class="p-4 space-y-4">
                 <div class="flex flex-wrap items-end gap-2">
@@ -209,6 +209,12 @@
                         <div>Palabras que cuentan en la búsqueda por palabras:
                             <b class="font-mono">{{ $pruebaResultado['palabras'] ? implode(' · ', $pruebaResultado['palabras']) : '(ninguna)' }}</b>
                         </div>
+                        @if (isset($pruebaResultado['sage']))
+                            <div>Concepto que va a SAGE (máx. 40):
+                                <b class="font-mono px-1 bg-white border rounded">{{ $pruebaResultado['sage'] }}</b>
+                                <span class="text-gray-400">({{ mb_strlen($pruebaResultado['sage']) }} car.)</span>
+                            </div>
+                        @endif
                     </div>
                 @endif
 
@@ -251,6 +257,47 @@
                         </div>
                     @endforeach
                 </div>
+
+                <div x-data="{ texto: '', abreviatura: '', comentario: '' }" class="pt-3 border-t">
+                    <h3 class="text-xs font-semibold text-gray-700">Abreviaturas para SAGE <span class="font-normal text-gray-400">({{ count($config['abreviaturas'] ?? []) }})</span></h3>
+                    <p class="mb-2 text-xs text-gray-500">
+                        SAGE solo guarda 40 caracteres de concepto. En la columna Concepto de bancos&lt;cuenta&gt;.xlsx se quita el nº de
+                        tarjeta y las referencias largas (6 cifras o más), se aplican estas abreviaturas y se corta a 40.
+                        No afecta a la búsqueda de contrapartidas.
+                    </p>
+                    <div class="flex flex-wrap gap-1 mb-2">
+                        @foreach ($config['abreviaturas'] ?? [] as $item)
+                            <span wire:key="cfg-abrev-{{ md5($item['texto']) }}"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded-full"
+                                  @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
+                                <span class="font-mono">{{ $item['texto'] }} → <b>{{ $item['abreviatura'] }}</b></span>
+                                <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
+                                        x-on:click="confirm('¿Quitar la abreviatura de ' + @js($item['texto']) + '?') && $wire.borrarConfig('abreviaturas', @js($item['texto']))">&times;</button>
+                            </span>
+                        @endforeach
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                        <input type="text" x-model="texto" placeholder="texto, p.ej. ADEUDO RECIBO"
+                               class="w-48 py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                        <input type="text" x-model="abreviatura" placeholder="abreviatura, p.ej. Adeudo Rbo"
+                               x-on:keydown.enter="if (texto.trim() && abreviatura.trim()) { $wire.anadirAbreviatura(texto, abreviatura, comentario); texto = ''; abreviatura = ''; comentario = ''; }"
+                               class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                        <input type="text" x-model="comentario" placeholder="comentario (opcional)"
+                               class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                        <x-button.primary
+                            x-on:click="if (texto.trim() && abreviatura.trim()) { $wire.anadirAbreviatura(texto, abreviatura, comentario); texto = ''; abreviatura = ''; comentario = ''; }">
+                            ＋ Añadir
+                        </x-button.primary>
+                    </div>
+                    @if (($avisoConfig['clave'] ?? '') === 'abreviaturas')
+                        <div wire:key="aviso-cfg-abreviaturas-{{ $avisoConfig['n'] }}"
+                             x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
+                             class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
+                            {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
+                        </div>
+                    @endif
+                </div>
+
                 <p class="text-xs text-gray-400">
                     Los cambios valen para la siguiente conciliación. Al cambiar "Textos a quitar" se rehace en el momento
                     el Maestro de todos los clientes con base (lo manual de Variables no se toca).
