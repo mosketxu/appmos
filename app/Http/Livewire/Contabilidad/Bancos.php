@@ -24,6 +24,11 @@ use Livewire\WithFileUploads;
  * bancos_conciliacion.py --partida <cuenta> genera Output/bancos<cuenta>.xlsx
  * buscando la contrapartida en Variables -> Maestro -> Plan cuentas de la base.
  * El extracto se archiva en Input/input_old como siempre.
+ *
+ * El Maestro se ve y se edita aquí (bancos_maestro.py): las filas de SAGE
+ * salen del Maestro de la base y lo que se añade o corrige a mano se guarda
+ * en su pestaña Variables, que la conciliación mira antes que el Maestro (el
+ * Maestro se rehace entero con cada subida de ficheros base).
  */
 class Bancos extends Component
 {
@@ -39,12 +44,18 @@ class Bancos extends Component
     public $extracto = null;
     public string $cuenta = '';
 
+    /** Maestro del cliente (filas SAGE + manuales) y plan de cuentas [codigo => nombre], ver cargarMaestro(). */
+    public array $maestro = [];
+    public array $planCuentas = [];
+    public string $avisoMaestro = '';
+
     /** Ficheros resultado de la última ejecución (mismo mecanismo que Contabilidad\Procesos). */
     public array $resultados = [];
 
     public function mount(): void
     {
         $this->cliente = $this->clientes()[0] ?? '';
+        $this->cargarMaestro();
     }
 
     protected function baseDir(): string
@@ -52,13 +63,13 @@ class Bancos extends Component
         return '/mnt/e/Claude/Contabilidad/Bancos';
     }
 
-    /** Subcarpetas de Bancos que son clientes (todas menos plantillas y las ocultas). */
+    /** Subcarpetas de Bancos que son clientes (todas menos Doc_y_Config y las ocultas). */
     protected function clientes(): array
     {
         $dirs = [];
         foreach (glob($this->baseDir().'/*', GLOB_ONLYDIR) ?: [] as $d) {
             $nombre = basename($d);
-            if ($nombre === 'plantillas' || str_starts_with($nombre, '.') || str_starts_with($nombre, '_')) {
+            if (in_array($nombre, ['Doc_y_Config', 'plantillas'], true) || str_starts_with($nombre, '.') || str_starts_with($nombre, '_')) {
                 continue;
             }
             $dirs[] = $nombre;
@@ -95,6 +106,7 @@ class Bancos extends Component
         $this->resultados = [];
         $this->cuenta = '';
         $this->extracto = null;
+        $this->cargarMaestro();
     }
 
     protected function basePath(): string
@@ -113,28 +125,76 @@ class Bancos extends Component
             return [];
         }
         try {
-            $reader = IOFactory::createReader('Xlsx');
-            $reader->setReadDataOnly(true);
-            $codigos = array_values(array_filter($reader->listWorksheetNames($this->basePath()), fn ($n) => preg_match('/^\d{6,}$/', $n)));
-            $nombres = [];
-            if ($codigos) {
-                $reader->setLoadSheetsOnly(['Plan cuentas']);
-                $hoja = $reader->load($this->basePath())->getSheetByName('Plan cuentas');
-                foreach ($hoja ? $hoja->toArray(null, false, false) : [] as $fila) {
-                    if (in_array((string) ($fila[0] ?? ''), $codigos, true)) {
-                        $nombres[(string) $fila[0]] = (string) ($fila[1] ?? '');
-                    }
-                }
-            }
+            $hojas = IOFactory::createReader('Xlsx')->listWorksheetNames($this->basePath());
         } catch (\Throwable $e) {
             return [];
         }
+        $codigos = array_values(array_filter($hojas, fn ($n) => preg_match('/^\d{6,}$/', $n)));
         sort($codigos);
         $out = [];
         foreach ($codigos as $c) {
-            $out[$c] = $nombres[$c] ?? '';
+            $out[$c] = $this->planCuentas[$c] ?? '';
         }
         return $out;
+    }
+
+    /** Lee Maestro + Variables + plan de cuentas de la base (bancos_maestro.py listar). */
+    public function cargarMaestro(): void
+    {
+        $this->maestro = [];
+        $this->planCuentas = [];
+        $this->avisoMaestro = '';
+        if (! $this->clienteValido() || ! is_file($this->basePath())) {
+            return;
+        }
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'listar']);
+            $datos = json_decode($r->output(), true);
+            if (! $r->successful() || ! is_array($datos)) {
+                $this->avisoMaestro = 'No se ha podido leer el Maestro: '.trim($r->output()."\n".$r->errorOutput());
+                return;
+            }
+            $this->maestro = $datos['filas'] ?? [];
+            $this->planCuentas = $datos['cuentas'] ?? [];
+        } catch (\Throwable $e) {
+            $this->avisoMaestro = 'No se ha podido leer el Maestro: '.$e->getMessage();
+        }
+    }
+
+    /** Alta o cambio de una fila manual del Maestro (se guarda en Variables). */
+    public function guardarMaestro(string $concepto, string $cuenta, string $anterior = ''): void
+    {
+        $args = [$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'guardar', $concepto, trim($cuenta)];
+        if ($anterior !== '') {
+            $args[] = $anterior;
+        }
+        $this->editarMaestro($args);
+    }
+
+    public function borrarMaestro(string $concepto): void
+    {
+        $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'borrar', $concepto]);
+    }
+
+    protected function editarMaestro(array $args): void
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado('Bancos · Maestro');
+            return;
+        }
+        if (! $this->clienteValido()) {
+            return;
+        }
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run($args);
+            $texto = trim($r->output()."\n".$r->errorOutput());
+        } catch (\Throwable $e) {
+            $r = null;
+            $texto = $e->getMessage();
+        }
+        $ok = $r && $r->successful();
+        $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ')."Maestro {$this->cliente}\n{$texto}");
+        $this->cargarMaestro();
     }
 
     /** Si el nombre del extracto empieza por una de las cuentas, se preselecciona. */
@@ -193,6 +253,7 @@ class Bancos extends Component
         $archivos = $this->ejecutarScript([$this->pythonBin(), 'bancos_conciliacion.py', $this->cliente, '--partida', $this->cuenta, $destino], 180, $etiqueta);
         $this->anexarResultados($archivos);
         $this->extracto = null;
+        $this->cargarMaestro(); // la conciliación añade a Variables lo que no encuentra
     }
 
     /** Descarga un fichero de la carpeta del cliente (Output/..., Base/...). */
@@ -262,6 +323,7 @@ class Bancos extends Component
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $archivos = $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_base.py', $this->cliente], $rutas), 120, $etiqueta);
         $this->anexarResultados($archivos);
+        $this->cargarMaestro();
     }
 
     /** Igual que Durcal::pythonBin() -- venv propio si existe, si no el python3 del sistema. */
