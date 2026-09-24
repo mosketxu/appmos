@@ -185,6 +185,71 @@
             </div>
         @endif
 
+        <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: true }">
+            <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
+                <button type="button" x-on:click="abierto = ! abierto" class="text-sm font-semibold text-gray-700">
+                    <span x-text="abierto ? '▾' : '▸'"></span> Palabras a quitar / genéricas
+                    <span class="font-normal text-gray-400">(comunes a todos los clientes · Doc_y_Config\Configuracion.xlsx)</span>
+                </button>
+                <span wire:loading wire:target="anadirConfig, borrarConfig, probarConcepto" class="text-xs text-yellow-600">⏳</span>
+            </div>
+            <div x-show="abierto" class="p-4 space-y-4">
+                <div class="flex flex-wrap items-end gap-2">
+                    <div class="flex-1 min-w-[16rem]">
+                        <label class="block text-xs text-gray-600">Probar un concepto (cópialo del extracto o del mayor)</label>
+                        <input type="text" wire:model="pruebaTexto" wire:keydown.enter="probarConcepto"
+                               placeholder="p.ej. TRANSFERENCIA A EMERALD SKY INVESTMENT S L"
+                               class="w-full py-1 text-sm border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <x-button.secondary wire:click="probarConcepto">Probar</x-button.secondary>
+                </div>
+                @if ($pruebaResultado)
+                    <div class="p-2 text-xs border rounded bg-gray-50">
+                        <div>Concepto limpio (con el que se compara con el Maestro): <b class="font-mono">{{ $pruebaResultado['limpio'] !== '' ? $pruebaResultado['limpio'] : '(vacío)' }}</b></div>
+                        <div>Palabras que cuentan en la búsqueda por palabras:
+                            <b class="font-mono">{{ $pruebaResultado['palabras'] ? implode(' · ', $pruebaResultado['palabras']) : '(ninguna)' }}</b>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    @foreach (['textos' => ['Textos a quitar', 'Se borran del concepto antes de comparar. Además siempre se quitan los números (fechas, nº de tarjeta, nº de factura).', 'p.ej. PAGO'],
+                               'genericas' => ['Palabras genéricas', 'No sirven para reconocer a nadie en la búsqueda por palabras (solo cuentan palabras de 5 letras o más).', 'p.ej. INVESTMENT']] as $clave => [$titulo, $ayuda, $ejemplo])
+                        <div x-data="{ texto: '', comentario: '' }">
+                            <h3 class="text-xs font-semibold text-gray-700">{{ $titulo }} <span class="font-normal text-gray-400">({{ count($config[$clave] ?? []) }})</span></h3>
+                            <p class="mb-2 text-xs text-gray-500">{{ $ayuda }}</p>
+                            <div class="flex flex-wrap gap-1 mb-2">
+                                @foreach ($config[$clave] ?? [] as $item)
+                                    <span wire:key="cfg-{{ $clave }}-{{ md5($item['texto']) }}"
+                                          class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded-full"
+                                          @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
+                                        <span class="font-mono">{{ $item['texto'] }}</span>
+                                        <button type="button" class="text-gray-400 hover:text-red-600"
+                                                x-on:click="confirm('¿Quitar ' + @js($item['texto']) + ' de {{ $titulo }}?') && $wire.borrarConfig(@js($clave), @js($item['texto']))">&times;</button>
+                                    </span>
+                                @endforeach
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                <input type="text" x-model="texto" placeholder="{{ $ejemplo }}"
+                                       x-on:keydown.enter="if (texto.trim()) { $wire.anadirConfig(@js($clave), texto, comentario); texto = ''; comentario = ''; }"
+                                       class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                                <input type="text" x-model="comentario" placeholder="comentario (opcional)"
+                                       class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                                <x-button.secondary
+                                    x-on:click="if (texto.trim()) { $wire.anadirConfig(@js($clave), texto, comentario); texto = ''; comentario = ''; }">
+                                    ＋
+                                </x-button.secondary>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <p class="text-xs text-gray-400">
+                    Los cambios valen para la siguiente conciliación. Al cambiar "Textos a quitar" se rehace en el momento
+                    el Maestro de todos los clientes con base (lo manual de Variables no se toca).
+                </p>
+            </div>
+        </div>
+
         @if ($hayBase)
             <div class="overflow-hidden bg-white border rounded-lg shadow"
                  x-data="{

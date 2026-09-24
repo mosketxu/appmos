@@ -49,6 +49,11 @@ class Bancos extends Component
     public array $planCuentas = [];
     public string $avisoMaestro = '';
 
+    /** Listas comunes de Doc_y_Config/Configuracion.xlsx (bancos_config.py) y la prueba de limpieza. */
+    public array $config = ['textos' => [], 'genericas' => []];
+    public string $pruebaTexto = '';
+    public ?array $pruebaResultado = null;
+
     /** Ficheros resultado de la última ejecución (mismo mecanismo que Contabilidad\Procesos). */
     public array $resultados = [];
 
@@ -56,6 +61,76 @@ class Bancos extends Component
     {
         $this->cliente = $this->clientes()[0] ?? '';
         $this->cargarMaestro();
+        $this->cargarConfig();
+    }
+
+    /** Ejecuta bancos_config.py y devuelve [ok, salida]. */
+    protected function config_py(array $args): array
+    {
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run(array_merge([$this->pythonBin(), 'bancos_config.py'], $args));
+            return [$r->successful(), trim($r->output()."\n".$r->errorOutput())];
+        } catch (\Throwable $e) {
+            return [false, $e->getMessage()];
+        }
+    }
+
+    public function cargarConfig(): void
+    {
+        [$ok, $out] = $this->config_py(['listar']);
+        $datos = $ok ? json_decode($out, true) : null;
+        $this->config = is_array($datos) ? $datos : ['textos' => [], 'genericas' => []];
+    }
+
+    public function anadirConfig(string $clave, string $texto, string $comentario = ''): void
+    {
+        $this->editarConfig(['anadir', $clave, $texto, $comentario]);
+    }
+
+    public function borrarConfig(string $clave, string $texto): void
+    {
+        $this->editarConfig(['borrar', $clave, $texto]);
+    }
+
+    protected function editarConfig(array $args): void
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado('Bancos · Configuración');
+            return;
+        }
+        [$ok, $out] = $this->config_py($args);
+        // "Textos a quitar" cambia el concepto limpio: se rehace el Maestro de
+        // todos los clientes con base para que la tabla y la conciliación lo usen ya.
+        if ($ok && ($args[1] ?? '') === 'textos') {
+            $rehechos = [];
+            foreach ($this->clientes() as $c) {
+                if (is_file($this->baseDir()."/{$c}/Base/Base {$c}.xlsx")) {
+                    $r = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'bancos_base.py', $c, '--rehacer']);
+                    $rehechos[] = $c.($r->successful() ? '' : ' (⚠️ '.trim($r->output().' '.$r->errorOutput()).')');
+                }
+            }
+            if ($rehechos) {
+                $out .= "\nMaestro rehecho: ".implode(', ', $rehechos);
+            }
+            $this->cargarMaestro();
+        }
+        $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ')."Configuración común\n{$out}");
+        $this->cargarConfig();
+        if ($this->pruebaTexto !== '') {
+            $this->probarConcepto();
+        }
+    }
+
+    /** Cómo queda un concepto con las listas actuales (limpio + palabras que cuentan). */
+    public function probarConcepto(): void
+    {
+        $this->pruebaResultado = null;
+        if (trim($this->pruebaTexto) === '') {
+            return;
+        }
+        [$ok, $out] = $this->config_py(['probar', $this->pruebaTexto]);
+        $datos = $ok ? json_decode($out, true) : null;
+        $this->pruebaResultado = is_array($datos) ? $datos : ['limpio' => '⚠️ '.$out, 'palabras' => []];
     }
 
     protected function baseDir(): string
