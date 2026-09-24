@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class Entidad extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SoloEntidadesPermitidas;
     use HasFactory;
     protected $table = 'entidades';
     protected $fillable=['entidad','alias','favorito',

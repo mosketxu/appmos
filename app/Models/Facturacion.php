@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 class Facturacion extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SoloEntidadesPermitidas;
     // use SoftDeletes;
 
     protected $table = 'facturacion';

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class ContactoEntidad extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SoloEntidadesPermitidas;
 
     protected $table = 'contacto_entidades';
 

@@ -29,6 +29,19 @@ class AppServiceProvider extends ServiceProvider
         //     $this->dispatchBrowserEvent('notify', $message);
         // });
 
+        // Solo consulta: sin el permiso de escritura de config('accesos.escritura')
+        // no se puede guardar ni borrar ese modelo, venga de la pantalla que venga.
+        foreach (config('accesos.escritura', []) as $modelo => $permiso) {
+            $comprobar = function () use ($permiso) {
+                $user = auth()->user();
+                if ($user && ! $user->can($permiso)) {
+                    throw new \Illuminate\Auth\Access\AuthorizationException('Solo consulta: no tienes permiso para modificar estos datos.');
+                }
+            };
+            $modelo::saving($comprobar);
+            $modelo::deleting($comprobar);
+        }
+
         Builder::macro('search', function ($field, $string) {
              return $string ? $this->where($field, 'like', '%'.$string.'%') : $this;
         });

@@ -9,7 +9,12 @@ class Suma extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre','tfno','email'];
+    protected $fillable = ['nombre','tfno','email','user_id'];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function entidades()
     {

@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
@@ -17,6 +18,7 @@ class User extends Authenticatable
     use HasProfilePhoto;
     use Notifiable;
     use TwoFactorAuthenticatable;
+    use HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -27,6 +29,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'activo',
     ];
 
     /**
@@ -48,7 +51,20 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'activo' => 'boolean',
     ];
+
+    /** Responsable Suma (combo de Entidades) que es este usuario, si lo es. */
+    public function suma()
+    {
+        return $this->hasOne(Suma::class);
+    }
+
+    /** Entidades asignadas a mano en el panel de control (además de las que lleva como Responsable Suma). */
+    public function entidadesAsignadas()
+    {
+        return $this->belongsToMany(Entidad::class, 'entidad_user')->withTimestamps();
+    }
 
     /**
      * The accessors to append to the model's array form.

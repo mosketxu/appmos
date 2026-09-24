@@ -25,6 +25,7 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        //
+        // Admin puede todo, tenga o no marcado cada permiso (ver config/accesos.php)
+        Gate::before(fn ($user, $ability) => $user->hasRole('Admin') ? true : null);
     }
 }

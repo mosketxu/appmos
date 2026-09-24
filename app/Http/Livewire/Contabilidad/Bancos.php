@@ -147,14 +147,27 @@ class Bancos extends Component
         return '/mnt/e/Claude/Contabilidad/Bancos';
     }
 
-    /** Subcarpetas de Bancos que son clientes (todas menos Doc_y_Config y las ocultas). */
+    /**
+     * Subcarpetas de Bancos que son clientes (todas menos Doc_y_Config y las
+     * ocultas) y que el usuario puede ver: cada carpeta se enlaza con su
+     * entidad de Appmos en <Cliente>/cliente.json ({"entidad_id": ...}); un
+     * usuario sin "entidades.todas" solo ve las de sus entidades, y las
+     * carpetas sin enlazar solo las ve quien puede ver todas.
+     */
     protected function clientes(): array
     {
+        $permitidas = \App\Support\Accesos::entidadesPermitidas();
         $dirs = [];
         foreach (glob($this->baseDir().'/*', GLOB_ONLYDIR) ?: [] as $d) {
             $nombre = basename($d);
             if (in_array($nombre, ['Doc_y_Config', 'plantillas'], true) || str_starts_with($nombre, '.') || str_starts_with($nombre, '_')) {
                 continue;
+            }
+            if ($permitidas !== null) {
+                $cfg = json_decode((string) @file_get_contents($d.'/cliente.json'), true);
+                if (! in_array((int) ($cfg['entidad_id'] ?? 0), $permitidas, true)) {
+                    continue;
+                }
             }
             $dirs[] = $nombre;
         }

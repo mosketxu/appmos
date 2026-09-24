@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FacturacionConcepto extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SoloEntidadesPermitidas;
 
     protected $table = 'facturacion_conceptos';
 

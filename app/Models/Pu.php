@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Pu extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SoloEntidadesPermitidas;
 
     protected $fillable=['entidad_id','destino','url','us','us2','ps','observaciones'];
 

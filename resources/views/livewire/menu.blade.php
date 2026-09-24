@@ -1,3 +1,12 @@
+@php
+    // Primera pantalla de Contabilidad a la que tiene acceso (ver config/accesos.php)
+    $rutaContabilidad = collect([
+        'contabilidad.procesos' => 'contabilidad.procesos',
+        'contabilidad.facturacionpdf' => 'contabilidad.facturacion-pdf',
+        'contabilidad.durcal' => 'contabilidad.durcal',
+        'contabilidad.bancos' => 'contabilidad.bancos',
+    ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
+@endphp
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
     <div class="max-w-full px-4 mx-auto">
@@ -12,12 +21,21 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                    <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
-                        {{ __('Entidades') }}
-                    </x-jet-nav-link>
-                    <x-jet-nav-link href="{{ route('contabilidad.procesos') }}" :active="request()->routeIs('contabilidad.*')">
-                        {{ __('Contabilidad') }}
-                    </x-jet-nav-link>
+                    @can('entidades.ver')
+                        <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
+                            {{ __('Entidades') }}
+                        </x-jet-nav-link>
+                    @endcan
+                    @if ($rutaContabilidad)
+                        <x-jet-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*')">
+                            {{ __('Contabilidad') }}
+                        </x-jet-nav-link>
+                    @endif
+                    @role('Admin')
+                        <x-jet-nav-link href="{{ route('admin.usuarios') }}" :active="request()->routeIs('admin.*')">
+                            {{ __('Panel de control') }}
+                        </x-jet-nav-link>
+                    @endrole
                     {{-- Menú Facturación oculto a petición
                     <div class="relative mt-3 ">
                         <x-jet-dropdown align="center" width="w-36" >
@@ -65,8 +83,9 @@
                             {{ __('Contactos') }}
                         </x-jet-nav-link>
                         <x-jet-nav-link href="{{ route('entidad.edit',$entmenu) }}" :active="request()->routeIs('entidad.edit')">
-                            {{ __('Editar') }}
+                            @can('entidades.editar') {{ __('Editar') }} @else {{ __('Ficha') }} @endcan
                         </x-jet-nav-link>
+                        @can('facturacion.ver')
                         <div class="relative mt-1 ">
                             <x-jet-dropdown align="center" width="w-36" >
                                 <x-slot name="trigger">
@@ -94,6 +113,7 @@
                         <x-jet-nav-link href="{{ route('facturacionconcepto.entidad',$entmenu)}}" :active="request()->routeIs('facturacionconcepto.entidad')">
                             {{ __('Fac.Conceptos') }}
                         </x-jet-nav-link>
+                        @endcan
                     </div>
                 @endif
                 <!-- Settings Dropdown -->
@@ -151,12 +171,21 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-jet-responsive-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
-                {{ __('Entidades') }}
-            </x-jet-responsive-nav-link>
-            <x-jet-responsive-nav-link href="{{ route('contabilidad.procesos') }}" :active="request()->routeIs('contabilidad.*')">
-                {{ __('Contabilidad') }}
-            </x-jet-responsive-nav-link>
+            @can('entidades.ver')
+                <x-jet-responsive-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
+                    {{ __('Entidades') }}
+                </x-jet-responsive-nav-link>
+            @endcan
+            @if ($rutaContabilidad)
+                <x-jet-responsive-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*')">
+                    {{ __('Contabilidad') }}
+                </x-jet-responsive-nav-link>
+            @endif
+            @role('Admin')
+                <x-jet-responsive-nav-link href="{{ route('admin.usuarios') }}" :active="request()->routeIs('admin.*')">
+                    {{ __('Panel de control') }}
+                </x-jet-responsive-nav-link>
+            @endrole
             {{-- Menú Facturación oculto a petición
             <x-jet-responsive-nav-link href="{{ route('facturacion.index') }}" :active="request()->routeIs('facturacion.index')">
                 {{ __('Facturación') }}
@@ -169,7 +198,7 @@
             <div class="flex items-center px-4">
                 <div>
                     <div class="text-base font-medium text-gray-800">{{ Auth::user()->name }}</div>
-                    <div class="text-sm font-medium text-gray-500">{{ Auth::user()->email }}</div>
+                    <div class="text-sm font-medium text-gray-500">{{ Auth::user()->email }} · {{ Auth::user()->getRoleNames()->implode(', ') }}</div>
                 </div>
             </div>
 
