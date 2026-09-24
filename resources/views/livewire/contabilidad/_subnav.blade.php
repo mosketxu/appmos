@@ -20,3 +20,16 @@
         Bancos
     </a>
 </div>
+
+{{-- Fuera de los PCs autorizados (VPS) Contabilidad no ejecuta nada: tira de
+     OneDrive y no se abre a internet. Marca de agua para que se vea claro. --}}
+@unless (config('contabilidad.ejecucion_local'))
+    <div class="px-4 py-2 mx-4 mt-3 text-sm font-semibold text-center text-red-800 border border-red-300 rounded-md bg-red-50">
+        🔒 NO OPERATIVO DESDE LA WEB POR SEGURIDAD — solo se ejecuta desde los PCs autorizados.
+    </div>
+    <div class="fixed inset-0 z-40 flex items-center justify-center overflow-hidden pointer-events-none select-none" aria-hidden="true">
+        <div class="text-5xl font-black leading-tight text-center text-red-600 uppercase md:text-7xl opacity-10 whitespace-nowrap" style="transform:rotate(-30deg)">
+            No operativo desde la web<br>por seguridad
+        </div>
+    </div>
+@endunless
