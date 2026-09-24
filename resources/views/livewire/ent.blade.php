@@ -22,6 +22,8 @@
 
     <div class="flex-col space-y-4 text-gray-500">
         <form wire:submit.prevent="save" class="">
+        {{-- Sin permiso de escritura: todo el formulario en solo lectura --}}
+        <fieldset class="contents" @cannot('entidades.editar') disabled @endcannot>
             <div class="px-2 mx-2 my-1 rounded-md bg-blue-50">
                 <h3 class="font-semibold ">Datos generales</h3>
                 <x-jet-input  wire:model.defer="entidad.id" type="hidden"/>
@@ -278,6 +280,7 @@
                     <x-jet-secondary-button  onclick="location.href = '{{route('entidades')}}'">{{ __('Volver') }}</x-jet-secondary-button>
                 </div>
             </div>
+                </fieldset>
         </form>
     </div>
 </div>

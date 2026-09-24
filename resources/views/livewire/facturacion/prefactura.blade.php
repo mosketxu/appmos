@@ -21,6 +21,8 @@
 
     <div class="flex-col mx-5 mt-2 text-gray-500 rounded-lg">
         <form wire:submit.prevent="save" >
+        {{-- Sin permiso de escritura: todo el formulario en solo lectura --}}
+        <fieldset class="contents" @cannot('facturacion.editar') disabled @endcannot>
             <div class="flex">
                 {{-- datos factura --}}
                 <div class="w-full md:w-8/12 py-2 mr-1 bg-white rounded-lg shadow-md">
@@ -151,6 +153,7 @@
                     <x-jet-secondary-button  onclick="location.href = '{{route('facturacion.prefacturas')}}'">{{ __('Volver') }}</x-jet-secondary-button>
                 @endif
             </div>
+                </fieldset>
         </form>
     </div>
     {{-- Detalle factura --}}

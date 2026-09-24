@@ -168,6 +168,12 @@
         </div>
     </div>
 
+    @cannot('entidades.editar')
+        <div class="px-4 py-1 text-xs text-center text-amber-800 bg-amber-50 border-t border-amber-200">
+            👁 Modo consulta: puedes ver la información de tus entidades, pero no modificarla.
+        </div>
+    @endcannot
+
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">

@@ -143,6 +143,8 @@
         </div>
         <!-- Save Transaction Modal -->
         <form wire:submit.prevent="save">
+        {{-- Sin permiso de escritura: todo el formulario en solo lectura --}}
+        <fieldset class="contents" @cannot('entidades.editar') disabled @endcannot>
             @if (session()->has('message'))
                 <div id="alert" class="relative px-6 py-2 mb-2 text-white bg-red-200 border-red-500 rounded border-1">
                     <span class="inline-block mx-8 align-middle">
@@ -190,6 +192,7 @@
                     <x-button.primary type="submit">Save</x-button.primary>
                 </x-slot>
             </x-modal.dialog>
+                </fieldset>
         </form>
 
     </div>

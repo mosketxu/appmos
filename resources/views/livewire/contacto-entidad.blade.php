@@ -76,6 +76,8 @@
                 <hr>
             </div>
             <form wire:submit.prevent="savecontacto">
+        {{-- Sin permiso de escritura: todo el formulario en solo lectura --}}
+        <fieldset class="contents" @cannot('entidades.editar') disabled @endcannot>
                 <div class="flex flex-col mx-2 my-2 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
                     <div class="w-full form-item">
                         <x-jet-label for="contacto" >{{ __('Contactos') }}</x-jet-label>
@@ -102,7 +104,8 @@
                         </x-jet-button>
                     </div>
                 </div>
-            </form>
+                    </fieldset>
+        </form>
         </div>
         <div class="flex mt-2 ml-2 space-x-4">
             <div class="space-x-3">

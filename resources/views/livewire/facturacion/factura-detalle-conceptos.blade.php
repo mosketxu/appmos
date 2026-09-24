@@ -66,6 +66,8 @@
     {{-- nuevo --}}
     @if($deshabilitado =='')
     <form wire:submit.prevent="save">
+        {{-- Sin permiso de escritura: todo el formulario en solo lectura --}}
+        <fieldset class="contents" @cannot('facturacion.editar') disabled @endcannot>
         <div class="flex space-x-1" wire:loading.class.delay="opacity-50">
             <div class="w-16 "><input type="number"  wire:model.lazy="orden" name="orden" value="{{ old('orden','0') }}" class="w-full py-0.5 text-xs font-thin text-gray-500  border-0 rounded-md"/></div>
             <div class="w-1/12 ">
@@ -101,6 +103,7 @@
                 </button>
             </div>
         </div>
-    </form>
+            </fieldset>
+        </form>
     @endif
 </div>
