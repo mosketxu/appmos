@@ -191,7 +191,7 @@
                     <span x-text="abierto ? '▾' : '▸'"></span> Palabras a quitar / genéricas
                     <span class="font-normal text-gray-400">(comunes a todos los clientes · Doc_y_Config\Configuracion.xlsx)</span>
                 </button>
-                <span wire:loading wire:target="anadirConfig, borrarConfig, probarConcepto" class="text-xs text-yellow-600">⏳</span>
+                <span wire:loading.flex wire:target="anadirConfig, borrarConfig, probarConcepto" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando… (y rehaciendo el Maestro si cambia "Textos a quitar")</span>
             </div>
             <div x-show="abierto" class="p-4 space-y-4">
                 <div class="flex flex-wrap items-end gap-2">
@@ -282,7 +282,7 @@
                         <option value="pendientes">Sin cuenta</option>
                         <option value="dudosos">Con varias cuentas</option>
                     </select>
-                    <span wire:loading wire:target="guardarMaestro, borrarMaestro" class="text-xs text-yellow-600">⏳ Guardando…</span>
+                    <span wire:loading.flex wire:target="guardarMaestro, borrarMaestro" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando…</span>
                 </div>
 
                 <div x-show="abierto" class="p-4 space-y-3">
