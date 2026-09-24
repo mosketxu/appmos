@@ -215,7 +215,8 @@
                 <div class="grid gap-4 md:grid-cols-2">
                     @foreach (['textos' => ['Textos a quitar', 'Se borran del concepto antes de comparar. Además siempre se quitan los números (fechas, nº de tarjeta, nº de factura).', 'p.ej. PAGO'],
                                'genericas' => ['Palabras genéricas', 'No sirven para reconocer a nadie en la búsqueda por palabras (solo cuentan palabras de 5 letras o más).', 'p.ej. INVESTMENT']] as $clave => [$titulo, $ayuda, $ejemplo])
-                        <div x-data="{ texto: '', comentario: '' }">
+                        {{-- clave va en x-data: dentro de <x-button ...> un @js no se compila y rompería el clic --}}
+                        <div x-data="{ texto: '', comentario: '', clave: @js($clave) }">
                             <h3 class="text-xs font-semibold text-gray-700">{{ $titulo }} <span class="font-normal text-gray-400">({{ count($config[$clave] ?? []) }})</span></h3>
                             <p class="mb-2 text-xs text-gray-500">{{ $ayuda }}</p>
                             <div class="flex flex-wrap gap-1 mb-2">
@@ -231,12 +232,12 @@
                             </div>
                             <div class="flex flex-wrap gap-1">
                                 <input type="text" x-model="texto" placeholder="{{ $ejemplo }}"
-                                       x-on:keydown.enter="if (texto.trim()) { $wire.anadirConfig(@js($clave), texto, comentario); texto = ''; comentario = ''; }"
+                                       x-on:keydown.enter="if (texto.trim()) { $wire.anadirConfig(clave, texto, comentario); texto = ''; comentario = ''; }"
                                        class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
                                 <input type="text" x-model="comentario" placeholder="comentario (opcional)"
                                        class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
                                 <x-button.secondary
-                                    x-on:click="if (texto.trim()) { $wire.anadirConfig(@js($clave), texto, comentario); texto = ''; comentario = ''; }">
+                                    x-on:click="if (texto.trim()) { $wire.anadirConfig(clave, texto, comentario); texto = ''; comentario = ''; }">
                                     ＋
                                 </x-button.secondary>
                             </div>
