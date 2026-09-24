@@ -54,6 +54,9 @@ class Bancos extends Component
     public string $pruebaTexto = '';
     public ?array $pruebaResultado = null;
 
+    /** Aviso junto a la lista tocada tras añadir/quitar: ['clave', 'ok', 'texto', 'n']. */
+    public array $avisoConfig = [];
+
     /** Ficheros resultado de la última ejecución (mismo mecanismo que Contabilidad\Procesos). */
     public array $resultados = [];
 
@@ -114,6 +117,7 @@ class Bancos extends Component
             }
             $this->cargarMaestro();
         }
+        $this->avisoConfig = ['clave' => $args[1] ?? '', 'ok' => $ok, 'texto' => $out, 'n' => ($this->avisoConfig['n'] ?? 0) + 1];
         $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ')."Configuración común\n{$out}");
         $this->cargarConfig();
         if ($this->pruebaTexto !== '') {

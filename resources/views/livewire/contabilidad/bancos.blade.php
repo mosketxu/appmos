@@ -225,7 +225,7 @@
                                           class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded-full"
                                           @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
                                         <span class="font-mono">{{ $item['texto'] }}</span>
-                                        <button type="button" class="text-gray-400 hover:text-red-600"
+                                        <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
                                                 x-on:click="confirm('¿Quitar ' + @js($item['texto']) + ' de {{ $titulo }}?') && $wire.borrarConfig(@js($clave), @js($item['texto']))">&times;</button>
                                     </span>
                                 @endforeach
@@ -236,11 +236,18 @@
                                        class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
                                 <input type="text" x-model="comentario" placeholder="comentario (opcional)"
                                        class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
-                                <x-button.secondary
+                                <x-button.primary
                                     x-on:click="if (texto.trim()) { $wire.anadirConfig(clave, texto, comentario); texto = ''; comentario = ''; }">
-                                    ＋
-                                </x-button.secondary>
+                                    ＋ Añadir
+                                </x-button.primary>
                             </div>
+                            @if (($avisoConfig['clave'] ?? '') === $clave)
+                                <div wire:key="aviso-cfg-{{ $clave }}-{{ $avisoConfig['n'] }}"
+                                     x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
+                                     class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
+                                    {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
+                                </div>
+                            @endif
                         </div>
                     @endforeach
                 </div>
