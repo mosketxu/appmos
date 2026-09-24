@@ -262,8 +262,9 @@
                     <h3 class="text-xs font-semibold text-gray-700">Abreviaturas para SAGE <span class="font-normal text-gray-400">({{ count($config['abreviaturas'] ?? []) }})</span></h3>
                     <p class="mb-2 text-xs text-gray-500">
                         SAGE solo guarda 40 caracteres de concepto. En la columna Concepto de bancos&lt;cuenta&gt;.xlsx se quita el nº de
-                        tarjeta y las referencias largas (6 cifras o más), se aplican estas abreviaturas y se corta a 40.
-                        No afecta a la búsqueda de contrapartidas.
+                        tarjeta y las formas jurídicas (S.L., SA, SLU…), se aplican estas abreviaturas y, si no cabe, se recorta el
+                        nombre del proveedor (nunca los nº de factura): ELECTRICIDAD ENI PLENITUDE IBERIA S.L. F26ES-01269326 24 →
+                        ELECTRICIDAD ENI PLENI F26ES-01269326 24. No afecta a la búsqueda de contrapartidas.
                     </p>
                     <div class="flex flex-wrap gap-1 mb-2">
                         @foreach ($config['abreviaturas'] ?? [] as $item)
