@@ -112,7 +112,11 @@
                     Elige la cuenta del banco y sube su extracto. Se quitan los movimientos que ya están en el mayor de
                     esa cuenta (y los que aparezcan en los otros mayores cargados, que se listan en la Salida).
                     La contrapartida de cada movimiento se busca en la base:
-                    Variables (a mano) → Maestro → Plan de cuentas → palabras distintivas. Si no hay una única cuenta posible se deja en blanco;
+                    Variables (a mano) → Maestro → Plan de cuentas → palabras distintivas.
+                    Los movimientos que salen en bancos&lt;cuenta&gt;.xlsx se guardan también en la base como apuntes de esa
+                    cuenta (provisionales hasta que subas el mayor de SAGE), así no se repiten ni hace falta volver a bajar
+                    el mayor. Si luego pones a mano en el Maestro la cuenta de un concepto sin contrapartida, se rellena
+                    también en la base y en su línea del fichero de bancos. Si no hay una única cuenta posible se deja en blanco;
                     los conceptos sin ninguna coincidencia se añaden a la pestaña Variables de la base para rellenarlos.
                 </p>
 
