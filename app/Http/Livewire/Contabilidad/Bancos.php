@@ -102,7 +102,7 @@ class Bancos extends Component
 
     protected function editarConfig(array $args): void
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.bancos_ejecucion')) {
             $this->avisarNoAutorizado('Bancos · Configuración');
             return;
         }
@@ -144,7 +144,7 @@ class Bancos extends Component
 
     protected function baseDir(): string
     {
-        return '/mnt/e/Claude/Contabilidad/Bancos';
+        return rtrim(config('contabilidad.bancos_dir'), '/');
     }
 
     /**
@@ -275,7 +275,7 @@ class Bancos extends Component
 
     protected function editarMaestro(array $args): void
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.bancos_ejecucion')) {
             $this->avisarNoAutorizado('Bancos · Maestro');
             return;
         }
@@ -309,7 +309,7 @@ class Bancos extends Component
     {
         $this->resetErrorBag(['extracto', 'cuenta']);
         $etiqueta = "Bancos · {$this->cliente} · bancos{$this->cuenta}";
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.bancos_ejecucion')) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
@@ -378,7 +378,7 @@ class Bancos extends Component
         }
 
         $etiqueta = "Bancos · {$this->cliente} · ficheros base";
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.bancos_ejecucion')) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
@@ -482,7 +482,7 @@ class Bancos extends Component
      */
     protected function ejecutarScript(array $args, int $timeout, string $etiqueta): array
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.bancos_ejecucion')) {
             $this->avisarNoAutorizado($etiqueta);
             return [];
         }

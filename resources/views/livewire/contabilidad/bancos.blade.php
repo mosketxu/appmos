@@ -183,7 +183,10 @@
                 @foreach ($resultados as $r)
                     <div class="flex flex-wrap items-center gap-x-3">
                         <button type="button" wire:click="descargar(@js($r['relativa']))" class="text-sm text-blue-700 underline hover:text-blue-900">⬇ Descargar {{ basename(str_replace('\\', '/', $r['ruta'])) }}</button>
-                        <x-contabilidad.resultado-fichero :r="$r" />
+                        @if (preg_match('/^[A-Z]:\\\\/', $r['ruta']))
+                            {{-- Ruta de Windows para copiar: solo tiene sentido en un PC, no en la web --}}
+                            <x-contabilidad.resultado-fichero :r="$r" />
+                        @endif
                     </div>
                 @endforeach
             </div>

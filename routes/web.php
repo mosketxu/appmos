@@ -52,7 +52,13 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     Route::get('/contabilidad/durcal', function () {return view('contabilidad.durcal');})->name('contabilidad.durcal')->middleware('can:contabilidad.durcal');
 
     // Contabilidad (Bancos): conciliación de extractos bancarios -> bancos.xlsx para SAGE
-    Route::get('/contabilidad/bancos', function () {return view('contabilidad.bancos');})->name('contabilidad.bancos')->middleware('can:contabilidad.bancos');
+    // En local con BANCOS_URL (y sin BANCOS_EJECUCION) lleva directamente a la web, donde está la copia buena
+    Route::get('/contabilidad/bancos', function () {
+        if (config('contabilidad.bancos_url') && ! config('contabilidad.bancos_ejecucion')) {
+            return redirect()->away(config('contabilidad.bancos_url'));
+        }
+        return view('contabilidad.bancos');
+    })->name('contabilidad.bancos')->middleware('can:contabilidad.bancos');
 
     // Entidades: consulta
     Route::middleware('can:entidades.ver')->group(function () {
