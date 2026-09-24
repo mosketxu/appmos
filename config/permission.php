@@ -201,6 +201,8 @@ return [
          * file. Using 'default' here means to use the `default` set in cache.php.
          */
 
-        'store' => 'default',
+        // 'array': caché solo durante la petición. Con la caché en ficheros, lo que se cambia
+        // por consola (mosketxu) y lo que escribe Apache (www-data) chocaban por permisos.
+        'store' => env('PERMISSION_CACHE_STORE', 'array'),
     ],
 ];
