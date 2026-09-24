@@ -132,7 +132,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registro público cerrado (24-sep-2026): las cuentas las crea el administrador.
         Features::resetPasswords(),
         // Features::emailVerification(),
         Features::updateProfileInformation(),
