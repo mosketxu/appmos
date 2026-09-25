@@ -69,7 +69,10 @@ return [
     | Contabilidad/FacturasOcr; python del .venv de esa carpeta (pymupdf, openpyxl).
     */
 
-    'facturasocr_dir' => env('FACTURASOCR_DIR', '/mnt/e/Claude/Contabilidad/FacturasOcr'),
+    // La carpeta Claude no está en la misma unidad en todos los PCs (AlexMiniPC E:, PortalExomen F:)
+    'facturasocr_dir' => env('FACTURASOCR_DIR') ?: (collect(['e', 'f', 'd'])
+        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/FacturasOcr")
+        ->first(fn ($d) => is_dir($d)) ?? '/mnt/e/Claude/Contabilidad/FacturasOcr'),
     'facturasocr_python' => env('FACTURASOCR_PYTHON'),
 
 ];
