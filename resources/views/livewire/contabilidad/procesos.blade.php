@@ -114,6 +114,25 @@
                 </label>
             @endforeach
         </div>
+        <div class="flex flex-col mt-3 gap-y-2">
+            <label class="flex flex-col text-xs font-medium text-gray-600">
+                Texto antes de la tabla (línea en blanco = párrafo nuevo)
+                <textarea wire:model="pfTexto" rows="4" class="mt-1 text-sm border-gray-300 rounded shadow-sm"></textarea>
+            </label>
+            <div class="flex flex-wrap items-center gap-x-2">
+                <label class="flex items-center text-xs font-medium text-gray-600 shrink-0">
+                    <input type="checkbox" wire:model="pfIncluirDestacado" class="mr-1 border-gray-300 rounded"> Frase en negrita
+                </label>
+                <input type="text" wire:model="pfDestacado" class="flex-1 min-w-0 text-sm font-semibold border-gray-300 rounded shadow-sm">
+            </div>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <label class="text-xs font-medium text-gray-600 shrink-0">To</label>
+                <input type="text" wire:model="pfTo" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                <label class="text-xs font-medium text-gray-600 shrink-0">CC</label>
+                <input type="text" wire:model="pfCc" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+            </div>
+            <p class="text-xs text-gray-500">Al "Enviar a Plein", el texto, la frase y los destinatarios quedan guardados como base del mes siguiente.</p>
+        </div>
         <div class="flex flex-wrap items-center mt-3 gap-x-2 gap-y-2">
             <x-button.secondary wire:click="ejecutarPagosFinMes('vista')" wire:loading.attr="disabled" wire:target="ejecutarPagosFinMes">
                 Vista previa
@@ -127,7 +146,7 @@
                 wire:click="ejecutarPagosFinMes('real')"
                 wire:loading.attr="disabled"
                 wire:target="ejecutarPagosFinMes"
-                onclick="return confirm('¿Mandar el correo de pagos a Plein (Elena, Luca, AP; CC Marta)?')"
+                onclick="return confirm('¿Mandar el correo de pagos a los destinatarios REALES (To/CC de arriba)?')"
             >
                 Enviar a Plein
             </x-button.primary>

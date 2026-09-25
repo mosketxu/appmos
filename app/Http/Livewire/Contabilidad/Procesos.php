@@ -73,6 +73,14 @@ class Procesos extends Component
     public string $pfNominas = ''; // vacío = total de la remesa Laboral 2026/<MM>/RM*.xml
     public string $pfCargo = '';   // vacío = último día hábil del mes ("Wednesday 30th")
     public string $pfEmailPrueba = 'alex.arregui@sumaempresa.com';
+    // Texto, frase en negrita (opcional) y destinatarios: se precargan de
+    // pagosFinMes.json, que el script reescribe al enviar a Plein -> lo que sale
+    // un mes queda de base para el siguiente (pedido del usuario 2026-09-25).
+    public string $pfTexto = '';
+    public string $pfDestacado = '';
+    public bool $pfIncluirDestacado = false;
+    public string $pfTo = '';
+    public string $pfCc = '';
 
     /**
      * Destinatarios por defecto por tienda. Duplicado a propósito de
@@ -109,6 +117,21 @@ class Procesos extends Component
         $this->mes = $m < 1 ? 12 : $m;
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
         $this->pfMes = (int) date('n');
+        $this->cargarBasePagosFinMes();
+    }
+
+    protected function cargarBasePagosFinMes(): void
+    {
+        try {
+            $conf = json_decode((string) @file_get_contents($this->scriptDir() . '/pagosFinMes.json'), true) ?: [];
+        } catch (\Throwable $e) {
+            $conf = [];
+        }
+        $this->pfTexto = (string) ($conf['texto'] ?? '');
+        $this->pfDestacado = (string) ($conf['destacado'] ?? '');
+        $this->pfIncluirDestacado = (bool) ($conf['incluir_destacado'] ?? false);
+        $this->pfTo = implode(', ', $conf['to'] ?? []);
+        $this->pfCc = implode(', ', $conf['cc'] ?? []);
     }
 
     public function getRvTiendasArrendadorProperty(): array
@@ -546,6 +569,11 @@ class Procesos extends Component
                 return;
             }
         }
+        if ($modo === 'real' && trim($this->pfTo) === '') {
+            $this->salida .= "\n\n===== Pagos fin de mes =====\nERROR: el 'Para' está vacío.\n";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ Pagos fin de mes\nEl 'Para' está vacío.");
+            return;
+        }
         if ($modo === 'prueba' && trim($this->pfEmailPrueba) === '') {
             $this->salida .= "\n\n===== Pagos fin de mes =====\nERROR: pon un correo de prueba.\n";
             $this->dispatch('proceso-terminado', mensaje: "⚠️ Pagos fin de mes\nPon un correo de prueba.");
@@ -560,6 +588,9 @@ class Procesos extends Component
         if (trim($this->pfCargo) !== '') {
             array_push($args, '--cargo', trim($this->pfCargo));
         }
+        array_push($args, '--texto', $this->pfTexto, '--destacado', $this->pfDestacado,
+            $this->pfIncluirDestacado ? '--con-destacado' : '--sin-destacado',
+            '--to', $this->pfTo, '--cc', $this->pfCc);
         $args = array_merge($args, match ($modo) {
             'real' => ['--real'],
             'prueba' => ['--test', trim($this->pfEmailPrueba)],
@@ -575,6 +606,9 @@ class Procesos extends Component
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $this->resultados['pf'] = [];
         $this->anexarResultados('pf', $this->ejecutarScript($args, 120, $etiqueta));
+        if ($modo === 'real') {
+            $this->cargarBasePagosFinMes(); // ya es la base del mes que viene
+        }
     }
 
     public function render()
