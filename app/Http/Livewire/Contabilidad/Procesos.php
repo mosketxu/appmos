@@ -562,7 +562,9 @@ class Procesos extends Component
     /** $modo: 'vista' (solo genera la vista previa), 'prueba' o 'real'. */
     public function ejecutarPagosFinMes(string $modo): void
     {
-        foreach (['pfSaldo' => 'Saldo BBVA', 'pfIva' => 'VAT TAX', 'pfSs' => 'Social Security'] as $campo => $nombre) {
+        // VAT TAX / Social Security vacíos -> el script los busca solo (PDF del 303
+        // del mes anterior / correo de Jordi en Outlook); a mano siempre se puede.
+        foreach (['pfSaldo' => 'Saldo BBVA'] as $campo => $nombre) {
             if (trim($this->{$campo}) === '') {
                 $this->salida .= "\n\n===== Pagos fin de mes =====\nERROR: falta '{$nombre}'.\n";
                 $this->dispatch('proceso-terminado', mensaje: "⚠️ Pagos fin de mes\nFalta '{$nombre}'.");
@@ -580,8 +582,12 @@ class Procesos extends Component
             return;
         }
 
-        $args = ['python3', 'pagosFinMes.py', (string) $this->pfMes,
-            '--saldo', trim($this->pfSaldo), '--iva', trim($this->pfIva), '--ss', trim($this->pfSs)];
+        $args = ['python3', 'pagosFinMes.py', (string) $this->pfMes, '--saldo', trim($this->pfSaldo)];
+        foreach (['--iva' => $this->pfIva, '--ss' => $this->pfSs] as $opt => $v) {
+            if (trim($v) !== '') {
+                array_push($args, $opt, trim($v));
+            }
+        }
         if (trim($this->pfNominas) !== '') {
             array_push($args, '--nominas', trim($this->pfNominas));
         }
@@ -605,10 +611,36 @@ class Procesos extends Component
         };
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $this->resultados['pf'] = [];
-        $this->anexarResultados('pf', $this->ejecutarScript($args, 120, $etiqueta));
+        // windowsEnv(): el script llama a powershell.exe (Outlook) y bajo Apache
+        // el interop de WSL necesita WSL_INTEROP (igual que subirAnaplan.js).
+        $this->anexarResultados('pf', $this->ejecutarScript($args, 240, $etiqueta, null, $this->windowsEnv()));
         if ($modo === 'real') {
             $this->cargarBasePagosFinMes(); // ya es la base del mes que viene
         }
+    }
+
+    /**
+     * "Buscar importes": VAT TAX del PDF del 303 del mes anterior, Social Security
+     * del correo de Jordi en Outlook y Payrolls de la remesa. Rellena los campos
+     * (se pueden cambiar a mano después); lo que no encuentre queda como estaba.
+     */
+    public function buscarImportesPagosFinMes(): void
+    {
+        $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
+        $etiqueta = "Pagos fin de mes {$mm} · buscar importes";
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $desde = strlen($this->salida);
+        $this->ejecutarScript(['python3', 'pagosFinMes.py', (string) $this->pfMes, '--buscar'], 240, $etiqueta, null, $this->windowsEnv());
+        $nuevo = substr($this->salida, $desde);
+        $campos = ['iva' => 'pfIva', 'ss' => 'pfSs', 'nominas' => 'pfNominas'];
+        if (preg_match_all('/^DATO (\w+)=([\d.\-]+)\s*$/m', $nuevo, $m, PREG_SET_ORDER)) {
+            foreach ($m as [$_, $clave, $valor]) {
+                if (isset($campos[$clave])) {
+                    $this->{$campos[$clave]} = str_replace('.', ',', $valor);
+                }
+            }
+        }
+        $this->salida = substr($this->salida, 0, $desde) . trim(preg_replace('/^DATO .*(\r?\n)?/m', '', $nuevo));
     }
 
     public function render()
