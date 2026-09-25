@@ -60,6 +60,10 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return view('contabilidad.bancos');
     })->name('contabilidad.bancos')->middleware('can:contabilidad.bancos');
 
+    // Contabilidad (Facturas OCR): facturas recibidas en PDF -> PluginFacturas.xlsx de SAGE (toca OneDrive: solo PCs autorizados)
+    Route::get('/contabilidad/facturas-ocr', function () {return view('contabilidad.facturas-ocr');})->name('contabilidad.facturas-ocr')->middleware('can:contabilidad.facturasocr');
+    Route::get('/contabilidad/facturas-ocr/pdf/{cliente}/{id}', [\App\Http\Controllers\FacturasOcrController::class, 'pdf'])->name('contabilidad.facturas-ocr.pdf')->middleware('can:contabilidad.facturasocr');
+
     // Contabilidad (IS): fichero del modelo 200 para importar en Sociedades WEB. Igual que Bancos: se usa desde la web
     Route::get('/contabilidad/is', function () {
         if (config('contabilidad.is_url') && ! config('contabilidad.is_ejecucion')) {

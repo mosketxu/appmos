@@ -5,6 +5,7 @@
         'contabilidad.facturacionpdf' => 'contabilidad.facturacion-pdf',
         'contabilidad.durcal' => 'contabilidad.durcal',
         'contabilidad.bancos' => 'contabilidad.bancos',
+        'contabilidad.facturasocr' => 'contabilidad.facturas-ocr',
         'contabilidad.is' => 'contabilidad.is',
     ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
 @endphp

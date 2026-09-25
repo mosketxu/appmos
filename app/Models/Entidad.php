@@ -20,7 +20,7 @@ class Entidad extends Model
                         'banco1','iban1',
                         'banco2','iban2',
                         'banco3','iban3',
-                        'periodoimpuesto_id','metodopago_id','ciclofacturacion_id','cicloimpuesto_id',
+                        'periodoimpuesto_id','metodopago_id','ciclofacturacion_id','cicloimpuesto_id','contabilidad_analitica',
                         'diafactura','diavencimiento','referenciacliente',
                         'tipoiva','porcentajemarta','porcentajesusana',
                         'cuentacontable','observaciones',

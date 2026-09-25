@@ -57,4 +57,19 @@ return [
     'is_url' => env('IS_URL'),
     'is_python' => env('IS_PYTHON'),
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Facturas OCR (25-sep-2026): facturas recibidas en PDF -> PluginFacturas.xlsx
+    |--------------------------------------------------------------------------
+    |
+    | Lee los PDF de una carpeta de OneDrive, los renombra y al validarlos los
+    | mueve al mes de registro: como Procesos FIQ, solo se ejecuta donde
+    | contabilidad.ejecucion_local está a true. Código y datos por cliente en
+    | Contabilidad/FacturasOcr; python del .venv de esa carpeta (pymupdf, openpyxl).
+    */
+
+    'facturasocr_dir' => env('FACTURASOCR_DIR', '/mnt/e/Claude/Contabilidad/FacturasOcr'),
+    'facturasocr_python' => env('FACTURASOCR_PYTHON'),
+
 ];
