@@ -60,6 +60,14 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return view('contabilidad.bancos');
     })->name('contabilidad.bancos')->middleware('can:contabilidad.bancos');
 
+    // Contabilidad (IS): fichero del modelo 200 para importar en Sociedades WEB. Igual que Bancos: se usa desde la web
+    Route::get('/contabilidad/is', function () {
+        if (config('contabilidad.is_url') && ! config('contabilidad.is_ejecucion')) {
+            return redirect()->away(config('contabilidad.is_url'));
+        }
+        return view('contabilidad.is');
+    })->name('contabilidad.is')->middleware('can:contabilidad.is');
+
     // Entidades: consulta
     Route::middleware('can:entidades.ver')->group(function () {
         Route::get('/entidades', function () {return view('entidades');})->name('entidades');

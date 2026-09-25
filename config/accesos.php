@@ -34,6 +34,7 @@ return [
             'contabilidad.facturacionpdf' => 'Facturación PDF',
             'contabilidad.durcal' => 'Durcal',
             'contabilidad.bancos' => 'Bancos',
+            'contabilidad.is' => 'Impuesto sobre Sociedades (modelo 200)',
         ],
     ],
 

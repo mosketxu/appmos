@@ -5,6 +5,7 @@
         'contabilidad.facturacionpdf' => 'contabilidad.facturacion-pdf',
         'contabilidad.durcal' => 'contabilidad.durcal',
         'contabilidad.bancos' => 'contabilidad.bancos',
+        'contabilidad.is' => 'contabilidad.is',
     ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
 @endphp
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">

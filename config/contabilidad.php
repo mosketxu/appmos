@@ -39,4 +39,22 @@ return [
     'bancos_dir' => env('BANCOS_DIR', '/mnt/e/Claude/Contabilidad/Bancos'),
     'bancos_url' => env('BANCOS_URL'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Impuesto sobre Sociedades (25-sep-2026): se usa desde la web, como Bancos
+    |--------------------------------------------------------------------------
+    |
+    | Genera el .200 para importar en Sociedades WEB (Contabilidad/IS/motor).
+    | No toca OneDrive ni presenta nada: los ficheros se suben por el navegador
+    | y el .200 se descarga. Datos de los clientes en <IS_DIR>/clientes/<NIF>.
+    |   - VPS:   IS_EJECUCION=true, IS_DIR=/var/www/is
+    |   - Local: IS_URL=https://appmos.sumaempresa.com/contabilidad/is
+    | IS_PYTHON (opcional): python3 con openpyxl, si el del sistema no lo tiene.
+    */
+
+    'is_ejecucion' => env('IS_EJECUCION', false),
+    'is_dir' => env('IS_DIR', '/mnt/e/Claude/Contabilidad/IS'),
+    'is_url' => env('IS_URL'),
+    'is_python' => env('IS_PYTHON'),
+
 ];
