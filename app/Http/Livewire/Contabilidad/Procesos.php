@@ -120,13 +120,18 @@ class Procesos extends Component
         $this->cargarBasePagosFinMes();
     }
 
-    protected function cargarBasePagosFinMes(): void
+    protected function confPagosFinMes(): array
     {
         try {
-            $conf = json_decode((string) @file_get_contents($this->scriptDir() . '/pagosFinMes.json'), true) ?: [];
+            return json_decode((string) @file_get_contents($this->scriptDir() . '/pagosFinMes.json'), true) ?: [];
         } catch (\Throwable $e) {
-            $conf = [];
+            return [];
         }
+    }
+
+    protected function cargarBasePagosFinMes(): void
+    {
+        $conf = $this->confPagosFinMes();
         $this->pfTexto = (string) ($conf['texto'] ?? '');
         $this->pfDestacado = (string) ($conf['destacado'] ?? '');
         $this->pfIncluirDestacado = (bool) ($conf['incluir_destacado'] ?? false);
@@ -617,6 +622,79 @@ class Procesos extends Component
         if ($modo === 'real') {
             $this->cargarBasePagosFinMes(); // ya es la base del mes que viene
         }
+    }
+
+    /** Mismo criterio que pagosFinMes.py::num(): '85,9', '85.9' o '85.912,39' (euros → K), 1 decimal. */
+    protected function pfNum(string $raw): ?float
+    {
+        $t = str_replace(' ', '', trim($raw));
+        if ($t === '') {
+            return null;
+        }
+        if (str_contains($t, ',')) {
+            $t = str_replace(',', '.', str_replace('.', '', $t));
+        }
+        if (! is_numeric($t)) {
+            return null;
+        }
+        $v = (float) $t;
+        return round(abs($v) >= 1000 ? $v / 1000 : $v, 1);
+    }
+
+    /** Importe en K como en el correo: '37', '59,2', '-76,2'. */
+    protected function pfK(?float $v): string
+    {
+        if ($v === null) {
+            return '—';
+        }
+        $v = round($v, 1);
+        return str_replace('.', ',', $v == (int) $v ? (string) (int) $v : number_format($v, 1, '.', ''));
+    }
+
+    /**
+     * Líneas de importes tal como saldrán en el correo, para verlas a la derecha
+     * de la tarjeta (pedido 2026-09-25). Mismas cuentas que pagosFinMes.py;
+     * VAT/SS/Payrolls vacíos salen como "—" (el script los buscaría al enviar).
+     */
+    public function getPfLineasProperty(): array
+    {
+        $saldo = $this->pfNum($this->pfSaldo);
+        $iva = $this->pfNum($this->pfIva);
+        $ss = $this->pfNum($this->pfSs);
+        $nom = $this->pfNum($this->pfNominas);
+        $fijas = $this->confPagosFinMes()['fijas'] ?? [];
+
+        $cargo = trim($this->pfCargo);
+        if ($cargo === '') {
+            $d = \Carbon\Carbon::create(2026, $this->pfMes, 1)->endOfMonth()->startOfDay();
+            while ($d->isWeekend()) {
+                $d->subDay();
+            }
+            $cargo = $d->locale('en')->isoFormat('dddd Do');
+        }
+
+        $completo = $iva !== null && $ss !== null && $nom !== null;
+        $impNom = $completo ? $iva + $ss + $nom : null;
+        $total = $completo ? $impNom + array_sum(array_column($fijas, 2)) : null;
+
+        $filas = [
+            ['VAT TAX', '', $this->pfK($iva), "K Will be charged on {$cargo}"],
+            ['Social Security', '', $this->pfK($ss), "K Will be charged on {$cargo}"],
+            ['Payrolls', '', $this->pfK($nom), 'K'],
+        ];
+        foreach ($fijas as [$a, $b, $c]) {
+            $filas[] = [$a, $b, $this->pfK((float) $c), 'K'];
+        }
+
+        return [
+            'cabecera' => [
+                ['Bank balance as of ' . date('Y/m/d'), $this->pfK($saldo), 'K'],
+                ['Amount to upload to pay taxes and Payrolls', $this->pfK($saldo !== null && $completo ? $saldo - $impNom : null), ''],
+                ['Total Amount to upload', $this->pfK($saldo !== null && $completo ? $saldo - $total : null), 'K'],
+            ],
+            'filas' => $filas,
+            'total' => $this->pfK($total),
+        ];
     }
 
     /**

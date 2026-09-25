@@ -199,18 +199,21 @@
     <div id="pagos-fin-mes" class="p-4 bg-white border rounded-lg shadow">
         <h2 class="flex flex-wrap items-center text-lg font-semibold text-gray-900 gap-x-3">
             <span>Pagos fin de mes · correo a Plein</span>
-            <select wire:model="pfMes" class="text-sm font-normal border-gray-300 rounded-md shadow-sm">
+            <select wire:model.live="pfMes" class="text-sm font-normal border-gray-300 rounded-md shadow-sm">
                 @foreach (range(1, 12) as $m)
                     <option value="{{ $m }}">{{ \Carbon\Carbon::create(2026, $m, 1)->locale('en')->monthName }}</option>
                 @endforeach
             </select>
         </h2>
+        <div class="flex flex-wrap gap-6">
+        {{-- IZQUIERDA: datos, texto, destinatarios y botones --}}
+        <div style="flex:1 1 380px;min-width:0">
         <p class="mt-1 mb-3 text-xs text-gray-500">"End and begining of month payments &lt;mes&gt;." Importes en K (vale 85,9 o 85.912,39). "Buscar importes" rellena VAT TAX (PDF del 303 del mes anterior en _Impuestos), Social Security (correo de Jordi en Outlook, carpeta Laboral) y Payrolls (remesa RM*.xml); todo se puede cambiar a mano. Si se envía con VAT o SS vacíos, se buscan solos. Día de cargo vacío = último día hábil del mes.</p>
         <div class="flex flex-wrap items-end gap-x-4 gap-y-2">
             @foreach (['pfSaldo' => 'Saldo BBVA hoy', 'pfIva' => 'VAT TAX', 'pfSs' => 'Social Security', 'pfNominas' => 'Payrolls', 'pfCargo' => 'Día de cargo'] as $campo => $label)
                 <label class="flex flex-col text-xs font-medium text-gray-600">
                     {{ $label }}
-                    <input type="text" wire:model="{{ $campo }}" class="mt-1 text-sm border-gray-300 rounded shadow-sm" style="width:{{ $campo === 'pfCargo' ? '150px' : '100px' }}"
+                    <input type="text" wire:model.blur="{{ $campo }}" class="mt-1 text-sm border-gray-300 rounded shadow-sm" style="width:{{ $campo === 'pfCargo' ? '150px' : '100px' }}"
                         placeholder="{{ $campo === 'pfNominas' ? 'remesa' : ($campo === 'pfCargo' ? 'último hábil' : '') }}">
                 </label>
             @endforeach
@@ -264,6 +267,40 @@
                 @endforeach
             </div>
         @endif
+        </div>
+
+        {{-- DERECHA: las líneas de importes tal como saldrán en el correo --}}
+        <div style="flex:1 1 380px;min-width:0">
+            <h3 class="mb-2 text-sm font-semibold text-gray-700">Importes del correo (K)</h3>
+            @php $pl = $this->pfLineas; @endphp
+            <table class="text-sm text-gray-800">
+                @foreach ($pl['cabecera'] as [$t, $v, $u])
+                    <tr>
+                        <td class="py-0.5 pr-3 {{ $loop->first ? '' : 'font-semibold' }}">{{ $t }}</td>
+                        <td class="py-0.5 px-2 text-right font-semibold">{{ $v }}</td>
+                        <td class="py-0.5 px-2">{{ $u }}</td>
+                    </tr>
+                @endforeach
+            </table>
+            <table class="w-full mt-3 text-sm text-gray-800 border border-collapse border-gray-400">
+                @foreach ($pl['filas'] as [$a, $b, $c, $d])
+                    <tr>
+                        <td class="px-2 py-0.5 border border-gray-400">{{ $a }}</td>
+                        <td class="px-2 py-0.5 border border-gray-400">{{ $b }}</td>
+                        <td class="px-2 py-0.5 text-right border border-gray-400">{{ $c }}</td>
+                        <td class="px-2 py-0.5 border border-gray-400">{{ $d }}</td>
+                    </tr>
+                @endforeach
+                <tr class="font-semibold">
+                    <td class="px-2 py-0.5 border border-gray-400">Total</td>
+                    <td class="px-2 py-0.5 border border-gray-400"></td>
+                    <td class="px-2 py-0.5 text-right border border-gray-400">{{ $pl['total'] }}</td>
+                    <td class="px-2 py-0.5 border border-gray-400">K</td>
+                </tr>
+            </table>
+            <p class="mt-1 text-xs text-gray-500">"—" = vacío (VAT y SS se buscan solos al enviar). Se actualiza al salir de cada campo. Las filas fijas están en monthlyFIQ/pagosFinMes.json.</p>
+        </div>
+        </div>
     </div>
 
     </div>{{-- /columna izquierda --}}
