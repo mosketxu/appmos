@@ -689,7 +689,7 @@ class Procesos extends Component
         return [
             'cabecera' => [
                 ['Bank balance as of ' . date('Y/m/d'), $this->pfK($saldo), 'K'],
-                ['Amount to upload to pay taxes and Payrolls', $this->pfK($saldo !== null && $completo ? $saldo - $impNom : null), ''],
+                ['Amount to upload to pay taxes and Payrolls', $this->pfK($saldo !== null && $completo ? $saldo - $impNom : null), 'K'],
                 ['Total Amount to upload', $this->pfK($saldo !== null && $completo ? $saldo - $total : null), 'K'],
             ],
             'filas' => $filas,
