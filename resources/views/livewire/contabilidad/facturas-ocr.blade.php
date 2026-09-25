@@ -32,7 +32,14 @@
         .focr-rev-bar { display:flex; align-items:center; gap:.6rem; padding:.4rem .75rem; background:#1f2937; color:#e5e7eb; font-size:.85rem; }
         .focr-rev-body { flex:1; display:flex; min-height:0; }
         .focr-rev-pdf { flex:1; min-width:0; background:#374151; }
-        .focr-rev-pdf iframe { width:100%; height:100%; border:0; }
+        .focr-rev-pdf { display:flex; flex-direction:column; }
+        .focr-pdfbar { display:flex; align-items:center; gap:.35rem; padding:.3rem .5rem; background:#374151; color:#e5e7eb; font-size:.8rem; }
+        .focr-pdfbar button { background:#4b5563; color:#fff; border-radius:.25rem; padding:.1rem .5rem; }
+        .focr-pdfbar button:hover { background:#6b7280; }
+        .focr-pags { flex:1; overflow:auto; padding:.75rem; }
+        .focr-pag { position:relative; margin:0 auto .75rem; box-shadow:0 2px 8px rgba(0,0,0,.5); background:#fff; }
+        .focr-pag canvas { display:block; }
+        .focr-caja { position:absolute; border:2px solid #f59e0b; background:rgba(245,158,11,.15); pointer-events:none; }
         .focr-rev-form { width:min(470px, 42vw); background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
         .focr-rev-form .fila { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.5rem; }
         .focr-rev-form .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.35rem; margin-bottom:.35rem; align-items:end; }
@@ -48,6 +55,96 @@
             </div>
         </template>
     </div>
+
+    <script>
+        // Visor de PDF propio (PDF.js) para poder recordar el zoom entre facturas y recuadrar datos
+        window.visorPdf = function (url) {
+            let pdf = null;   // fuera del objeto de Alpine: su proxy rompe los campos privados de PDF.js
+            return {
+                url, zoom: 'ancho', escala: 1, modo: null,
+                init() {
+                    try { this.zoom = localStorage.getItem('focr-zoom') || 'ancho'; } catch (e) {}
+                    this.lib().then(() => pdfjsLib.getDocument(this.url).promise).then((d) => { pdf = d; this.pintar(); });
+                },
+                lib() {
+                    if (window.pdfjsLib) return Promise.resolve();
+                    return new Promise((ok, ko) => {
+                        const s = document.createElement('script');
+                        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                        s.onload = () => {
+                            // El worker viene de otro dominio (cdnjs): se arranca desde un blob que lo importa
+                            const w = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                            pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(URL.createObjectURL(new Blob([`importScripts('${w}');`], { type: 'text/javascript' })));
+                            ok();
+                        };
+                        s.onerror = ko;
+                        document.head.appendChild(s);
+                    });
+                },
+                get etiqueta() { return this.zoom === 'ancho' ? 'Ancho' : Math.round(parseFloat(this.zoom) * 100) + ' %'; },
+                async pintar() {
+                    if (!pdf) return;
+                    const cont = this.$refs.pags, dpr = window.devicePixelRatio || 1;
+                    const ancho = cont.clientWidth - 28;
+                    cont.innerHTML = '';
+                    for (let n = 1; n <= pdf.numPages; n++) {
+                        const pg = await pdf.getPage(n);
+                        const v1 = pg.getViewport({ scale: 1 });
+                        const esc = this.zoom === 'ancho' ? ancho / v1.width : parseFloat(this.zoom);
+                        this.escala = esc;
+                        const vp = pg.getViewport({ scale: esc * dpr });
+                        const caja = document.createElement('div');
+                        caja.className = 'focr-pag';
+                        caja.style.width = (vp.width / dpr) + 'px';
+                        caja.style.height = (vp.height / dpr) + 'px';
+                        const c = document.createElement('canvas');
+                        c.width = vp.width; c.height = vp.height;
+                        c.style.width = (vp.width / dpr) + 'px'; c.style.height = (vp.height / dpr) + 'px';
+                        caja.appendChild(c);
+                        this.recuadrar(caja, n);
+                        cont.appendChild(caja);
+                        await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+                    }
+                },
+                guardar() { try { localStorage.setItem('focr-zoom', this.zoom); } catch (e) {} },
+                mas(d) {
+                    let z = this.zoom === 'ancho' ? this.escala : parseFloat(this.zoom);
+                    z = Math.min(5, Math.max(0.3, Math.round((z * (d > 0 ? 1.15 : 1 / 1.15)) * 100) / 100));
+                    this.zoom = String(z); this.guardar(); this.pintar();
+                },
+                ajustar() { this.zoom = 'ancho'; this.guardar(); this.pintar(); },
+                // Arrastrar un recuadro sobre la página: se manda en fracciones de la página a leerZona()
+                recuadrar(caja, pagina) {
+                    let ini = null, marco = null;
+                    const pos = (e) => { const r = caja.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
+                    caja.addEventListener('mousedown', (e) => {
+                        if (!this.modo) return;
+                        e.preventDefault();
+                        ini = pos(e);
+                        marco = document.createElement('div'); marco.className = 'focr-caja'; caja.appendChild(marco);
+                    });
+                    caja.addEventListener('mousemove', (e) => {
+                        if (!ini) return;
+                        const p = pos(e);
+                        Object.assign(marco.style, {
+                            left: Math.min(ini[0], p[0]) * 100 + '%', top: Math.min(ini[1], p[1]) * 100 + '%',
+                            width: Math.abs(p[0] - ini[0]) * 100 + '%', height: Math.abs(p[1] - ini[1]) * 100 + '%',
+                        });
+                    });
+                    const fin = (e) => {
+                        if (!ini) return;
+                        const p = pos(e), a = ini, campo = this.modo;
+                        ini = null; this.modo = null;
+                        setTimeout(() => marco && marco.remove(), 1500);
+                        if (Math.abs(p[0] - a[0]) < 0.005 || Math.abs(p[1] - a[1]) < 0.003) return;
+                        this.$wire.leerZona(campo, pagina, a[0], a[1], p[0], p[1]);
+                    };
+                    caja.addEventListener('mouseup', fin);
+                    caja.addEventListener('mouseleave', fin);
+                },
+            };
+        };
+    </script>
 
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.facturas-ocr'])
     @include('livewire.contabilidad._subnav', ['activa' => 'contabilidad.facturas-ocr'])
@@ -82,19 +179,12 @@
                         <label class="focr-lbl">Carpeta con las facturas (solo los PDF de esa carpeta, sin subcarpetas)</label>
                         <div class="flex gap-2" style="align-items:center">
                             <input type="text" wire:model.live.debounce.500ms="carpeta" class="focr-in" style="font-family:monospace">
-                            <button type="button" wire:click="explorar" class="focr-btn b-gris">📁 {{ $explorando ? 'Cerrar' : 'Buscar' }}</button>
+                            <button type="button" wire:click="elegirCarpeta" wire:loading.attr="disabled" class="focr-btn b-gris" style="white-space:nowrap">
+                                <span wire:loading.remove wire:target="elegirCarpeta">📁 Elegir carpeta…</span>
+                                <span wire:loading wire:target="elegirCarpeta">Elige la carpeta en la ventana de Windows…</span>
+                            </button>
                         </div>
                         @error('carpeta') <div class="mt-1 text-xs text-red-600">{{ $message }}</div> @enderror
-                        @if ($explorando)
-                            <div class="p-2 mt-1 overflow-y-auto border border-gray-200 rounded" style="max-height:220px">
-                                <button type="button" wire:click="entrar('..')" class="block w-full px-2 py-1 text-sm text-left rounded hover:bg-gray-100">⬆ ..</button>
-                                @forelse ($subcarpetas as $s)
-                                    <button type="button" wire:click="entrar(@js($s))" class="block w-full px-2 py-1 text-sm text-left rounded hover:bg-gray-100">📁 {{ $s }}</button>
-                                @empty
-                                    <div class="px-2 py-1 text-xs text-gray-400">(sin subcarpetas)</div>
-                                @endforelse
-                            </div>
-                        @endif
                         <div class="mt-1 text-xs text-gray-500">{{ $pdfs }} PDF en la carpeta.</div>
                     </div>
                     <div>
@@ -114,23 +204,24 @@
                         @error('ciclo') <div class="mt-1 text-xs text-red-600">{{ $message }}</div> @enderror
                     </div>
                     <div>
-                        <label class="focr-lbl">IVA del periodo anterior</label>
-                        <select wire:model.live="presentado" class="focr-in">
-                            <option value="0">Sin presentar</option>
-                            <option value="1">Ya presentado</option>
-                        </select>
-                        <div class="mt-1 text-xs text-gray-500">Presentado: ya no se registra nada en ese periodo.</div>
-                    </div>
-                    <div>
-                        <label class="focr-lbl">Cierre mensual: registrar a partir de</label>
-                        <select wire:model.live="desde" class="focr-in">
-                            <option value="">Sin cierre mensual</option>
-                            @foreach ($mesesDesde as $k => $v)
+                        <label class="focr-lbl">Periodo fiscal en el que entran</label>
+                        <select wire:model.live="periodo" class="focr-in" @disabled($ciclo === '')>
+                            @foreach ($periodos as $k => $v)
                                 <option value="{{ $k }}">{{ $v }}</option>
                             @endforeach
                         </select>
-                        <div class="mt-1 text-xs text-gray-500">Para clientes con cierres mensuales aunque el IVA sea trimestral.</div>
                     </div>
+                    @if ($ciclo === 'T')
+                        <div>
+                            <label class="focr-lbl">Cierre mensual</label>
+                            <select wire:model.live="cierre" class="focr-in">
+                                <option value="">Sin cierre mensual</option>
+                                @foreach ($mesesCierre as $k => $v)
+                                    <option value="{{ $k }}">Registrar desde {{ $v }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     <div>
                         <label class="focr-lbl">Contabilidad analítica</label>
                         <label class="flex items-center gap-2 mt-1 text-sm">
@@ -149,8 +240,7 @@
                         <span wire:loading wire:target="analizar">Leyendo… (las que son imagen pasan por OCR)</span>
                     </button>
                     @if ($primeraAbierta)
-                        <span class="text-sm">Fecha de registro a partir del <b>{{ $primeraAbierta->format('d/m/Y') }}</b>
-                            <span class="text-gray-500">(hoy {{ now()->format('d/m/Y') }})</span></span>
+                        <span class="text-sm">Fecha de registro = fecha de la factura; si es anterior, el <b>{{ $primeraAbierta->format('d/m/Y') }}</b></span>
                     @endif
                 </div>
                 @if (trim($salida) !== '')
@@ -201,7 +291,8 @@
                                 @php $d = $f['datos'] ?? []; $e = $etiqEstado[$f['estado']] ?? ['', $f['estado'], 'c-gris']; @endphp
                                 <tr class="clic" wire:click="abrir('{{ $f['id'] }}')" wire:key="c-{{ $f['id'] }}">
                                     <td><span class="focr-chip {{ $e[2] }}" style="white-space:nowrap">{{ $e[0] }} {{ $e[1] }}</span></td>
-                                    <td style="max-width:260px; word-break:break-all">{{ basename($f['ruta']) }} @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif</td>
+                                    <td style="max-width:260px; word-break:break-all">{{ basename($f['ruta']) }} @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
+                                        @if (! empty($f['editada'])) <span class="focr-chip c-gris" title="Tocada a mano el {{ $f['editada'] }}; se guarda sola">✎ a medias</span> @endif</td>
                                     <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
@@ -232,7 +323,8 @@
                             </select>
                             <span class="ml-auto text-xs text-gray-500">Plantillas para SAGE:</span>
                             @forelse ($excels as $x)
-                                <button type="button" wire:click="descargar(@js('Output/'.$x))" class="focr-btn b-gris" style="padding:.2rem .5rem; font-size:.75rem">⬇ {{ $x }}</button>
+                                <button type="button" wire:click="guardarExcel(@js($x))" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .5rem; font-size:.75rem"
+                                        title="Guardar una copia donde elijas (ventana de Windows). Se va completando al validar: FacturasOcr\{{ $cliente }}\Output">💾 {{ $x }}</button>
                             @empty
                                 <span class="text-xs text-gray-400">(ninguna todavía)</span>
                             @endforelse
@@ -287,8 +379,26 @@
                 <button type="button" wire:click="cerrar" class="focr-btn b-gris" style="padding:.2rem .6rem">✕ Cerrar (Esc)</button>
             </div>
             <div class="focr-rev-body">
-                <div class="focr-rev-pdf" wire:key="pdf-{{ $actual['id'] }}-{{ md5($actual['ruta']) }}">
-                    <iframe src="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]) }}?r={{ md5($actual['ruta']) }}#view=FitH"></iframe>
+                <div class="focr-rev-pdf" wire:key="pdf-{{ $actual['id'] }}-{{ md5($actual['ruta']) }}" wire:ignore
+                     x-data="visorPdf(@js(route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]).'?r='.md5($actual['ruta'])))"
+                     x-on:resize.window.debounce.300ms="if (zoom === 'ancho') pintar()">
+                    <div class="focr-pdfbar">
+                        <button type="button" x-on:click="mas(-1)" title="Menos zoom">−</button>
+                        <span x-text="etiqueta" style="min-width:3.5rem; text-align:center"></span>
+                        <button type="button" x-on:click="mas(1)" title="Más zoom (también Ctrl + rueda)">+</button>
+                        <button type="button" x-on:click="ajustar()">Ajustar al ancho</button>
+                        <span style="flex:1"></span>
+                        <span class="focr-recuadro" x-show="!modo">Recuadrar en el PDF:
+                            <button type="button" x-on:click="modo='cif'">NIF</button>
+                            <button type="button" x-on:click="modo='su_factura'">Nº factura</button>
+                            <button type="button" x-on:click="modo='fecha'">Fecha</button>
+                            <button type="button" x-on:click="modo='total'">Total</button>
+                        </span>
+                        <span x-show="modo" style="color:#fde68a">Arrastra un recuadro sobre <b x-text="{cif:'el NIF', su_factura:'el nº de factura', fecha:'la fecha', total:'el total'}[modo]"></b>
+                            <button type="button" x-on:click="modo=null">Cancelar</button></span>
+                    </div>
+                    <div class="focr-pags" x-ref="pags" x-on:wheel="if ($event.ctrlKey) { $event.preventDefault(); mas($event.deltaY < 0 ? 1 : -1) }"
+                         :style="modo ? 'cursor:crosshair' : ''"></div>
                 </div>
                 <div class="focr-rev-form">
                     @if (! empty($actual['avisos']))
@@ -299,6 +409,8 @@
                     @if (! empty($actual['motivo_proveedor']))
                         <div class="mb-1 text-xs text-gray-500">Proveedor reconocido por: {{ $actual['motivo_proveedor'] }}</div>
                     @endif
+                    @error('zona') <div class="p-2 mb-2 text-xs border rounded" style="background:#fef2f2; border-color:#fca5a5; color:#991b1b">{{ $message }}</div> @enderror
+                    <div wire:loading wire:target="leerZona" class="p-2 mb-2 text-xs border rounded" style="background:#eef2ff; border-color:#c7d2fe">Leyendo el recuadro…</div>
                     @error('validar') <pre class="p-2 mb-2 text-xs text-red-700 whitespace-pre-wrap border border-red-300 rounded bg-red-50">{{ $message }}</pre> @enderror
 
                     <div class="focr-sec">Proveedor</div>

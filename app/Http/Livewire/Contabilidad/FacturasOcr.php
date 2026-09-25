@@ -30,8 +30,8 @@ class FacturasOcr extends Component
     public string $cliente = '';
     public string $carpeta = '';
     public string $ciclo = '';          // 'M' mensual, 'T' trimestral
-    public string $presentado = '0';    // IVA del periodo anterior ya presentado
-    public string $desde = '';          // cierre mensual: no registrar antes de AAAA-MM
+    public string $periodo = '';        // periodo fiscal en el que entran: '2026-3T' o '2026-09'
+    public string $cierre = '';         // cierre mensual: no registrar antes de AAAA-MM (dentro del periodo)
     public bool $analitica = false;
     public string $salida = '';
 
@@ -44,8 +44,8 @@ class FacturasOcr extends Component
     public string $filtro = '';
     public string $filtroMes = '';
 
-    /** Explorador de carpetas para elegir la de entrada. */
-    public bool $explorando = false;
+    /** Hay cambios en el formulario de la factura abierta: se guardan al final de la petición. */
+    protected bool $sucio = false;
 
     /** Ficheros base subidos (listado de proveedores / mayor). */
     public array $subidas = [];
@@ -138,8 +138,14 @@ class FacturasOcr extends Component
         $this->analitica = $e && $this->hayColumnaAnalitica() ? (bool) $e->contabilidad_analitica : (bool) ($this->cfg()['analitica'] ?? false);
         $ult = $this->estado()['ultimo_analisis'] ?? [];
         $this->carpeta = $ult['carpeta'] ?? ($this->cfg()['carpeta_entrada'] ?? '');
-        $this->presentado = ! empty($ult['presentado']) ? '1' : '0';
-        $this->desde = (string) ($ult['desde'] ?? '');
+        $this->periodo = (string) ($ult['periodo'] ?? '');
+        if (! array_key_exists($this->periodo, $this->periodos())) {
+            $this->periodo = $this->periodoActual();
+        }
+        $this->cierre = (string) ($ult['cierre'] ?? '');
+        if (! array_key_exists($this->cierre, $this->mesesCierre())) {
+            $this->cierre = '';
+        }
     }
 
     public function updatedCliente(): void
@@ -156,15 +162,22 @@ class FacturasOcr extends Component
             $e->save();
             $this->salida = "Ciclo del IVA grabado en la entidad {$e->entidad}: ".($this->ciclo === 'M' ? 'Mensual' : 'Trimestral').".\n";
         }
+        if (! array_key_exists($this->periodo, $this->periodos())) {
+            $this->periodo = $this->periodoActual();
+            $this->cierre = '';
+        }
         $this->recalcularFechas();
     }
 
-    public function updatedPresentado(): void
+    public function updatedPeriodo(): void
     {
+        if (! array_key_exists($this->cierre, $this->mesesCierre())) {
+            $this->cierre = '';
+        }
         $this->recalcularFechas();
     }
 
-    public function updatedDesde(): void
+    public function updatedCierre(): void
     {
         $this->recalcularFechas();
     }
@@ -178,69 +191,71 @@ class FacturasOcr extends Component
         }
     }
 
-    /** Primer día en que se puede registrar hoy (misma regla que primera_fecha_abierta() de facturas_ocr.py). */
-    protected function primeraAbierta(): ?\Carbon\Carbon
+    protected function periodoActual(): string
     {
-        if (! in_array($this->ciclo, ['M', 'T'], true)) {
-            return null;
-        }
-        $hoy = now()->startOfDay();
-        $ini = $this->ciclo === 'M' ? $hoy->copy()->startOfMonth() : $hoy->copy()->firstOfQuarter();
-        $ant = $ini->copy()->subMonthsNoOverflow($this->ciclo === 'M' ? 1 : 3);
-        $tope = $ini->copy()->day($this->ciclo === 'M' ? 15 : ($ini->month === 1 ? 30 : 20));
-        $abierta = ($this->presentado !== '1' && $hoy->lte($tope)) ? $ant : $ini;
-        if (preg_match('/^\d{4}-\d{2}$/', $this->desde)) {
-            $d = \Carbon\Carbon::createFromFormat('Y-m-d', $this->desde.'-01')->startOfDay();
-            if ($d->gt($abierta)) {
-                $abierta = $d;
-            }
-        }
-        return $abierta;
+        $h = now();
+        return $this->ciclo === 'M' ? $h->format('Y-m') : $h->year.'-'.$h->quarter.'T';
     }
 
-    /** Meses para el combo "registrar a partir de": los últimos meses y el actual. */
-    protected function mesesDesde(): array
+    /** Periodos fiscales para el combo: el actual, el siguiente y los anteriores (último año). */
+    protected function periodos(): array
     {
         $out = [];
-        $m = now()->startOfMonth()->subMonths(5);
-        for ($i = 0; $i < 7; $i++) {
-            $out[$m->format('Y-m')] = ucfirst($m->locale('es')->isoFormat('MMMM YYYY'));
-            $m->addMonth();
+        if ($this->ciclo === 'M') {
+            $m = now()->startOfMonth()->addMonth();
+            for ($i = 0; $i < 14; $i++) {
+                $out[$m->format('Y-m')] = ucfirst($m->locale('es')->isoFormat('MMMM YYYY'));
+                $m->subMonth();
+            }
+        } elseif ($this->ciclo === 'T') {
+            $m = now()->firstOfQuarter()->addMonths(3);
+            for ($i = 0; $i < 6; $i++) {
+                $out[$m->year.'-'.$m->quarter.'T'] = $m->quarter.'T '.$m->year;
+                $m->subMonths(3);
+            }
         }
         return $out;
     }
 
-    // ------------------------------------------------------------ carpeta de entrada
-
-    public function explorar(): void
+    /** [primer día, último día] del periodo elegido. */
+    protected function rangoPeriodo(): ?array
     {
-        $this->explorando = ! $this->explorando;
-        if ($this->explorando && ! is_dir($this->carpeta)) {
-            $this->carpeta = is_dir('/mnt/e/OneDrive') ? '/mnt/e/OneDrive' : '/';
+        if (preg_match('/^(\d{4})-([1-4])T$/', $this->periodo, $m)) {
+            $ini = \Carbon\Carbon::create((int) $m[1], 3 * (int) $m[2] - 2, 1)->startOfDay();
+            return [$ini, $ini->copy()->addMonths(2)->endOfMonth()];
         }
+        if (preg_match('/^\d{4}-\d{2}$/', $this->periodo)) {
+            $ini = \Carbon\Carbon::createFromFormat('Y-m-d', $this->periodo.'-01')->startOfDay();
+            return [$ini, $ini->copy()->endOfMonth()];
+        }
+        return null;
     }
 
-    public function entrar(string $sub): void
+    /** Meses del periodo para el cierre mensual (solo con IVA trimestral). */
+    protected function mesesCierre(): array
     {
-        $nueva = $sub === '..' ? dirname($this->carpeta) : rtrim($this->carpeta, '/').'/'.$sub;
-        if (is_dir($nueva)) {
-            $this->carpeta = $nueva;
-        }
-    }
-
-    protected function subcarpetas(): array
-    {
-        if (! $this->explorando || ! is_dir($this->carpeta)) {
+        $r = $this->ciclo === 'T' ? $this->rangoPeriodo() : null;
+        if (! $r) {
             return [];
         }
         $out = [];
-        foreach (scandir($this->carpeta) ?: [] as $f) {
-            if ($f[0] !== '.' && is_dir($this->carpeta.'/'.$f)) {
-                $out[] = $f;
-            }
+        for ($m = $r[0]->copy(); $m->lte($r[1]); $m->addMonth()) {
+            $out[$m->format('Y-m')] = ucfirst($m->locale('es')->isoFormat('MMMM YYYY'));
         }
-        natcasesort($out);
-        return array_values($out);
+        return $out;
+    }
+
+    /** Primer día en que se registra: el del periodo o, con cierre mensual, el primero de ese mes. */
+    protected function primeraAbierta(): ?\Carbon\Carbon
+    {
+        $r = $this->rangoPeriodo();
+        if (! $r) {
+            return null;
+        }
+        if (array_key_exists($this->cierre, $this->mesesCierre())) {
+            return \Carbon\Carbon::createFromFormat('Y-m-d', $this->cierre.'-01')->startOfDay();
+        }
+        return $r[0];
     }
 
     protected function pdfsEnCarpeta(): int
@@ -249,6 +264,118 @@ class FacturasOcr extends Component
             return 0;
         }
         return count(array_filter(scandir($this->carpeta) ?: [], fn ($f) => preg_match('/\.pdf$/i', $f) && is_file($this->carpeta.'/'.$f)));
+    }
+
+    // ------------------------------------------------------------ diálogos de Windows
+
+    /** /mnt/e/x/y -> E:\x\y */
+    protected function aWindows(string $p): string
+    {
+        return preg_match('#^/mnt/([a-z])(/.*)?$#', $p, $m) ? strtoupper($m[1]).':'.str_replace('/', '\\', $m[2] ?? '\\') : '';
+    }
+
+    /** E:\x\y -> /mnt/e/x/y */
+    protected function aLinux(string $p): string
+    {
+        return preg_match('/^([A-Za-z]):\\\\?(.*)$/', trim($p), $m) ? '/mnt/'.strtolower($m[1]).'/'.str_replace('\\', '/', $m[2]) : '';
+    }
+
+    /** Abre un diálogo nativo de Windows (dialogo_windows.ps1) y devuelve la ruta elegida, o ''. */
+    protected function dialogo(array $args): string
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->salida = '⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.';
+            return '';
+        }
+        $ps = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
+        $r = Process::timeout(600)->run(array_merge([is_file($ps) ? $ps : 'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA',
+            '-File', $this->aWindows($this->baseDir().'/dialogo_windows.ps1')], $args));
+        $salida = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $r->output()));
+        if (! $r->successful()) {
+            $this->salida = '⚠️ No se pudo abrir el diálogo de Windows: '.trim($r->errorOutput());
+        }
+        return $salida;
+    }
+
+    /** Elegir la carpeta de entrada con el diálogo del Explorador de Windows. */
+    public function elegirCarpeta(): void
+    {
+        $inicial = is_dir($this->carpeta) ? $this->aWindows($this->carpeta) : '';
+        $win = $this->dialogo(['-Modo', 'carpeta', '-Inicial', $inicial]);
+        $lin = $win !== '' ? $this->aLinux($win) : '';
+        if ($lin !== '' && is_dir($lin)) {
+            $this->carpeta = $lin;
+            $this->resetErrorBag('carpeta');
+        } elseif ($win !== '') {
+            $this->addError('carpeta', "No puedo usar {$win} desde aquí.");
+        }
+    }
+
+    /** Guarda una copia del Excel donde se elija (diálogo "Guardar como" de Windows). */
+    public function guardarExcel(string $nombre): void
+    {
+        $origen = realpath($this->dirCliente().'/Output/'.basename($nombre));
+        if (! $this->clienteValido() || ! $origen) {
+            return;
+        }
+        $ult = $this->estado()['ultimo_guardado'] ?? '';
+        $win = $this->dialogo(['-Modo', 'guardar', '-Inicial', $ult ? $this->aWindows($ult) : '', '-Nombre', basename($origen)]);
+        if ($win === '') {
+            return;
+        }
+        $destino = $this->aLinux($win);
+        if ($destino === '' || ! @copy($origen, $destino)) {
+            $this->salida = "⚠️ No se pudo guardar en {$win} (¿está abierto en Excel?).";
+            return;
+        }
+        $this->modificarEstado(fn (array $e) => array_merge($e, ['ultimo_guardado' => dirname($destino)]));
+        $this->dispatch('proceso-terminado', mensaje: "✅ Excel guardado en\n{$win}");
+    }
+
+    // ------------------------------------------------------------ guardado del borrador
+
+    /** Lee, cambia y graba facturas.json con bloqueo (lo comparte con facturas_ocr.py). */
+    protected function modificarEstado(callable $cambio): void
+    {
+        $f = $this->dirCliente().'/facturas.json';
+        $fh = fopen($f, 'c+');
+        if (! $fh) {
+            return;
+        }
+        flock($fh, LOCK_EX);
+        $e = json_decode(stream_get_contents($fh), true) ?: ['facturas' => []];
+        $e = $cambio($e);
+        ftruncate($fh, 0);
+        rewind($fh);
+        fwrite($fh, json_encode($e, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        fflush($fh);
+        flock($fh, LOCK_UN);
+        fclose($fh);
+    }
+
+    public function updatedForm(): void
+    {
+        $this->sucio = true;
+    }
+
+    /** Al final de cada petición: lo tocado en la factura abierta queda guardado (se puede cerrar Appmos). */
+    public function dehydrate(): void
+    {
+        if (! $this->sucio || ! $this->sel || ! $this->clienteValido()) {
+            return;
+        }
+        $this->sucio = false;
+        $datos = $this->form;
+        $sel = $this->sel;
+        $this->modificarEstado(function (array $e) use ($sel, $datos) {
+            foreach ($e['facturas'] as &$f) {
+                if ($f['id'] === $sel && $f['estado'] !== 'validada') {
+                    $f['datos'] = array_merge($f['datos'] ?? [], $datos);
+                    $f['editada'] = date('Y-m-d H:i');
+                }
+            }
+            return $e;
+        });
     }
 
     // ------------------------------------------------------------ procesos
@@ -267,16 +394,15 @@ class FacturasOcr extends Component
             $this->addError('carpeta', 'No existe la carpeta.');
             return;
         }
-        $this->explorando = false;
         $this->ejecutar(array_merge(['analizar', '--carpeta', $this->carpeta], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']),
             1800, 'Leer facturas');
     }
 
     protected function parametros(): array
     {
-        $p = ['--ciclo', $this->ciclo ?: 'T', '--presentado', $this->presentado];
-        if (preg_match('/^\d{4}-\d{2}$/', $this->desde)) {
-            array_push($p, '--desde', $this->desde);
+        $p = ['--ciclo', $this->ciclo ?: 'T', '--periodo', $this->periodo ?: $this->periodoActual()];
+        if (array_key_exists($this->cierre, $this->mesesCierre())) {
+            array_push($p, '--cierre', $this->cierre);
         }
         return $p;
     }
@@ -464,6 +590,53 @@ class FacturasOcr extends Component
         }
         $nums = array_map('intval', array_filter($usadas, fn ($k) => preg_match('/^410\d{3}$/', $k)));
         $this->form['cuenta'] = (string) ($nums ? max($nums) + 1 : 410001);
+    }
+
+    /**
+     * Recuadro dibujado en el visor sobre el PDF: se lee lo que hay dentro (texto del PDF u OCR,
+     * también en vertical) y va al campo. Se guarda la zona para leerla ahí en las siguientes
+     * facturas de ese proveedor (al validar, en patrones.json).
+     */
+    public function leerZona(string $campo, int $pagina, float $x0, float $y0, float $x1, float $y1): void
+    {
+        $this->resetErrorBag('zona');
+        if (! $this->sel || ! in_array($campo, ['cif', 'su_factura', 'fecha', 'total'], true)) {
+            return;
+        }
+        $rect = array_map(fn ($v) => round(max(0, min(1, $v)), 4), [min($x0, $x1), min($y0, $y1), max($x0, $x1), max($y0, $y1)]);
+        $this->salida = '';
+        if (! $this->ejecutar(['zona', $this->sel, '--pagina', (string) $pagina, '--rect', implode(',', $rect), '--campo', $campo], 120, 'Leer recuadro', false)) {
+            $this->addError('zona', trim($this->salida));
+            return;
+        }
+        $lineas = array_filter(explode("\n", trim($this->salida)));
+        $r = json_decode((string) end($lineas), true) ?: [];
+        $this->salida = '';
+        $valor = (string) ($r['valor'] ?? '');
+        if ($valor === '') {
+            $this->addError('zona', 'No he sabido sacar el dato del recuadro. Leído: '.mb_substr((string) ($r['texto'] ?? ''), 0, 120));
+            return;
+        }
+        if ($campo === 'fecha') {
+            $this->form['fecha_expedicion'] = $valor;
+            $this->form['fecha_operacion'] = $valor;
+            $pa = $this->primeraAbierta();
+            $this->form['fecha_registro'] = $pa && $valor < $pa->format('Y-m-d') ? $pa->format('Y-m-d') : $valor;
+        } else {
+            $this->form[$campo] = $valor;
+        }
+        if ($campo === 'cif' && ! empty($r['cuenta']) && ($r['cuenta'] !== ($this->form['cuenta'] ?? ''))) {
+            $this->form['cuenta'] = (string) $r['cuenta'];
+            $this->updatedFormCuenta();
+            $this->form['cif'] = $valor;
+        }
+        if ($campo === 'su_factura' && ($this->form['proveedor'] ?? '') !== '') {
+            $this->form['comentario'] = mb_substr(trim('Fra '.$valor.' '.$this->form['proveedor']), 0, 40);
+        }
+        $zonas = is_array($this->form['_zonas'] ?? null) ? $this->form['_zonas'] : [];
+        $zonas[$campo] = ['pagina' => $pagina, 'rect' => $rect];
+        $this->form['_zonas'] = $zonas;
+        $this->sucio = true;
     }
 
     /** Recalcula la cuota de una línea con su base y tipo. */
@@ -661,8 +834,8 @@ class FacturasOcr extends Component
             'isp' => $this->sel ? $this->esIsp() : false,
             'esNuevo' => $this->sel && ($this->form['cuenta'] ?? '') !== '' && ! isset($this->proveedores()[$this->form['cuenta']]),
             'primeraAbierta' => $this->primeraAbierta(),
-            'mesesDesde' => $this->mesesDesde(),
-            'subcarpetas' => $this->subcarpetas(),
+            'periodos' => $this->periodos(),
+            'mesesCierre' => $this->mesesCierre(),
             'pdfs' => $valido ? $this->pdfsEnCarpeta() : 0,
             'excels' => $valido ? $this->excels() : [],
             'base' => $valido ? $this->base() : [],
