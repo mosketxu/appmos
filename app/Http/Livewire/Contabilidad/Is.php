@@ -339,7 +339,8 @@ class Is extends Component
             report($e);
         }
         $this->revision = $this->leerJson($this->dirEjercicio().'/salida/revision.json') ?: null;
-        $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ').$etiqueta."\n".($ok ? 'Fichero .200 generado.' : 'Hay errores: míralos en la pantalla.'));
+        $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ').$etiqueta."\n".($ok ? 'Fichero .200 generado.' : 'Hay errores: míralos en la pantalla.')
+            ."\n\n🧪 En pruebas: solo PYMES (no abreviado ni normal). Revísalo en Sociedades WEB antes de presentar. Limitaciones en «Instrucciones».");
     }
 
     public function descargar(string $que)

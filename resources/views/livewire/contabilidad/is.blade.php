@@ -43,12 +43,75 @@
         <input type="number" wire:model.live.debounce.600ms="ejercicio" min="2024" max="2099" class="w-24 text-base font-normal border-gray-300 rounded-md shadow-sm">
     </h1>
 
-    <p class="text-sm text-gray-600">
-        Se genera el fichero para <b>importar en Sociedades WEB</b>. Aquí no se presenta nada: lo importas, lo revisas
-        allí y lo presentas tú con el certificado desde tu navegador.
-        Sólo balance y PyG en modelo PYMES y período = año natural.
-        @if ($carpeta)<span class="text-gray-400">Carpeta: IS/{{ $carpeta }}</span>@endif
-    </p>
+    <div x-data="{ ayuda: false }" x-on:keydown.escape.window="ayuda = false">
+        <div class="flex flex-wrap items-center gap-3 px-3 py-2 text-sm border rounded-md text-amber-900 border-amber-300 bg-amber-50">
+            <span>🧪 <b>En pruebas.</b> Solo sociedades con balance y PyG <b>PYMES</b>; las de modelo <b>abreviado</b> o <b>normal</b> todavía no.
+                Genera el fichero para <b>importar en Sociedades WEB</b>: aquí no se presenta nada.</span>
+            <button type="button" x-on:click="ayuda = true" class="font-semibold text-indigo-700 underline hover:text-indigo-900">📘 Instrucciones y limitaciones</button>
+            @if ($carpeta)<span class="ml-auto text-xs text-gray-400">Carpeta: IS/{{ $carpeta }}</span>@endif
+        </div>
+
+        <div x-show="ayuda" x-cloak class="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto bg-black/40" x-on:click.self="ayuda = false">
+            <div class="w-full max-w-3xl mt-8 bg-white rounded-lg shadow-xl">
+                <div class="flex items-center justify-between px-5 py-3 border-b">
+                    <h2 class="text-lg font-semibold text-gray-900">Modelo 200: cómo se usa</h2>
+                    <button type="button" x-on:click="ayuda = false" class="text-2xl leading-none text-gray-400 hover:text-gray-700">&times;</button>
+                </div>
+                <div class="px-5 py-4 space-y-4 text-sm text-gray-700">
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Qué hace</h3>
+                        <p>Con la contabilidad de SAGE, los datos fiscales de la AEAT y el 200 del año anterior prepara el fichero
+                            <code>.200</code> que se importa en <b>Sociedades WEB</b>. No presenta nada ni usa certificados: la
+                            declaración la importas, la revisas y la presentas tú desde tu navegador, como siempre.</p>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Pasos</h3>
+                        <ol class="ml-5 space-y-1 list-decimal">
+                            <li>Elige el <b>cliente</b> (entidad con NIF) y el <b>ejercicio</b>.</li>
+                            <li>Sube los ficheros, uno en cada casilla:
+                                <ul class="ml-5 list-disc">
+                                    <li><b>Sumas y saldos</b> de SAGE a 31/12, <b>sin el asiento de cierre</b> (con los grupos 6 y 7), en Excel.</li>
+                                    <li><b>Datos fiscales</b> del IS: Sede de la AEAT → Sociedades → Datos fiscales del ejercicio, en PDF.</li>
+                                    <li><b>200 del año anterior</b> (PDF de la declaración presentada): administradores, socios, titular real,
+                                        representantes y la cifra de negocios que decide el tipo impositivo.</li>
+                                    <li>Opcionales: el <b>mayor</b> (para ver el detalle de las cuentas que suelen llevar ajustes, como las multas en la 678)
+                                        y el <b>200 ya presentado</b> de este ejercicio (compara casilla a casilla).</li>
+                                </ul>
+                            </li>
+                            <li>Revisa los <b>criterios y ajustes</b>:
+                                <ul class="ml-5 list-disc">
+                                    <li><b>Criterios del cliente</b>: si una cuenta debe ir a otra casilla (p. ej. 649 → 00263). Se guardan para los años siguientes.</li>
+                                    <li><b>Correcciones</b> al resultado contable: multas (01815), donativos (00339)… Los totales y el detalle se rellenan solos.</li>
+                                    <li>Forma de pago, IBAN y teléfono (salen de la ficha de la entidad).</li>
+                                    <li><b>Rectificativa</b> si ya hay un 200 presentado de ese ejercicio (Sociedades WEB no deja importar otro si no).</li>
+                                    <li><b>Valores fijados a mano</b> para lo que no esté automatizado: <code>página.casilla = valor</code>, p. ej. <code>14000.00547 = 1.000,00</code>.</li>
+                                </ul>
+                            </li>
+                            <li><b>Guardar y calcular</b>. Mira el resumen, los <span class="text-red-700">errores</span> (no deja descargar) y los
+                                <span class="text-amber-700">avisos</span>, y repasa las casillas: cada una dice de dónde sale.</li>
+                            <li><b>Descarga el .200</b> e impórtalo en Sociedades WEB. Revisa allí sus errores y avisos antes de presentar.</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900">Limitaciones (versión en pruebas)</h3>
+                        <ul class="ml-5 space-y-1 list-disc">
+                            <li>Solo <b>balance y PyG PYMES</b>. Las sociedades de modelo <b>abreviado</b> o <b>normal</b> dan error y hay que hacerlas en Sociedades WEB como siempre.</li>
+                            <li>Solo período impositivo = <b>año natural</b>, y el diseño de registro de <b>2025</b> (para 2026 hay que cargar el nuevo cuando lo publique la AEAT).</li>
+                            <li>No calcula solo: compensación de <b>bases imponibles negativas</b>, <b>deducciones</b>, <b>retenciones</b> soportadas, reserva de capitalización o nivelación,
+                                ni los ajustes por <b>gastos financieros</b> por encima del límite. Si los detecta, avisa; se ponen con valores fijados a mano o en Sociedades WEB.</li>
+                            <li>Las <b>correcciones</b> se tratan como permanentes del ejercicio. Las temporarias (amortizaciones, provisiones…) hay que revisarlas en Sociedades WEB.</li>
+                            <li>La <b>aplicación del resultado</b> va toda a reservas. Si hay pérdidas o dividendos, rellénala a mano.</li>
+                            <li>Tipo de gravamen según la cifra de negocios del año anterior: micro (&lt; 1 M), reducida dimensión (&lt; 10 M) o general. No contempla entidades patrimoniales, de nueva creación ni otros regímenes especiales.</li>
+                            <li>Los datos de las páginas 2 y 2 bis se copian del 200 anterior: si ha cambiado algo (socios, administradores…), corrígelo en Sociedades WEB.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="px-5 py-3 text-right border-t">
+                    <x-button.secondary x-on:click="ayuda = false">Cerrar</x-button.secondary>
+                </div>
+            </div>
+        </div>
+    </div>
 
     @if ($carpeta)
     {{-- 1. Ficheros --}}
@@ -174,6 +237,9 @@
                 <h2 class="text-sm font-semibold text-gray-700">3. Resultado y revisión</h2>
             </div>
             <div class="p-4 space-y-4">
+                <div class="px-3 py-2 text-xs border rounded text-amber-900 border-amber-300 bg-amber-50">
+                    🧪 En pruebas: revisa el fichero en Sociedades WEB antes de presentar. Solo PYMES; sin BIN, deducciones, retenciones ni correcciones temporarias automáticas.
+                </div>
                 @if ($res)
                     <div class="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
                         @foreach (['resultado_contable' => 'Resultado contable', 'base_imponible' => 'Base imponible', 'cuota' => 'Cuota íntegra', 'a_ingresar' => 'Resultado autoliquidación'] as $k => $t)
