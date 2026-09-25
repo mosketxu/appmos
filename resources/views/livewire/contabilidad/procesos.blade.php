@@ -92,6 +92,56 @@
         </table>
     </div>
 
+    {{-- Correo mensual a Plein con los cargos de fin/principio de mes en BBVA
+         (pedido 2026-09-25). Solo cambian estos datos; el resto sale de
+         monthlyFIQ/pagosFinMes.json. --}}
+    <div class="p-4 bg-white border rounded-lg shadow">
+        <h2 class="flex flex-wrap items-center text-lg font-semibold text-gray-900 gap-x-3">
+            <span>Pagos fin de mes · correo a Plein</span>
+            <select wire:model="pfMes" class="text-sm font-normal border-gray-300 rounded-md shadow-sm">
+                @foreach (range(1, 12) as $m)
+                    <option value="{{ $m }}">{{ \Carbon\Carbon::create(2026, $m, 1)->locale('en')->monthName }}</option>
+                @endforeach
+            </select>
+        </h2>
+        <p class="mt-1 mb-3 text-xs text-gray-500">"End and begining of month payments &lt;mes&gt;." Importes en K (vale 85,9 o 85.912,39). VAT TAX = 303 del mes anterior (correo "&lt;Month&gt; Taxes"); Social Security = correo de Jordi "SOCIAL SECURITY"; Payrolls vacío = total de la remesa RM*.xml de Laboral; día de cargo vacío = último día hábil del mes.</p>
+        <div class="flex flex-wrap items-end gap-x-4 gap-y-2">
+            @foreach (['pfSaldo' => 'Saldo BBVA hoy', 'pfIva' => 'VAT TAX', 'pfSs' => 'Social Security', 'pfNominas' => 'Payrolls', 'pfCargo' => 'Día de cargo'] as $campo => $label)
+                <label class="flex flex-col text-xs font-medium text-gray-600">
+                    {{ $label }}
+                    <input type="text" wire:model="{{ $campo }}" class="mt-1 text-sm border-gray-300 rounded shadow-sm" style="width:{{ $campo === 'pfCargo' ? '150px' : '100px' }}"
+                        placeholder="{{ $campo === 'pfNominas' ? 'remesa' : ($campo === 'pfCargo' ? 'último hábil' : '') }}">
+                </label>
+            @endforeach
+        </div>
+        <div class="flex flex-wrap items-center mt-3 gap-x-2 gap-y-2">
+            <x-button.secondary wire:click="ejecutarPagosFinMes('vista')" wire:loading.attr="disabled" wire:target="ejecutarPagosFinMes">
+                Vista previa
+            </x-button.secondary>
+            <label class="text-xs font-medium text-gray-600 shrink-0">Correo de prueba</label>
+            <input type="email" wire:model="pfEmailPrueba" class="text-sm border-gray-300 rounded-md shadow-sm" style="min-width:220px">
+            <x-button.secondary wire:click="ejecutarPagosFinMes('prueba')" wire:loading.attr="disabled" wire:target="ejecutarPagosFinMes">
+                Enviar a prueba
+            </x-button.secondary>
+            <x-button.primary
+                wire:click="ejecutarPagosFinMes('real')"
+                wire:loading.attr="disabled"
+                wire:target="ejecutarPagosFinMes"
+                onclick="return confirm('¿Mandar el correo de pagos a Plein (Elena, Luca, AP; CC Marta)?')"
+            >
+                Enviar a Plein
+            </x-button.primary>
+            <span wire:loading wire:target="ejecutarPagosFinMes" class="text-sm text-gray-500">⏳ …</span>
+        </div>
+        @if (! empty($resultados['pf']))
+            <div class="flex flex-col mt-2 gap-y-1">
+                @foreach ($resultados['pf'] as $r)
+                    <x-contabilidad.resultado-fichero :r="$r" />
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     <div class="p-4 bg-white border rounded-lg shadow">
         <div class="flex flex-wrap gap-8">
             {{-- IZQUIERDA 35%: Cálculos + Turnover (usa el "Mes" del título) --}}

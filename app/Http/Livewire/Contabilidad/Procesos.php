@@ -61,6 +61,19 @@ class Procesos extends Component
     public array $rvEnvio = [];
     public string $rvEmailPrueba = '';
 
+    // Correo mensual "End and begining of month payments <Month>." a Plein
+    // (pedido del usuario 2026-09-25: "este proceso lo repetiremos todos los
+    // meses"). Solo cambian estos datos, en K; el resto de filas (alquileres,
+    // suministros...) sale de monthlyFIQ/pagosFinMes.json. Mes propio: es el
+    // mes de los cargos (el actual), no el mes cerrado del desplegable.
+    public int $pfMes;
+    public string $pfSaldo = '';
+    public string $pfIva = '';
+    public string $pfSs = '';
+    public string $pfNominas = ''; // vacío = total de la remesa Laboral 2026/<MM>/RM*.xml
+    public string $pfCargo = '';   // vacío = último día hábil del mes ("Wednesday 30th")
+    public string $pfEmailPrueba = 'alex.arregui@sumaempresa.com';
+
     /**
      * Destinatarios por defecto por tienda. Duplicado a propósito de
      * enviarRentasVariables.py::TIENDAS (mismo criterio "procesos aislados" del
@@ -95,6 +108,7 @@ class Procesos extends Component
         $m = (int) date('n') - 1;
         $this->mes = $m < 1 ? 12 : $m;
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
+        $this->pfMes = (int) date('n');
     }
 
     public function getRvTiendasArrendadorProperty(): array
@@ -518,6 +532,49 @@ class Procesos extends Component
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
             $this->ejecutarScript($args, 120, $etiqueta);
         }
+    }
+
+    // -- Pagos fin de mes (correo a Plein) ------------------------------------
+
+    /** $modo: 'vista' (solo genera la vista previa), 'prueba' o 'real'. */
+    public function ejecutarPagosFinMes(string $modo): void
+    {
+        foreach (['pfSaldo' => 'Saldo BBVA', 'pfIva' => 'VAT TAX', 'pfSs' => 'Social Security'] as $campo => $nombre) {
+            if (trim($this->{$campo}) === '') {
+                $this->salida .= "\n\n===== Pagos fin de mes =====\nERROR: falta '{$nombre}'.\n";
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ Pagos fin de mes\nFalta '{$nombre}'.");
+                return;
+            }
+        }
+        if ($modo === 'prueba' && trim($this->pfEmailPrueba) === '') {
+            $this->salida .= "\n\n===== Pagos fin de mes =====\nERROR: pon un correo de prueba.\n";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ Pagos fin de mes\nPon un correo de prueba.");
+            return;
+        }
+
+        $args = ['python3', 'pagosFinMes.py', (string) $this->pfMes,
+            '--saldo', trim($this->pfSaldo), '--iva', trim($this->pfIva), '--ss', trim($this->pfSs)];
+        if (trim($this->pfNominas) !== '') {
+            array_push($args, '--nominas', trim($this->pfNominas));
+        }
+        if (trim($this->pfCargo) !== '') {
+            array_push($args, '--cargo', trim($this->pfCargo));
+        }
+        $args = array_merge($args, match ($modo) {
+            'real' => ['--real'],
+            'prueba' => ['--test', trim($this->pfEmailPrueba)],
+            default => ['--sin-enviar'],
+        });
+
+        $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
+        $etiqueta = 'Pagos fin de mes ' . $mm . ' · ' . match ($modo) {
+            'real' => 'ENVÍO REAL a Plein',
+            'prueba' => 'prueba a ' . trim($this->pfEmailPrueba),
+            default => 'vista previa',
+        };
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->resultados['pf'] = [];
+        $this->anexarResultados('pf', $this->ejecutarScript($args, 120, $etiqueta));
     }
 
     public function render()
