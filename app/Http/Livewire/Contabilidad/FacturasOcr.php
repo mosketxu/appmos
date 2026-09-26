@@ -65,7 +65,10 @@ class FacturasOcr extends Component
 
     protected function pythonBin(): string
     {
-        return config('contabilidad.facturasocr_python') ?: $this->baseDir().'/.venv/bin/python';
+        // El de storage/app (disco de Linux, lo crea el hook de sincronización) arranca ~10 veces más
+        // rápido que el .venv de la carpeta en /mnt/e o /mnt/f: se nota en cada Validar
+        $rapido = storage_path('app/venv-facturasocr/bin/python');
+        return config('contabilidad.facturasocr_python') ?: (is_executable($rapido) ? $rapido : $this->baseDir().'/.venv/bin/python');
     }
 
     /** Carpetas de cliente que el usuario puede ver (mismo criterio que Bancos: cliente.json → entidad). */
