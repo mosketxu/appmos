@@ -39,7 +39,20 @@
         .focr-pags { flex:1; overflow:auto; padding:.75rem; }
         .focr-pag { position:relative; margin:0 auto .75rem; box-shadow:0 2px 8px rgba(0,0,0,.5); background:#fff; }
         .focr-pag canvas { display:block; }
+        .focr-rev-form .focr-in { padding:.15rem .4rem; font-size:.8rem; }
+        .focr-rev-form .focr-lbl { font-size:.66rem; margin-bottom:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .focr-rev-form .g4 { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:.3rem .45rem; }
+        .focr-avisos { font-size:.72rem; line-height:1.25; max-height:4.6rem; overflow-y:auto; padding:.3rem .5rem; margin-bottom:.4rem; border:1px solid #fcd34d; border-radius:.3rem; background:#fffbeb; color:#78350f; }
+        .focr-imp { width:100%; margin-top:.3rem; border-collapse:separate; border-spacing:.35rem .15rem; font-size:.72rem; }
+        .focr-imp th { font-size:.66rem; font-weight:600; color:#4b5563; text-align:left; }
+        .focr-imp td:first-child { color:#6b7280; width:1.6rem; }
+        .focr-imp td:last-child { width:3.4rem; }
+        .focr-imp .focr-in { text-align:right; }
+        .focr-nocuadra { margin-bottom:.45rem; padding:.45rem .6rem; border:3px solid #dc2626; border-radius:.4rem; background:#fee2e2; color:#7f1d1d; font-weight:700; font-size:.8rem; line-height:1.35; animation:focr-parpadeo 1s ease-in-out 3; }
+        @keyframes focr-parpadeo { 50% { background:#fca5a5; } }
+        .focr-in.mal { border:2px solid #dc2626 !important; background:#fee2e2 !important; }
         .focr-busc { position:relative; }
+        .focr-flecha { position:absolute; right:.3rem; top:.35rem; color:#6b7280; font-size:.8rem; }
         .focr-lista { position:absolute; z-index:5; left:0; right:0; top:100%; max-height:300px; overflow-y:auto; background:#fff; border:1px solid #d1d5db; border-radius:.375rem; box-shadow:0 6px 16px rgba(0,0,0,.15); font-size:.8rem; }
         .focr-lista div { padding:.25rem .5rem; cursor:pointer; }
         .focr-lista div.on, .focr-lista div:hover { background:#eef2ff; }
@@ -47,7 +60,7 @@
         .textLayer span, .textLayer br { color:transparent; position:absolute; white-space:pre; cursor:text; transform-origin:0% 0%; }
         .textLayer ::selection { background:rgba(59,130,246,.35); }
         .focr-caja { position:absolute; border:2px solid #f59e0b; background:rgba(245,158,11,.15); pointer-events:none; }
-        .focr-rev-form { width:min(560px, 46vw); background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
+        .focr-rev-form { width:min(660px, 52vw); background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
         .focr-rev-form .fila { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.5rem; }
         .focr-rev-form .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.35rem; margin-bottom:.35rem; align-items:end; }
         .focr-sec { font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; margin:.75rem 0 .35rem; }
@@ -88,6 +101,7 @@
                     return this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); }).slice(0, 40);
                 },
                 abrir() { this.open = true; this.i = 0; },
+                alternar() { if (this.open) return this.cerrar(); this.$refs.q.focus(); },
                 cerrar() { this.open = false; this.mostrar(); },
                 salir() { setTimeout(() => { if (this.open) this.cerrar(); }, 150); },
                 mover(d) { this.open = true; this.i = Math.max(0, Math.min(this.res.length - 1, this.i + d)); },
@@ -452,62 +466,36 @@
                 </div>
                 <div class="focr-rev-form">
                     @if (! empty($actual['avisos']))
-                        <div class="p-2 mb-2 text-xs border rounded" style="background:#fffbeb; border-color:#fcd34d; color:#78350f">
+                        <div class="focr-avisos">
                             @foreach ($actual['avisos'] as $a) <div>• {{ $a }}</div> @endforeach
                         </div>
                     @endif
-                    @if (! empty($actual['motivo_proveedor']))
-                        <div class="mb-1 text-xs text-gray-500">Proveedor reconocido por: {{ $actual['motivo_proveedor'] }}</div>
+                    @php $noCuadra = ($descuadre !== null && abs($descuadre) >= 0.015) || $lineasMal; @endphp
+                    @if ($noCuadra)
+                        <div class="focr-nocuadra">
+                            <div style="font-size:1.05rem">⚠️ LA FACTURA NO CUADRA</div>
+                            @if ($descuadre !== null && abs($descuadre) >= 0.015)
+                                <div>Total {{ $eur($totalNum) }} € y bases + IVA − retención dan {{ $eur($totalNum - $descuadre) }} €: diferencia <b>{{ $eur($descuadre) }} €</b></div>
+                            @endif
+                            @foreach ($lineasMal as $m) <div>{{ $m }}</div> @endforeach
+                            <div style="font-weight:400; font-size:.72rem">Revisa los importes (o la propia factura, que puede venir mal calculada) antes de validar.</div>
+                        </div>
                     @endif
-                    @error('zona') <div class="p-2 mb-2 text-xs border rounded" style="background:#fef2f2; border-color:#fca5a5; color:#991b1b">{{ $message }}</div> @enderror
-                    <div wire:loading wire:target="leerZona" class="p-2 mb-2 text-xs border rounded" style="background:#eef2ff; border-color:#c7d2fe">Leyendo el recuadro…</div>
-                    @error('validar') <pre class="p-2 mb-2 text-xs text-red-700 whitespace-pre-wrap border border-red-300 rounded bg-red-50">{{ $message }}</pre> @enderror
+                    @error('zona') <div class="focr-avisos" style="background:#fef2f2; border-color:#fca5a5; color:#991b1b">{{ $message }}</div> @enderror
+                    <div wire:loading wire:target="leerZona" class="focr-avisos" style="background:#eef2ff; border-color:#c7d2fe; color:#312e81">Leyendo el recuadro…</div>
+                    @error('validar') <pre class="focr-avisos" style="white-space:pre-wrap; background:#fef2f2; border-color:#fca5a5; color:#991b1b">{{ $message }}</pre> @enderror
 
-                    <div class="focr-sec">Proveedor</div>
-                    <div class="fila">
-                        <div style="grid-column:1/-1">
-                            <label class="focr-lbl">Proveedor (busca por cuenta, nombre o NIF)
-                                @if ($esNuevo) <span class="focr-chip c-revisar">proveedor nuevo</span> @endif
+                    <div class="g4">
+                        <div style="grid-column:span 3">
+                            <label class="focr-lbl">Proveedor
+                                @if ($esNuevo) <span class="focr-chip c-revisar">nuevo</span> @endif
+                                @if (! empty($actual['motivo_proveedor'])) <span style="font-weight:400; color:#9ca3af">· {{ $actual['motivo_proveedor'] }}</span> @endif
                             </label>
-                            <div class="flex gap-1" style="align-items:center">
-                                <div class="focr-busc" style="flex:1" wire:ignore wire:key="bp-{{ $actual['id'] }}"
-                                     x-data="buscador('proveedores', 'cuenta', true)">
-                                    <input type="text" class="focr-in {{ $cl('proveedor') }}" x-model="q" placeholder="410… / nombre / NIF"
-                                           x-on:focus="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
-                                           x-on:keydown.enter.prevent="intro()" x-on:keydown.escape="cerrar()" x-on:blur="salir()">
-                                    <div class="focr-lista" x-show="open && res.length" x-cloak>
-                                        <template x-for="(r, k) in res" :key="r[0]">
-                                            <div :class="k === i ? 'on' : ''" x-on:mousedown.prevent="elegir(r)"><b x-text="r[0]"></b> <span x-text="r[1]"></span></div>
-                                        </template>
-                                    </div>
-                                </div>
-                                <button type="button" wire:click="cuentaNueva" class="focr-btn b-gris" style="padding:.3rem .45rem; font-size:.7rem; white-space:nowrap" title="Proveedor nuevo: siguiente 410 libre">+ Nueva</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="fila">
-                        <div style="grid-column:1/-1">
-                            <label class="focr-lbl">Nombre</label>
-                            <input type="text" wire:model.blur="form.proveedor" class="focr-in">
-                        </div>
-                    </div>
-                    <div class="fila">
-                        <div>
-                            <label class="focr-lbl">CIF europeo</label>
-                            <input type="text" wire:model.blur="form.cif" class="focr-in">
-                        </div>
-                        <div>
-                            <label class="focr-lbl">Nombre corto para el fichero</label>
-                            <input type="text" wire:model.blur="form.nombre_fichero" class="focr-in" placeholder="p.ej. Aquaservice">
-                        </div>
-                    </div>
-                    <div class="fila">
-                        <div style="grid-column:1/-1">
-                            <label class="focr-lbl">Contrapartida (busca por cuenta o nombre)</label>
-                            <div class="focr-busc" wire:ignore wire:key="bc-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)">
-                                <input type="text" class="focr-in {{ ($form['contrapartida'] ?? '') === '' ? 'falta' : '' }}" x-model="q" placeholder="6… / nombre"
-                                       x-on:focus="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
-                                       x-on:keydown.enter.prevent="intro()" x-on:keydown.escape="cerrar()" x-on:blur="salir()">
+                            <div class="focr-busc" wire:ignore wire:key="bcuenta-{{ $actual['id'] }}" x-data="buscador('proveedores', 'cuenta', true)">
+                                <input type="text" x-ref="q" class="focr-in {{ $cl('proveedor') }}" style="padding-right:1.4rem" x-model="q" placeholder="cuenta / nombre / NIF"
+                                       x-on:focus="$el.select(); abrir()" x-on:click="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
+                                       x-on:keydown.enter.prevent="intro()" x-on:keydown.escape.stop="cerrar()" x-on:blur="salir()">
+                                <button type="button" class="focr-flecha" tabindex="-1" x-on:mousedown.prevent="alternar()">▾</button>
                                 <div class="focr-lista" x-show="open && res.length" x-cloak>
                                     <template x-for="(r, k) in res" :key="r[0]">
                                         <div :class="k === i ? 'on' : ''" x-on:mousedown.prevent="elegir(r)"><b x-text="r[0]"></b> <span x-text="r[1]"></span></div>
@@ -515,110 +503,96 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="focr-sec">Factura</div>
-                    <div class="fila">
-                        <div>
-                            <label class="focr-lbl">Nº factura (Su factura)</label>
-                            <input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}">
-                        </div>
-                        <div>
-                            <label class="focr-lbl">Serie</label>
-                            <input type="text" wire:model.blur="form.serie" class="focr-in">
-                        </div>
-                    </div>
-                    <div class="fila">
-                        <div>
-                            <label class="focr-lbl">Fecha expedición</label>
-                            <input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}">
-                        </div>
-                        <div>
-                            <label class="focr-lbl">Fecha operación</label>
-                            <input type="date" wire:model.blur="form.fecha_operacion" class="focr-in">
-                        </div>
-                    </div>
-                    <div class="fila">
-                        <div>
-                            <label class="focr-lbl">Fecha registro</label>
-                            <input type="date" wire:model.blur="form.fecha_registro" class="focr-in">
-                        </div>
-                        <div>
-                            <label class="focr-lbl">Código transacción</label>
-                            <input type="text" wire:model.blur="form.codigo_transaccion" class="focr-in">
-                        </div>
-                    </div>
-                    <div class="fila">
-                        <div style="grid-column:1/-1">
-                            <label class="focr-lbl">Comentario SII</label>
-                            <input type="text" wire:model.blur="form.comentario" maxlength="40" class="focr-in">
-                        </div>
-                    </div>
-
-                    <div class="focr-sec">Importes {{ $isp ? '— inversión del sujeto pasivo: el total es la base' : '' }}</div>
-                    <div class="fila">
-                        <div>
-                            <label class="focr-lbl">Importe factura (total)</label>
-                            <input type="text" wire:model.blur="form.total" class="focr-in {{ $cl('importes') }}" style="text-align:right">
-                        </div>
                         <div style="align-self:end">
+                            <button type="button" wire:click="cuentaNueva" class="focr-btn b-gris" style="width:100%; justify-content:center; padding:.2rem .3rem; font-size:.72rem" title="Proveedor nuevo: siguiente 410 libre">+ Cuenta nueva</button>
+                        </div>
+
+                        <div style="grid-column:span 2"><label class="focr-lbl">Nombre</label><input type="text" wire:model.blur="form.proveedor" class="focr-in"></div>
+                        <div><label class="focr-lbl">CIF europeo</label><input type="text" wire:model.blur="form.cif" class="focr-in"></div>
+                        <div><label class="focr-lbl">Nombre corto fichero</label><input type="text" wire:model.blur="form.nombre_fichero" class="focr-in" placeholder="p.ej. Aquaservice"></div>
+
+                        <div style="grid-column:span 2">
+                            <label class="focr-lbl">Contrapartida</label>
+                            <div class="focr-busc" wire:ignore wire:key="bcontrapartida-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)">
+                                <input type="text" x-ref="q" class="focr-in {{ ($form['contrapartida'] ?? '') === '' ? 'falta' : '' }}" style="padding-right:1.4rem" x-model="q" placeholder="cuenta / nombre"
+                                       x-on:focus="$el.select(); abrir()" x-on:click="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
+                                       x-on:keydown.enter.prevent="intro()" x-on:keydown.escape.stop="cerrar()" x-on:blur="salir()">
+                                <button type="button" class="focr-flecha" tabindex="-1" x-on:mousedown.prevent="alternar()">▾</button>
+                                <div class="focr-lista" x-show="open && res.length" x-cloak>
+                                    <template x-for="(r, k) in res" :key="r[0]">
+                                        <div :class="k === i ? 'on' : ''" x-on:mousedown.prevent="elegir(r)"><b x-text="r[0]"></b> <span x-text="r[1]"></span></div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <div><label class="focr-lbl">Cód. transacción</label><input type="text" wire:model.blur="form.codigo_transaccion" class="focr-in"></div>
+                        <div><label class="focr-lbl">Clave operación (M)</label><input type="text" wire:model.blur="form.clave_operacion" class="focr-in" placeholder="vacía"></div>
+
+                        <div><label class="focr-lbl">Nº factura</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
+                        <div><label class="focr-lbl">F. expedición</label><input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}"></div>
+                        <div><label class="focr-lbl">F. operación</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
+                        <div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>
+
+                        <div style="grid-column:span 3"><label class="focr-lbl">Comentario SII</label><input type="text" wire:model.blur="form.comentario" maxlength="40" class="focr-in"></div>
+                        <div><label class="focr-lbl">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in"></div>
+                    </div>
+
+                    <div class="g4" style="margin-top:.45rem; padding-top:.4rem; border-top:1px solid #e5e7eb">
+                        <div><label class="focr-lbl">Total factura {{ $isp ? '(= base, ISP)' : '' }}</label><input type="text" wire:model.blur="form.total" class="focr-in {{ $cl('importes') }} {{ $descuadre !== null && abs($descuadre) >= 0.015 ? 'mal' : '' }}" style="text-align:right"></div>
+                        <div style="align-self:end; padding-bottom:.15rem">
                             @if ($descuadre !== null)
                                 @if (abs($descuadre) < 0.015)
                                     <span class="focr-chip c-ok">✔ Cuadra</span>
                                 @else
-                                    <span class="focr-chip c-falta">Descuadre {{ $eur($descuadre) }}</span>
+                                    <span class="focr-chip c-falta" style="font-size:.8rem; padding:.1rem .6rem">✖ NO CUADRA {{ $eur($descuadre) }}</span>
                                 @endif
                             @endif
                         </div>
-                    </div>
-                    @foreach ([0, 1, 2] as $i)
-                        <div class="fila3">
-                            <div><label class="focr-lbl">Base {{ $i + 1 }}</label><input type="text" wire:model.blur="form.lineas.{{ $i }}.base" class="focr-in" style="text-align:right"></div>
-                            <div><label class="focr-lbl">% IVA</label><input type="text" wire:model.blur="form.lineas.{{ $i }}.pct" class="focr-in" style="text-align:right"></div>
-                            <div><label class="focr-lbl">Cuota</label><input type="text" wire:model.blur="form.lineas.{{ $i }}.cuota" class="focr-in" style="text-align:right"></div>
-                            <button type="button" wire:click="cuota({{ $i }})" class="focr-btn b-gris" style="padding:.3rem .45rem" title="Calcular la cuota con base y %">=</button>
-                        </div>
-                    @endforeach
-                    <div class="fila3">
-                        <div><label class="focr-lbl">Base retención</label><input type="text" wire:model.blur="form.base_retencion" class="focr-in" style="text-align:right"></div>
-                        <div><label class="focr-lbl">% retención</label><input type="text" wire:model.blur="form.pct_retencion" class="focr-in" style="text-align:right"></div>
-                        <div><label class="focr-lbl">Cuota retención</label><input type="text" wire:model.blur="form.cuota_retencion" class="focr-in" style="text-align:right"></div>
-                        <div><label class="focr-lbl">Cód.</label><input type="text" wire:model.blur="form.codigo_retencion" class="focr-in" style="width:3.5rem"></div>
-                    </div>
-                    @if ($analitica)
-                        <div class="fila">
-                            <div>
-                                <label class="focr-lbl">Código canal (analítica)</label>
-                                <input type="text" wire:model.blur="form.canal" class="focr-in">
-                            </div>
-                        </div>
-                    @endif
-
-                    <div class="pt-3 mt-3 border-t border-gray-300">
-                        @if ($actual['estado'] !== 'validada')
-                            <div class="flex flex-wrap gap-2">
-                                <button type="button" wire:click="validar" wire:loading.attr="disabled" class="focr-btn b-verde" style="flex:1; justify-content:center">
-                                    <span wire:loading.remove wire:target="validar">✅ Validar</span>
-                                    <span wire:loading wire:target="validar">Guardando…</span>
-                                </button>
-                                <button type="button" wire:click="rechazar" wire:loading.attr="disabled" class="focr-btn b-rojo">✖ Rechazar</button>
-                            </div>
-                            <input type="text" wire:model.blur="motivo" class="mt-2 focr-in" placeholder="Motivo del rechazo (opcional)">
-                            <div class="flex flex-wrap gap-2 mt-2">
-                                <button type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="font-size:.75rem">
-                                    <span wire:loading.remove wire:target="releerOcr">🔍 Volver a leer con OCR</span>
-                                    <span wire:loading wire:target="releerOcr">Leyendo con OCR…</span>
-                                </button>
-                                @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
-                                    <button type="button" wire:click="reabrir('{{ $actual['id'] }}')" class="focr-btn b-gris" style="font-size:.75rem">↺ Volver a pendiente</button>
-                                @endif
-                            </div>
-                            <p class="mt-2 text-xs text-gray-500">
-                                Validar: añade la fila a Output/PluginFacturas_Recibidas_&lt;mes de registro&gt;.xlsx, pone el nombre del proveedor
-                                delante del fichero y lo mueve a la carpeta del mes de registro; aprende de lo corregido para las siguientes.
-                            </p>
+                        @if ($analitica)
+                            <div><label class="focr-lbl">Canal (analítica)</label><input type="text" wire:model.blur="form.canal" class="focr-in"></div>
                         @endif
                     </div>
+                    <table class="focr-imp">
+                        <tr><th></th><th>Base</th><th>% IVA</th><th>Cuota</th><th></th></tr>
+                        @foreach ([0, 1, 2] as $i)
+                            <tr>
+                                <td>{{ $i + 1 }}</td>
+                                <td><input type="text" wire:model.blur="form.lineas.{{ $i }}.base" class="focr-in {{ isset($lineasMal[$i]) ? 'mal' : '' }}"></td>
+                                <td><input type="text" wire:model.blur="form.lineas.{{ $i }}.pct" class="focr-in {{ isset($lineasMal[$i]) ? 'mal' : '' }}"></td>
+                                <td><input type="text" wire:model.blur="form.lineas.{{ $i }}.cuota" class="focr-in {{ isset($lineasMal[$i]) ? 'mal' : '' }}"></td>
+                                <td><button type="button" wire:click="cuota({{ $i }})" class="focr-btn b-gris" style="padding:.1rem .4rem" title="Calcular la cuota con base y %">=</button></td>
+                            </tr>
+                        @endforeach
+                        <tr>
+                            <td title="Retención">Ret.</td>
+                            <td><input type="text" wire:model.blur="form.base_retencion" class="focr-in" placeholder="base"></td>
+                            <td><input type="text" wire:model.blur="form.pct_retencion" class="focr-in" placeholder="%"></td>
+                            <td><input type="text" wire:model.blur="form.cuota_retencion" class="focr-in" placeholder="cuota"></td>
+                            <td><input type="text" wire:model.blur="form.codigo_retencion" class="focr-in" placeholder="cód." style="width:3.2rem; text-align:left"></td>
+                        </tr>
+                    </table>
+
+                    @if ($actual['estado'] !== 'validada')
+                        <div class="flex gap-2" style="margin-top:.55rem; align-items:center">
+                            <button type="button" wire:click="validar" wire:loading.attr="disabled" class="focr-btn b-verde" style="flex:1; justify-content:center"
+                                    @if ($noCuadra) wire:confirm="La factura NO CUADRA. ¿Validarla igualmente?" @endif>
+                                <span wire:loading.remove wire:target="validar">✅ Validar</span>
+                                <span wire:loading wire:target="validar">Guardando…</span>
+                            </button>
+                            <input type="text" wire:model.blur="motivo" class="focr-in" style="flex:1" placeholder="Motivo del rechazo (opcional)">
+                            <button type="button" wire:click="rechazar" wire:loading.attr="disabled" class="focr-btn b-rojo">✖ Rechazar</button>
+                        </div>
+                        <div class="flex gap-2" style="margin-top:.35rem; align-items:center; font-size:.7rem; color:#6b7280">
+                            <button type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem">
+                                <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
+                                <span wire:loading wire:target="releerOcr">Leyendo…</span>
+                            </button>
+                            @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
+                                <button type="button" wire:click="reabrir('{{ $actual['id'] }}')" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem">↺ Volver a pendiente</button>
+                            @endif
+                            <span>Validar: fila al Excel del mes de registro, PDF a su carpeta y aprende.</span>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

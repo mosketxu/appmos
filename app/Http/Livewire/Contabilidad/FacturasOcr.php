@@ -520,7 +520,7 @@ class FacturasOcr extends Component
         }
         $d['lineas'] = array_map(fn ($l) => array_map(fn ($v) => $v === null ? '' : (string) $v, $l), $lineas);
         foreach (['cuenta', 'nombre_fichero', 'proveedor', 'cif', 'serie', 'su_factura', 'fecha_expedicion', 'fecha_operacion',
-            'fecha_registro', 'contrapartida', 'codigo_transaccion', 'total', 'codigo_retencion', 'base_retencion',
+            'fecha_registro', 'contrapartida', 'codigo_transaccion', 'clave_operacion', 'total', 'codigo_retencion', 'base_retencion',
             'pct_retencion', 'cuota_retencion', 'canal', 'comentario', 'cp', 'cod_provincia', 'provincia'] as $k) {
             $d[$k] = isset($d[$k]) && $d[$k] !== null ? (string) $d[$k] : '';
         }
@@ -589,6 +589,7 @@ class FacturasOcr extends Component
         $this->form['cif'] = ($p['cif_europeo'] ?? '') ?: (($p['sigla'] ?? '').($p['nif'] ?? ''));
         $this->form['contrapartida'] = $pat['contrapartida'] ?? ($p['contrapartida'] ?? '');
         $this->form['codigo_transaccion'] = (string) ($p['transaccion'] ?? '');
+        $this->form['clave_operacion'] = (string) ($pat['clave_operacion'] ?? '');
         $this->form['cp'] = $p['cp'] ?? '';
         $this->form['canal'] = $this->analitica ? ($p['canal'] ?? '') : '';
         $this->form['nombre_fichero'] = $pat['nombre_fichero'] ?? '';
@@ -737,6 +738,28 @@ class FacturasOcr extends Component
         }
         $suma -= $this->num($this->form['cuota_retencion'] ?? '') ?? 0;
         return round($total - $suma, 2);
+    }
+
+    /** Líneas de IVA cuya cuota no es base × % (la factura o lo tecleado está mal): [nº línea => texto]. */
+    protected function lineasMal(): array
+    {
+        $mal = [];
+        foreach ($this->form['lineas'] ?? [] as $k => $l) {
+            $b = $this->num($l['base'] ?? '');
+            $t = $this->num($l['pct'] ?? '');
+            $c = $this->num($l['cuota'] ?? '');
+            if ($b !== null && $t !== null && $c !== null && abs(round($b * $t / 100, 2) - $c) > 0.02) {
+                $mal[$k] = 'Línea '.($k + 1).': '.number_format($b, 2, ',', '.').' × '.rtrim(rtrim(number_format($t, 2, ',', ''), '0'), ',')
+                    .' % = '.number_format(round($b * $t / 100, 2), 2, ',', '.').' y pone '.number_format($c, 2, ',', '.');
+            }
+        }
+        $b = $this->num($this->form['base_retencion'] ?? '');
+        $t = $this->num($this->form['pct_retencion'] ?? '');
+        $c = $this->num($this->form['cuota_retencion'] ?? '');
+        if ($b !== null && $t !== null && $c !== null && abs(round($b * $t / 100, 2) - $c) > 0.02) {
+            $mal['ret'] = 'Retención: '.number_format($b, 2, ',', '.').' × '.$t.' % = '.number_format(round($b * $t / 100, 2), 2, ',', '.').' y pone '.number_format($c, 2, ',', '.');
+        }
+        return $mal;
     }
 
     public function validar(): void
@@ -895,6 +918,8 @@ class FacturasOcr extends Component
             'excels' => $valido ? $this->excels() : [],
             'base' => $valido ? $this->base() : [],
             'descuadre' => $this->sel ? $this->descuadre() : null,
+            'lineasMal' => $this->sel ? $this->lineasMal() : [],
+            'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,
             'entidad' => $valido ? $this->entidad() : null,
             'hayAnalitica' => $this->hayColumnaAnalitica(),
         ]);
