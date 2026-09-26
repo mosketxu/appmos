@@ -814,7 +814,36 @@ class FacturasOcr extends Component
         return $mal;
     }
 
-    public function validar(): void
+    /** Otra factura de este proveedor con el mismo nº: en SAGE, validada aquí o pendiente (misma regla que duplicados() en Python). */
+    protected function duplicados(): array
+    {
+        $a = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($this->form['su_factura'] ?? '')));
+        $cta = (string) ($this->form['cuenta'] ?? '');
+        if ($a === '' || $cta === '') {
+            return [];
+        }
+        $norm = fn ($v) => strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $v));
+        $out = [];
+        foreach ($this->proveedores()[$cta]['facturas'] ?? [] as $f) {
+            if ($norm($f['num'] ?? '') === $a) {
+                $out[] = "Ya contabilizada en SAGE: nº {$f['num']} del {$f['fecha']} ({$f['total']} €)";
+                break;
+            }
+        }
+        foreach ($this->estado()['facturas'] as $f) {
+            if ($f['id'] === $this->sel || (string) ($f['datos']['cuenta'] ?? '') !== $cta || $norm($f['datos']['su_factura'] ?? '') !== $a) {
+                continue;
+            }
+            if ($f['estado'] === 'validada') {
+                $out[] = 'Ya validada aquí el '.($f['validada_el'] ?? '').' ('.basename($f['ruta']).')';
+            } elseif ($f['estado'] === 'pendiente') {
+                $out[] = 'Hay otra pendiente con el mismo nº ('.basename($f['ruta']).')';
+            }
+        }
+        return $out;
+    }
+
+    public function validar(bool $forzar = false): void
     {
         $this->resetErrorBag();
         if (! $this->sel) {
@@ -830,7 +859,7 @@ class FacturasOcr extends Component
         $tmp = storage_path('app/facturasocr_'.uniqid().'.json');
         file_put_contents($tmp, json_encode($datos, JSON_UNESCAPED_UNICODE));
         $this->salida = '';
-        $ok = $this->ejecutar(['validar', $this->sel, '--datos', $tmp], 120, 'Validar', false);
+        $ok = $this->ejecutar(array_merge(['validar', $this->sel, '--datos', $tmp], $forzar ? ['--forzar'] : []), 120, 'Validar', false);
         @unlink($tmp);
         if (! $ok) {
             $this->addError('validar', trim($this->salida));
@@ -984,6 +1013,7 @@ class FacturasOcr extends Component
             'base' => $valido ? $this->base() : [],
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
+            'duplicados' => $this->sel ? $this->duplicados() : [],
             'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,
             'entidad' => $valido ? $this->entidad() : null,
             'hayAnalitica' => $this->hayColumnaAnalitica(),

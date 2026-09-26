@@ -383,6 +383,7 @@
                                 <tr class="clic" wire:click="abrir('{{ $f['id'] }}')" wire:key="c-{{ $f['id'] }}">
                                     <td><span class="focr-chip {{ $e[2] }}" style="white-space:nowrap">{{ $e[0] }} {{ $e[1] }}</span></td>
                                     <td style="max-width:260px; word-break:break-all">{{ basename($f['ruta']) }} @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
+                                        @if (collect($f['avisos'] ?? [])->contains(fn ($a) => str_starts_with($a, 'DUPLICADA'))) <span class="focr-chip c-falta">DUPLICADA</span> @endif
                                         @if (! empty($f['editada'])) <span class="focr-chip c-gris" title="Tocada a mano el {{ $f['editada'] }}; se guarda sola">✎ a medias</span> @endif</td>
                                     <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
@@ -509,6 +510,13 @@
                         </div>
                     @endif
                     @php $noCuadra = ($descuadre !== null && abs($descuadre) >= 0.015) || $lineasMal; @endphp
+                    @if ($duplicados)
+                        <div class="focr-nocuadra">
+                            <div style="font-size:1.05rem">⚠️ FACTURA DUPLICADA</div>
+                            @foreach ($duplicados as $m) <div>{{ $m }}</div> @endforeach
+                            <div style="font-weight:400; font-size:.72rem">Una factura no puede estar dos veces. Recházala, o valida si de verdad es otra (te lo preguntará).</div>
+                        </div>
+                    @endif
                     @if ($noCuadra)
                         <div class="focr-nocuadra">
                             <div style="font-size:1.05rem">⚠️ LA FACTURA NO CUADRA</div>
@@ -612,8 +620,11 @@
 
                     @if ($actual['estado'] !== 'validada')
                         <div class="flex gap-2" style="margin-top:.55rem; align-items:center">
-                            <button type="button" wire:click="validar" wire:loading.attr="disabled" class="focr-btn b-verde" style="flex:1; justify-content:center"
-                                    @if ($noCuadra) wire:confirm="La factura NO CUADRA. ¿Validarla igualmente?" @endif>
+                            @php
+                                $pregunta = trim(($duplicados ? 'Parece DUPLICADA. ' : '').($noCuadra ? 'La factura NO CUADRA. ' : ''));
+                            @endphp
+                            <button type="button" wire:click="validar({{ $duplicados ? 'true' : 'false' }})" wire:loading.attr="disabled" class="focr-btn b-verde" style="flex:1; justify-content:center"
+                                    @if ($pregunta) wire:confirm="{{ $pregunta }} ¿Validarla igualmente?" @endif>
                                 <span wire:loading.remove wire:target="validar">✅ Validar</span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>
