@@ -519,6 +519,10 @@ class FacturasOcr extends Component
             $lineas[] = ['base' => '', 'pct' => '', 'cuota' => ''];
         }
         $d['lineas'] = array_map(fn ($l) => array_map(fn ($v) => $v === null ? '' : (string) $v, $l), $lineas);
+        if (empty($d['contrapartida']) && ! empty($d['cuenta'])) {
+            // La de su ficha (o la última que se le puso aquí), si al leer la factura no se propuso
+            $d['contrapartida'] = (string) ($this->patrones()[$d['cuenta']]['contrapartida'] ?? ($this->proveedores()[$d['cuenta']]['contrapartida'] ?? ''));
+        }
         foreach (['cuenta', 'nombre_fichero', 'proveedor', 'cif', 'serie', 'su_factura', 'fecha_expedicion', 'fecha_operacion',
             'fecha_registro', 'contrapartida', 'codigo_transaccion', 'clave_operacion', 'total', 'codigo_retencion', 'base_retencion',
             'pct_retencion', 'cuota_retencion', 'canal', 'comentario', 'cp', 'cod_provincia', 'provincia'] as $k) {
@@ -681,12 +685,22 @@ class FacturasOcr extends Component
         }
         $f = $this->dirCliente().'/Base/proveedores.json';
         $d = json_decode((string) @file_get_contents($f), true) ?: [];
+        $error = '';
         if (! isset($d['cuentas']) && config('contabilidad.ejecucion_local')) {
             // proveedores.json sin hacer en este PC (no va por git) o de una versión anterior: se rehace
-            Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
+            $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente, '--forzar']);
+            if (! $r->successful()) {
+                $error = trim($r->errorOutput()."\n".$r->output());
+                Log::warning('FacturasOcr: no se pudo rehacer proveedores.json', ['salida' => $error]);
+            }
         }
         if ($cual === 'cuentas') {
             $c = json_decode((string) @file_get_contents($f), true)['cuentas'] ?? [];
+            if (! $c) {
+                // Que se vea en el propio desplegable por qué está vacío
+                return [['', '⚠️ No hay cuentas de contrapartida: '.($error !== '' ? mb_substr(preg_replace('/\s+/', ' ', $error), -300)
+                    : (is_file($f) ? 'proveedores.json sin cuentas (falta el mayor en '.$this->cliente.'?)' : 'no existe '.$f))]];
+            }
             return array_map(fn ($k, $v) => [(string) $k, (string) $v], array_keys($c), $c);
         }
         $out = [];

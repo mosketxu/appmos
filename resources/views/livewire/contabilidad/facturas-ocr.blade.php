@@ -96,6 +96,7 @@
                 mostrar() { this.q = this.etiqueta(this.valor()); },
                 get res() {
                     const q = norm(this.q);
+                    if (this.lista.length === 1 && !this.lista[0][0]) return this.lista;   // mensaje de error
                     if (!q || q === norm(this.etiqueta(this.valor()))) return this.lista.slice(0, 40);
                     const ps = q.split(/\s+/).filter(Boolean);
                     return this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); }).slice(0, 40);
@@ -105,7 +106,7 @@
                 cerrar() { this.open = false; this.mostrar(); },
                 salir() { setTimeout(() => { if (this.open) this.cerrar(); }, 150); },
                 mover(d) { this.open = true; this.i = Math.max(0, Math.min(this.res.length - 1, this.i + d)); },
-                elegir(r) { this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); },
+                elegir(r) { if (!r[0]) return; this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); },
                 intro() {
                     const r = this.res[this.i];
                     if (this.open && r) return this.elegir(r);
