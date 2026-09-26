@@ -304,7 +304,7 @@ class FacturasOcr extends Component
             '-File', $this->aWindows($this->baseDir().'/dialogo_windows.ps1')], $args);
         $t0 = microtime(true);
         try {
-            $r = Process::timeout(600)->run($cmd);
+            $r = Process::path($this->baseDir())->env($this->entornoWindows())->timeout(600)->run($cmd);
         } catch (\Throwable $e) {
             $this->salida = '⚠️ No se pudo abrir el diálogo de Windows: '.$e->getMessage();
             Log::warning('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'error' => $e->getMessage()]);
@@ -445,6 +445,15 @@ class FacturasOcr extends Component
         }
     }
 
+    /**
+     * Bajo Apache falta WSL_INTEROP y los programas de Windows (powershell.exe del OCR y de los
+     * diálogos) fallan en silencio (rc=1, sin salida): mismo arreglo que Procesos::windowsEnv().
+     */
+    protected function entornoWindows(): array
+    {
+        return getenv('WSL_INTEROP') ? [] : ['WSL_INTEROP' => '/run/WSL/1_interop'];
+    }
+
     /** Lanza facturas_ocr.py <cliente> ...; devuelve si terminó bien. */
     protected function ejecutar(array $args, int $timeout, string $etiqueta, bool $avisar = true): bool
     {
@@ -454,7 +463,7 @@ class FacturasOcr extends Component
         }
         $cmd = array_merge([$this->pythonBin(), 'facturas_ocr.py', $this->cliente], $args);
         try {
-            $r = Process::path($this->baseDir())->timeout($timeout)->run($cmd);
+            $r = Process::path($this->baseDir())->env($this->entornoWindows())->timeout($timeout)->run($cmd);
             $texto = trim($r->output()."\n".$r->errorOutput());
             $this->salida .= $texto."\n";
             if (! $r->successful()) {
