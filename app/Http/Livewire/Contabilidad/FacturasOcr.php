@@ -849,14 +849,15 @@ class FacturasOcr extends Component
         @mkdir($dir, 0775, true);
         foreach ($this->subidas as $f) {
             $nombre = $f->getClientOriginalName();
-            if (! preg_match('/lisProveedores|^Mayor/i', $nombre) || ! preg_match('/\.xlsx$/i', $nombre)) {
-                $this->salida .= "⚠️ {$nombre}: no es ni el listado de proveedores (…lisProveedores….xlsx) ni un mayor (Mayor….xlsx).\n";
+            if (! preg_match('/lisProveedores|^Mayor|plan/i', $nombre) || ! preg_match('/\.xlsx$/i', $nombre)) {
+                $this->salida .= "⚠️ {$nombre}: no es el listado de proveedores (…lisProveedores….xlsx), un mayor (Mayor….xlsx) ni el plan de cuentas (…Plan….xlsx).\n";
                 continue;
             }
             copy($f->getRealPath(), $dir.'/'.$nombre);
             $this->salida .= "Guardado Base/{$nombre}.\n";
         }
         $this->subidas = [];
+        $this->dispatch('focr-listas');   // que los combos vuelvan a pedir las listas
         if (config('contabilidad.ejecucion_local')) {
             $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente, '--forzar']);
             $this->salida .= trim($r->output()."\n".$r->errorOutput())."\n";

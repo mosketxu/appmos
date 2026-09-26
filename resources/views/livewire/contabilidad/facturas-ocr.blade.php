@@ -80,6 +80,7 @@
         // Visor de PDF propio (PDF.js) para poder recordar el zoom entre facturas y recuadrar datos
         // Buscador de cuenta (proveedor / contrapartida): la lista se pide una vez a Livewire y se filtra aquí
         window.focrListas = window.focrListas || {};
+        window.addEventListener('focr-listas', () => { window.focrListas = {}; });
         window.buscador = function (lista, campo, libre) {
             const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
             return {
@@ -327,7 +328,7 @@
             {{-- Ficheros base --}}
             <details class="p-3 focr-card">
                 <summary class="text-sm font-semibold text-gray-700 cursor-pointer">
-                    Ficheros base: listado de proveedores y mayor de SAGE
+                    Ficheros base: listado de proveedores, mayor y plan de cuentas de SAGE
                     @if ($base)
                         <span class="font-normal text-gray-500">— {{ $base['n'] }} proveedores, actualizado {{ $base['generado'] }}</span>
                     @endif
@@ -336,7 +337,8 @@
                     <p>El <b>listado de proveedores</b> (…lisProveedores….xlsx) da cuenta, CIF, contrapartida, código de IVA (910/921 CEE, 810/821 extranjero:
                         inversión del sujeto pasivo), transacción, retención, canal y nación. El <b>mayor</b> (Mayor….xlsx) sirve para comprobar las
                         contrapartidas (manda la más usada el último año; distinta del listado en {{ $base['difieren'] ?? 0 }} proveedores),
-                        reconocer el formato del nº de factura y avisar de facturas ya contabilizadas.</p>
+                        reconocer el formato del nº de factura y avisar de facturas ya contabilizadas. El <b>plan de cuentas</b>
+                        (…Plan….xlsx, exportado de SAGE con "Código cuenta" y "Descripción") llena el combo de contrapartida con todas las cuentas.</p>
                     @if ($base)
                         <p class="mt-1">En uso: {{ implode(', ', $base['origen']) }}</p>
                     @endif
