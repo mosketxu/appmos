@@ -258,6 +258,16 @@ class FacturasOcr extends Component
         return $r[0];
     }
 
+    /** Se puede pegar la ruta tal cual la copia el Explorador de Windows (E:\OneDrive\...). */
+    public function updatedCarpeta(): void
+    {
+        $c = trim($this->carpeta, " \t\"'");
+        if (preg_match('/^[A-Za-z]:/', $c)) {
+            $c = $this->aLinux($c);
+        }
+        $this->carpeta = rtrim($c, '/') ?: $c;
+    }
+
     protected function pdfsEnCarpeta(): int
     {
         if (! is_dir($this->carpeta)) {
@@ -288,11 +298,25 @@ class FacturasOcr extends Component
             return '';
         }
         $ps = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
-        $r = Process::timeout(600)->run(array_merge([is_file($ps) ? $ps : 'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA',
-            '-File', $this->aWindows($this->baseDir().'/dialogo_windows.ps1')], $args));
+        // Sin argumentos vacíos: al pasar a Windows se pierden y descolocan los demás
+        $args = array_values(array_filter($args, fn ($a) => $a !== ''));
+        $cmd = array_merge([is_file($ps) ? $ps : 'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA',
+            '-File', $this->aWindows($this->baseDir().'/dialogo_windows.ps1')], $args);
+        $t0 = microtime(true);
+        try {
+            $r = Process::timeout(600)->run($cmd);
+        } catch (\Throwable $e) {
+            $this->salida = '⚠️ No se pudo abrir el diálogo de Windows: '.$e->getMessage();
+            Log::warning('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'error' => $e->getMessage()]);
+            return '';
+        }
         $salida = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $r->output()));
-        if (! $r->successful()) {
-            $this->salida = '⚠️ No se pudo abrir el diálogo de Windows: '.trim($r->errorOutput());
+        $err = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $r->errorOutput()));
+        if (! $r->successful() || ($salida === '' && microtime(true) - $t0 < 2)) {
+            // Salió sin que diera tiempo a elegir nada: no se ha llegado a ver la ventana
+            $this->salida = '⚠️ No se pudo abrir el diálogo de Windows (código '.$r->exitCode().'): '.($err ?: 'sin mensaje')
+                ."\nMientras tanto puedes pegar la ruta copiada de la barra del Explorador (E:\\OneDrive\\...).";
+            Log::warning('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'codigo' => $r->exitCode(), 'salida' => $salida, 'error' => $err]);
         }
         return $salida;
     }
@@ -639,6 +663,29 @@ class FacturasOcr extends Component
         $this->sucio = true;
     }
 
+    /** Listas para los buscadores del formulario (se piden una vez desde el navegador). */
+    public function lista(string $cual): array
+    {
+        if (! $this->clienteValido()) {
+            return [];
+        }
+        if ($cual === 'cuentas') {
+            $f = $this->dirCliente().'/Base/proveedores.json';
+            $c = json_decode((string) @file_get_contents($f), true)['cuentas'] ?? [];
+            return array_map(fn ($k, $v) => [(string) $k, (string) $v], array_keys($c), $c);
+        }
+        $out = [];
+        foreach ($this->proveedores() as $cta => $p) {
+            $out[] = [(string) $cta, trim(($p['razon'] ?? '').' · '.($p['nif'] ?? ''), ' ·')];
+        }
+        foreach ($this->patrones() as $cta => $pat) {
+            if (! empty($pat['nuevo'])) {
+                $out[] = [(string) $cta, trim(($pat['proveedor'] ?? '').' · '.($pat['cif'] ?? '').' (nuevo)', ' ·')];
+            }
+        }
+        return $out;
+    }
+
     /** Recalcula la cuota de una línea con su base y tipo. */
     public function cuota(int $i): void
     {
@@ -830,7 +877,6 @@ class FacturasOcr extends Component
             'mesesReg' => $mesesReg,
             'actual' => $actual,
             'posicion' => $actual ? array_search($this->sel, array_column($cola, 'id'), true) : false,
-            'proveedores' => $valido && $this->sel ? $this->proveedores() : [],
             'isp' => $this->sel ? $this->esIsp() : false,
             'esNuevo' => $this->sel && ($this->form['cuenta'] ?? '') !== '' && ! isset($this->proveedores()[$this->form['cuenta']]),
             'primeraAbierta' => $this->primeraAbierta(),

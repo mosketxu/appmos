@@ -39,8 +39,15 @@
         .focr-pags { flex:1; overflow:auto; padding:.75rem; }
         .focr-pag { position:relative; margin:0 auto .75rem; box-shadow:0 2px 8px rgba(0,0,0,.5); background:#fff; }
         .focr-pag canvas { display:block; }
+        .focr-busc { position:relative; }
+        .focr-lista { position:absolute; z-index:5; left:0; right:0; top:100%; max-height:300px; overflow-y:auto; background:#fff; border:1px solid #d1d5db; border-radius:.375rem; box-shadow:0 6px 16px rgba(0,0,0,.15); font-size:.8rem; }
+        .focr-lista div { padding:.25rem .5rem; cursor:pointer; }
+        .focr-lista div.on, .focr-lista div:hover { background:#eef2ff; }
+        .textLayer { position:absolute; inset:0; overflow:hidden; line-height:1; text-align:initial; }
+        .textLayer span, .textLayer br { color:transparent; position:absolute; white-space:pre; cursor:text; transform-origin:0% 0%; }
+        .textLayer ::selection { background:rgba(59,130,246,.35); }
         .focr-caja { position:absolute; border:2px solid #f59e0b; background:rgba(245,158,11,.15); pointer-events:none; }
-        .focr-rev-form { width:min(470px, 42vw); background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
+        .focr-rev-form { width:min(560px, 46vw); background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
         .focr-rev-form .fila { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.5rem; }
         .focr-rev-form .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.35rem; margin-bottom:.35rem; align-items:end; }
         .focr-sec { font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; margin:.75rem 0 .35rem; }
@@ -58,6 +65,42 @@
 
     <script>
         // Visor de PDF propio (PDF.js) para poder recordar el zoom entre facturas y recuadrar datos
+        // Buscador de cuenta (proveedor / contrapartida): la lista se pide una vez a Livewire y se filtra aquí
+        window.focrListas = window.focrListas || {};
+        window.buscador = function (lista, campo, libre) {
+            const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+            return {
+                lista: [], q: '', open: false, i: 0,
+                async init() {
+                    const clave = lista + ':' + this.$wire.cliente;
+                    if (!window.focrListas[clave]) window.focrListas[clave] = await this.$wire.lista(lista);
+                    this.lista = window.focrListas[clave];
+                    this.mostrar();
+                    this.$wire.$watch('form', () => { if (!this.open) this.mostrar(); });
+                },
+                valor() { return (this.$wire.form || {})[campo] || ''; },
+                etiqueta(v) { const r = this.lista.find((x) => x[0] === v); return v ? (r ? v + ' · ' + r[1] : v) : ''; },
+                mostrar() { this.q = this.etiqueta(this.valor()); },
+                get res() {
+                    const q = norm(this.q);
+                    if (!q || q === norm(this.etiqueta(this.valor()))) return this.lista.slice(0, 40);
+                    const ps = q.split(/\s+/).filter(Boolean);
+                    return this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); }).slice(0, 40);
+                },
+                abrir() { this.open = true; this.i = 0; },
+                cerrar() { this.open = false; this.mostrar(); },
+                salir() { setTimeout(() => { if (this.open) this.cerrar(); }, 150); },
+                mover(d) { this.open = true; this.i = Math.max(0, Math.min(this.res.length - 1, this.i + d)); },
+                elegir(r) { this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); },
+                intro() {
+                    const r = this.res[this.i];
+                    if (this.open && r) return this.elegir(r);
+                    const v = this.q.trim().split(/[\s·]/)[0];
+                    if (/^\d{3,}$/.test(v)) { this.open = false; this.$wire.set('form.' + campo, v); }
+                },
+            };
+        };
+
         window.visorPdf = function (url) {
             let pdf = null;   // fuera del objeto de Alpine: su proxy rompe los campos privados de PDF.js
             return {
@@ -104,6 +147,13 @@
                         this.recuadrar(caja, n);
                         cont.appendChild(caja);
                         await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+                        // Capa de texto invisible encima: se puede seleccionar, doble clic y copiar
+                        const capa = document.createElement('div');
+                        capa.className = 'textLayer';
+                        capa.style.setProperty('--scale-factor', esc);
+                        caja.appendChild(capa);
+                        pdfjsLib.renderTextLayer({ textContentSource: await pg.getTextContent(), container: capa,
+                            viewport: pg.getViewport({ scale: esc }), textDivs: [] });
                     }
                 },
                 guardar() { try { localStorage.setItem('focr-zoom', this.zoom); } catch (e) {} },
@@ -415,23 +465,24 @@
 
                     <div class="focr-sec">Proveedor</div>
                     <div class="fila">
-                        <div>
-                            <label class="focr-lbl">Cuenta
+                        <div style="grid-column:1/-1">
+                            <label class="focr-lbl">Proveedor (busca por cuenta, nombre o NIF)
                                 @if ($esNuevo) <span class="focr-chip c-revisar">proveedor nuevo</span> @endif
                             </label>
                             <div class="flex gap-1" style="align-items:center">
-                                <input type="text" list="focr-provs" wire:model.change="form.cuenta" class="focr-in {{ $cl('proveedor') }}" placeholder="410…">
+                                <div class="focr-busc" style="flex:1" wire:ignore wire:key="bp-{{ $actual['id'] }}"
+                                     x-data="buscador('proveedores', 'cuenta', true)">
+                                    <input type="text" class="focr-in {{ $cl('proveedor') }}" x-model="q" placeholder="410… / nombre / NIF"
+                                           x-on:focus="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
+                                           x-on:keydown.enter.prevent="intro()" x-on:keydown.escape="cerrar()" x-on:blur="salir()">
+                                    <div class="focr-lista" x-show="open && res.length" x-cloak>
+                                        <template x-for="(r, k) in res" :key="r[0]">
+                                            <div :class="k === i ? 'on' : ''" x-on:mousedown.prevent="elegir(r)"><b x-text="r[0]"></b> <span x-text="r[1]"></span></div>
+                                        </template>
+                                    </div>
+                                </div>
                                 <button type="button" wire:click="cuentaNueva" class="focr-btn b-gris" style="padding:.3rem .45rem; font-size:.7rem; white-space:nowrap" title="Proveedor nuevo: siguiente 410 libre">+ Nueva</button>
                             </div>
-                            <datalist id="focr-provs">
-                                @foreach ($proveedores as $cta => $p)
-                                    <option value="{{ $cta }}">{{ $p['razon'] ?? '' }} · {{ $p['nif'] ?? '' }}</option>
-                                @endforeach
-                            </datalist>
-                        </div>
-                        <div>
-                            <label class="focr-lbl">CIF europeo</label>
-                            <input type="text" wire:model.blur="form.cif" class="focr-in">
                         </div>
                     </div>
                     <div class="fila">
@@ -442,12 +493,27 @@
                     </div>
                     <div class="fila">
                         <div>
+                            <label class="focr-lbl">CIF europeo</label>
+                            <input type="text" wire:model.blur="form.cif" class="focr-in">
+                        </div>
+                        <div>
                             <label class="focr-lbl">Nombre corto para el fichero</label>
                             <input type="text" wire:model.blur="form.nombre_fichero" class="focr-in" placeholder="p.ej. Aquaservice">
                         </div>
-                        <div>
-                            <label class="focr-lbl">Contrapartida</label>
-                            <input type="text" wire:model.blur="form.contrapartida" class="focr-in {{ ($form['contrapartida'] ?? '') === '' ? 'falta' : '' }}">
+                    </div>
+                    <div class="fila">
+                        <div style="grid-column:1/-1">
+                            <label class="focr-lbl">Contrapartida (busca por cuenta o nombre)</label>
+                            <div class="focr-busc" wire:ignore wire:key="bc-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)">
+                                <input type="text" class="focr-in {{ ($form['contrapartida'] ?? '') === '' ? 'falta' : '' }}" x-model="q" placeholder="6… / nombre"
+                                       x-on:focus="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
+                                       x-on:keydown.enter.prevent="intro()" x-on:keydown.escape="cerrar()" x-on:blur="salir()">
+                                <div class="focr-lista" x-show="open && res.length" x-cloak>
+                                    <template x-for="(r, k) in res" :key="r[0]">
+                                        <div :class="k === i ? 'on' : ''" x-on:mousedown.prevent="elegir(r)"><b x-text="r[0]"></b> <span x-text="r[1]"></span></div>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
