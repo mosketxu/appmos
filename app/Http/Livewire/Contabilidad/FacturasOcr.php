@@ -686,9 +686,9 @@ class FacturasOcr extends Component
         $f = $this->dirCliente().'/Base/proveedores.json';
         $d = json_decode((string) @file_get_contents($f), true) ?: [];
         $error = '';
-        if (! isset($d['cuentas']) && config('contabilidad.ejecucion_local')) {
-            // proveedores.json sin hacer en este PC (no va por git) o de una versión anterior: se rehace
-            $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente, '--forzar']);
+        if (config('contabilidad.ejecucion_local')) {
+            // Al día con el listado y el mayor de este PC (proveedores.json no va por git); si ya lo está, no hace nada
+            $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
             if (! $r->successful()) {
                 $error = trim($r->errorOutput()."\n".$r->output());
                 Log::warning('FacturasOcr: no se pudo rehacer proveedores.json', ['salida' => $error]);

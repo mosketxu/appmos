@@ -97,9 +97,9 @@
                 get res() {
                     const q = norm(this.q);
                     if (this.lista.length === 1 && !this.lista[0][0]) return this.lista;   // mensaje de error
-                    if (!q || q === norm(this.etiqueta(this.valor()))) return this.lista.slice(0, 40);
+                    if (!q || q === norm(this.etiqueta(this.valor()))) return this.lista;
                     const ps = q.split(/\s+/).filter(Boolean);
-                    return this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); }).slice(0, 40);
+                    return this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); });
                 },
                 abrir() { this.open = true; this.i = 0; },
                 alternar() { if (this.open) return this.cerrar(); this.$refs.q.focus(); },
@@ -218,6 +218,17 @@
         $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('d/m/Y') : '';
         $eur = fn ($v) => ($v === null || $v === '') ? '' : number_format((float) $v, 2, ',', '.');
         $chip = fn ($e) => ['ok' => 'c-ok', 'revisar' => 'c-revisar', 'falta' => 'c-falta', 'sin_iva' => 'c-revisar'][$e] ?? 'c-gris';
+        // Resumen de importes para las tablas: base, % (o "varios"), IVA
+        $importes = function ($d) {
+            $ls = array_values(array_filter($d['lineas'] ?? [], fn ($l) => ($l['base'] ?? '') !== '' && $l['base'] !== null));
+            $pcts = array_values(array_unique(array_map(fn ($l) => rtrim(rtrim(number_format((float) ($l['pct'] ?? 0), 2, ',', ''), '0'), ','), $ls)));
+            return [
+                'base' => $ls ? array_sum(array_map(fn ($l) => (float) $l['base'], $ls)) : null,
+                'iva' => $ls ? array_sum(array_map(fn ($l) => (float) ($l['cuota'] ?? 0), $ls)) : null,
+                'pct' => count($pcts) > 1 ? 'varios' : ($pcts[0] ?? ''),
+                'detalle' => implode(' · ', array_map(fn ($l) => number_format((float) $l['base'], 2, ',', '.').' al '.$l['pct'].' % = '.number_format((float) ($l['cuota'] ?? 0), 2, ',', '.'), $ls)),
+            ];
+        };
         $etiqEstado = ['pendiente' => ['⏳', 'Pendiente', 'c-gris'], 'rechazada' => ['✖', 'Rechazada', 'c-falta'], 'ilegible' => ['👁', 'No legible', 'c-falta'], 'validada' => ['✔', 'Validada', 'c-ok']];
     @endphp
 
@@ -349,6 +360,7 @@
                         <table class="focr-tabla">
                             <thead><tr>
                                 <th></th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>F. registro</th>
+                                <th>Contrap.</th><th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th>
                                 <th style="text-align:right">Total</th><th>Lectura</th><th>Avisos</th>
                             </tr></thead>
                             <tbody>
@@ -362,6 +374,11 @@
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
+                                    @php $im = $importes($d); @endphp
+                                    <td>{{ $d['contrapartida'] ?? '' }}</td>
+                                    <td style="text-align:right">{{ $eur($im['base']) }}</td>
+                                    <td style="text-align:right" title="{{ $im['detalle'] }}">{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']) !!}</td>
+                                    <td style="text-align:right">{{ $eur($im['iva']) }}</td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
                                     <td style="white-space:nowrap">
                                         @foreach (($f['confianza'] ?? []) as $k => $v)
@@ -373,7 +390,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="9" class="p-4 text-center text-gray-500">No hay facturas por revisar. Elige la carpeta y pulsa «Leer las facturas».</td></tr>
+                                <tr><td colspan="13" class="p-4 text-center text-gray-500">No hay facturas por revisar. Elige la carpeta y pulsa «Leer las facturas».</td></tr>
                             @endforelse
                             </tbody>
                         </table>
@@ -396,8 +413,9 @@
                         </div>
                         <table class="focr-tabla">
                             <thead><tr>
-                                <th>F. registro</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th style="text-align:right">Total</th>
-                                <th>Contrap.</th><th>Excel</th><th>Fichero</th><th>Validada</th>
+                                <th>F. registro</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>Contrap.</th>
+                                <th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th><th style="text-align:right">Total</th>
+                                <th>Excel</th><th>Fichero</th><th>Validada</th>
                             </tr></thead>
                             <tbody>
                             @forelse ($validadas as $f)
@@ -407,16 +425,21 @@
                                     <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
-                                    <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
+                                    @php $im = $importes($d); @endphp
                                     <td>{{ $d['contrapartida'] ?? '' }}</td>
+                                    <td style="text-align:right">{{ $eur($im['base']) }}</td>
+                                    <td style="text-align:right" title="{{ $im['detalle'] }}">{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']) !!}</td>
+                                    <td style="text-align:right">{{ $eur($im['iva']) }}</td>
+                                    <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
                                     <td class="text-xs">{{ $f['excel'] ?? '' }} (fila {{ $f['fila_excel'] ?? '' }})</td>
                                     <td class="text-xs" style="max-width:340px; word-break:break-all">
                                         <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline">{{ $f['ruta'] }}</a>
                                     </td>
-                                    <td class="text-xs">{{ $f['validada_el'] ?? '' }}</td>
+                                    <td class="text-xs" style="white-space:nowrap">{{ $f['validada_el'] ?? '' }}
+                                        @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="9" class="p-4 text-center text-gray-500">Ninguna factura validada{{ $filtro || $filtroMes ? ' con ese filtro' : '' }}.</td></tr>
+                                <tr><td colspan="12" class="p-4 text-center text-gray-500">Ninguna factura validada{{ $filtro || $filtroMes ? ' con ese filtro' : '' }}.</td></tr>
                             @endforelse
                             </tbody>
                         </table>
