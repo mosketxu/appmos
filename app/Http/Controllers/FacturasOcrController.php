@@ -17,7 +17,8 @@ class FacturasOcrController extends Controller
         $permitidas = \App\Support\Accesos::entidadesPermitidas();
         abort_if($permitidas !== null && ! in_array((int) ($cfg['entidad_id'] ?? 0), $permitidas, true), 403);
 
-        $estado = json_decode((string) @file_get_contents($dir.'/facturas.json'), true) ?: [];
+        $datos = \App\Http\Livewire\Contabilidad\FacturasOcr::rutaDatos($dir);
+        $estado = json_decode((string) @file_get_contents($datos.'/facturas.json'), true) ?: [];
         foreach ($estado['facturas'] ?? [] as $f) {
             if ($f['id'] === $id && is_file($f['ruta'])) {
                 return response()->file($f['ruta'], [

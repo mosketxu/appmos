@@ -103,6 +103,30 @@ class FacturasOcr extends Component
         return $this->baseDir().'/'.$this->cliente;
     }
 
+    /**
+     * Carpeta compartida del cliente (OneDrive, "datos" en cliente.json): estado, aprendido, textos,
+     * Excel y ficheros base, para que todos los PCs vean lo mismo (26-sep-2026). Misma regla que
+     * dir_datos() de facturas_base.py.
+     */
+    public static function rutaDatos(string $dirCliente): string
+    {
+        $cfg = json_decode((string) @file_get_contents($dirCliente.'/cliente.json'), true) ?: [];
+        $d = (string) ($cfg['datos'] ?? '');
+        if (str_starts_with($d, '{OneDrive}')) {
+            foreach (['e', 'f', 'd', 'c', 'g'] as $u) {
+                if (is_dir("/mnt/{$u}/OneDrive")) {
+                    return "/mnt/{$u}/OneDrive".substr($d, strlen('{OneDrive}'));
+                }
+            }
+        }
+        return $d !== '' ? $d : $dirCliente;
+    }
+
+    protected function dirDatos(): string
+    {
+        return self::rutaDatos($this->dirCliente());
+    }
+
     protected function cfg(): array
     {
         return json_decode((string) @file_get_contents($this->dirCliente().'/cliente.json'), true) ?: [];
@@ -122,7 +146,7 @@ class FacturasOcr extends Component
 
     protected function estado(): array
     {
-        return json_decode((string) @file_get_contents($this->dirCliente().'/facturas.json'), true) ?: ['facturas' => []];
+        return json_decode((string) @file_get_contents($this->dirDatos().'/facturas.json'), true) ?: ['facturas' => []];
     }
 
     protected function cargarCliente(): void
@@ -131,6 +155,11 @@ class FacturasOcr extends Component
         $this->form = [];
         if (! $this->clienteValido()) {
             return;
+        }
+        if (realpath($this->dirDatos()) !== realpath($this->dirCliente()) && config('contabilidad.ejecucion_local')
+            && (is_file($this->dirCliente().'/facturas.json') || ! is_dir($this->dirDatos()))) {
+            // Queda estado en la carpeta local (de antes de usar OneDrive): facturas_base.py lo pasa allí
+            Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
         }
         $e = $this->entidad();
         $this->ciclo = match ((int) ($e->cicloimpuesto_id ?? 0)) {
@@ -341,7 +370,7 @@ class FacturasOcr extends Component
     /** Guarda una copia del Excel donde se elija (diálogo "Guardar como" de Windows). */
     public function guardarExcel(string $nombre): void
     {
-        $origen = realpath($this->dirCliente().'/Output/'.basename($nombre));
+        $origen = realpath($this->dirDatos().'/Output/'.basename($nombre));
         if (! $this->clienteValido() || ! $origen) {
             return;
         }
@@ -364,7 +393,7 @@ class FacturasOcr extends Component
     /** Lee, cambia y graba facturas.json con bloqueo (lo comparte con facturas_ocr.py). */
     protected function modificarEstado(callable $cambio): void
     {
-        $f = $this->dirCliente().'/facturas.json';
+        $f = $this->dirDatos().'/facturas.json';
         $fh = fopen($f, 'c+');
         if (! $fh) {
             return;
@@ -372,6 +401,7 @@ class FacturasOcr extends Component
         flock($fh, LOCK_EX);
         $e = json_decode(stream_get_contents($fh), true) ?: ['facturas' => []];
         $e = $cambio($e);
+        $e['ultimo_cambio'] = ['pc' => gethostname(), 'fecha' => date('Y-m-d H:i:s')];
         ftruncate($fh, 0);
         rewind($fh);
         fwrite($fh, json_encode($e, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
@@ -436,7 +466,7 @@ class FacturasOcr extends Component
 
     public function recalcularFechas(): void
     {
-        if (! $this->clienteValido() || ! in_array($this->ciclo, ['M', 'T'], true) || ! is_file($this->dirCliente().'/facturas.json')) {
+        if (! $this->clienteValido() || ! in_array($this->ciclo, ['M', 'T'], true) || ! is_file($this->dirDatos().'/facturas.json')) {
             return;
         }
         $this->ejecutar(array_merge(['fechas'], $this->parametros()), 60, 'Fechas de registro', false);
@@ -572,7 +602,7 @@ class FacturasOcr extends Component
 
     protected function patrones(): array
     {
-        return json_decode((string) @file_get_contents($this->dirCliente().'/patrones.json'), true) ?: [];
+        return json_decode((string) @file_get_contents($this->dirDatos().'/patrones.json'), true) ?: [];
     }
 
     /** Al cambiar la cuenta se rellenan nombre, CIF, contrapartida... del listado de proveedores. */
@@ -848,7 +878,7 @@ class FacturasOcr extends Component
             return;
         }
         $this->salida = '';
-        $dir = $this->dirCliente().'/Base';
+        $dir = $this->dirDatos().'/Base';
         @mkdir($dir, 0775, true);
         foreach ($this->subidas as $f) {
             $nombre = $f->getClientOriginalName();
@@ -872,7 +902,7 @@ class FacturasOcr extends Component
         if (! $this->clienteValido()) {
             return null;
         }
-        $raiz = realpath($this->dirCliente());
+        $raiz = realpath($this->dirDatos());
         $ruta = realpath($raiz.'/'.$relativa);
         if (! $raiz || ! $ruta || ! str_starts_with($ruta, $raiz.'/') || ! is_file($ruta)) {
             return null;
@@ -883,7 +913,7 @@ class FacturasOcr extends Component
     protected function excels(): array
     {
         $out = [];
-        foreach (glob($this->dirCliente().'/Output/*.xlsx') ?: [] as $f) {
+        foreach (glob($this->dirDatos().'/Output/*.xlsx') ?: [] as $f) {
             if (! str_starts_with(basename($f), '~$')) {
                 $out[] = basename($f);
             }
@@ -924,7 +954,19 @@ class FacturasOcr extends Component
         $actual = $this->sel ? $this->factura($this->sel) : null;
         $cola = $valido ? $this->cola() : [];
 
+        // Otro PC ha tocado estas facturas hace poco (OneDrive puede no haberlo traído aún) o hay copias en conflicto
+        $otroPc = null;
+        $uc = $estado['ultimo_cambio'] ?? null;
+        if ($uc && ($uc['pc'] ?? '') !== gethostname() && strtotime($uc['fecha'] ?? '') > time() - 900) {
+            $otroPc = $uc;
+        }
+        $conflictos = $valido ? array_map('basename', array_filter(glob($this->dirDatos().'/{facturas,patrones}*.json', GLOB_BRACE) ?: [],
+            fn ($f) => ! in_array(basename($f), ['facturas.json', 'patrones.json'], true))) : [];
+
         return view('livewire.contabilidad.facturas-ocr', [
+            'otroPc' => $otroPc,
+            'conflictos' => $conflictos,
+            'dirDatos' => $valido ? $this->dirDatos() : '',
             'clientes' => $this->clientes(),
             'cola' => $cola,
             'cuenta' => array_count_values(array_column($todas, 'estado')),

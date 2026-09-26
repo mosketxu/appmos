@@ -248,6 +248,18 @@
             @endif
         </h1>
 
+        @if ($otroPc)
+            <div class="focr-nocuadra" style="animation:none; border-color:#f59e0b; background:#fffbeb; color:#78350f">
+                ⚠️ {{ $otroPc['pc'] }} ha tocado estas facturas hace {{ max(1, (int) round((time() - strtotime($otroPc['fecha'])) / 60)) }} min.
+                <span style="font-weight:400">Si acabas de cambiar de PC, espera a que OneDrive termine de sincronizar y recarga la página.</span>
+            </div>
+        @endif
+        @if ($conflictos)
+            <div class="focr-nocuadra" style="animation:none">
+                ⚠️ OneDrive ha creado copias en conflicto ({{ implode(', ', $conflictos) }}): se ha trabajado a la vez en dos PCs.
+                <span style="font-weight:400">Avísame antes de seguir para juntarlas.</span>
+            </div>
+        @endif
         @if ($cliente !== '')
             {{-- 1. Parámetros y lectura de la carpeta --}}
             <div class="p-4 focr-card">
@@ -408,7 +420,7 @@
                             <span class="ml-auto text-xs text-gray-500">Plantillas para SAGE:</span>
                             @forelse ($excels as $x)
                                 <button type="button" wire:click="guardarExcel(@js($x))" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .5rem; font-size:.75rem"
-                                        title="Guardar una copia donde elijas (ventana de Windows). Se va completando al validar: FacturasOcr\{{ $cliente }}\Output">💾 {{ $x }}</button>
+                                        title="Guardar una copia donde elijas (ventana de Windows). Se va completando al validar, en {{ $dirDatos }}/Output">💾 {{ $x }}</button>
                             @empty
                                 <span class="text-xs text-gray-400">(ninguna todavía)</span>
                             @endforelse
