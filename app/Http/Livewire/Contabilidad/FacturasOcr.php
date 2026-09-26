@@ -679,15 +679,14 @@ class FacturasOcr extends Component
         if (! $this->clienteValido()) {
             return [];
         }
+        $f = $this->dirCliente().'/Base/proveedores.json';
+        $d = json_decode((string) @file_get_contents($f), true) ?: [];
+        if (! isset($d['cuentas']) && config('contabilidad.ejecucion_local')) {
+            // proveedores.json sin hacer en este PC (no va por git) o de una versión anterior: se rehace
+            Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
+        }
         if ($cual === 'cuentas') {
-            $f = $this->dirCliente().'/Base/proveedores.json';
-            $d = json_decode((string) @file_get_contents($f), true) ?: [];
-            if (! isset($d['cuentas']) && config('contabilidad.ejecucion_local')) {
-                // proveedores.json de una versión anterior (sin las cuentas) o sin hacer en este PC: se rehace
-                Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
-                $d = json_decode((string) @file_get_contents($f), true) ?: [];
-            }
-            $c = $d['cuentas'] ?? [];
+            $c = json_decode((string) @file_get_contents($f), true)['cuentas'] ?? [];
             return array_map(fn ($k, $v) => [(string) $k, (string) $v], array_keys($c), $c);
         }
         $out = [];
