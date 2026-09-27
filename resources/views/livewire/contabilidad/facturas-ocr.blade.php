@@ -117,13 +117,34 @@
             };
         };
 
-        window.visorPdf = function (url) {
+        window.visorPdf = function (url, miniatura, siguiente) {
             let pdf = null;   // fuera del objeto de Alpine: su proxy rompe los campos privados de PDF.js
             return {
                 url, zoom: 'ancho', escala: 1, modo: null,
                 init() {
                     try { this.zoom = localStorage.getItem('focr-zoom') || 'ancho'; } catch (e) {}
-                    this.lib().then(() => pdfjsLib.getDocument(this.url).promise).then((d) => { pdf = d; this.pintar(); });
+                    this.$nextTick(() => this.previa());   // $refs aún no está en init()
+                    this.lib()
+                        .then(() => pdfjsLib.getDocument({ url: this.url, disableRange: true, disableStream: true }).promise)
+                        .then((d) => { pdf = d; return this.pintar(); })
+                        .then(() => {
+                            // Mientras se revisa esta, se precarga la siguiente (PDF y miniatura quedan en la caché)
+                            (siguiente || []).forEach((u) => fetch(u, { credentials: 'same-origin' }).catch(() => {}));
+                        });
+                },
+                // Miniatura de la 1ª página al instante, hasta que PDF.js pinta el PDF de verdad
+                previa() {
+                    if (!miniatura) return;
+                    const cont = this.$refs.pags, img = new Image();
+                    img.onload = () => {
+                        if (pdf || !cont || !cont.isConnected) return;
+                        const anchoPt = img.naturalWidth * 72 / 100;
+                        const w = this.zoom === 'ancho' ? cont.clientWidth - 28 : anchoPt * parseFloat(this.zoom);
+                        img.style.cssText = 'display:block; margin:0 auto; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.5); width:' + w + 'px';
+                        cont.innerHTML = '';
+                        cont.appendChild(img);
+                    };
+                    img.src = miniatura;
                 },
                 lib() {
                     if (window.pdfjsLib) return Promise.resolve();
@@ -142,8 +163,8 @@
                 },
                 get etiqueta() { return this.zoom === 'ancho' ? 'Ancho' : Math.round(parseFloat(this.zoom) * 100) + ' %'; },
                 async pintar() {
-                    if (!pdf) return;
                     const cont = this.$refs.pags, dpr = window.devicePixelRatio || 1;
+                    if (!pdf || !cont || !cont.isConnected) return;   // ya se ha pasado a otra factura
                     const ancho = cont.clientWidth - 28;
                     cont.innerHTML = '';
                     for (let n = 1; n <= pdf.numPages; n++) {
@@ -512,12 +533,28 @@
                 <span class="focr-chip {{ $e[2] }}">{{ $e[0] }} {{ $e[1] }}</span>
                 <span class="truncate" style="flex:1" title="{{ $actual['ruta'] }}">{{ basename($actual['ruta']) }}</span>
                 @if ($guardando) <span class="focr-chip c-gris" title="Excel, mover el PDF y aprender de las ya validadas, en segundo plano">💾 guardando {{ $guardando }}…</span> @endif
+                @if ($actual['estado'] !== 'validada')
+                    <button type="button" wire:click="reproponer" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
+                            title="Vuelve a calcular los datos con lo ya leído del PDF (rápido; pierde lo cambiado a mano en esta factura)">
+                        <span wire:loading.remove wire:target="reproponer">↻ Volver a proponer</span>
+                        <span wire:loading wire:target="reproponer">Proponiendo…</span>
+                    </button>
+                    <button type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
+                            title="Vuelve a leer el PDF con el OCR de Windows (para escaneados o mal leídos; tarda unos segundos)">
+                        <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
+                        <span wire:loading wire:target="releerOcr">Leyendo con OCR…</span>
+                    </button>
+                @endif
                 <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]) }}" target="_blank" class="focr-btn b-gris" style="padding:.2rem .6rem">↗ Abrir aparte</a>
                 <button type="button" wire:click="cerrar" class="focr-btn b-gris" style="padding:.2rem .6rem">✕ Cerrar (Esc)</button>
             </div>
             <div class="focr-rev-body">
                 <div class="focr-rev-pdf" wire:key="pdf-{{ $actual['id'] }}-{{ md5($actual['ruta']) }}" wire:ignore
-                     x-data="visorPdf(@js(route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]).'?r='.md5($actual['ruta'])))"
+                     @php $sig = $cola[($posicion === false ? -1 : $posicion) + 1] ?? null; @endphp
+                     x-data="visorPdf(@js(route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]).'?r='.md5($actual['ruta'])),
+                                      @js(route('contabilidad.facturas-ocr.miniatura', [$cliente, $actual['id']]).'?r='.md5($actual['ruta'])),
+                                      @js($sig ? [route('contabilidad.facturas-ocr.pdf', [$cliente, $sig['id']]).'?r='.md5($sig['ruta']),
+                                                  route('contabilidad.facturas-ocr.miniatura', [$cliente, $sig['id']]).'?r='.md5($sig['ruta'])] : []))"
                      x-on:resize.window.debounce.300ms="if (zoom === 'ancho') pintar()">
                     <div class="focr-pdfbar">
                         <button type="button" x-on:click="mas(-1)" title="Menos zoom">−</button>
@@ -673,21 +710,11 @@
                             <input type="text" wire:model.blur="motivo" class="focr-in" style="flex:1" placeholder="Motivo del rechazo (opcional)">
                             <button type="button" wire:click="rechazar" wire:loading.attr="disabled" class="focr-btn b-rojo">✖ Rechazar</button>
                         </div>
-                        <div class="flex gap-2" style="margin-top:.35rem; align-items:center; font-size:.7rem; color:#6b7280">
-                            <button type="button" wire:click="reproponer" wire:loading.attr="disabled" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem"
-                                    title="Vuelve a calcular los datos con lo ya leído (pierde lo que hayas cambiado a mano en esta factura)">
-                                <span wire:loading.remove wire:target="reproponer">↻ Volver a proponer</span>
-                                <span wire:loading wire:target="reproponer">…</span>
-                            </button>
-                            <button type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem">
-                                <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
-                                <span wire:loading wire:target="releerOcr">Leyendo…</span>
-                            </button>
-                            @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
+                        @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
+                            <div style="margin-top:.35rem">
                                 <button type="button" wire:click="reabrir('{{ $actual['id'] }}')" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem">↺ Volver a pendiente</button>
-                            @endif
-                            <span>Validar: fila al Excel del mes de registro, PDF a su carpeta y aprende.</span>
-                        </div>
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>
