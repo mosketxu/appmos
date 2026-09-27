@@ -546,8 +546,13 @@ class FacturasOcr extends Component
         // Proveedor que no se reconoció al leer la carpeta: puede que ya se haya aprendido (p.ej. se acaba
         // de validar otra factura suya con cuenta nueva). Se vuelve a proponer con lo aprendido, si no se
         // ha tocado a mano. Espera a que la cola termine la validación en curso (bloqueo de Python).
+        // Igual si se está validando otra del mismo proveedor: lo que se le haya corregido (contrapartida,
+        // cód. transacción, clave de operación...) vale ya para esta.
+        $cta = (string) ($f['datos']['cuenta'] ?? '');
+        $mismoEnCola = $cta !== '' && collect($this->estado()['facturas'])
+            ->contains(fn ($o) => $o['estado'] === 'validando' && (string) ($o['datos']['cuenta'] ?? '') === $cta);
         if ($f['estado'] === 'pendiente' && empty($f['editada']) && config('contabilidad.ejecucion_local')
-            && (($f['confianza']['proveedor'] ?? '') !== 'ok' || ! empty($f['datos']['proveedor_nuevo']))) {
+            && (($f['confianza']['proveedor'] ?? '') !== 'ok' || ! empty($f['datos']['proveedor_nuevo']) || $mismoEnCola)) {
             $salida = $this->salida;
             if ($this->ejecutar(array_merge(['reproponer', $id], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 120, 'Volver a proponer', false)) {
                 $f = $this->factura($id) ?? $f;
@@ -629,6 +634,8 @@ class FacturasOcr extends Component
                 $this->form['proveedor'] = $pat['proveedor'] ?? '';
                 $this->form['cif'] = $pat['cif'] ?? '';
                 $this->form['contrapartida'] = $pat['contrapartida'] ?? ($this->form['contrapartida'] ?? '');
+                $this->form['codigo_transaccion'] = (string) ($pat['codigo_transaccion'] ?? ($this->form['codigo_transaccion'] ?? ''));
+                $this->form['clave_operacion'] = (string) ($pat['clave_operacion'] ?? ($this->form['clave_operacion'] ?? ''));
                 $this->form['nombre_fichero'] = $pat['nombre_fichero'] ?? '';
             }
             return;
@@ -636,7 +643,7 @@ class FacturasOcr extends Component
         $this->form['proveedor'] = $p['razon'] ?? '';
         $this->form['cif'] = ($p['cif_europeo'] ?? '') ?: (($p['sigla'] ?? '').($p['nif'] ?? ''));
         $this->form['contrapartida'] = $pat['contrapartida'] ?? ($p['contrapartida'] ?? '');
-        $this->form['codigo_transaccion'] = (string) ($p['transaccion'] ?? '');
+        $this->form['codigo_transaccion'] = (string) (($pat['codigo_transaccion'] ?? '') !== '' ? $pat['codigo_transaccion'] : ($p['transaccion'] ?? ''));
         $this->form['clave_operacion'] = (string) ($pat['clave_operacion'] ?? '');
         $this->form['cp'] = $p['cp'] ?? '';
         $this->form['canal'] = $this->analitica ? ($p['canal'] ?? '') : '';
