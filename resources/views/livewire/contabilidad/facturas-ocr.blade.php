@@ -367,10 +367,36 @@
                     <button type="button" wire:click="$set('vista','historico')" class="{{ $vista === 'historico' ? 'on' : '' }}">
                         Validadas ({{ $cuenta['validada'] ?? 0 }})
                     </button>
+                    @if ($cuenta['duplicada'] ?? 0)
+                        <button type="button" wire:click="$set('vista','duplicadas')" class="{{ $vista === 'duplicadas' ? 'on' : '' }}">
+                            Duplicadas ({{ $cuenta['duplicada'] }})
+                        </button>
+                    @endif
                 </div>
 
                 <div class="overflow-auto focr-card" style="border-top-left-radius:0; max-height:70vh">
-                    @if ($vista === 'revisar')
+                    @if ($vista === 'duplicadas')
+                        <table class="focr-tabla">
+                            <thead><tr><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th style="text-align:right">Total</th><th>Motivo</th><th>Fichero (en Duplicadas)</th><th>Cuándo</th><th></th></tr></thead>
+                            <tbody>
+                            @foreach ($duplicadas as $f)
+                                @php $d = $f['datos'] ?? []; @endphp
+                                <tr wire:key="d-{{ $f['id'] }}">
+                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
+                                    <td>{{ $d['su_factura'] ?? '' }}</td>
+                                    <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
+                                    <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
+                                    <td class="text-xs">{{ $f['motivo_rechazo'] ?? '' }} {{ collect($f['avisos'] ?? [])->filter(fn ($a) => str_starts_with($a, 'DUPLICADA'))->implode(' · ') }}</td>
+                                    <td class="text-xs" style="max-width:340px; word-break:break-all">
+                                        <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline">{{ $f['ruta'] }}</a>
+                                    </td>
+                                    <td class="text-xs">{{ $f['duplicada_el'] ?? '' }}</td>
+                                    <td><button type="button" wire:click="reabrir('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.15rem .5rem; font-size:.72rem" title="Vuelve a la carpeta de la que se leyó y a pendientes">↺ No es duplicada</button></td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    @elseif ($vista === 'revisar')
                         <table class="focr-tabla">
                             <thead><tr>
                                 <th></th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>F. registro</th>
@@ -514,7 +540,12 @@
                         <div class="focr-nocuadra">
                             <div style="font-size:1.05rem">⚠️ FACTURA DUPLICADA</div>
                             @foreach ($duplicados as $m) <div>{{ $m }}</div> @endforeach
-                            <div style="font-weight:400; font-size:.72rem">Una factura no puede estar dos veces. Recházala, o valida si de verdad es otra (te lo preguntará).</div>
+                            <div style="display:flex; gap:.5rem; align-items:center; margin-top:.3rem">
+                                <button type="button" wire:click="marcarDuplicada" wire:loading.attr="disabled" class="focr-btn" style="background:#dc2626; color:#fff; padding:.2rem .7rem; font-size:.78rem">
+                                    Sí, es duplicada → a la carpeta Duplicadas
+                                </button>
+                                <span style="font-weight:400; font-size:.72rem">Si de verdad es otra factura, valida (te lo preguntará).</span>
+                            </div>
                         </div>
                     @endif
                     @if ($noCuadra)

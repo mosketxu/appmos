@@ -530,7 +530,7 @@ class FacturasOcr extends Component
     /** Cola de revisión: pendientes primero; rechazadas e ilegibles al final. */
     protected function cola(): array
     {
-        $fs = array_values(array_filter($this->estado()['facturas'], fn ($f) => $f['estado'] !== 'validada'));
+        $fs = array_values(array_filter($this->estado()['facturas'], fn ($f) => ! in_array($f['estado'], ['validada', 'duplicada'], true)));
         $orden = ['pendiente' => 0, 'rechazada' => 1, 'ilegible' => 2];
         usort($fs, fn ($a, $b) => ($orden[$a['estado']] ?? 3) <=> ($orden[$b['estado']] ?? 3)
             ?: strnatcasecmp(basename($a['ruta']), basename($b['ruta'])));
@@ -868,6 +868,20 @@ class FacturasOcr extends Component
         $this->siguiente();
     }
 
+    /** Confirmada como duplicada: el PDF va a la subcarpeta Duplicadas y sale de la cola. */
+    public function marcarDuplicada(): void
+    {
+        if (! $this->sel) {
+            return;
+        }
+        $this->salida = '';
+        if ($this->ejecutar(['duplicada', $this->sel, '--motivo', $this->motivo], 60, 'Duplicada', false)) {
+            $this->siguiente();
+        } else {
+            $this->addError('validar', trim($this->salida));
+        }
+    }
+
     public function rechazar(): void
     {
         if (! $this->sel) {
@@ -1014,6 +1028,7 @@ class FacturasOcr extends Component
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
             'duplicados' => $this->sel ? $this->duplicados() : [],
+            'duplicadas' => array_values(array_filter($todas, fn ($f) => $f['estado'] === 'duplicada')),
             'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,
             'entidad' => $valido ? $this->entidad() : null,
             'hayAnalitica' => $this->hayColumnaAnalitica(),
