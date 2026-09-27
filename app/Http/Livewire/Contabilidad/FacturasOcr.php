@@ -899,6 +899,20 @@ class FacturasOcr extends Component
         $this->ejecutar(['reabrir', $id], 60, 'Reabrir', false);
     }
 
+    /** Vuelve a proponer los datos con el texto ya leído (sin OCR): tras mejoras del programa o tras aprender. */
+    public function reproponer(): void
+    {
+        if (! $this->sel) {
+            return;
+        }
+        $this->salida = '';
+        if ($this->ejecutar(array_merge(['reproponer', $this->sel], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 120, 'Volver a proponer', false)) {
+            $this->abrir($this->sel);
+        } else {
+            $this->addError('validar', trim($this->salida));
+        }
+    }
+
     public function releerOcr(): void
     {
         if (! $this->sel) {

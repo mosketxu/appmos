@@ -663,6 +663,11 @@
                             <button type="button" wire:click="rechazar" wire:loading.attr="disabled" class="focr-btn b-rojo">✖ Rechazar</button>
                         </div>
                         <div class="flex gap-2" style="margin-top:.35rem; align-items:center; font-size:.7rem; color:#6b7280">
+                            <button type="button" wire:click="reproponer" wire:loading.attr="disabled" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem"
+                                    title="Vuelve a calcular los datos con lo ya leído (pierde lo que hayas cambiado a mano en esta factura)">
+                                <span wire:loading.remove wire:target="reproponer">↻ Volver a proponer</span>
+                                <span wire:loading wire:target="reproponer">…</span>
+                            </button>
                             <button type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem">
                                 <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
                                 <span wire:loading wire:target="releerOcr">Leyendo…</span>
