@@ -543,6 +543,17 @@ class FacturasOcr extends Component
         if (! $f) {
             return;
         }
+        // Proveedor que no se reconoció al leer la carpeta: puede que ya se haya aprendido (p.ej. se acaba
+        // de validar otra factura suya con cuenta nueva). Se vuelve a proponer con lo aprendido, si no se
+        // ha tocado a mano. Espera a que la cola termine la validación en curso (bloqueo de Python).
+        if ($f['estado'] === 'pendiente' && empty($f['editada']) && config('contabilidad.ejecucion_local')
+            && (($f['confianza']['proveedor'] ?? '') !== 'ok' || ! empty($f['datos']['proveedor_nuevo']))) {
+            $salida = $this->salida;
+            if ($this->ejecutar(array_merge(['reproponer', $id], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 120, 'Volver a proponer', false)) {
+                $f = $this->factura($id) ?? $f;
+            }
+            $this->salida = $salida;
+        }
         $this->resetErrorBag();
         $this->sel = $id;
         $this->motivo = (string) ($f['motivo_rechazo'] ?? '');
