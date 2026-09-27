@@ -426,7 +426,7 @@ class FacturasOcr extends Component
         $sel = $this->sel;
         $this->modificarEstado(function (array $e) use ($sel, $datos) {
             foreach ($e['facturas'] as &$f) {
-                if ($f['id'] === $sel && $f['estado'] !== 'validada') {
+                if ($f['id'] === $sel && ! in_array($f['estado'], ['validada', 'validando'], true)) {
                     $f['datos'] = array_merge($f['datos'] ?? [], $datos);
                     $f['editada'] = date('Y-m-d H:i');
                 }
@@ -530,7 +530,7 @@ class FacturasOcr extends Component
     /** Cola de revisión: pendientes primero; rechazadas e ilegibles al final. */
     protected function cola(): array
     {
-        $fs = array_values(array_filter($this->estado()['facturas'], fn ($f) => ! in_array($f['estado'], ['validada', 'duplicada'], true)));
+        $fs = array_values(array_filter($this->estado()['facturas'], fn ($f) => ! in_array($f['estado'], ['validada', 'duplicada', 'validando'], true)));
         $orden = ['pendiente' => 0, 'rechazada' => 1, 'ilegible' => 2];
         usort($fs, fn ($a, $b) => ($orden[$a['estado']] ?? 3) <=> ($orden[$b['estado']] ?? 3)
             ?: strnatcasecmp(basename($a['ruta']), basename($b['ruta'])));
@@ -834,8 +834,8 @@ class FacturasOcr extends Component
             if ($f['id'] === $this->sel || (string) ($f['datos']['cuenta'] ?? '') !== $cta || $norm($f['datos']['su_factura'] ?? '') !== $a) {
                 continue;
             }
-            if ($f['estado'] === 'validada') {
-                $out[] = 'Ya validada aquí el '.($f['validada_el'] ?? '').' ('.basename($f['ruta']).')';
+            if (in_array($f['estado'], ['validada', 'validando'], true)) {
+                $out[] = 'Ya validada aquí el '.($f['validada_el'] ?? 'ahora').' ('.basename($f['ruta']).')';
             } elseif ($f['estado'] === 'pendiente') {
                 $out[] = 'Hay otra pendiente con el mismo nº ('.basename($f['ruta']).')';
             }
@@ -856,16 +856,51 @@ class FacturasOcr extends Component
         $datos['lineas'] = array_values(array_filter(array_map(fn ($l) => [
             'base' => $this->num($l['base'] ?? ''), 'pct' => $this->num($l['pct'] ?? ''), 'cuota' => $this->num($l['cuota'] ?? ''),
         ], $datos['lineas'] ?? []), fn ($l) => $l['base'] !== null));
-        $tmp = storage_path('app/facturasocr_'.uniqid().'.json');
-        file_put_contents($tmp, json_encode($datos, JSON_UNESCAPED_UNICODE));
-        $this->salida = '';
-        $ok = $this->ejecutar(array_merge(['validar', $this->sel, '--datos', $tmp], $forzar ? ['--forzar'] : []), 120, 'Validar', false);
-        @unlink($tmp);
-        if (! $ok) {
-            $this->addError('validar', trim($this->salida));
+        // Lo que Python comprobaría: si falta algo, se dice ya y no se encola
+        $faltan = array_filter(['cuenta', 'su_factura', 'fecha_expedicion', 'fecha_registro', 'contrapartida', 'total'],
+            fn ($k) => ($datos[$k] ?? '') === '' || $datos[$k] === null);
+        if (! isset($this->proveedores()[(string) ($datos['cuenta'] ?? '')])) {
+            $faltan = array_merge($faltan, array_filter(['cif', 'proveedor'], fn ($k) => trim((string) ($datos[$k] ?? '')) === ''));
+        }
+        if ($faltan) {
+            $this->addError('validar', 'Faltan datos: '.implode(', ', $faltan));
             return;
         }
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->addError('validar', 'Opción no válida. Solo ejecutable desde un terminal autorizado.');
+            return;
+        }
+        // Se pasa ya a la siguiente factura; el Excel, mover el PDF y aprender lo hace la cola en segundo plano
+        $cola = $this->dirDatos().'/_cola';
+        @mkdir($cola, 0777, true);
+        file_put_contents($cola.'/'.date('Ymd-His').'-'.substr((string) hrtime(true), -6).'-'.$this->sel.'.json',
+            json_encode(['id' => $this->sel, 'datos' => $datos, 'forzar' => $forzar], JSON_UNESCAPED_UNICODE));
+        $sel = $this->sel;
+        $this->modificarEstado(function (array $e) use ($sel, $datos) {
+            foreach ($e['facturas'] as &$f) {
+                if ($f['id'] === $sel) {
+                    $f['estado'] = 'validando';
+                    $f['datos'] = array_merge($f['datos'] ?? [], $datos);
+                    unset($f['error_validar']);
+                }
+            }
+            return $e;
+        });
+        $this->lanzarCola();
         $this->siguiente();
+    }
+
+    /** Arranca (si no está ya) el proceso que valida en segundo plano lo encolado. */
+    protected function lanzarCola(): void
+    {
+        $env = '';
+        foreach ($this->entornoWindows() as $k => $v) {
+            $env .= $k.'='.escapeshellarg($v).' ';
+        }
+        $log = $this->dirDatos().'/_cola/cola.log';
+        $cmd = 'cd '.escapeshellarg($this->baseDir()).' && '.$env.'nohup setsid '.escapeshellarg($this->pythonBin())
+            .' facturas_ocr.py '.escapeshellarg($this->cliente).' cola >> '.escapeshellarg($log).' 2>&1 < /dev/null &';
+        Process::run(['bash', '-c', $cmd]);
     }
 
     /** Confirmada como duplicada: el PDF va a la subcarpeta Duplicadas y sale de la cola. */
@@ -995,7 +1030,7 @@ class FacturasOcr extends Component
         $valido = $this->clienteValido();
         $estado = $valido ? $this->estado() : ['facturas' => []];
         $todas = $estado['facturas'];
-        $validadas = array_values(array_filter($todas, fn ($f) => $f['estado'] === 'validada'));
+        $validadas = array_values(array_filter($todas, fn ($f) => in_array($f['estado'], ['validada', 'validando'], true)));
         if ($this->filtro !== '') {
             $q = mb_strtolower($this->filtro);
             $validadas = array_values(array_filter($validadas, fn ($f) => str_contains(mb_strtolower(
@@ -1022,6 +1057,8 @@ class FacturasOcr extends Component
 
         return view('livewire.contabilidad.facturas-ocr', [
             'otroPc' => $otroPc,
+            'guardando' => count(array_filter($todas, fn ($f) => $f['estado'] === 'validando')),
+            'fallidas' => array_values(array_filter($todas, fn ($f) => ! empty($f['error_validar']) && $f['estado'] === 'pendiente')),
             'conflictos' => $conflictos,
             'dirDatos' => $valido ? $this->dirDatos() : '',
             'clientes' => $this->clientes(),

@@ -254,6 +254,12 @@
                 <span style="font-weight:400">Si acabas de cambiar de PC, espera a que OneDrive termine de sincronizar y recarga la página.</span>
             </div>
         @endif
+        @foreach ($fallidas as $f)
+            <div class="focr-nocuadra" style="animation:none">
+                ⚠️ {{ basename($f['ruta']) }} ({{ $f['datos']['proveedor'] ?? '' }} {{ $f['datos']['su_factura'] ?? '' }}): {{ $f['error_validar'] }}
+                <span style="font-weight:400">Ha vuelto a pendientes con tus datos; corrígelo y valida otra vez.</span>
+            </div>
+        @endforeach
         @if ($conflictos)
             <div class="focr-nocuadra" style="animation:none">
                 ⚠️ OneDrive ha creado copias en conflicto ({{ implode(', ', $conflictos) }}): se ha trabajado a la vez en dos PCs.
@@ -365,7 +371,8 @@
                         Por revisar ({{ $cuenta['pendiente'] ?? 0 }} pendientes{{ ($cuenta['rechazada'] ?? 0) + ($cuenta['ilegible'] ?? 0) ? ', '.(($cuenta['rechazada'] ?? 0) + ($cuenta['ilegible'] ?? 0)).' al final' : '' }})
                     </button>
                     <button type="button" wire:click="$set('vista','historico')" class="{{ $vista === 'historico' ? 'on' : '' }}">
-                        Validadas ({{ $cuenta['validada'] ?? 0 }})
+                        Validadas ({{ ($cuenta['validada'] ?? 0) + ($cuenta['validando'] ?? 0) }})
+                        @if ($guardando) <span class="focr-chip c-gris" title="Excel, mover el PDF y aprender, en segundo plano">💾 {{ $guardando }}…</span> @endif
                     </button>
                     @if ($cuenta['duplicada'] ?? 0)
                         <button type="button" wire:click="$set('vista','duplicadas')" class="{{ $vista === 'duplicadas' ? 'on' : '' }}">
@@ -476,7 +483,7 @@
                                     <td class="text-xs" style="max-width:340px; word-break:break-all">
                                         <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline">{{ $f['ruta'] }}</a>
                                     </td>
-                                    <td class="text-xs" style="white-space:nowrap">{{ $f['validada_el'] ?? '' }}
+                                    <td class="text-xs" style="white-space:nowrap">{{ $f['estado'] === 'validando' ? 'guardando…' : ($f['validada_el'] ?? '') }}
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
@@ -504,6 +511,7 @@
                 <button type="button" wire:click="mover(1)" class="focr-btn b-gris" style="padding:.2rem .6rem" title="Siguiente">▶</button>
                 <span class="focr-chip {{ $e[2] }}">{{ $e[0] }} {{ $e[1] }}</span>
                 <span class="truncate" style="flex:1" title="{{ $actual['ruta'] }}">{{ basename($actual['ruta']) }}</span>
+                @if ($guardando) <span class="focr-chip c-gris" title="Excel, mover el PDF y aprender de las ya validadas, en segundo plano">💾 guardando {{ $guardando }}…</span> @endif
                 <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]) }}" target="_blank" class="focr-btn b-gris" style="padding:.2rem .6rem">↗ Abrir aparte</a>
                 <button type="button" wire:click="cerrar" class="focr-btn b-gris" style="padding:.2rem .6rem">✕ Cerrar (Esc)</button>
             </div>
@@ -530,6 +538,9 @@
                          :style="modo ? 'cursor:crosshair' : ''"></div>
                 </div>
                 <div class="focr-rev-form">
+                    @if (! empty($actual['error_validar']))
+                        <div class="focr-nocuadra" style="animation:none">⚠️ {{ $actual['error_validar'] }}</div>
+                    @endif
                     @if (! empty($actual['avisos']))
                         <div class="focr-avisos">
                             @foreach ($actual['avisos'] as $a) <div>• {{ $a }}</div> @endforeach
