@@ -702,8 +702,11 @@
                             @php
                                 $pregunta = trim(($duplicados ? 'Parece DUPLICADA. ' : '').($noCuadra ? 'La factura NO CUADRA. ' : ''));
                             @endphp
-                            <button type="button" wire:click="validar({{ $duplicados ? 'true' : 'false' }})" wire:loading.attr="disabled" class="focr-btn b-verde" style="flex:1; justify-content:center"
-                                    @if ($pregunta) wire:confirm="{{ $pregunta }} ¿Validarla igualmente?" @endif>
+                            {{-- La pregunta se lee del propio botón al pulsar (data-*): wire:confirm se quedaba con la de antes
+                                 al cambiar los datos de la factura (p.ej. tras "Leer con OCR" ya cuadraba y seguía preguntando) --}}
+                            <button type="button" wire:loading.attr="disabled" class="focr-btn b-verde" style="flex:1; justify-content:center"
+                                    data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
+                                    x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1')">
                                 <span wire:loading.remove wire:target="validar">✅ Validar</span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>
