@@ -480,12 +480,19 @@
                                         <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline">{{ $f['ruta'] }}</a>
                                     </td>
                                     <td class="text-xs">{{ $f['duplicada_el'] ?? '' }}</td>
-                                    <td><button type="button" wire:click="reabrir('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.15rem .5rem; font-size:.72rem" title="Vuelve a la carpeta de la que se leyó y a pendientes">↺ No es duplicada</button></td>
+                                    <td><button type="button" wire:click="reabrir('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.15rem .5rem; font-size:.72rem" title="Vuelve a la carpeta de la que se leyó y a pendientes">↺ No es duplicada</button>
+                                        <button type="button" wire:click="quitarDeLista('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.15rem .5rem; font-size:.72rem" title="Quitarla de la lista (el PDF sigue en Duplicadas)">✕ Quitar</button></td>
                                 </tr>
                             @endforeach
                             </tbody>
                         </table>
                     @elseif ($vista === 'revisar')
+                        @if ($quitables)
+                            <div class="flex items-center gap-2 p-2 border-b border-gray-200 text-xs text-gray-500">
+                                <span class="ml-auto">Rechazadas, no legibles y duplicadas ya vistas:</span>
+                                <button type="button" wire:click="quitarDeLista" wire:confirm="¿Quitar de la lista todas las rechazadas, no legibles y duplicadas ({{ $quitables }})? No se borra ningún PDF." class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.75rem">✕ Quitarlas de la lista ({{ $quitables }})</button>
+                            </div>
+                        @endif
                         <table class="focr-tabla">
                             <thead><tr>
                                 <th></th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>F. registro</th>
@@ -517,6 +524,9 @@
                                     </td>
                                     <td class="text-xs text-gray-600">{{ implode(' · ', $f['avisos'] ?? []) }}
                                         @if (! empty($f['motivo_rechazo'])) <b>Rechazo:</b> {{ $f['motivo_rechazo'] }} @endif
+                                        @if (in_array($f['estado'], ['rechazada', 'ilegible'], true))
+                                            <button type="button" wire:click.stop="quitarDeLista('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.7rem" title="Quitarla de la lista (el PDF no se toca)">✕ Quitar</button>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -533,13 +543,18 @@
                                     <option value="{{ $m }}">{{ $m }}</option>
                                 @endforeach
                             </select>
-                            <span class="ml-auto text-xs text-gray-500">Plantillas para SAGE:</span>
-                            @forelse ($excels as $x)
-                                <button type="button" wire:click="guardarExcel(@js($x))" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .5rem; font-size:.75rem"
-                                        title="Guardar una copia donde elijas (ventana de Windows). Se va completando al validar, en {{ $dirDatos }}/Output">💾 {{ $x }}</button>
-                            @empty
-                                <span class="text-xs text-gray-400">(ninguna todavía)</span>
-                            @endforelse
+                            <span class="ml-auto text-xs text-gray-500">
+                                @if ($ultimoExcel) Último guardado: {{ $ultimoExcel['fecha'] }} ({{ $ultimoExcel['facturas'] }} facturas) · @endif
+                            </span>
+                            @if ($enExcel)
+                                <button type="button" wire:click="guardarExcel" wire:loading.attr="disabled" class="focr-btn b-verde" style="padding:.3rem .8rem; font-size:.85rem"
+                                        title="Te pregunta dónde guardarlo (ventana de Windows) y cierra el proceso: lo que valides después irá a un Excel nuevo. Copia en {{ $dirDatos }}/Output/Guardados">
+                                    <span wire:loading.remove wire:target="guardarExcel">💾 Guardar el Excel para SAGE ({{ $enExcel }} facturas)</span>
+                                    <span wire:loading wire:target="guardarExcel">Elige dónde guardarlo…</span>
+                                </button>
+                            @else
+                                <span class="text-xs text-gray-400">Nada nuevo para SAGE</span>
+                            @endif
                         </div>
                         <table class="focr-tabla">
                             <thead><tr>

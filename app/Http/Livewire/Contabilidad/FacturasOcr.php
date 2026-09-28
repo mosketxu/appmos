@@ -373,25 +373,43 @@ class FacturasOcr extends Component
         }
     }
 
-    /** Guarda una copia del Excel donde se elija (diálogo "Guardar como" de Windows). */
-    public function guardarExcel(string $nombre): void
+    /**
+     * Botón final del proceso: pregunta dónde guardar el Excel para SAGE (ventana de Windows), lo copia allí
+     * y lo cierra (queda en Output/Guardados); lo que se valide después va a un Excel nuevo.
+     */
+    public function guardarExcel(): void
     {
-        $origen = realpath($this->dirDatos().'/Output/'.basename($nombre));
-        if (! $this->clienteValido() || ! $origen) {
+        if (! $this->clienteValido() || ! is_file($this->dirDatos().'/Output/'.self::EXCEL)) {
             return;
         }
         $ult = $this->estado()['ultimo_guardado'] ?? '';
-        $win = $this->dialogo(['-Modo', 'guardar', '-Inicial', $ult ? $this->aWindows($ult) : '', '-Nombre', basename($origen)]);
+        $nombre = 'PluginFacturas_Recibidas_'.$this->cliente.'_'.date('Y-m-d').'.xlsx';
+        $win = $this->dialogo(['-Modo', 'guardar', '-Inicial', $ult ? $this->aWindows($ult) : '', '-Nombre', $nombre]);
         if ($win === '') {
             return;
         }
         $destino = $this->aLinux($win);
-        if ($destino === '' || ! @copy($origen, $destino)) {
-            $this->salida = "⚠️ No se pudo guardar en {$win} (¿está abierto en Excel?).";
-            return;
+        $this->salida = '';
+        if ($destino !== '' && $this->ejecutar(['guardar_excel', '--destino', $destino], 60, 'Guardar el Excel', false)) {
+            $this->modificarEstado(fn (array $e) => array_merge($e, ['ultimo_guardado' => dirname($destino)]));
+            $this->dispatch('proceso-terminado', mensaje: "✅ Excel guardado en\n{$win}\n".trim($this->salida));
         }
-        $this->modificarEstado(fn (array $e) => array_merge($e, ['ultimo_guardado' => dirname($destino)]));
-        $this->dispatch('proceso-terminado', mensaje: "✅ Excel guardado en\n{$win}");
+    }
+
+    /** Rechazadas, no legibles y duplicadas fuera de la lista (una o, sin id, todas). No se borra nada. */
+    public function quitarDeLista(?string $id = null): void
+    {
+        $this->modificarEstado(function (array $e) use ($id) {
+            foreach ($e['facturas'] as &$f) {
+                if (($id === null || $f['id'] === $id) && in_array($f['estado'], ['rechazada', 'ilegible', 'duplicada'], true)) {
+                    $f['oculta'] = date('Y-m-d H:i');
+                }
+            }
+            return $e;
+        });
+        if ($id !== null && $this->sel === $id) {
+            $this->cerrar();
+        }
     }
 
     // ------------------------------------------------------------ guardado del borrador
@@ -536,7 +554,7 @@ class FacturasOcr extends Component
     /** Cola de revisión: pendientes primero; rechazadas e ilegibles al final. */
     protected function cola(): array
     {
-        $fs = array_values(array_filter($this->estado()['facturas'], fn ($f) => ! in_array($f['estado'], ['validada', 'duplicada', 'validando'], true)));
+        $fs = array_values(array_filter($this->estado()['facturas'], fn ($f) => empty($f['oculta']) && ! in_array($f['estado'], ['validada', 'duplicada', 'validando'], true)));
         $orden = ['pendiente' => 0, 'rechazada' => 1, 'ilegible' => 2];
         usort($fs, fn ($a, $b) => ($orden[$a['estado']] ?? 3) <=> ($orden[$b['estado']] ?? 3)
             ?: strnatcasecmp(basename($a['ruta']), basename($b['ruta'])));
@@ -1268,17 +1286,8 @@ class FacturasOcr extends Component
         return response()->download($ruta, basename($ruta));
     }
 
-    protected function excels(): array
-    {
-        $out = [];
-        foreach (glob($this->dirDatos().'/Output/*.xlsx') ?: [] as $f) {
-            if (! str_starts_with(basename($f), '~$')) {
-                $out[] = basename($f);
-            }
-        }
-        rsort($out);
-        return $out;
-    }
+    /** Excel del proceso en curso (lo validado desde el último guardado); lo mismo en facturas_ocr.py. */
+    public const EXCEL = 'PluginFacturas_Recibidas.xlsx';
 
     protected function base(): array
     {
@@ -1295,7 +1304,8 @@ class FacturasOcr extends Component
     {
         $valido = $this->clienteValido();
         $estado = $valido ? $this->estado() : ['facturas' => []];
-        $todas = $estado['facturas'];
+        // Las quitadas de la lista (rechazadas/duplicadas ya vistas) no cuentan en ninguna pestaña
+        $todas = array_values(array_filter($estado['facturas'], fn ($f) => empty($f['oculta'])));
         $validadas = array_values(array_filter($todas, fn ($f) => in_array($f['estado'], ['validada', 'validando'], true)));
         if ($this->filtro !== '') {
             $q = mb_strtolower($this->filtro);
@@ -1354,7 +1364,9 @@ class FacturasOcr extends Component
             'periodos' => $this->periodos(),
             'mesesCierre' => $this->mesesCierre(),
             'pdfs' => $valido ? $this->pdfsEnCarpeta() : 0,
-            'excels' => $valido ? $this->excels() : [],
+            'enExcel' => count(array_filter($todas, fn ($f) => ($f['excel'] ?? '') === self::EXCEL && in_array($f['estado'], ['validada', 'validando'], true))),
+            'ultimoExcel' => $estado['ultimo_excel'] ?? null,
+            'quitables' => count(array_filter($todas, fn ($f) => empty($f['oculta']) && in_array($f['estado'], ['rechazada', 'ilegible', 'duplicada'], true))),
             'base' => $valido ? $this->base() : [],
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
