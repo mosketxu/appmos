@@ -345,7 +345,7 @@ class FacturasOcr extends Component
             $r = Process::path($this->baseDir())->env($this->entornoWindows())->timeout(600)->run($cmd);
         } catch (\Throwable $e) {
             $this->salida = '⚠️ No se pudo abrir el diálogo de Windows: '.$e->getMessage();
-            Log::warning('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'error' => $e->getMessage()]);
+            Log::error('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'error' => $e->getMessage()]);
             return '';
         }
         $salida = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $r->output()));
@@ -354,7 +354,7 @@ class FacturasOcr extends Component
             // Salió sin que diera tiempo a elegir nada: no se ha llegado a ver la ventana
             $this->salida = '⚠️ No se pudo abrir el diálogo de Windows (código '.$r->exitCode().'): '.($err ?: 'sin mensaje')
                 ."\nMientras tanto puedes pegar la ruta copiada de la barra del Explorador (E:\\OneDrive\\...).";
-            Log::warning('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'codigo' => $r->exitCode(), 'salida' => $salida, 'error' => $err]);
+            Log::error('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'codigo' => $r->exitCode(), 'salida' => $salida, 'error' => $err]);
         }
         return $salida;
     }
@@ -380,12 +380,17 @@ class FacturasOcr extends Component
     public function guardarExcel(): void
     {
         if (! $this->clienteValido() || ! is_file($this->dirDatos().'/Output/'.self::EXCEL)) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No hay Excel pendiente de guardar.');
             return;
         }
         $ult = $this->estado()['ultimo_guardado'] ?? '';
         $nombre = 'PluginFacturas_Recibidas_'.$this->cliente.'_'.date('Y-m-d').'.xlsx';
+        $this->salida = '';
         $win = $this->dialogo(['-Modo', 'guardar', '-Inicial', $ult ? $this->aWindows($ult) : '', '-Nombre', $nombre]);
         if ($win === '') {
+            if (trim($this->salida) !== '') {
+                $this->dispatch('proceso-terminado', mensaje: trim($this->salida));   // no se abrió la ventana: decir por qué
+            }
             return;
         }
         $destino = $this->aLinux($win);
