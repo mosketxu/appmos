@@ -20,17 +20,19 @@
 
     <div class="p-4">
     <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
-    <div class="space-y-6" style="flex:65 1 0;min-width:0">
+    <div class="space-y-6" style="flex:75 1 0;min-width:0">
 
     <h1 class="text-2xl font-semibold text-gray-900">Facturación PDF</h1>
     <p class="text-sm text-gray-500">
-        Suma y Balerga son procesos independientes. Dos fases separadas: primero
+        Suma y Balerga son procesos independientes. <strong>Genérico</strong>: PDF con facturas de cualquier
+        proveedor (también escaneado o fotografiado), sin correo.
+        Suma y Balerga: Dos fases separadas: primero
         <strong>Separar PDFs</strong> (parte el PDF-listado en facturas individuales, no toca el correo
         en absoluto), y luego, ya con el resultado a la vista, <strong>Enviar correos</strong> (acción
         aparte, con confirmación).
     </p>
 
-    <div class="grid gap-6 sm:grid-cols-2">
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         @foreach ($this->clientes as $id => $c)
             @php($e = $estado[$id] ?? ['fase' => 'vacio', 'nombreOriginal' => null])
             @php($d = $destinatarios[$id] ?? null)
@@ -176,11 +178,131 @@
                 </div>
             </div>
         @endforeach
+
+        {{-- Genérico: facturas de cualquier proveedor (separar_generico.py), sin correo --}}
+        @php($g = $generico)
+        <div wire:key="cliente-Generico" class="p-4 bg-white border rounded-lg shadow">
+            <h2 class="text-lg font-semibold text-gray-900">Genérico</h2>
+            <p class="mt-1 mb-3 text-xs text-gray-500">
+                PDF con varias facturas de cualquier proveedor (también escaneado o foto: se lee con OCR).
+                Un PDF por factura con proveedor y número. Sin correo.
+            </p>
+
+            @if (! $this->genericoPermitido)
+                <p class="text-xs text-amber-600">⚠️ No disponible en este servidor.</p>
+            @elseif ($g['fase'] === 'vacio')
+                <label class="block mb-2 text-xs font-medium text-gray-600">PDF con las facturas</label>
+                <input type="file" wire:model="archivoGenerico" accept="application/pdf"
+                       class="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm">
+                @error('archivoGenerico')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+                <div wire:loading wire:target="archivoGenerico" class="mt-1 text-xs text-gray-400">Subiendo…</div>
+
+                <div class="mt-3">
+                    <x-button.primary
+                        wire:click="analizarGenerico"
+                        wire:loading.attr="disabled"
+                        wire:target="analizarGenerico, archivoGenerico"
+                    >
+                        <span wire:loading.remove wire:target="analizarGenerico">Fase 1 · Analizar</span>
+                        <span wire:loading wire:target="analizarGenerico">⏳ Leyendo (OCR)…</span>
+                    </x-button.primary>
+                </div>
+            @else
+                <div class="p-2 mb-3 text-xs border rounded bg-gray-50 text-gray-700">
+                    <div>📄 <span class="font-medium">{{ $g['nombreOriginal'] }}</span></div>
+                    @if ($g['destinatario'])
+                        <div class="mt-1 text-gray-500">Destinatario (no se usa como proveedor): {{ $g['destinatario'] }}</div>
+                    @endif
+                    <div class="mt-1">
+                        @if ($g['fase'] === 'analizado')
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Analizado, revisa la tabla</span>
+                        @else
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">PDFs generados</span>
+                        @endif
+                    </div>
+                    @if (! empty($resultados['Generico']))
+                        <div class="flex flex-col mt-2 gap-y-1">
+                            @foreach ($resultados['Generico'] as $r)
+                                <x-contabilidad.resultado-fichero :r="$r" />
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <p class="mb-1 text-xs text-gray-500">
+                    Páginas seguidas con el mismo número y proveedor salen en un solo PDF. Corrige lo que el OCR haya leído mal.
+                </p>
+                <div class="mb-3 overflow-auto border rounded" style="max-height:22rem">
+                    <table class="min-w-full text-xs divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-1 py-1 text-left">Pág.</th>
+                                <th class="px-1 py-1 text-left">Tipo</th>
+                                <th class="px-1 py-1 text-left">Proveedor</th>
+                                <th class="px-1 py-1 text-left">Número</th>
+                                <th class="px-1 py-1"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @foreach ($genericoPaginas as $i => $f)
+                                <tr wire:key="gen-pag-{{ $i }}">
+                                    <td class="px-1 py-1 text-gray-500">{{ $f['pagina'] }}</td>
+                                    <td class="px-1 py-1">
+                                        <select wire:model="genericoPaginas.{{ $i }}.tipo" class="py-0.5 pl-1 pr-6 text-xs border-gray-300 rounded">
+                                            <option value="Fra">Fra</option>
+                                            <option value="Abo">Abo</option>
+                                            <option value="Pre">Pre</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-1 py-1">
+                                        <input type="text" wire:model="genericoPaginas.{{ $i }}.proveedor"
+                                               style="min-width:8rem" class="w-full py-0.5 px-1 text-xs border-gray-300 rounded {{ trim($f['proveedor'] ?? '') === '' ? 'bg-red-50' : '' }}">
+                                    </td>
+                                    <td class="px-1 py-1">
+                                        <input type="text" wire:model="genericoPaginas.{{ $i }}.numero"
+                                               style="min-width:6rem" class="w-full py-0.5 px-1 text-xs border-gray-300 rounded {{ trim($f['numero'] ?? '') === '' ? 'bg-red-50' : '' }}">
+                                    </td>
+                                    <td class="px-1 py-1 whitespace-nowrap">
+                                        @if ($i > 0)
+                                            <button type="button" wire:click="igualQueAnterior({{ $i }})"
+                                                    class="text-gray-400 hover:text-gray-700" title="Igual que la anterior (misma factura)">↑=</button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <x-button.primary
+                        wire:click="generarGenerico"
+                        wire:loading.attr="disabled"
+                        wire:target="generarGenerico"
+                    >
+                        <span wire:loading.remove wire:target="generarGenerico">Fase 2 · Generar PDFs</span>
+                        <span wire:loading wire:target="generarGenerico">⏳ Generando…</span>
+                    </x-button.primary>
+                    @if ($g['fase'] === 'generado' && $g['zip'])
+                        <x-button.secondary wire:click="descargarZipGenerico">⬇️ Descargar .zip</x-button.secondary>
+                    @endif
+                    <x-button.secondary
+                        wire:click="empezarDeNuevoGenerico"
+                        wire:loading.attr="disabled"
+                        wire:target="empezarDeNuevoGenerico"
+                    >
+                        Empezar de nuevo (otro PDF)
+                    </x-button.secondary>
+                </div>
+            @endif
+        </div>
     </div>
 
     </div>{{-- /columna izquierda --}}
 
-    <div class="w-full" style="flex:35 1 0;min-width:0">
+    <div class="w-full" style="flex:25 1 0;min-width:0">
         <div class="sticky top-4">
             <div class="flex justify-start mb-2">
                 <x-button.secondary wire:click="limpiarSalida">Borrar salida</x-button.secondary>

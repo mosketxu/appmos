@@ -75,4 +75,24 @@ return [
         ->first(fn ($d) => is_dir($d)) ?? '/mnt/e/Claude/Contabilidad/FacturasOcr'),
     'facturasocr_python' => env('FACTURASOCR_PYTHON'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Facturación PDF · Genérico (28-sep-2026): partir un PDF de facturas de
+    | cualquier proveedor (FacturacionPDFyMail/separar_generico.py)
+    |--------------------------------------------------------------------------
+    |
+    | No toca OneDrive ni manda correos: el PDF se sube por el navegador y los
+    | PDF salen en un .zip descargable, así que puede ir también en el VPS.
+    | Se ejecuta si ejecucion_local o FACTURACION_GENERICO_EJECUCION=true.
+    |   - VPS: FACTURACION_GENERICO_EJECUCION=true,
+    |          FACTURACION_GENERICO_DIR=<carpeta con separar_generico.py>,
+    |          FACTURACION_GENERICO_PYTHON=<python con pymupdf> (opcional);
+    |          OCR con tesseract (apt install tesseract-ocr tesseract-ocr-spa).
+    |   - Local: la carpeta de FacturacionPDFyMail y el OCR de Windows.
+    */
+
+    'generico_ejecucion' => env('FACTURACION_GENERICO_EJECUCION', false),
+    'generico_dir' => env('FACTURACION_GENERICO_DIR'),
+    'generico_python' => env('FACTURACION_GENERICO_PYTHON'),
+
 ];

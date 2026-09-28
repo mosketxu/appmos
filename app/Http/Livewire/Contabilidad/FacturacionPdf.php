@@ -6,6 +6,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -58,18 +59,36 @@ class FacturacionPdf extends Component
     public array $filtroEnviar = [];
 
     /**
+     * Separador genérico (separar_generico.py): PDF de facturas de cualquier
+     * proveedor, normalmente escaneado/fotografiado (OCR). Sin correo y sin
+     * OneDrive, así que también funciona en el VPS (ver
+     * config/contabilidad.php 'generico_*'). Fases: 'vacio' -> 'analizado'
+     * (tabla editable página -> número/proveedor) -> 'generado' (.zip
+     * descargable).
+     */
+    public $archivoGenerico = null;
+
+    /** Rutas del PDF subido y del .zip: bloqueado para que el navegador no pueda cambiarlas. */
+    #[Locked]
+    public array $generico = [];
+
+    /** Tabla editable: una fila por página [pagina, numero, proveedor, tipo Fra|Abo|Pre]. */
+    public array $genericoPaginas = [];
+
+    /**
      * 2026-09-20: misma unidad-de-disco variable que en Contabilidad\Procesos
-     * (`/mnt/e/Claude` en un PC, `/mnt/f/Claude` en otro).
+     * (`/mnt/e/Claude` en un PC, `/mnt/f/Claude` en otro). 2026-09-28: el
+     * proyecto se movió a Claude/Contabilidad/.
      */
     protected function scriptDir(): string
     {
-        foreach (['/mnt/e/Claude/FacturacionPDFyMail', '/mnt/f/Claude/FacturacionPDFyMail'] as $dir) {
+        foreach (['/mnt/e/Claude/Contabilidad/FacturacionPDFyMail', '/mnt/f/Claude/Contabilidad/FacturacionPDFyMail'] as $dir) {
             if (is_dir($dir)) {
                 return $dir;
             }
         }
 
-        return '/mnt/e/Claude/FacturacionPDFyMail';
+        return '/mnt/e/Claude/Contabilidad/FacturacionPDFyMail';
     }
 
     /**
@@ -111,6 +130,7 @@ class FacturacionPdf extends Component
             $this->estado[$id] = ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null];
             $this->filtroEnviar[$id] = 'todos';
         }
+        $this->generico = $this->genericoVacio();
     }
 
     public function limpiarSalida(): void
@@ -217,6 +237,171 @@ class FacturacionPdf extends Component
         $res = $this->ejecutarScript($args, 180, $etiqueta);
         $this->anexarResultados($cliente, $res['archivos']);
         return $res['ok'];
+    }
+
+    // -- Genérico: cualquier proveedor ------------------------------------
+
+    protected function genericoVacio(): array
+    {
+        return ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null,
+            'destinatario' => '', 'avisos' => [], 'zip' => null];
+    }
+
+    /** Local: la carpeta de FacturacionPDFyMail. VPS: FACTURACION_GENERICO_DIR. */
+    protected function genericoDir(): string
+    {
+        return rtrim(config('contabilidad.generico_dir') ?: $this->scriptDir(), '/');
+    }
+
+    protected function genericoPython(): string
+    {
+        if ($p = config('contabilidad.generico_python')) {
+            return $p;
+        }
+        $venv = $this->genericoDir().'/.venv/bin/python3';
+        return is_file($venv) ? $venv : 'python3';
+    }
+
+    public function getGenericoPermitidoProperty(): bool
+    {
+        return (bool) (config('contabilidad.ejecucion_local') || config('contabilidad.generico_ejecucion'));
+    }
+
+    /** Bajo Apache falta WSL_INTEROP y powershell.exe (OCR de Windows) falla en silencio: igual que FacturasOcr. */
+    protected function entornoWindows(): array
+    {
+        return getenv('WSL_INTEROP') || ! is_dir('/run/WSL') ? [] : ['WSL_INTEROP' => '/run/WSL/1_interop'];
+    }
+
+    public function analizarGenerico(): void
+    {
+        $etiqueta = 'Facturación PDF · Genérico (Analizar)';
+        if (! $this->genericoPermitido) {
+            $this->salida .= "\n\n===== {$etiqueta} =====\n⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.";
+            return;
+        }
+        $this->validate(['archivoGenerico' => 'required|file|mimes:pdf|max:51200']);
+
+        $nombreOriginal = $this->archivoGenerico->getClientOriginalName();
+        $rutaRelativa = $this->archivoGenerico->storeAs('facturacion-pdf/Generico', Str::uuid().'.pdf', 'local');
+        $this->generico = array_merge($this->genericoVacio(), [
+            'nombreOriginal' => $nombreOriginal,
+            'rutaMaster' => Storage::disk('local')->path($rutaRelativa),
+        ]);
+        $this->genericoPaginas = [];
+        $this->archivoGenerico = null;
+        $this->resultados['Generico'] = [];
+
+        $this->salida .= "\n\n===== {$etiqueta} =====\n📄 {$nombreOriginal}\n";
+        try {
+            $result = Process::path($this->genericoDir())->timeout(900)->env($this->entornoWindows())
+                ->run([$this->genericoPython(), 'separar_generico.py', 'analizar', '--input', $this->generico['rutaMaster']]);
+            $data = json_decode(trim($result->output()), true);
+            if (! $result->successful() || ! is_array($data)) {
+                $this->salida .= trim($result->errorOutput()."\n".$result->output())
+                    ."\n\n⚠️ El proceso terminó con código de salida ".$result->exitCode().'.';
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error. Mira la caja de Salida.");
+                return;
+            }
+        } catch (\Throwable $e) {
+            $this->salida .= '⚠️ '.get_class($e).': '.$e->getMessage();
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nExcepción al ejecutar. Mira la caja de Salida.");
+            return;
+        }
+
+        $this->genericoPaginas = $data['paginas'] ?? [];
+        $this->generico['destinatario'] = $data['destinatario'] ?? '';
+        $this->generico['avisos'] = $data['avisos'] ?? [];
+        $this->generico['fase'] = 'analizado';
+        if (trim($result->errorOutput()) !== '') {
+            $this->salida .= trim($result->errorOutput())."\n";
+        }
+        $this->salida .= count($this->genericoPaginas).' página(s) analizadas. Revisa la tabla y pulsa «Generar PDFs».';
+        foreach ($this->generico['avisos'] as $a) {
+            $this->salida .= "\n⚠️ {$a}";
+        }
+        $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nRevisa número y proveedor de cada página.");
+    }
+
+    /** Copia número/proveedor/tipo de una fila a la siguiente (para unir una página a la factura anterior). */
+    public function igualQueAnterior(int $i): void
+    {
+        if ($i > 0 && isset($this->genericoPaginas[$i], $this->genericoPaginas[$i - 1])) {
+            foreach (['numero', 'proveedor', 'tipo'] as $k) {
+                $this->genericoPaginas[$i][$k] = $this->genericoPaginas[$i - 1][$k];
+            }
+        }
+    }
+
+    public function generarGenerico(): void
+    {
+        if (! in_array($this->generico['fase'] ?? '', ['analizado', 'generado'], true) || ! $this->genericoPermitido) {
+            return;
+        }
+        $master = $this->generico['rutaMaster'] ?? null;
+        if (! $master || ! is_file($master)) {
+            $this->salida .= "\n\n⚠️ No encuentro el PDF subido (Genérico). Vuelve a subirlo.";
+            return;
+        }
+
+        $plan = array_map(fn ($f) => [
+            'pagina' => (int) ($f['pagina'] ?? 0),
+            'numero' => trim((string) ($f['numero'] ?? '')),
+            'proveedor' => trim((string) ($f['proveedor'] ?? '')),
+            'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre'], true) ? $f['tipo'] : 'Fra',
+        ], $this->genericoPaginas);
+        $rutaPlan = $master.'.plan.json';
+        file_put_contents($rutaPlan, json_encode($plan, JSON_UNESCAPED_UNICODE));
+
+        $etiqueta = 'Facturación PDF · Genérico (Generar PDFs)';
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        try {
+            $result = Process::path($this->genericoDir())->timeout(300)
+                ->run([$this->genericoPython(), 'separar_generico.py', 'generar', '--input', $master, '--plan', $rutaPlan]);
+            $texto = trim($result->output()."\n".$result->errorOutput());
+        } catch (\Throwable $e) {
+            $this->salida .= '⚠️ '.get_class($e).': '.$e->getMessage();
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nExcepción al ejecutar. Mira la caja de Salida.");
+            return;
+        }
+
+        $zip = preg_match('/^RESULT_ZIP:\s*(.+?)\s*$/m', $texto, $m) ? $m[1] : null;
+        $carpetas = preg_match_all('/^RESULT_FILE:\s*(.+?)\s*$/m', $texto, $mm) ? $mm[1] : [];
+        $this->salida .= trim(preg_replace('/^RESULT_(FILE|ZIP):.*(\r?\n)?/m', '', $texto));
+        $this->resultados['Generico'] = [];
+        if (config('contabilidad.ejecucion_local')) {
+            // En local, además del .zip, enlace a la carpeta (en el VPS no sirve de nada)
+            $this->anexarResultados('Generico', $carpetas);
+        }
+
+        if (! $result->successful()) {
+            $this->salida .= "\n\n⚠️ El proceso terminó con código de salida ".$result->exitCode().'.';
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error. Mira la caja de Salida.");
+            return;
+        }
+        $this->generico['zip'] = $zip && is_file($zip) ? $zip : null;
+        $this->generico['fase'] = 'generado';
+        $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
+    }
+
+    public function descargarZipGenerico()
+    {
+        $zip = $this->generico['zip'] ?? null;
+        if (! $zip || ! is_file($zip)) {
+            $this->salida .= "\n\n⚠️ El .zip ya no está. Vuelve a pulsar «Generar PDFs».";
+            return null;
+        }
+        $base = pathinfo((string) $this->generico['nombreOriginal'], PATHINFO_FILENAME) ?: 'facturas';
+        return response()->download($zip, "{$base} - separado.zip");
+    }
+
+    /** Solo reinicia la pantalla; el PDF subido se queda en storage/app/facturacion-pdf/Generico. */
+    public function empezarDeNuevoGenerico(): void
+    {
+        $this->generico = $this->genericoVacio();
+        $this->genericoPaginas = [];
+        $this->archivoGenerico = null;
+        $this->resultados['Generico'] = [];
     }
 
     // -- Destinatarios (solo lectura) -------------------------------------
