@@ -489,7 +489,7 @@
                             <tbody>
                             @forelse ($validadas as $f)
                                 @php $d = $f['datos']; @endphp
-                                <tr wire:key="v-{{ $f['id'] }}">
+                                <tr wire:key="v-{{ $f['id'] }}" @if ($f['estado'] === 'validada') class="clic" wire:click="abrir('{{ $f['id'] }}')" title="Ver lo validado (y volverla a pendiente para corregirla)" @endif>
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
                                     <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
@@ -718,6 +718,15 @@
                                 <button type="button" wire:click="reabrir('{{ $actual['id'] }}')" class="focr-btn b-gris" style="font-size:.7rem; padding:.15rem .5rem">↺ Volver a pendiente</button>
                             </div>
                         @endif
+                    @else
+                        <div class="flex gap-2" style="margin-top:.55rem; align-items:center; flex-wrap:wrap">
+                            <span class="focr-chip c-ok">✔ Validada el {{ $actual['validada_el'] ?? '' }}{{ ! empty($actual['fila_excel']) ? ' · fila '.$actual['fila_excel'].' de '.($actual['excel'] ?? '') : '' }}</span>
+                            <button type="button" wire:loading.attr="disabled" class="focr-btn b-gris" style="font-size:.75rem; padding:.2rem .6rem"
+                                    wire:click="reabrir('{{ $actual['id'] }}')"
+                                    wire:confirm="Se quita su fila del Excel del mes y vuelve a pendientes para corregirla y validarla otra vez. Si ese Excel ya se importó en SAGE, bórrala también en SAGE. ¿Seguir?">
+                                ✎ Corregir (volver a pendiente)
+                            </button>
+                        </div>
                     @endif
                 </div>
             </div>

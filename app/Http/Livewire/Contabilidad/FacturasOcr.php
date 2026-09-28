@@ -949,7 +949,14 @@ class FacturasOcr extends Component
     public function reabrir(string $id): void
     {
         $this->salida = '';
-        $this->ejecutar(['reabrir', $id], 60, 'Reabrir', false);
+        $validada = ($this->factura($id)['estado'] ?? '') === 'validada';
+        if (! $this->ejecutar(['reabrir', $id], 60, 'Reabrir', false)) {
+            $this->addError('validar', trim($this->salida));
+        } elseif ($validada && $this->sel === $id) {
+            // Validada que se vuelve a pendiente para corregirla: se sigue en ella, ya editable
+            $this->vista = 'revisar';
+            $this->abrir($id);
+        }
     }
 
     /** Vuelve a proponer los datos con el texto ya leído (sin OCR): tras mejoras del programa o tras aprender. */
