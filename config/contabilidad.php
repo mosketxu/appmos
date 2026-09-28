@@ -39,6 +39,10 @@ return [
     'bancos_dir' => env('BANCOS_DIR', '/mnt/e/Claude/Contabilidad/Bancos'),
     'bancos_url' => env('BANCOS_URL'),
 
+    // Clave compartida con Facturas OCR (PCs) para /api/bancos/{cliente}/cuentas-nuevas
+    // (cuentas de proveedor creadas en Bancos o en Facturas OCR que aún no están en SAGE).
+    'bancos_sync_token' => env('BANCOS_SYNC_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Impuesto sobre Sociedades (25-sep-2026): se usa desde la web, como Bancos

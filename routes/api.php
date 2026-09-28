@@ -17,3 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Cuentas nuevas compartidas entre Bancos (VPS) y Facturas OCR (PCs). Clave en X-Token.
+Route::get('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCuentasController::class, 'listar']);
+Route::post('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCuentasController::class, 'alta']);
