@@ -524,6 +524,27 @@ class Bancos extends Component
         return $archivos ? $this->descargar('Output/'.$this->revisar) : null;
     }
 
+    /** Varios bancos<cuenta>.xlsx en uno para importarlo en SAGE de una vez (bancos_maestro.py juntar). */
+    public function juntarBancos(array $ficheros)
+    {
+        if (! config('contabilidad.bancos_ejecucion')) {
+            $this->avisarNoAutorizado('Bancos · juntar ficheros');
+            return null;
+        }
+        $ficheros = array_values(array_filter($ficheros, fn ($f) => is_string($f) && preg_match('/^bancos[\w\- ]*\.xlsx$/i', $f)));
+        if (! $this->clienteValido() || count($ficheros) < 2) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ Marca al menos dos ficheros para juntarlos.');
+            return null;
+        }
+        $etiqueta = "Bancos · {$this->cliente} · juntar ".implode(' + ', $ficheros);
+        $this->resultados = [];
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $archivos = $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'juntar'], $ficheros), 120, $etiqueta);
+        $this->anexarResultados($archivos);
+
+        return $archivos ? $this->descargar('Output/'.basename($archivos[0])) : null;
+    }
+
     /** Si el nombre del extracto empieza por una de las cuentas, se preselecciona. */
     public function updatedExtracto(): void
     {

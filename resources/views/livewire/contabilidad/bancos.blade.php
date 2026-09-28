@@ -245,7 +245,7 @@
         @endif
 
         @if ($hayBase)
-            @php $ficherosBancos = array_values(array_filter($generados, fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g))); @endphp
+            @php $ficherosBancos = array_values(array_filter($generados, fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g) && ! str_starts_with($g, 'bancos_junto_'))); @endphp
             <div class="overflow-hidden bg-white border rounded-lg shadow"
                  wire:key="revision-{{ $cliente }}-{{ $revisar }}-{{ $revisionN }}"
                  x-data="{
@@ -358,6 +358,29 @@
                     @endif
                 </div>
             </div>
+
+            @if (count($ficherosBancos) >= 2)
+                <div class="p-4 bg-white border rounded-lg shadow" x-data="{ marcados: [] }">
+                    <h2 class="mb-1 text-sm font-semibold text-gray-700">Juntar ficheros de bancos para subirlos a SAGE de una vez</h2>
+                    <p class="mb-2 text-xs text-gray-500">
+                        Marca los que quieras juntar: sale un solo bancos_junto_&lt;fecha&gt;.xlsx con la misma estructura, las líneas de todos
+                        (cada una con su cuenta de banco) y el Numero de 1 en adelante. Los ficheros de cada banco no se tocan: se pueden
+                        seguir revisando y subiendo por separado.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
+                        @foreach ($ficherosBancos as $g)
+                            <label class="inline-flex items-center gap-1 text-sm">
+                                <input type="checkbox" value="{{ $g }}" x-model="marcados" class="border-gray-300 rounded"> {{ $g }}
+                            </label>
+                        @endforeach
+                    </div>
+                    <x-button.secondary x-on:click="$wire.juntarBancos(marcados)" x-bind:disabled="marcados.length < 2"
+                                        wire:loading.attr="disabled" wire:target="juntarBancos">
+                        <span wire:loading.remove wire:target="juntarBancos">⧉ Juntar y descargar</span>
+                        <span wire:loading wire:target="juntarBancos">⏳ Juntando…</span>
+                    </x-button.secondary>
+                </div>
+            @endif
 
             <div id="maestro" class="overflow-hidden bg-white border rounded-lg shadow"
                  x-data="{
