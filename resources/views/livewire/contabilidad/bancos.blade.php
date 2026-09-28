@@ -4,7 +4,7 @@
 >
     <div class="fixed top-4 right-4 z-50 flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-2">
         <template x-for="aviso in avisos" :key="aviso.id">
-            <div class="flex items-start gap-2 rounded-lg border border-gray-300 bg-white p-3 shadow-lg">
+            <div x-on:click="avisos = avisos.filter(a => a.id !== aviso.id)" title="Clic para cerrar" class="cursor-pointer flex items-start gap-2 rounded-lg border border-gray-300 bg-white p-3 shadow-lg">
                 <pre class="flex-1 whitespace-pre-wrap font-sans text-sm text-gray-800" x-text="aviso.mensaje"></pre>
                 <button
                     type="button"
@@ -245,32 +245,132 @@
         @endif
 
         @if ($hayBase)
-            <div class="p-4 bg-white border rounded-lg shadow"
-                 x-data="{ encima: false }"
-                 x-on:dragover.prevent="encima = true"
-                 x-on:dragleave.prevent="encima = false"
-                 x-on:drop.prevent="encima = false; $event.dataTransfer.files.length && $wire.upload('rellenado', $event.dataTransfer.files[0])">
-                <h2 class="mb-1 text-sm font-semibold text-gray-700">↩ Devolver un bancos&lt;cuenta&gt;.xlsx rellenado en Excel</h2>
-                <p class="mb-2 text-xs text-gray-500">
-                    En el Excel de bancos, filtra la Contrapartida por (Vacías) y elígela en el desplegable (al lado sale el nombre de la cuenta).
-                    Si quieres que sirva para más casos, pon en <b>Concepto para el Maestro</b> la parte fija (p.ej. GOOGLE CLOUD) y en
-                    <b>Vale para</b> si es solo para cobros o solo para pagos. Súbelo aquí: el programa aprende las cuentas, actualiza el
-                    Maestro y la copia del fichero en el servidor. Las columnas G-I y la pestaña oculta «Cuentas» son solo de ayuda (SAGE usa A-F).
-                </p>
-                <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
-                       class="flex items-center gap-2 px-3 py-2 text-sm border-2 border-dashed rounded-md cursor-pointer">
-                    <input type="file" wire:model="rellenado" accept=".xlsx" class="hidden">
-                    <span>📄</span><span class="text-gray-700">Arrastra aquí el bancos&lt;cuenta&gt;.xlsx rellenado o haz clic para elegirlo</span>
-                </label>
-                <div wire:loading wire:target="rellenado" class="mt-1 text-xs text-amber-700">⏳ Aprendiendo…</div>
-                @error('rellenado')
-                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                @enderror
+            @php $ficherosBancos = array_values(array_filter($generados, fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g))); @endphp
+            <div class="overflow-hidden bg-white border rounded-lg shadow"
+                 wire:key="revision-{{ $cliente }}-{{ $revisar }}-{{ $revisionN }}"
+                 x-data="{
+                     lineas: @js(array_map(fn ($l) => $l + ['concepto_maestro' => '', 'vale' => ''], $lineasRevisar)),
+                     nombres: @js((object) $planCuentas),
+                     nuevas: {},
+                     filtro: 'vacias', q: '',
+                     get vacias() { return this.lineas.filter(l => ! l.contrapartida).length },
+                     visible(l) {
+                         if (this.filtro === 'vacias' && l.contrapartida && ! l.tocada) return false;
+                         const t = this.q.toUpperCase();
+                         return t === '' || (l.concepto + ' ' + l.contrapartida + ' ' + this.nombre(l.contrapartida)).toUpperCase().includes(t);
+                     },
+                     nombre(c) { return this.nombres[c] || this.nuevas[c] || '' },
+                     cuentaCambiada(l) {
+                         l.tocada = true;
+                         l.contrapartida = (l.contrapartida || '').trim();
+                         const c = l.contrapartida;
+                         if (c === '' || this.nombre(c)) return;
+                         if (! /^\d{6,}$/.test(c)) { alert('La cuenta tiene que ser un número de 6 cifras o más.'); l.contrapartida = ''; return; }
+                         const n = prompt('La cuenta ' + c + ' no está en el plan de cuentas.\nSi es nueva (p.ej. un proveedor dado de alta en Facturas OCR y aún no en SAGE), escribe su nombre para crearla:', l.concepto);
+                         if (n && n.trim()) { this.nuevas[c] = n.trim(); } else { l.contrapartida = ''; }
+                     },
+                 }">
+                <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
+                    <h2 class="text-sm font-semibold text-gray-700">Revisar contrapartidas de</h2>
+                    <select wire:model.live="revisar" class="py-1 text-sm border-gray-300 rounded-md shadow-sm">
+                        <option value="">— elige un fichero de bancos —</option>
+                        @foreach ($ficherosBancos as $g)
+                            <option value="{{ $g }}">{{ $g }}</option>
+                        @endforeach
+                    </select>
+                    @if ($revisar !== '' && $lineasRevisar)
+                        <select x-model="filtro" class="py-1 text-sm border-gray-300 rounded-md shadow-sm">
+                            <option value="vacias">Solo sin contrapartida</option>
+                            <option value="todas">Todas las líneas</option>
+                        </select>
+                        <input type="search" x-model="q" placeholder="Buscar concepto o cuenta…" class="py-1 text-sm border-gray-300 rounded-md shadow-sm w-60">
+                        <span class="text-xs" :class="vacias ? 'text-amber-700' : 'text-green-700'"
+                              x-text="vacias ? vacias + ' sin contrapartida de ' + lineas.length : 'Todas las ' + lineas.length + ' líneas tienen contrapartida'"></span>
+                    @endif
+                </div>
+                <div class="p-4 space-y-3">
+                    @if ($avisoRevisar !== '')
+                        <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $avisoRevisar }}</p>
+                    @endif
+                    @if ($revisar === '')
+                        <p class="text-xs text-gray-500">Al generar un fichero de bancos se abre aquí solo. También puedes elegir uno ya generado.</p>
+                    @elseif ($lineasRevisar)
+                        <p class="text-xs text-gray-500">
+                            Pon la cuenta de las líneas vacías (te sugiere las del plan; si no existe, te pide el nombre y la crea en el plan de la base).
+                            Si quieres que sirva para más casos, pon en <b>Concepto para el Maestro</b> la parte fija (p.ej. GOOGLE CLOUD) y en
+                            <b>Vale para</b> si es solo para cobros o solo para pagos. Al pulsar <b>Generar</b> se escribe
+                            {{ $revisar }} con la estructura de siempre, se descarga y el programa aprende de lo que has puesto.
+                        </p>
+                        <div class="overflow-auto border rounded-md" style="max-height:34rem">
+                            <table class="min-w-full text-xs">
+                                <thead class="sticky top-0 z-10 bg-gray-100 text-gray-600">
+                                    <tr>
+                                        <th class="px-2 py-1 text-right">Nº</th>
+                                        <th class="px-2 py-1 text-left">Fecha</th>
+                                        <th class="px-2 py-1 text-left">Concepto</th>
+                                        <th class="px-2 py-1 text-right">Importe</th>
+                                        <th class="px-2 py-1 text-left">Contrapartida</th>
+                                        <th class="px-2 py-1 text-left">Nombre</th>
+                                        <th class="px-2 py-1 text-left">Concepto para el Maestro</th>
+                                        <th class="px-2 py-1 text-left">Vale para</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="l in lineas" :key="l.numero">
+                                        <tr x-show="visible(l)" class="border-t" :class="l.contrapartida ? '' : 'bg-amber-50'">
+                                            <td class="px-2 py-1 text-right text-gray-400" x-text="l.numero"></td>
+                                            <td class="px-2 py-1 whitespace-nowrap" x-text="l.fecha"></td>
+                                            <td class="px-2 py-1" x-text="l.concepto" :title="l.original"></td>
+                                            <td class="px-2 py-1 text-right whitespace-nowrap" :class="l.importe < 0 ? 'text-red-700' : 'text-green-700'"
+                                                x-text="l.importe.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"></td>
+                                            <td class="px-2 py-1">
+                                                <input type="text" x-model="l.contrapartida" x-on:change="cuentaCambiada(l)" list="plan-cuentas-{{ $cliente }}"
+                                                       class="w-24 py-0.5 text-xs font-mono border-gray-300 rounded">
+                                            </td>
+                                            <td class="px-2 py-1">
+                                                <span x-text="nombre(l.contrapartida)"></span>
+                                                <span x-show="nuevas[l.contrapartida]" class="text-indigo-600">(nueva)</span>
+                                            </td>
+                                            <td class="px-2 py-1">
+                                                <input type="text" x-model="l.concepto_maestro" placeholder="(opcional)"
+                                                       class="w-44 py-0.5 text-xs border-gray-300 rounded">
+                                            </td>
+                                            <td class="px-2 py-1">
+                                                <select x-model="l.vale" class="py-0.5 text-xs border-gray-300 rounded">
+                                                    <option value="">cobros y pagos</option>
+                                                    <option value="+">solo cobros (+)</option>
+                                                    <option value="-">solo pagos (−)</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <x-button.primary x-on:click="$wire.generarBancos(lineas.map(l => ({ numero: l.numero, contrapartida: l.contrapartida, concepto_maestro: l.concepto_maestro, vale: l.vale })), nuevas)"
+                                              wire:loading.attr="disabled" wire:target="generarBancos">
+                                <span wire:loading.remove wire:target="generarBancos">✔ Generar {{ $revisar }}</span>
+                                <span wire:loading wire:target="generarBancos">⏳ Generando…</span>
+                            </x-button.primary>
+                            <span class="text-xs text-gray-500">Se puede generar aunque queden líneas vacías, y repetir las veces que haga falta.</span>
+                        </div>
+                    @endif
+                </div>
             </div>
 
             <div id="maestro" class="overflow-hidden bg-white border rounded-lg shadow"
                  x-data="{
                      abierto: true, q: '', filtro: 'todos',
+                     codigos: @js(array_map('strval', array_keys($planCuentas))),
+                     // '' si la cuenta existe o va vacía; el nombre para crearla si es nueva; null si se cancela
+                     nombreNueva(cuenta, concepto) {
+                         const c = (cuenta || '').trim();
+                         if (c === '' || this.codigos.includes(c)) return '';
+                         if (! /^\d{6,}$/.test(c)) { alert('La cuenta tiene que ser un número de 6 cifras o más.'); return null; }
+                         const n = prompt('La cuenta ' + c + ' no está en el plan de cuentas.\nSi es nueva (p.ej. un proveedor dado de alta en Facturas OCR y aún no en SAGE), escribe su nombre para crearla:', concepto);
+                         return n && n.trim() ? n.trim() : null;
+                     },
                      ver(texto, origen, pendiente, dudoso) {
                          if (this.filtro === 'manual' && origen !== 'Manual') return false;
                          if (this.filtro === 'pendientes' && ! pendiente) return false;
@@ -338,7 +438,7 @@
                             </select>
                         </div>
                         <x-button.secondary
-                            x-on:click="if (concepto.trim()) { $wire.guardarMaestro(concepto, cuenta, '', signo, ''); concepto = ''; cuenta = ''; signo = ''; }">
+                            x-on:click="const n = nombreNueva(cuenta, concepto); if (concepto.trim() && n !== null) { $wire.guardarMaestro(concepto, cuenta, '', signo, '', n); concepto = ''; cuenta = ''; signo = ''; }">
                             ＋ Añadir
                         </x-button.secondary>
                     </div>
@@ -398,7 +498,7 @@
                                         <td class="px-2 py-1 whitespace-nowrap text-right">
                                             <button type="button" x-show="! edit" x-on:click="edit = true" class="text-blue-700 hover:underline">Editar</button>
                                             <button type="button" x-show="edit" x-cloak
-                                                    x-on:click="edit = false; $wire.guardarMaestro(concepto, cuenta, @js($f['origen'] === 'Manual' ? $f['concepto'] : ''), signo, @js($f['signo']))"
+                                                    x-on:click="const n = nombreNueva(cuenta, concepto); if (n !== null) { edit = false; $wire.guardarMaestro(concepto, cuenta, @js($f['origen'] === 'Manual' ? $f['concepto'] : ''), signo, @js($f['signo']), n) }"
                                                     class="text-green-700 hover:underline">Guardar</button>
                                             <button type="button" x-show="edit" x-cloak
                                                     x-on:click="edit = false; concepto = @js($f['concepto']); cuenta = @js($f['cuenta']); signo = @js($f['signo'])"
@@ -482,7 +582,7 @@
                             </div>
                             @if (($avisoConfig['clave'] ?? '') === $clave)
                                 <div wire:key="aviso-cfg-{{ $clave }}-{{ $avisoConfig['n'] }}"
-                                     x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
+                                     x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition x-on:click="ver = false" title="Clic para cerrar"
                                      class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
                                     {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
                                 </div>
@@ -525,7 +625,7 @@
                     </div>
                     @if (($avisoConfig['clave'] ?? '') === 'abreviaturas')
                         <div wire:key="aviso-cfg-abreviaturas-{{ $avisoConfig['n'] }}"
-                             x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
+                             x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition x-on:click="ver = false" title="Clic para cerrar"
                              class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
                             {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
                         </div>

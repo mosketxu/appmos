@@ -70,7 +70,7 @@
 
     <div class="fixed flex flex-col gap-2 top-4 right-4" style="z-index:70; width:24rem; max-width:calc(100vw - 2rem)">
         <template x-for="aviso in avisos" :key="aviso.id">
-            <div class="flex items-start gap-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg">
+            <div x-on:click="avisos = avisos.filter(a => a.id !== aviso.id)" title="Clic para cerrar" class="cursor-pointer flex items-start gap-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg">
                 <pre class="flex-1 font-sans text-sm text-gray-800 whitespace-pre-wrap" x-text="aviso.mensaje"></pre>
                 <button type="button" class="text-lg leading-none text-gray-400 hover:text-gray-700"
                         x-on:click="avisos = avisos.filter(a => a.id !== aviso.id)">&times;</button>

@@ -44,8 +44,11 @@ class Bancos extends Component
      */
     public array $subidas = [];
 
-    /** Un bancos<cuenta>.xlsx rellenado en Excel que se devuelve para que el programa aprenda. */
-    public $rellenado = null;
+    /** Fichero de Output en revisión, sus líneas y aviso si no se han podido leer (ver cargarRevision). */
+    public string $revisar = '';
+    public array $lineasRevisar = [];
+    public string $avisoRevisar = '';
+    public int $revisionN = 0;
 
     /** Lo que hay en la base por fila (plan / cada cuenta): bancos_base.py --estado. */
     public array $estadoBase = [];
@@ -361,8 +364,10 @@ class Bancos extends Component
         $this->cuenta = '';
         $this->extracto = null;
         $this->mapeo = null;
+        $this->revisar = '';
         $this->cargarMaestro();
         $this->cargarFormatos();
+        $this->cargarRevision();
     }
 
     protected function basePath(): string
@@ -428,9 +433,9 @@ class Bancos extends Component
      * Alta o cambio de una fila manual del Maestro (se guarda en Variables). $signo: '+' solo
      * cobros, '-' solo pagos, '' los dos; una fila manual es concepto + signo.
      */
-    public function guardarMaestro(string $concepto, string $cuenta, string $anterior = '', string $signo = '', string $signoAnterior = ''): void
+    public function guardarMaestro(string $concepto, string $cuenta, string $anterior = '', string $signo = '', string $signoAnterior = '', string $nombreNueva = ''): void
     {
-        $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'guardar', $concepto, trim($cuenta), $anterior, $signo, $signoAnterior]);
+        $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'guardar', $concepto, trim($cuenta), $anterior, $signo, $signoAnterior, $nombreNueva]);
     }
 
     public function borrarMaestro(string $concepto, string $signo = ''): void
@@ -460,47 +465,63 @@ class Bancos extends Component
     }
 
     /**
-     * bancos<cuenta>.xlsx rellenado en Excel (contrapartidas, "Concepto para el Maestro",
-     * "Vale para"): se guarda en Base/Recibidos y bancos_maestro.py excel lo pasa a la base.
+     * Revisión en pantalla de un Output/bancos<cuenta>.xlsx (bancos_maestro.py lineas): se rellenan
+     * las contrapartidas vacías (y, si se quiere, "Concepto para el Maestro" y "Vale para") y
+     * generarBancos() escribe el fichero con la estructura de siempre y el programa aprende.
      */
-    public function updatedRellenado(): void
+    public function updatedRevisar(): void
     {
-        $this->resetErrorBag('rellenado');
-        $f = $this->rellenado;
-        $this->rellenado = null;
-        if (! $f instanceof UploadedFile) {
+        $this->cargarRevision();
+    }
+
+    public function cargarRevision(): void
+    {
+        $this->lineasRevisar = [];
+        $this->avisoRevisar = '';
+        $this->revisionN++;
+        if ($this->revisar === '' || ! $this->clienteValido()) {
             return;
         }
-        if (! config('contabilidad.bancos_ejecucion')) {
-            $this->avisarNoAutorizado('Bancos · aprender del Excel');
-            return;
-        }
-        $nombre = str_replace(['/', '\\'], '_', $f->getClientOriginalName());
-        if (! $this->clienteValido() || strtolower(pathinfo($nombre, PATHINFO_EXTENSION)) !== 'xlsx') {
-            $this->addError('rellenado', 'Tiene que ser un bancos<cuenta>.xlsx.');
-            return;
-        }
-        $dir = $this->baseDir().'/'.$this->cliente.'/Base/Recibidos';
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
-        $destino = $dir.'/'.date('Ymd-His').' '.$nombre;
-        if (! @copy($f->getRealPath(), $destino)) {
-            $this->addError('rellenado', "No se ha podido guardar {$nombre}.");
-            return;
-        }
-        $this->salida .= "\n\n===== Bancos · {$this->cliente} · aprender de {$nombre} =====\n";
         try {
-            $r = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'excel', $destino, $nombre]);
-            $texto = trim($r->output()."\n".$r->errorOutput());
-            $ok = $r->successful();
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'lineas', $this->revisar]);
+            $datos = json_decode($r->output(), true);
+            if (! is_array($datos) || isset($datos['error'])) {
+                $this->avisoRevisar = $datos['error'] ?? trim($r->output()."\n".$r->errorOutput());
+                return;
+            }
+            $this->lineasRevisar = $datos['lineas'] ?? [];
         } catch (\Throwable $e) {
-            $texto = $e->getMessage();
-            $ok = false;
+            $this->avisoRevisar = $e->getMessage();
         }
-        $this->salida .= $texto;
-        $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ')."Aprender de {$nombre}\n{$texto}");
+    }
+
+    /** $lineas: [{numero, contrapartida, concepto_maestro, vale}]; $nuevas: {codigo: nombre} a crear en el plan. */
+    public function generarBancos(array $lineas, array $nuevas = [])
+    {
+        if (! config('contabilidad.bancos_ejecucion')) {
+            $this->avisarNoAutorizado('Bancos · generar '.$this->revisar);
+            return null;
+        }
+        if ($this->revisar === '' || ! $this->clienteValido()) {
+            return null;
+        }
+        $limpias = array_map(fn ($l) => [
+            'numero' => (int) ($l['numero'] ?? 0),
+            'contrapartida' => trim((string) ($l['contrapartida'] ?? '')),
+            'concepto_maestro' => trim((string) ($l['concepto_maestro'] ?? '')),
+            'vale' => in_array($l['vale'] ?? '', ['+', '-'], true) ? $l['vale'] : '',
+        ], $lineas);
+        $json = tempnam(sys_get_temp_dir(), 'bancos');
+        file_put_contents($json, json_encode(['lineas' => $limpias, 'nuevas' => (object) $nuevas], JSON_UNESCAPED_UNICODE));
+        $etiqueta = "Bancos · {$this->cliente} · generar {$this->revisar}";
+        $this->resultados = [];
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $archivos = $this->ejecutarScript([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'aplicar', $this->revisar, $json], 120, $etiqueta);
+        @unlink($json);
+        $this->anexarResultados($archivos);
         $this->cargarMaestro();
+        $this->cargarRevision();
+        return $archivos ? $this->descargar('Output/'.$this->revisar) : null;
     }
 
     /** Si el nombre del extracto empieza por una de las cuentas, se preselecciona. */
@@ -567,8 +588,14 @@ class Bancos extends Component
         $inicio = strlen($this->salida);
         $archivos = $this->ejecutarScript([$this->pythonBin(), 'bancos_conciliacion.py', $this->cliente, '--partida', $this->cuenta, $destino], 180, $etiqueta);
         $this->anexarResultados($archivos);
+        foreach ($archivos as $a) {
+            if (preg_match('/^bancos.*\.xlsx$/i', basename($a))) {
+                $this->revisar = basename($a); // se abre directamente para revisar
+            }
+        }
         $this->cargarMaestro(); // la conciliación añade a Variables lo que no encuentra
         $this->cargarFormatos(); // y guarda el formato si lo ha detectado solo
+        $this->cargarRevision();
         $nueva = substr($this->salida, $inicio);
         if (preg_match('/^FORMATO_DESCONOCIDO:\s*(.+?)\s*$/m', $nueva, $m)) {
             $this->salida = substr($this->salida, 0, $inicio).preg_replace('/^FORMATO_DESCONOCIDO:.*(\r?\n)?/m', '', $nueva)

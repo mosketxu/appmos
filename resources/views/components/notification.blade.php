@@ -12,7 +12,7 @@
     x-data="{
         messages: [],
         remove(message) {
-            this.messages.splice(this.messages.indexOf(message), 1)
+            const i = this.messages.indexOf(message); if (i >= 0) this.messages.splice(i, 1)
         },
     }"
     @notify.window="let message = Array.isArray($event.detail) ? $event.detail[0] : $event.detail; messages.push(message); setTimeout(() => { remove(message) }, 2500)"
@@ -26,7 +26,8 @@
             x-transition:leave="transition ease-in duration-100"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0"
-            class="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto"
+            @click="remove(message)" title="Clic para cerrar"
+            class="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto cursor-pointer"
         >
             <div class="rounded-lg shadow-xs overflow-hidden">
                 <div class="p-4">
