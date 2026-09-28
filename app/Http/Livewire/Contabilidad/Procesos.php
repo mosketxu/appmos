@@ -81,6 +81,14 @@ class Procesos extends Component
     public bool $pfIncluirDestacado = false;
     public string $pfTo = '';
     public string $pfCc = '';
+    // Recordatorio "Kindly reminder and update" (pedido 2026-09-28): parte del
+    // correo ya enviado ese mes (Enviados de Outlook), cada fila con su importe
+    // retocable y Paid/Pending, y se prepara como "Responder a todos" en
+    // Borradores de Outlook. No guarda nada: el mes siguiente sale como siempre.
+    public array $pfRecFilas = [];   // [[c1, c2, importe K, c4, 'pending'|'paid'], ...]
+    public string $pfRecOriginal = '';
+    public string $pfRecSaldo = '';
+    public string $pfRecTexto = '';
 
     /**
      * Destinatarios por defecto por tienda. Duplicado a propósito de
@@ -719,6 +727,91 @@ class Procesos extends Component
             }
         }
         $this->salida = substr($this->salida, 0, $desde) . trim(preg_replace('/^DATO .*(\r?\n)?/m', '', $nuevo));
+    }
+
+    /** Otro mes: el recordatorio cargado era del anterior. */
+    public function updatedPfMes(): void
+    {
+        $this->pfRecFilas = [];
+        $this->pfRecOriginal = '';
+    }
+
+    /** Lee de Enviados de Outlook el correo de pagos de ese mes y carga sus filas. */
+    public function leerEnviadoPagosFinMes(): void
+    {
+        $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
+        $etiqueta = "Pagos fin de mes {$mm} · cargar correo enviado";
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $desde = strlen($this->salida);
+        $this->ejecutarScript(['python3', 'pagosFinMes.py', (string) $this->pfMes, '--leer-enviado'], 240, $etiqueta, null, $this->windowsEnv());
+        $nuevo = substr($this->salida, $desde);
+        $filas = [];
+        if (preg_match_all('/^FILA (.*)$/m', $nuevo, $m)) {
+            foreach ($m[1] as $linea) {
+                [$a, $b, $c, $d] = array_pad(explode("\t", rtrim($linea, "\r")), 4, '');
+                $filas[] = [$a, $b, $c, $d, 'pending'];
+            }
+        }
+        if ($filas) {
+            $this->pfRecFilas = $filas;
+            $this->pfRecTexto = (string) ($this->confPagosFinMes()['texto_recordatorio'] ?? '');
+            $this->pfRecOriginal = preg_match('/Correo original: (.*), \d+ filas/', $nuevo, $o) ? $o[1] : '';
+        }
+        $this->salida = substr($this->salida, 0, $desde) . trim(preg_replace('/^FILA .*(\r?\n)?/m', '', $nuevo));
+    }
+
+    /** $modo: 'vista', 'prueba' (Graph al correo de prueba) o 'real' (borrador en Outlook). */
+    public function ejecutarRecordatorioPagosFinMes(string $modo): void
+    {
+        $etiqueta = 'Pagos fin de mes ' . str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT) . ' · recordatorio · ' . match ($modo) {
+            'real' => 'borrador en Outlook',
+            'prueba' => 'prueba a ' . trim($this->pfEmailPrueba),
+            default => 'vista previa',
+        };
+        $error = match (true) {
+            ! $this->pfRecFilas => "carga antes el correo enviado.",
+            trim($this->pfRecSaldo) === '' => "falta el saldo de BBVA de hoy.",
+            $modo === 'prueba' && trim($this->pfEmailPrueba) === '' => 'pon un correo de prueba.',
+            default => null,
+        };
+        if ($error) {
+            $this->salida .= "\n\n===== {$etiqueta} =====\nERROR: {$error}\n";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ Recordatorio\n" . ucfirst($error));
+            return;
+        }
+        $args = ['python3', 'pagosFinMes.py', (string) $this->pfMes, '--recordatorio',
+            '--saldo', trim($this->pfRecSaldo), '--texto', $this->pfRecTexto,
+            '--filas', json_encode(array_values($this->pfRecFilas), JSON_UNESCAPED_UNICODE)];
+        $args = array_merge($args, match ($modo) {
+            'real' => ['--real'],
+            'prueba' => ['--test', trim($this->pfEmailPrueba)],
+            default => ['--sin-enviar'],
+        });
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->resultados['pfRec'] = [];
+        $this->anexarResultados('pfRec', $this->ejecutarScript($args, 240, $etiqueta, null, $this->windowsEnv()));
+    }
+
+    /** Totales del recordatorio para verlos en la tarjeta (mismas cuentas que el script). */
+    public function getPfRecTotalesProperty(): array
+    {
+        $pend = 0.0;
+        $impNom = 0.0;
+        foreach ($this->pfRecFilas as [$a, $b, $c, $d, $e]) {
+            if ($e !== 'paid') {
+                $v = $this->pfNum((string) $c) ?? 0.0;
+                $pend += $v;
+                if (in_array($a, ['VAT TAX', 'Social Security', 'Payrolls'], true)) {
+                    $impNom += $v;
+                }
+            }
+        }
+        $saldo = $this->pfNum($this->pfRecSaldo);
+        return [
+            'pendiente' => $this->pfK($pend),
+            'subirImp' => $this->pfK($saldo === null ? null : $saldo - $impNom),
+            'subirTotal' => $this->pfK($saldo === null ? null : $saldo - $pend),
+        ];
     }
 
     public function render()

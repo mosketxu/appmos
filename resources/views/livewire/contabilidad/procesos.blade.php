@@ -301,6 +301,83 @@
             <p class="mt-1 text-xs text-gray-500">"—" = vacío (VAT y SS se buscan solos al enviar). Se actualiza al salir de cada campo. Las filas fijas están en monthlyFIQ/pagosFinMes.json.</p>
         </div>
         </div>
+
+        {{-- Recordatorio "Kindly reminder and update" sobre el correo ya enviado
+             ese mes (pedido 2026-09-28). No guarda nada: el mes que viene sale
+             con los importes de siempre. --}}
+        <div class="pt-3 mt-4 border-t">
+            <h3 class="flex flex-wrap items-center text-sm font-semibold text-gray-700 gap-x-3">
+                <span>Recordatorio · "Kindly reminder and update"</span>
+                <x-button.secondary wire:click="leerEnviadoPagosFinMes" wire:loading.attr="disabled" wire:target="leerEnviadoPagosFinMes,ejecutarRecordatorioPagosFinMes">
+                    <span wire:loading.remove wire:target="leerEnviadoPagosFinMes">📥 Cargar correo enviado</span>
+                    <span wire:loading wire:target="leerEnviadoPagosFinMes">⏳ Leyendo Outlook…</span>
+                </x-button.secondary>
+                @if ($pfRecOriginal)
+                    <span class="text-xs font-normal text-gray-500">Responde a: {{ $pfRecOriginal }}</span>
+                @endif
+            </h3>
+            <p class="mt-1 text-xs text-gray-500">Lee de Enviados de Outlook el correo de pagos del mes elegido arriba. Marca qué está pagado, retoca importes y pon el saldo de hoy. "Preparar en Outlook" deja un "Responder a todos" en Borradores (con el original citado debajo) para revisarlo y enviarlo desde allí. Los cambios de importes no se guardan.</p>
+            @if ($pfRecFilas)
+                @php $rt = $this->pfRecTotales; @endphp
+                <div class="flex flex-wrap gap-6 mt-2">
+                    <div style="flex:1 1 380px;min-width:0">
+                        <label class="flex flex-col text-xs font-medium text-gray-600">
+                            Texto antes de la tabla (línea en blanco = párrafo nuevo)
+                            <textarea wire:model="pfRecTexto" rows="5" class="mt-1 text-sm border-gray-300 rounded shadow-sm"></textarea>
+                        </label>
+                        <div class="flex flex-wrap items-end mt-2 gap-x-4 gap-y-2">
+                            <label class="flex flex-col text-xs font-medium text-gray-600">
+                                Saldo BBVA hoy
+                                <input type="text" wire:model.blur="pfRecSaldo" class="mt-1 text-sm border-gray-300 rounded shadow-sm" style="width:100px">
+                            </label>
+                            <table class="text-sm text-gray-800">
+                                <tr><td class="pr-3">Pending payments</td><td class="px-2 font-semibold text-right">{{ $rt['pendiente'] }}</td><td>K</td></tr>
+                                <tr><td class="pr-3">Upload for pending taxes + payrolls</td><td class="px-2 font-semibold text-right">{{ $rt['subirImp'] }}</td><td>K</td></tr>
+                                <tr><td class="pr-3">Total amount to upload</td><td class="px-2 font-semibold text-right">{{ $rt['subirTotal'] }}</td><td>K</td></tr>
+                            </table>
+                        </div>
+                        <div class="flex flex-wrap items-center mt-3 gap-x-2 gap-y-2">
+                            <x-button.secondary wire:click="ejecutarRecordatorioPagosFinMes('vista')" wire:loading.attr="disabled" wire:target="ejecutarRecordatorioPagosFinMes">
+                                Vista previa
+                            </x-button.secondary>
+                            <x-button.secondary wire:click="ejecutarRecordatorioPagosFinMes('prueba')" wire:loading.attr="disabled" wire:target="ejecutarRecordatorioPagosFinMes">
+                                Enviar a prueba
+                            </x-button.secondary>
+                            <x-button.primary wire:click="ejecutarRecordatorioPagosFinMes('real')" wire:loading.attr="disabled" wire:target="ejecutarRecordatorioPagosFinMes">
+                                Preparar en Outlook
+                            </x-button.primary>
+                            <span wire:loading wire:target="ejecutarRecordatorioPagosFinMes" class="text-sm text-gray-500">⏳ …</span>
+                        </div>
+                        @if (! empty($resultados['pfRec']))
+                            <div class="flex flex-col mt-2 gap-y-1">
+                                @foreach ($resultados['pfRec'] as $r)
+                                    <x-contabilidad.resultado-fichero :r="$r" />
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                    <div style="flex:1 1 380px;min-width:0">
+                        <table class="w-full text-sm text-gray-800 border border-collapse border-gray-400">
+                            @foreach ($pfRecFilas as $i => $f)
+                                <tr wire:key="pfrec-{{ $i }}" class="{{ $f[4] === 'paid' ? 'bg-green-50' : '' }}">
+                                    <td class="px-2 py-0.5 border border-gray-400">{{ $f[0] }}</td>
+                                    <td class="px-2 py-0.5 border border-gray-400">{{ $f[1] }}</td>
+                                    <td class="px-1 py-0.5 border border-gray-400">
+                                        <input type="text" wire:model.blur="pfRecFilas.{{ $i }}.2" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:70px">
+                                    </td>
+                                    <td class="px-1 py-0.5 border border-gray-400">
+                                        <select wire:model.live="pfRecFilas.{{ $i }}.4" class="py-0 pl-1 pr-6 text-sm border-gray-300 rounded {{ $f[4] === 'paid' ? 'text-green-700' : 'text-red-700' }}">
+                                            <option value="pending">Pending</option>
+                                            <option value="paid">Paid</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </table>
+                    </div>
+                </div>
+            @endif
+        </div>
     </div>
 
     </div>{{-- /columna izquierda --}}
