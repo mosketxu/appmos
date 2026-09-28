@@ -277,6 +277,10 @@
                         <b>Manual</b> = añadido o corregido aquí; se guarda en la pestaña Variables de la base y
                         manda sobre SAGE. Cambiar la cuenta de una fila SAGE crea su fila manual.
                         Las filas manuales sin cuenta son conceptos de extractos que no se encontraron: ponles la cuenta.
+                        <b>Vale para</b>: si un mismo concepto tiene cuenta de proveedor y de cliente (p.ej. BELLA AURORA),
+                        crea dos filas manuales, una "solo pagos (−)" con la de proveedor y otra "solo cobros (+)" con la de cliente.
+                        Aunque no lo pongas, si salen varias cuentas y solo una es de proveedor (40/41) o de cliente (43/44),
+                        un pago se queda con la de proveedor y un cobro con la de cliente.
                     </p>
                     @if ($avisoMaestro !== '')
                         <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $avisoMaestro }}</p>
@@ -289,7 +293,7 @@
                     </datalist>
 
                     <div class="flex flex-wrap items-end gap-2 p-3 border border-dashed rounded-md border-indigo-300 bg-indigo-50/40"
-                         x-data="{ concepto: '', cuenta: '' }">
+                         x-data="{ concepto: '', cuenta: '', signo: '' }">
                         <div class="flex-1 min-w-[14rem]">
                             <label class="block text-xs text-gray-600">Nuevo concepto</label>
                             <input type="text" x-model="concepto" placeholder="p.ej. FERRETERIA MENGUAL"
@@ -300,8 +304,16 @@
                             <input type="text" x-model="cuenta" list="plan-cuentas-{{ $cliente }}" placeholder="400002"
                                    class="w-32 py-1 text-sm border-gray-300 rounded-md shadow-sm">
                         </div>
+                        <div>
+                            <label class="block text-xs text-gray-600" title="Para un mismo concepto con cuenta de proveedor (pagos) y de cliente (cobros): una fila para cada signo">Vale para</label>
+                            <select x-model="signo" class="py-1 text-sm border-gray-300 rounded-md shadow-sm">
+                                <option value="">cobros y pagos</option>
+                                <option value="+">solo cobros (+)</option>
+                                <option value="-">solo pagos (−)</option>
+                            </select>
+                        </div>
                         <x-button.secondary
-                            x-on:click="if (concepto.trim()) { $wire.guardarMaestro(concepto, cuenta, ''); concepto = ''; cuenta = ''; }">
+                            x-on:click="if (concepto.trim()) { $wire.guardarMaestro(concepto, cuenta, '', signo, ''); concepto = ''; cuenta = ''; signo = ''; }">
                             ＋ Añadir
                         </x-button.secondary>
                     </div>
@@ -312,6 +324,7 @@
                                 <tr>
                                     <th class="px-2 py-1 text-left">Concepto</th>
                                     <th class="px-2 py-1 text-left">Cuenta</th>
+                                    <th class="px-2 py-1 text-left">Vale para</th>
                                     <th class="px-2 py-1 text-left">Nombre</th>
                                     <th class="px-2 py-1 text-right">Veces</th>
                                     <th class="px-2 py-1 text-left">Último / modif.</th>
@@ -321,8 +334,8 @@
                             </thead>
                             <tbody>
                                 @foreach ($maestro as $i => $f)
-                                    <tr wire:key="maestro-{{ $cliente }}-{{ $f['origen'] }}-{{ $i }}-{{ md5($f['concepto'].$f['cuenta']) }}"
-                                        x-data="{ edit: false, concepto: @js($f['concepto']), cuenta: @js($f['cuenta']) }"
+                                    <tr wire:key="maestro-{{ $cliente }}-{{ $f['origen'] }}-{{ $i }}-{{ md5($f['concepto'].$f['cuenta'].$f['signo']) }}"
+                                        x-data="{ edit: false, concepto: @js($f['concepto']), cuenta: @js($f['cuenta']), signo: @js($f['signo']) }"
                                         x-show="ver(@js(mb_strtoupper($f['concepto'].' '.$f['cuenta'].' '.$f['nombre'].' '.$f['ejemplo'])), @js($f['origen']), @js($f['cuenta'] === ''), @js($f['otras'] !== ''))"
                                         class="border-t {{ $f['tapada'] ? 'text-gray-400 line-through' : '' }} {{ $f['origen'] === 'Manual' ? ($f['cuenta'] === '' ? 'bg-amber-50' : 'bg-indigo-50/50') : '' }}"
                                         @if ($f['ejemplo'] !== '') title="Ejemplo: {{ $f['ejemplo'] }}" @endif>
@@ -338,6 +351,16 @@
                                             <span x-show="! edit">{{ $f['cuenta'] ?: '—' }}</span>
                                             <input x-show="edit" x-cloak type="text" x-model="cuenta" list="plan-cuentas-{{ $cliente }}" class="w-24 py-0.5 text-xs border-gray-300 rounded">
                                         </td>
+                                        <td class="px-2 py-1 whitespace-nowrap">
+                                            <span x-show="! edit">{{ ['+' => 'solo cobros (+)', '-' => 'solo pagos (−)'][$f['signo']] ?? '' }}</span>
+                                            <span x-show="edit" x-cloak>
+                                                <select x-model="signo" class="py-0.5 text-xs border-gray-300 rounded">
+                                                    <option value="">cobros y pagos</option>
+                                                    <option value="+">solo cobros (+)</option>
+                                                    <option value="-">solo pagos (−)</option>
+                                                </select>
+                                            </span>
+                                        </td>
                                         <td class="px-2 py-1">
                                             {{ $f['nombre'] }}
                                             @if ($f['otras'] !== '')
@@ -350,14 +373,14 @@
                                         <td class="px-2 py-1 whitespace-nowrap text-right">
                                             <button type="button" x-show="! edit" x-on:click="edit = true" class="text-blue-700 hover:underline">Editar</button>
                                             <button type="button" x-show="edit" x-cloak
-                                                    x-on:click="edit = false; $wire.guardarMaestro(concepto, cuenta, @js($f['origen'] === 'Manual' ? $f['concepto'] : ''))"
+                                                    x-on:click="edit = false; $wire.guardarMaestro(concepto, cuenta, @js($f['origen'] === 'Manual' ? $f['concepto'] : ''), signo, @js($f['signo']))"
                                                     class="text-green-700 hover:underline">Guardar</button>
                                             <button type="button" x-show="edit" x-cloak
-                                                    x-on:click="edit = false; concepto = @js($f['concepto']); cuenta = @js($f['cuenta'])"
+                                                    x-on:click="edit = false; concepto = @js($f['concepto']); cuenta = @js($f['cuenta']); signo = @js($f['signo'])"
                                                     class="ml-1 text-gray-500 hover:underline">Cancelar</button>
                                             @if ($f['origen'] === 'Manual')
                                                 <button type="button" x-show="! edit"
-                                                        x-on:click="confirm('¿Borrar la fila manual ' + @js($f['concepto']) + '?') && $wire.borrarMaestro(@js($f['concepto']))"
+                                                        x-on:click="confirm('¿Borrar la fila manual ' + @js($f['concepto']) + '?') && $wire.borrarMaestro(@js($f['concepto']), @js($f['signo']))"
                                                         class="ml-1 text-red-600 hover:underline">Borrar</button>
                                             @endif
                                         </td>

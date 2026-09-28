@@ -421,19 +421,18 @@ class Bancos extends Component
         }
     }
 
-    /** Alta o cambio de una fila manual del Maestro (se guarda en Variables). */
-    public function guardarMaestro(string $concepto, string $cuenta, string $anterior = ''): void
+    /**
+     * Alta o cambio de una fila manual del Maestro (se guarda en Variables). $signo: '+' solo
+     * cobros, '-' solo pagos, '' los dos; una fila manual es concepto + signo.
+     */
+    public function guardarMaestro(string $concepto, string $cuenta, string $anterior = '', string $signo = '', string $signoAnterior = ''): void
     {
-        $args = [$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'guardar', $concepto, trim($cuenta)];
-        if ($anterior !== '') {
-            $args[] = $anterior;
-        }
-        $this->editarMaestro($args);
+        $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'guardar', $concepto, trim($cuenta), $anterior, $signo, $signoAnterior]);
     }
 
-    public function borrarMaestro(string $concepto): void
+    public function borrarMaestro(string $concepto, string $signo = ''): void
     {
-        $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'borrar', $concepto]);
+        $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'borrar', $concepto, $signo]);
     }
 
     protected function editarMaestro(array $args): void
