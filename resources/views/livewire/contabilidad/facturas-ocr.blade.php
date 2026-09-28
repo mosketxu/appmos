@@ -774,7 +774,11 @@
                         <div><label class="focr-lbl">F. operación</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
                         <div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>
 
-                        <div style="grid-column:span 3"><label class="focr-lbl">Comentario SII</label><input type="text" wire:model.blur="form.comentario" maxlength="40" class="focr-in"></div>
+                        @if ($sii)
+                            <div style="grid-column:span 3"><label class="focr-lbl">Comentario SII</label><input type="text" wire:model.blur="form.comentario" maxlength="40" class="focr-in"></div>
+                        @else
+                            <div style="grid-column:span 3"></div>   {{-- sin SII el Comentario SII va vacío (cliente.json -> "sii") --}}
+                        @endif
                         <div><label class="focr-lbl">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in"></div>
                     </div>
 

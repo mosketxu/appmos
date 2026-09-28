@@ -137,6 +137,12 @@ class FacturasOcr extends Component
         return json_decode((string) @file_get_contents($this->dirCliente().'/cliente.json'), true) ?: [];
     }
 
+    /** La entidad lleva el SII (cliente.json -> "sii": true): solo entonces se rellena el Comentario SII. */
+    protected function sii(): bool
+    {
+        return ! empty($this->cfg()['sii']);
+    }
+
     protected function entidad(): ?Entidad
     {
         $id = (int) ($this->cfg()['entidad_id'] ?? 0);
@@ -717,7 +723,7 @@ class FacturasOcr extends Component
         $this->form['cp'] = $p['cp'] ?? '';
         $this->form['canal'] = $this->analitica ? ($p['canal'] ?? '') : '';
         $this->form['nombre_fichero'] = $pat['nombre_fichero'] ?? '';
-        if ($this->form['su_factura'] ?? '') {
+        if (($this->form['su_factura'] ?? '') && $this->sii()) {
             $this->form['comentario'] = mb_substr(trim('Fra '.$this->form['su_factura'].' '.$this->form['proveedor']), 0, 40);
         }
     }
@@ -859,7 +865,7 @@ class FacturasOcr extends Component
             $this->updatedFormCuenta();
             $this->form['cif'] = $valor;
         }
-        if ($campo === 'su_factura' && ($this->form['proveedor'] ?? '') !== '') {
+        if ($campo === 'su_factura' && ($this->form['proveedor'] ?? '') !== '' && $this->sii()) {
             $this->form['comentario'] = mb_substr(trim('Fra '.$valor.' '.$this->form['proveedor']), 0, 40);
         }
         $zonas = is_array($this->form['_zonas'] ?? null) ? $this->form['_zonas'] : [];
@@ -1392,6 +1398,7 @@ class FacturasOcr extends Component
             'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,
             'entidad' => $valido ? $this->entidad() : null,
             'hayAnalitica' => $this->hayColumnaAnalitica(),
+            'sii' => $valido && $this->sii(),
         ]);
     }
 }
