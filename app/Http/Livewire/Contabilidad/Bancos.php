@@ -12,7 +12,7 @@ use Livewire\WithFileUploads;
  * Pantalla de bancos por cliente (una carpeta por cliente dentro de
  * Contabilidad/Bancos). Ver PLAN.md en Contabilidad/Bancos para el detalle.
  *
- * Al empezar cada proceso se suben (botón o arrastrando) los ficheros base:
+ * Al empezar cada proceso se suben (botón o arrastrando, cada uno en su fila) los ficheros base:
  *   - uno por cuenta de banco, mayor de SAGE con nombre 572xxx...
  *   - puntualmente, el mayor de otra cuenta que hace de banco (551002...),
  *   - el plan de cuentas del cliente.
@@ -37,8 +37,15 @@ class Bancos extends Component
     public string $cliente = '';
     public string $salida = '';
 
-    /** Ficheros recién subidos (input o arrastrados); se procesan en cuanto terminan de subir. */
+    /**
+     * Ficheros base recién subidos (botón o arrastrando a su fila); al terminar la subida el
+     * navegador llama a procesarSubidas() con la fila: 'plan', una cuenta (572003...) o 'mayor'
+     * (otra cuenta todavía sin cargar).
+     */
     public array $subidas = [];
+
+    /** Lo que hay en la base por fila (plan / cada cuenta): bancos_base.py --estado. */
+    public array $estadoBase = [];
 
     /** Extracto del banco a conciliar y cuenta (partida) a la que pertenece. */
     public $extracto = null;
@@ -390,8 +397,15 @@ class Bancos extends Component
         $this->maestro = [];
         $this->planCuentas = [];
         $this->avisoMaestro = '';
+        $this->estadoBase = [];
         if (! $this->clienteValido() || ! is_file($this->basePath())) {
             return;
+        }
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--estado']);
+            $this->estadoBase = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            // Sin el estado solo se pierde el resumen de cada fila; no debe romper la pantalla.
         }
         try {
             $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'listar']);
@@ -529,7 +543,7 @@ class Bancos extends Component
         return response()->download($ruta, basename($ruta));
     }
 
-    public function updatedSubidas(): void
+    public function procesarSubidas(string $fila): void
     {
         $this->resetErrorBag('subidas');
         $ficheros = array_values(array_filter($this->subidas, fn ($f) => $f instanceof UploadedFile));
@@ -538,7 +552,15 @@ class Bancos extends Component
             return;
         }
 
-        $etiqueta = "Bancos · {$this->cliente} · ficheros base";
+        $etiqueta = "Bancos · {$this->cliente} · ".match ($fila) {
+            'plan' => 'plan de cuentas',
+            'mayor' => 'mayor de otra cuenta',
+            default => "mayor {$fila}",
+        };
+        if (! in_array($fila, ['plan', 'mayor'], true) && ! preg_match('/^\d{6,}$/', $fila)) {
+            $this->addError('subidas', 'Fila desconocida.');
+            return;
+        }
         if (! config('contabilidad.bancos_ejecucion')) {
             $this->avisarNoAutorizado($etiqueta);
             return;
@@ -579,7 +601,7 @@ class Bancos extends Component
 
         $this->resultados = [];
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $archivos = $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_base.py', $this->cliente], $rutas), 120, $etiqueta);
+        $archivos = $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--espera', $fila], $rutas), 120, $etiqueta);
         $this->anexarResultados($archivos);
         $this->cargarMaestro();
     }

@@ -35,76 +35,120 @@
     </h1>
 
     @if ($cliente !== '')
+        @php
+            $filasBase = [['clave' => 'plan', 'icono' => '📘', 'titulo' => 'Plan de cuentas', 'datos' => $estadoBase['plan'] ?? null]];
+            foreach ($cuentas as $codigo => $nombreCuenta) {
+                $filasBase[] = ['clave' => (string) $codigo, 'icono' => '🏦', 'titulo' => $codigo.($nombreCuenta !== '' ? ' · '.$nombreCuenta : ''), 'datos' => $estadoBase['cuentas'][$codigo] ?? null];
+            }
+            $filasBase[] = ['clave' => 'mayor', 'icono' => '＋', 'titulo' => 'Mayor de otra cuenta', 'datos' => null];
+        @endphp
         <div class="overflow-hidden bg-white border rounded-lg shadow">
             <div class="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="mb-1 text-sm font-semibold text-gray-700">Ficheros base del proceso</h2>
-                <p class="mb-3 text-xs text-gray-500">
-                    Uno por cada cuenta de banco (mayor de SAGE, nombre <code class="px-1 bg-gray-100 rounded">572…</code>),
-                    si hace falta el mayor de otra cuenta que haga de banco (p.ej. <code class="px-1 bg-gray-100 rounded">551002</code>),
-                    y el plan de cuentas. Sus filas nuevas se añaden a
-                    <code class="px-1 bg-gray-100 rounded">Bancos\{{ $cliente }}\Base\Base {{ $cliente }}.xlsx</code>;
-                    lo que ya estaba no se repite. La pestaña <b>Maestro</b> de ese fichero junta todos los
-                    apuntes en una fila por concepto (limpio de "Transferencia a", "Fra", nº de tarjeta…) y
-                    contrapartida: es contra lo que se comparará lo que se suba a SAGE.
+                <h2 class="mb-1 text-sm font-semibold text-gray-700">Ficheros base (de SAGE)</h2>
+                <p class="text-xs text-gray-500">
+                    El plan de cuentas y el mayor de cada cuenta de banco, exportados de SAGE. Cada uno va en su fila
+                    (arrástralo encima o pulsa ⬆): se acumulan en la base de {{ $cliente }} y lo repetido no se duplica.
+                    <b>Los extractos del banco no van aquí</b>, van abajo en «Extracto a procesar».
                 </p>
-
-                <div
-                    x-data="{
-                        encima: false,
-                        subiendo: false,
-                        progreso: 0,
-                        subir(files) {
-                            if (! files || ! files.length) return;
-                            this.subiendo = true;
-                            this.progreso = 0;
-                            $wire.uploadMultiple('subidas', files,
-                                () => { this.subiendo = false; },
-                                () => { this.subiendo = false; },
-                                (e) => { this.progreso = e.detail.progress; });
-                        },
-                    }"
-                    x-on:dragover.prevent="encima = true"
-                    x-on:dragleave.prevent="encima = false"
-                    x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
-                    x-on:click="$refs.input.click()"
-                    :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
-                    class="flex flex-col items-center justify-center gap-1 p-8 text-center border-2 border-dashed rounded-lg cursor-pointer"
-                >
-                    <input type="file" multiple accept=".xlsx,.xls" class="hidden" x-ref="input"
-                           x-on:change="subir($event.target.files); $event.target.value = ''">
-                    <div class="text-3xl">📂</div>
-                    <div class="text-sm font-medium text-gray-700">Arrastra aquí los ficheros o haz clic para elegirlos</div>
-                    <div class="text-xs text-gray-400">Excel (.xlsx / .xls), varios a la vez</div>
-                    <div x-show="subiendo" x-cloak class="w-full max-w-xs mt-2">
-                        <div class="h-1.5 bg-gray-200 rounded">
-                            <div class="h-1.5 bg-indigo-500 rounded" :style="'width:' + progreso + '%'"></div>
-                        </div>
-                        <div class="mt-1 text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</div>
-                    </div>
-                    <div wire:loading wire:target="subidas" class="mt-2 text-xs text-yellow-600">⏳ Actualizando la base…</div>
-                </div>
-
-                @error('subidas')
-                    <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
-                @enderror
-
             </div>
 
-            <div class="p-4">
-                @if ($hayBase)
-                    <div class="mb-3 text-xs">
-                        <button type="button" wire:click="descargar(@js('Base/Base '.$cliente.'.xlsx'))" class="text-blue-700 underline hover:text-blue-900">⬇ Descargar Base {{ $cliente }}.xlsx</button>
-                        <span class="text-gray-400">(Maestro, Variables, cuentas y plan)</span>
+            <div class="divide-y">
+                @foreach ($filasBase as $fb)
+                    <div wire:key="fila-base-{{ $cliente }}-{{ $fb['clave'] }}"
+                         x-data="{
+                             encima: false, subiendo: false, progreso: 0,
+                             subir(files) {
+                                 if (! files || ! files.length) return;
+                                 this.subiendo = true; this.progreso = 0;
+                                 $wire.uploadMultiple('subidas', files,
+                                     () => { this.subiendo = false; $wire.procesarSubidas(@js($fb['clave'])); },
+                                     () => { this.subiendo = false; },
+                                     (e) => { this.progreso = e.detail.progress; });
+                             },
+                         }"
+                         x-on:dragover.prevent="encima = true"
+                         x-on:dragleave.prevent="encima = false"
+                         x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
+                         :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''"
+                         class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
+                        <input type="file" multiple accept=".xlsx,.xls" class="hidden" x-ref="input"
+                               x-on:change="subir($event.target.files); $event.target.value = ''">
+                        <div class="w-64 text-sm font-medium text-gray-800">{{ $fb['icono'] }} {{ $fb['titulo'] }}</div>
+                        <div class="flex-1 min-w-[14rem] text-xs text-gray-600">
+                            @if ($fb['clave'] === 'mayor')
+                                <span class="text-gray-400">Una cuenta de banco nueva (572…) o otra que haga de banco (p.ej. 551002).</span>
+                            @elseif (! $fb['datos'])
+                                <span class="text-gray-400">(todavía nada)</span>
+                            @else
+                                @if ($fb['clave'] === 'plan')
+                                    <b>{{ $fb['datos']['cuentas'] }}</b> cuentas
+                                @else
+                                    <b>{{ $fb['datos']['apuntes'] }}</b> apuntes
+                                    @if ($fb['datos']['desde'] !== '') del {{ $fb['datos']['desde'] }} al {{ $fb['datos']['hasta'] }} @endif
+                                    @if ($fb['datos']['provisionales'])
+                                        <span class="text-amber-700" title="Movimientos que Appmos ya ha pasado a bancos{{ $fb['clave'] }}.xlsx y todavía no han vuelto en un mayor de SAGE">· {{ $fb['datos']['provisionales'] }} provisionales de Appmos</span>
+                                    @endif
+                                @endif
+                                @if (! empty($fb['datos']['recibido']))
+                                    <span class="text-gray-400">· último: {{ $fb['datos']['recibido']['fichero'] }}
+                                        ({{ \Illuminate\Support\Carbon::parse($fb['datos']['recibido']['fecha'])->format('d/m/Y H:i') }})</span>
+                                @endif
+                            @endif
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span x-show="subiendo" x-cloak class="text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
+                            <x-button.secondary x-on:click="$refs.input.click()">⬆ {{ $fb['clave'] === 'plan' ? 'Subir plan' : 'Subir mayor' }}</x-button.secondary>
+                        </div>
                     </div>
-                @endif
-                <h3 class="mb-1 text-xs font-semibold text-gray-600">Últimos recibidos (Base\Recibidos)</h3>
-                @forelse ($recibidos as $f)
-                    <div class="text-xs text-gray-800">{{ $f }}</div>
-                @empty
-                    <div class="text-xs text-gray-400">(ninguno todavía)</div>
-                @endforelse
+                @endforeach
+            </div>
+
+            <div class="px-4 py-2 border-t bg-gray-50">
+                <div wire:loading.flex wire:target="procesarSubidas" class="items-center gap-2 mb-1 text-xs font-semibold text-amber-800">⏳ Actualizando la base…</div>
+                @error('subidas')
+                    <p class="mb-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                    @if ($hayBase)
+                        <button type="button" wire:click="descargar(@js('Base/Base '.$cliente.'.xlsx'))" class="text-blue-700 underline hover:text-blue-900">⬇ Excel con todo lo acumulado</button>
+                        <span class="text-gray-400">(Base {{ $cliente }}.xlsx: Maestro, Variables, una pestaña por cuenta y el plan; solo para consultarlo)</span>
+                    @endif
+                    @if ($recibidos)
+                        <details class="w-full">
+                            <summary class="text-gray-500 cursor-pointer">Historial de ficheros subidos ({{ count($recibidos) }} últimos)</summary>
+                            @foreach ($recibidos as $f)
+                                <div class="text-gray-700">{{ $f }}</div>
+                            @endforeach
+                        </details>
+                    @endif
+                </div>
             </div>
         </div>
+
+        @if ($hayBase && $planCuentas)
+            <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: false, q: '' }">
+                <div class="flex flex-wrap items-center gap-3 px-4 py-2 bg-gray-50">
+                    <button type="button" x-on:click="abierto = ! abierto" class="text-sm font-semibold text-gray-700">
+                        <span x-text="abierto ? '▾' : '▸'"></span> Plan de cuentas de {{ $cliente }}
+                        <span class="font-normal text-gray-400">({{ count($planCuentas) }} cuentas)</span>
+                    </button>
+                    <input x-show="abierto" x-cloak type="search" x-model="q" placeholder="Buscar código o nombre…"
+                           class="py-1 text-sm border-gray-300 rounded-md shadow-sm w-72">
+                </div>
+                <div x-show="abierto" x-cloak class="overflow-auto border-t" style="max-height:24rem">
+                    <table class="min-w-full text-xs">
+                        <tbody>
+                            @foreach ($planCuentas as $codigo => $nombreCuenta)
+                                <tr class="border-t" x-show="q === '' || @js(mb_strtoupper($codigo.' '.$nombreCuenta)).includes(q.toUpperCase())">
+                                    <td class="px-4 py-0.5 font-mono w-24">{{ $codigo }}</td>
+                                    <td class="px-2 py-0.5">{{ $nombreCuenta }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
 
         @endif
     </div>{{-- /col-principal --}}
@@ -128,7 +172,7 @@
                 </p>
 
                 @if (! $hayBase || empty($cuentas))
-                    <p class="text-sm text-amber-700">Primero sube arriba los ficheros base (mayores 572… / 551… y plan de cuentas).</p>
+                    <p class="text-sm text-amber-700">Primero sube arriba el plan de cuentas y el mayor de cada cuenta de banco.</p>
                 @else
                     <div class="flex flex-wrap items-start gap-4">
                         <div>
