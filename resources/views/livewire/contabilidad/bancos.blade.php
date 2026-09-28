@@ -382,6 +382,76 @@
                 </div>
             @endif
 
+            @if ($cuentasNuevas)
+                <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: true }">
+                    <div class="flex flex-wrap items-center gap-3 px-4 py-2 border-b bg-gray-50">
+                        <button type="button" x-on:click="abierto = ! abierto" class="text-sm font-semibold text-gray-700">
+                            <span x-text="abierto ? '▾' : '▸'"></span> Cuentas creadas aquí o en Facturas OCR, aún no en SAGE
+                            <span class="font-normal text-gray-400">({{ count($cuentasNuevas) }})</span>
+                        </button>
+                        <span wire:loading.flex wire:target="buscarDatosCuenta" class="inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse">⏳ Buscando en internet… (unos segundos)</span>
+                    </div>
+                    <div x-show="abierto" class="p-4 space-y-2">
+                        <p class="text-xs text-gray-500">
+                            Se comparten con Facturas OCR (no se repiten números y sus facturas se reconocen por el nombre). 🔎 busca en
+                            internet el CIF y el código postal (unos céntimos por búsqueda): es una propuesta; revisa la fuente y acéptala o corrígela.
+                        </p>
+                        <table class="min-w-full text-xs">
+                            <thead class="text-gray-600 bg-gray-100">
+                                <tr>
+                                    <th class="px-2 py-1 text-left">Cuenta</th><th class="px-2 py-1 text-left">Nombre</th>
+                                    <th class="px-2 py-1 text-left">CIF</th><th class="px-2 py-1 text-left">CP</th>
+                                    <th class="px-2 py-1 text-left">Origen</th><th class="px-2 py-1"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($cuentasNuevas as $c)
+                                    @php $prop = $propuestasCif[$c['cuenta']] ?? null; @endphp
+                                    <tr class="border-t align-top" wire:key="cn-{{ $cliente }}-{{ $c['cuenta'] }}-{{ md5(json_encode($c).json_encode($prop)) }}"
+                                        x-data="{ cif: @js($prop['cif'] ?? $c['cif']), cp: @js($prop['cp'] ?? ($c['cp'] ?? '')) }">
+                                        <td class="px-2 py-1 font-mono">{{ $c['cuenta'] }}</td>
+                                        <td class="px-2 py-1">{{ $c['nombre'] }}</td>
+                                        <td class="px-2 py-1"><input type="text" x-model="cif" class="w-28 py-0.5 text-xs font-mono border-gray-300 rounded" placeholder="(sin CIF)"></td>
+                                        <td class="px-2 py-1"><input type="text" x-model="cp" class="w-20 py-0.5 text-xs font-mono border-gray-300 rounded"></td>
+                                        <td class="px-2 py-1 text-gray-500">{{ $c['origen'] }}</td>
+                                        <td class="px-2 py-1 text-right whitespace-nowrap">
+                                            <button type="button" wire:click="buscarDatosCuenta(@js($c['cuenta']))" class="text-blue-700 hover:underline">🔎 Buscar</button>
+                                            <button type="button" x-show="cif !== @js($c['cif']) || cp !== @js($c['cp'] ?? '')"
+                                                    x-on:click="$wire.guardarDatosCuenta(@js($c['cuenta']), cif, cp)"
+                                                    class="ml-2 text-green-700 hover:underline">✔ Guardar</button>
+                                        </td>
+                                    </tr>
+                                    @if ($prop)
+                                        <tr class="bg-indigo-50/50" wire:key="cnp-{{ $cliente }}-{{ $c['cuenta'] }}-{{ md5(json_encode($prop)) }}">
+                                            <td></td>
+                                            <td colspan="5" class="px-2 py-1 text-xs">
+                                                @if (! empty($prop['error']))
+                                                    <span class="text-red-600">⚠️ {{ $prop['error'] }}</span>
+                                                @else
+                                                    Propuesta{{ ! empty($prop['de_cache']) ? ' (ya buscada antes)' : '' }}:
+                                                    <b>{{ $prop['nombre_oficial'] ?: '—' }}</b>
+                                                    · CIF <b class="font-mono">{{ $prop['cif'] ?: '—' }}</b>
+                                                    · CP <b class="font-mono">{{ $prop['cp'] ?: '—' }}</b> {{ $prop['poblacion'] ?? '' }}
+                                                    {{ ! empty($prop['provincia']) ? '('.$prop['provincia'].')' : '' }}
+                                                    · confianza {{ $prop['confianza'] ?: '?' }}
+                                                    @if (! empty($prop['fuente']))
+                                                        · <a href="{{ $prop['fuente'] }}" target="_blank" rel="noopener" class="text-blue-700 underline">fuente</a>
+                                                    @endif
+                                                    @if (! empty($prop['nota']))
+                                                        <div class="text-gray-500">{{ $prop['nota'] }}</div>
+                                                    @endif
+                                                    <div class="text-gray-500">Ya está puesta arriba en CIF y CP: pulsa ✔ Guardar si es correcta.</div>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
             <div id="maestro" class="overflow-hidden bg-white border rounded-lg shadow"
                  x-data="{
                      abierto: true, q: '', filtro: 'todos',

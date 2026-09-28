@@ -157,6 +157,7 @@ class FacturasOcr extends Component
     protected function cargarCliente(): void
     {
         $this->sel = '';
+        $this->propuestaCif = null;
         $this->form = [];
         if (! $this->clienteValido()) {
             return;
@@ -566,6 +567,7 @@ class FacturasOcr extends Component
         }
         $this->resetErrorBag();
         $this->sel = $id;
+        $this->propuestaCif = null;
         $this->motivo = (string) ($f['motivo_rechazo'] ?? '');
         $d = $f['datos'] ?? [];
         $lineas = array_values($d['lineas'] ?? []);
@@ -588,6 +590,7 @@ class FacturasOcr extends Component
     public function cerrar(): void
     {
         $this->sel = '';
+        $this->propuestaCif = null;
         $this->form = [];
     }
 
@@ -626,6 +629,16 @@ class FacturasOcr extends Component
         return json_decode((string) @file_get_contents($this->dirDatos().'/patrones.json'), true) ?: [];
     }
 
+    /**
+     * Cuentas de proveedor creadas en Bancos (web) que aún no están en SAGE: copia que guarda
+     * facturas_ocr.py al consultar la web (cuentas_bancos.json). [cuenta => {nombre, cif, cp, origen}]
+     */
+    protected function cuentasBancos(): array
+    {
+        $datos = json_decode((string) @file_get_contents($this->dirDatos().'/cuentas_bancos.json'), true);
+        return array_diff_key($datos['cuentas'] ?? [], $this->proveedores());
+    }
+
     /** Al cambiar la cuenta se rellenan nombre, CIF, contrapartida... del listado de proveedores. */
     public function updatedFormCuenta(): void
     {
@@ -642,6 +655,11 @@ class FacturasOcr extends Component
                 $this->form['codigo_transaccion'] = (string) ($pat['codigo_transaccion'] ?? ($this->form['codigo_transaccion'] ?? ''));
                 $this->form['clave_operacion'] = (string) ($pat['clave_operacion'] ?? ($this->form['clave_operacion'] ?? ''));
                 $this->form['nombre_fichero'] = $pat['nombre_fichero'] ?? '';
+            } elseif ($b = $this->cuentasBancos()[$cta] ?? null) {
+                // Creada en Bancos (a veces aún sin CIF)
+                $this->form['proveedor'] = $b['nombre'] ?? '';
+                $this->form['cif'] = $b['cif'] ?? '';
+                $this->ponerCp($b['cp'] ?? '');
             }
             return;
         }
@@ -682,9 +700,80 @@ class FacturasOcr extends Component
                 $usadas[] = (string) $f['datos']['cuenta'];
             }
         }
+        // Las creadas en Bancos tampoco se repiten (mismo CIF -> esa)
+        foreach ($this->cuentasBancos() as $k => $b) {
+            if ($cif !== '' && strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $b['cif'] ?? '')) === $cif) {
+                $this->form['cuenta'] = (string) $k;
+                $this->updatedFormCuenta();
+                return;
+            }
+            $usadas[] = (string) $k;
+        }
         $nums = array_map('intval', array_filter($usadas, fn ($k) => preg_match('/^410\d{3}$/', $k)));
         $this->form['cuenta'] = (string) ($nums ? max($nums) + 1 : 410001);
     }
+
+    /** CP y, si es español, código y nombre de provincia (las dos primeras cifras). */
+    protected function ponerCp(string $cp): void
+    {
+        $cp = trim($cp);
+        $this->form['cp'] = $cp;
+        if (preg_match('/^\d{5}$/', $cp) && ($prov = self::PROVINCIAS[substr($cp, 0, 2)] ?? null)) {
+            $this->form['cod_provincia'] = substr($cp, 0, 2);
+            $this->form['provincia'] = $prov;
+        }
+    }
+
+    /** Propuesta de internet para el proveedor de la factura abierta (facturas_ocr.py buscar_cif). */
+    public ?array $propuestaCif = null;
+
+    public function buscarCif(): void
+    {
+        $this->propuestaCif = null;
+        if (! $this->sel || trim($this->form['proveedor'] ?? '') === '') {
+            $this->propuestaCif = ['error' => 'Pon primero el nombre del proveedor.'];
+            return;
+        }
+        if (! config('contabilidad.ejecucion_local')) {
+            return;
+        }
+        $cmd = [$this->pythonBin(), 'facturas_ocr.py', $this->cliente, 'buscar_cif', $this->sel, '--nombre', trim($this->form['proveedor'])];
+        try {
+            $r = Process::path($this->baseDir())->env($this->entornoWindows())->timeout(200)->run($cmd);
+            $datos = json_decode($r->output(), true);
+            $this->propuestaCif = is_array($datos) ? $datos : ['error' => trim($r->output()."\n".$r->errorOutput())];
+        } catch (\Throwable $e) {
+            $this->propuestaCif = ['error' => $e->getMessage()];
+        }
+    }
+
+    public function aceptarCif(): void
+    {
+        $p = $this->propuestaCif ?? [];
+        if (! empty($p['cif'])) {
+            $this->form['cif'] = $p['cif'];
+        }
+        if (! empty($p['cp'])) {
+            $this->ponerCp($p['cp']);
+        }
+        if (trim($this->form['proveedor'] ?? '') === '' && ! empty($p['nombre_oficial'])) {
+            $this->form['proveedor'] = $p['nombre_oficial'];
+        }
+        $this->propuestaCif = null;
+        $this->sucio = true;
+    }
+
+    public const PROVINCIAS = [
+        '01' => 'Araba/Álava', '02' => 'Albacete', '03' => 'Alicante/Alacant', '04' => 'Almería', '05' => 'Ávila', '06' => 'Badajoz',
+        '07' => 'Illes Balears', '08' => 'Barcelona', '09' => 'Burgos', '10' => 'Cáceres', '11' => 'Cádiz', '12' => 'Castellón/Castelló',
+        '13' => 'Ciudad Real', '14' => 'Córdoba', '15' => 'A Coruña', '16' => 'Cuenca', '17' => 'Girona', '18' => 'Granada',
+        '19' => 'Guadalajara', '20' => 'Gipuzkoa', '21' => 'Huelva', '22' => 'Huesca', '23' => 'Jaén', '24' => 'León', '25' => 'Lleida',
+        '26' => 'La Rioja', '27' => 'Lugo', '28' => 'Madrid', '29' => 'Málaga', '30' => 'Murcia', '31' => 'Navarra', '32' => 'Ourense',
+        '33' => 'Asturias', '34' => 'Palencia', '35' => 'Las Palmas', '36' => 'Pontevedra', '37' => 'Salamanca',
+        '38' => 'Santa Cruz de Tenerife', '39' => 'Cantabria', '40' => 'Segovia', '41' => 'Sevilla', '42' => 'Soria', '43' => 'Tarragona',
+        '44' => 'Teruel', '45' => 'Toledo', '46' => 'Valencia/València', '47' => 'Valladolid', '48' => 'Bizkaia', '49' => 'Zamora',
+        '50' => 'Zaragoza', '51' => 'Ceuta', '52' => 'Melilla',
+    ];
 
     /**
      * Recuadro dibujado en el visor sobre el PDF: se lee lo que hay dentro (texto del PDF u OCR,
@@ -1223,6 +1312,8 @@ class FacturasOcr extends Component
             'validadas' => $validadas,
             'provs' => $provs,
             'esNuevoProv' => $this->provSel !== '' && ! isset($this->proveedores()[$this->provSel]),
+            // Factura abierta con proveedor que no está en SAGE: se puede buscar su CIF/CP en internet
+            'provFueraSage' => $this->sel !== '' && ! isset($this->proveedores()[$this->form['cuenta'] ?? '']),
             'nombresCuentas' => $this->vista === 'proveedores' && $valido
                 ? (json_decode((string) @file_get_contents($this->dirCliente().'/Base/proveedores.json'), true)['cuentas'] ?? []) : [],
             'mesesReg' => $mesesReg,

@@ -44,6 +44,13 @@ class Bancos extends Component
      */
     public array $subidas = [];
 
+    /**
+     * Cuentas del plan de la base creadas fuera de SAGE (aquí o por Facturas OCR): [{cuenta, nombre, cif,
+     * cp, origen}] y, por cuenta, la propuesta de CIF/CP buscada en internet (buscar_cif.py).
+     */
+    public array $cuentasNuevas = [];
+    public array $propuestasCif = [];
+
     /** Fichero de Output en revisión, sus líneas y aviso si no se han podido leer (ver cargarRevision). */
     public string $revisar = '';
     public array $lineasRevisar = [];
@@ -406,8 +413,15 @@ class Bancos extends Component
         $this->planCuentas = [];
         $this->avisoMaestro = '';
         $this->estadoBase = [];
+        $this->cuentasNuevas = [];
         if (! $this->clienteValido() || ! is_file($this->basePath())) {
             return;
+        }
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'cuentas_nuevas']);
+            $this->cuentasNuevas = $r->successful() ? (json_decode($r->output(), true)['cuentas'] ?? []) : [];
+        } catch (\Throwable $e) {
+            $this->cuentasNuevas = [];
         }
         try {
             $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--estado']);
@@ -522,6 +536,27 @@ class Bancos extends Component
         $this->cargarMaestro();
         $this->cargarRevision();
         return $archivos ? $this->descargar('Output/'.$this->revisar) : null;
+    }
+
+    /** Busca en internet el CIF y el CP de una cuenta creada aquí (propuesta, no guarda). */
+    public function buscarDatosCuenta(string $cuenta): void
+    {
+        if (! config('contabilidad.bancos_ejecucion') || ! $this->clienteValido()) {
+            return;
+        }
+        try {
+            $r = Process::path($this->baseDir())->timeout(200)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'buscar_datos', $cuenta]);
+            $datos = json_decode($r->output(), true);
+            $this->propuestasCif[$cuenta] = is_array($datos) ? $datos : ['error' => trim($r->output()."\n".$r->errorOutput())];
+        } catch (\Throwable $e) {
+            $this->propuestasCif[$cuenta] = ['error' => $e->getMessage()];
+        }
+    }
+
+    public function guardarDatosCuenta(string $cuenta, string $cif, string $cp): void
+    {
+        unset($this->propuestasCif[$cuenta]);
+        $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'guardar_datos', $cuenta, trim($cif), trim($cp)]);
     }
 
     /** Varios bancos<cuenta>.xlsx en uno para importarlo en SAGE de una vez (bancos_maestro.py juntar). */
