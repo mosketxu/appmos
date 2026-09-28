@@ -446,11 +446,56 @@
             </div>
         @endif
 
+        <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: false }">
+            <button type="button" x-on:click="abierto = ! abierto" class="flex items-center w-full gap-2 p-4 text-left bg-gray-50">
+                <span x-text="abierto ? '▾' : '▸'"></span>
+                <h2 class="text-sm font-semibold text-gray-700">Formatos de extracto de {{ $cliente }} ({{ count($formatos) }})</h2>
+                <span class="text-xs text-gray-500">cómo se lee cada banco: se guardan solos al detectarlos, o al asignar las columnas a mano</span>
+            </button>
+            <div x-show="abierto" x-cloak class="p-4">
+                @if (empty($formatos))
+                    <div class="text-sm text-gray-400">(ninguno todavía: se irán guardando al procesar extractos)</div>
+                @else
+                    <table class="w-full text-sm">
+                        <thead><tr class="text-xs text-left text-gray-500 border-b">
+                            <th class="py-1 pr-3">Nombre</th><th class="pr-3">Columnas</th><th class="pr-3">Fichero de ejemplo</th><th class="pr-3">Cómo</th><th class="pr-3">Último uso</th><th></th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach ($formatos as $fm)
+                            @php $cab = $fm['muestra'][$fm['cabecera']] ?? []; @endphp
+                            <tr class="align-top border-b" wire:key="fmt-{{ $fm['id'] }}">
+                                <td class="py-1 pr-3 font-medium">{{ $fm['nombre'] }}</td>
+                                <td class="pr-3 text-xs">
+                                    @foreach ($fm['columnas'] as $i => $rol)
+                                        @if ($rol !== '')
+                                            <span class="inline-block px-1 mb-0.5 bg-gray-100 rounded" title="Columna {{ $i + 1 }}">{{ $cab[$i] ?? ('col. '.($i + 1)) }} → <b>{{ \App\Http\Livewire\Contabilidad\Bancos::ROLES[$rol] ?? $rol }}</b></span>
+                                        @endif
+                                    @endforeach
+                                </td>
+                                <td class="pr-3 text-xs text-gray-600">{{ $fm['fichero'] ?? '' }}</td>
+                                <td class="pr-3 text-xs">{{ ($fm['origen'] ?? '') === 'manual' ? 'a mano' : 'detectado' }}</td>
+                                <td class="pr-3 text-xs text-gray-600">{{ $fm['usado'] ?? '' }}</td>
+                                <td class="text-xs whitespace-nowrap">
+                                    <button type="button" wire:click="editarFormato(@js($fm['id']))" class="text-blue-700 underline hover:text-blue-900">✎ Corregir</button>
+                                    <button type="button" wire:click="borrarFormato(@js($fm['id']))" wire:confirm="¿Borrar el formato «{{ $fm['nombre'] }}»? La próxima vez ese extracto se detectará solo o se preguntará." class="ml-2 text-red-700 underline hover:text-red-900">Borrar</button>
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                @endif
+            </div>
+        </div>
+
         <div class="grid gap-4 md:grid-cols-2">
             <div class="p-4 bg-white border rounded-lg shadow">
                 <h2 class="mb-2 text-sm font-semibold text-gray-700">Extractos pendientes en Input</h2>
                 @forelse ($pendientes as $f)
-                    <div class="text-sm text-gray-800">{{ $f }}</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-800">
+                        <span>{{ $f }}</span>
+                        <button type="button" wire:click="mapearPendiente(@js($f))" class="text-xs text-blue-700 underline hover:text-blue-900"
+                                title="Decir qué es cada columna del extracto (fecha, concepto, importe…)">Asignar columnas</button>
+                    </div>
                 @empty
                     <div class="text-sm text-gray-400">(ninguno)</div>
                 @endforelse
@@ -469,4 +514,80 @@
     @endif
 
     </div>
+    {{-- Asignar las columnas de un extracto (no reconocido, o para corregir un formato) --}}
+    @if ($mapeo)
+        <div class="fixed inset-0 z-40 flex items-start justify-center p-4 overflow-auto bg-black/40" wire:key="mapeo-{{ $mapeo['id'] }}-{{ $mapeo['fichero'] }}"
+             x-data x-on:keydown.escape.window="$wire.cerrarMapeo()">
+            <div class="w-full max-w-6xl p-4 mt-6 bg-white rounded-lg shadow-xl">
+                <div class="flex items-start gap-3 mb-2">
+                    <div class="flex-1">
+                        <h2 class="text-lg font-semibold text-gray-900">Columnas del extracto <span class="font-normal text-gray-600">{{ $mapeo['fichero'] }}</span></h2>
+                        @if ($mapeo['motivo'] !== '')
+                            <div class="text-sm text-amber-800">⚠️ {{ $mapeo['motivo'] }}</div>
+                        @endif
+                        <div class="text-sm text-gray-600">
+                            1) Marca la <b>fila de la cabecera</b> (la de los títulos) · 2) di qué es cada columna: una <b>Fecha</b>,
+                            el <b>Importe</b> (o Debe y Haber) y una o varias de <b>Concepto</b> (se juntan). Se guarda para {{ $cliente }}
+                            y la próxima vez un extracto igual entra solo.
+                        </div>
+                    </div>
+                    <button type="button" wire:click="cerrarMapeo" class="text-2xl leading-none text-gray-400 hover:text-gray-700">&times;</button>
+                </div>
+
+                <div class="flex flex-wrap items-end gap-3 mb-2">
+                    <label class="text-xs text-gray-600">Nombre del formato<br>
+                        <input type="text" wire:model="mapeo.nombre" class="text-sm border-gray-300 rounded-md shadow-sm" style="width:260px" placeholder="p.ej. CaixaBank catalán">
+                    </label>
+                </div>
+
+                <div class="overflow-auto border rounded" style="max-height:60vh">
+                    <table class="text-xs">
+                        <thead class="sticky top-0 bg-gray-100">
+                            <tr>
+                                <th class="px-2 py-1 text-left">Cabecera</th>
+                                @foreach ($mapeo['columnas'] as $i => $rol)
+                                    <th class="px-1 py-1">
+                                        <select wire:model.live="mapeo.columnas.{{ $i }}" class="py-0.5 text-xs border-gray-300 rounded {{ $rol !== '' ? 'bg-indigo-50 border-indigo-400 font-semibold' : '' }}">
+                                            @foreach (\App\Http\Livewire\Contabilidad\Bancos::ROLES as $k => $t)
+                                                <option value="{{ $k }}">{{ $t }}</option>
+                                            @endforeach
+                                        </select>
+                                    </th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($mapeo['filas'] as $r => $fila)
+                                @php $cabIdx = (int) $mapeo['cabecera']; @endphp
+                                <tr class="border-t {{ $r === $cabIdx ? 'bg-indigo-100 font-semibold' : ($r < $cabIdx ? 'text-gray-400' : '') }}">
+                                    <td class="px-2 py-0.5 whitespace-nowrap">
+                                        <label class="cursor-pointer"><input type="radio" wire:model.live="mapeo.cabecera" value="{{ $r }}"> {{ $r + 1 }}</label>
+                                    </td>
+                                    @foreach ($fila as $i => $v)
+                                        <td class="px-2 py-0.5 whitespace-nowrap {{ ($mapeo['columnas'][$i] ?? '') !== '' && $r > $cabIdx ? 'bg-indigo-50' : '' }}"
+                                            style="max-width:260px; overflow:hidden; text-overflow:ellipsis" title="{{ $v }}">{{ $v }}</td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-1 text-xs text-gray-500">Se ven las {{ count($mapeo['filas']) }} primeras filas. Los movimientos se leen desde debajo de la cabecera hasta la primera fila vacía o sin fecha.</div>
+
+                @if ($mapeo['error'] !== '')
+                    <div class="p-2 mt-2 text-sm text-red-800 border border-red-300 rounded bg-red-50">{{ $mapeo['error'] }}</div>
+                @endif
+
+                <div class="flex items-center gap-2 mt-3">
+                    <x-button.primary wire:click="guardarMapeo" wire:loading.attr="disabled" wire:target="guardarMapeo">
+                        <span wire:loading.remove wire:target="guardarMapeo">
+                            {{ $mapeo['ruta'] !== '' && str_contains($mapeo['ruta'], '/Input/') && $mapeo['cuenta'] !== '' ? '💾 Guardar y procesar el extracto' : '💾 Guardar formato' }}
+                        </span>
+                        <span wire:loading wire:target="guardarMapeo">⏳ Guardando…</span>
+                    </x-button.primary>
+                    <x-button.secondary wire:click="cerrarMapeo">Cancelar</x-button.secondary>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

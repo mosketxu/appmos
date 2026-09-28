@@ -60,11 +60,158 @@ class Bancos extends Component
     /** Ficheros resultado de la última ejecución (mismo mecanismo que Contabilidad\Procesos). */
     public array $resultados = [];
 
+    /**
+     * Formatos de extracto del cliente (<Cliente>/Base/formatos.json, bancos_formatos.py) y la
+     * pantalla para asignar las columnas de un extracto que no se reconoce (o corregir un formato):
+     * ['ruta', 'cuenta', 'id', 'nombre', 'cabecera', 'columnas', 'filas', 'fichero', 'motivo', 'error'].
+     */
+    public array $formatos = [];
+    public ?array $mapeo = null;
+
+    public const ROLES = [
+        '' => '— no se usa —', 'fecha' => 'Fecha', 'fecha2' => 'Otra fecha (valor…)', 'concepto' => 'Concepto',
+        'importe' => 'Importe (con signo)', 'debe' => 'Debe / cargos', 'haber' => 'Haber / abonos', 'saldo' => 'Saldo',
+    ];
+
     public function mount(): void
     {
         $this->cliente = $this->clientes()[0] ?? '';
         $this->cargarMaestro();
         $this->cargarConfig();
+        $this->cargarFormatos();
+    }
+
+    // ------------------------------------------------------------ formatos de extracto
+
+    /** Ejecuta bancos_formatos.py y devuelve [ok, datos JSON]. */
+    protected function formatosPy(array $args): array
+    {
+        try {
+            $r = Process::path($this->baseDir())->timeout(90)->run(array_merge([$this->pythonBin(), 'bancos_formatos.py', $this->cliente], $args));
+            $datos = json_decode(trim($r->output()), true);
+            if (! is_array($datos)) {
+                $datos = ['error' => trim($r->output()."\n".$r->errorOutput())];
+            }
+            return [$r->successful() && empty($datos['error']), $datos];
+        } catch (\Throwable $e) {
+            return [false, ['error' => $e->getMessage()]];
+        }
+    }
+
+    public function cargarFormatos(): void
+    {
+        $this->formatos = [];
+        if (! $this->clienteValido()) {
+            return;
+        }
+        [$ok, $d] = $this->formatosPy(['listar']);
+        $this->formatos = $ok ? ($d['formatos'] ?? []) : [];
+    }
+
+    /** Abre la pantalla de columnas con un extracto (ruta absoluta dentro de la carpeta del cliente). */
+    protected function abrirMapeo(string $ruta, string $cuenta = '', string $motivo = ''): void
+    {
+        [$ok, $d] = $this->formatosPy(['vista', $ruta]);
+        if (! $ok) {
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ No se puede abrir el extracto\n".($d['error'] ?? ''));
+            return;
+        }
+        $this->mapeo = [
+            'ruta' => $ruta, 'cuenta' => $cuenta, 'id' => $d['id'] ?? '', 'nombre' => $d['nombre'] ?? '',
+            'cabecera' => (int) ($d['cabecera'] ?? 0), 'columnas' => $d['columnas'] ?? [], 'filas' => $d['filas'] ?? [],
+            'fichero' => $d['fichero'] ?? basename($ruta), 'motivo' => $motivo, 'error' => '',
+        ];
+    }
+
+    /** "Asignar columnas" de un extracto que está en Input (p.ej. el que no se reconoció). */
+    public function mapearPendiente(string $nombre): void
+    {
+        $ruta = $this->rutaCliente('Input/'.$nombre);
+        if (! $ruta) {
+            return;
+        }
+        $cuenta = preg_match('/^(\d{6,})/', $nombre, $m) && array_key_exists($m[1], $this->cuentasBanco()) ? $m[1] : $this->cuenta;
+        $this->abrirMapeo($ruta, $cuenta);
+    }
+
+    /** Corregir un formato guardado (con la muestra de filas que se guardó con él). */
+    public function editarFormato(string $id): void
+    {
+        foreach ($this->formatos as $f) {
+            if (($f['id'] ?? '') === $id) {
+                $filas = $f['muestra'] ?? [];
+                $ancho = max(count($filas[0] ?? []), count($f['columnas'] ?? []));
+                $this->mapeo = [
+                    'ruta' => '', 'cuenta' => '', 'id' => $id, 'nombre' => $f['nombre'] ?? '', 'cabecera' => (int) ($f['cabecera'] ?? 0),
+                    'columnas' => array_pad($f['columnas'] ?? [], $ancho, ''),
+                    'filas' => array_map(fn ($r) => array_pad($r, $ancho, ''), $filas),
+                    'fichero' => $f['fichero'] ?? '', 'motivo' => '', 'error' => '',
+                ];
+                return;
+            }
+        }
+    }
+
+    public function cerrarMapeo(): void
+    {
+        $this->mapeo = null;
+    }
+
+    public function guardarMapeo(): void
+    {
+        if (! $this->mapeo) {
+            return;
+        }
+        if (! config('contabilidad.bancos_ejecucion')) {
+            $this->avisarNoAutorizado('Bancos · Formato de extracto');
+            return;
+        }
+        $m = $this->mapeo;
+        $tmp = tempnam(sys_get_temp_dir(), 'bancos-formato-');
+        file_put_contents($tmp, json_encode([
+            'id' => $m['id'], 'nombre' => $m['nombre'], 'cabecera' => (int) $m['cabecera'],
+            'columnas' => array_values(array_map(fn ($c) => (string) $c, $m['columnas'])), 'ruta' => $m['ruta'],
+        ], JSON_UNESCAPED_UNICODE));
+        [$ok, $d] = $this->formatosPy(['guardar', $tmp]);
+        @unlink($tmp);
+        if (! $ok) {
+            $this->mapeo['error'] = $d['error'] ?? 'No se ha podido guardar.';
+            return;
+        }
+        $this->mapeo = null;
+        $this->cargarFormatos();
+        $texto = "Formato «{$d['nombre']}» guardado: salen {$d['movimientos']} movimientos.";
+        // Venía de un extracto que no se pudo procesar: se procesa ya con el formato nuevo
+        if ($m['ruta'] !== '' && is_file($m['ruta']) && str_contains($m['ruta'], '/Input/') && array_key_exists($m['cuenta'], $this->cuentasBanco())) {
+            $this->cuenta = $m['cuenta'];
+            $this->salida .= "\n{$texto}";
+            $this->procesar($m['ruta']);
+            return;
+        }
+        $this->dispatch('proceso-terminado', mensaje: "✅ {$texto}".($m['ruta'] !== '' && str_contains($m['ruta'], '/Input/')
+            ? "\nElige la cuenta y vuelve a subir el extracto para procesarlo." : ''));
+    }
+
+    public function borrarFormato(string $id): void
+    {
+        if (! config('contabilidad.bancos_ejecucion')) {
+            $this->avisarNoAutorizado('Bancos · Formato de extracto');
+            return;
+        }
+        [$ok, $d] = $this->formatosPy(['borrar', $id]);
+        $this->dispatch('proceso-terminado', mensaje: $ok ? '✅ Formato borrado: la próxima vez ese extracto se detectará solo (o se preguntará).' : '⚠️ '.($d['error'] ?? ''));
+        $this->cargarFormatos();
+    }
+
+    /** Ruta absoluta de un fichero dentro de la carpeta del cliente, o null si se sale de ella / no existe. */
+    protected function rutaCliente(string $relativa): ?string
+    {
+        if (! $this->clienteValido()) {
+            return null;
+        }
+        $raiz = realpath($this->baseDir().'/'.$this->cliente);
+        $ruta = realpath($raiz.'/'.$relativa);
+        return $raiz && $ruta && str_starts_with($ruta, $raiz.'/') && is_file($ruta) ? $ruta : null;
     }
 
     /** Ejecuta bancos_config.py y devuelve [ok, salida]. */
@@ -203,7 +350,9 @@ class Bancos extends Component
         $this->resultados = [];
         $this->cuenta = '';
         $this->extracto = null;
+        $this->mapeo = null;
         $this->cargarMaestro();
+        $this->cargarFormatos();
     }
 
     protected function basePath(): string
@@ -345,23 +494,35 @@ class Bancos extends Component
             return;
         }
 
+        $this->extracto = null;
+        $this->procesar($destino);
+    }
+
+    /** bancos_conciliacion.py con un extracto ya guardado en Input; si no sabe leerlo, pide asignar las columnas. */
+    protected function procesar(string $destino): void
+    {
+        $etiqueta = "Bancos · {$this->cliente} · bancos{$this->cuenta}";
         $this->resultados = [];
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $inicio = strlen($this->salida);
         $archivos = $this->ejecutarScript([$this->pythonBin(), 'bancos_conciliacion.py', $this->cliente, '--partida', $this->cuenta, $destino], 180, $etiqueta);
         $this->anexarResultados($archivos);
-        $this->extracto = null;
         $this->cargarMaestro(); // la conciliación añade a Variables lo que no encuentra
+        $this->cargarFormatos(); // y guarda el formato si lo ha detectado solo
+        $nueva = substr($this->salida, $inicio);
+        if (preg_match('/^FORMATO_DESCONOCIDO:\s*(.+?)\s*$/m', $nueva, $m)) {
+            $this->salida = substr($this->salida, 0, $inicio).preg_replace('/^FORMATO_DESCONOCIDO:.*(\r?\n)?/m', '', $nueva)
+                ."\n→ Asigna las columnas del extracto en la ventana que se ha abierto.";
+            preg_match('/^AVISO:\s*(.+?) -- se omite/m', $nueva, $motivo);
+            $this->abrirMapeo($m[1], $this->cuenta, $motivo[1] ?? '');
+        }
     }
 
     /** Descarga un fichero de la carpeta del cliente (Output/..., Base/...). */
     public function descargar(string $relativa)
     {
-        if (! $this->clienteValido()) {
-            return null;
-        }
-        $raiz = realpath($this->baseDir().'/'.$this->cliente);
-        $ruta = realpath($raiz.'/'.$relativa);
-        if (! $raiz || ! $ruta || ! str_starts_with($ruta, $raiz.'/') || ! is_file($ruta)) {
+        $ruta = $this->rutaCliente($relativa);
+        if (! $ruta) {
             $this->addError('extracto', "No se encuentra {$relativa}.");
             return null;
         }
