@@ -645,6 +645,12 @@
                         </div>
                     @endif
                     @php $noCuadra = ($descuadre !== null && abs($descuadre) >= 0.015) || $lineasMal; @endphp
+                    @if ($gemelas)
+                        <div class="focr-avisos" style="max-height:none; border-color:#93c5fd; background:#eff6ff; color:#1e3a8a">
+                            ℹ️ Hay {{ count($gemelas) > 1 ? 'otras '.count($gemelas).' facturas' : 'otra factura' }} con el mismo nº:
+                            <b>{{ implode(', ', $gemelas) }}</b>. Esta es la primera: al validarla, {{ count($gemelas) > 1 ? 'esas quedarán' : 'esa quedará' }} como duplicada.
+                        </div>
+                    @endif
                     @if ($duplicados)
                         <div class="focr-nocuadra">
                             <div style="font-size:1.05rem">⚠️ FACTURA DUPLICADA</div>

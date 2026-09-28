@@ -1059,6 +1059,7 @@ class FacturasOcr extends Component
     /** Otra factura de este proveedor con el mismo nº: en SAGE, validada aquí o pendiente (misma regla que duplicados() en Python). */
     protected function duplicados(): array
     {
+        $this->gemelas = [];
         $a = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($this->form['su_factura'] ?? '')));
         $cta = (string) ($this->form['cuenta'] ?? '');
         if ($a === '' || $cta === '') {
@@ -1072,6 +1073,7 @@ class FacturasOcr extends Component
                 break;
             }
         }
+        $pendientes = [];
         foreach ($this->estado()['facturas'] as $f) {
             if ($f['id'] === $this->sel || (string) ($f['datos']['cuenta'] ?? '') !== $cta || $norm($f['datos']['su_factura'] ?? '') !== $a) {
                 continue;
@@ -1079,11 +1081,23 @@ class FacturasOcr extends Component
             if (in_array($f['estado'], ['validada', 'validando'], true)) {
                 $out[] = 'Ya validada aquí el '.($f['validada_el'] ?? 'ahora').' ('.basename($f['ruta']).')';
             } elseif ($f['estado'] === 'pendiente') {
-                $out[] = 'Hay otra pendiente con el mismo nº ('.basename($f['ruta']).')';
+                $pendientes[] = basename($f['ruta']);
+            }
+        }
+        // Varias pendientes con el mismo nº: la primera de la lista es la buena y las demás sus duplicadas
+        if ($pendientes) {
+            usort($pendientes, 'strnatcasecmp');
+            if (strnatcasecmp(basename($this->factura($this->sel)['ruta'] ?? ''), $pendientes[0]) < 0) {
+                $this->gemelas = $pendientes;
+            } else {
+                $out[] = 'Es copia de '.$pendientes[0].', pendiente, que va antes en la lista';
             }
         }
         return $out;
     }
+
+    /** Pendientes con el mismo nº que la abierta cuando la abierta es la primera: se avisa, no es duplicada. */
+    protected array $gemelas = [];
 
     public function validar(bool $forzar = false): void
     {
@@ -1345,6 +1359,7 @@ class FacturasOcr extends Component
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
             'duplicados' => $this->sel ? $this->duplicados() : [],
+            'gemelas' => $this->gemelas,
             'duplicadas' => array_values(array_filter($todas, fn ($f) => $f['estado'] === 'duplicada')),
             'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,
             'entidad' => $valido ? $this->entidad() : null,
