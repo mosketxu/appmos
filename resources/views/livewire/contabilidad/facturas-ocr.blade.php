@@ -60,7 +60,9 @@
         .textLayer span, .textLayer br { color:transparent; position:absolute; white-space:pre; cursor:text; transform-origin:0% 0%; }
         .textLayer ::selection { background:rgba(59,130,246,.35); }
         .focr-caja { position:absolute; border:2px solid #f59e0b; background:rgba(245,158,11,.15); pointer-events:none; }
-        .focr-rev-form { width:min(660px, 52vw); background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
+        .focr-rev-form { flex:0 0 45%; min-width:420px; background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
+        /* Pantallas anchas (apaisadas): mitad y mitad; en las normales 55/45 */
+        @media (min-width:1600px) { .focr-rev-form { flex-basis:50%; } }
         .focr-rev-form .fila { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.5rem; }
         .focr-rev-form .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.35rem; margin-bottom:.35rem; align-items:end; }
         .focr-sec { font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; margin:.75rem 0 .35rem; }
