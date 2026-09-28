@@ -604,14 +604,26 @@ class FacturasOcr extends Component
         }
     }
 
-    /** Siguiente pendiente tras validar/rechazar (o cerrar si no quedan). */
-    protected function siguiente(): void
+    /**
+     * Siguiente pendiente tras validar/rechazar (o cerrar si no quedan). $antes = ids de la cola antes
+     * de cambiar el estado de la actual: se sigue desde su posición (las que se saltaron sin validar
+     * quedan para la vuelta), no desde la primera pendiente.
+     */
+    protected function siguiente(array $antes = []): void
     {
-        foreach ($this->cola() as $f) {
-            if ($f['estado'] === 'pendiente') {
-                $this->abrir($f['id']);
-                return;
+        $pendientes = array_column(array_filter($this->cola(), fn ($f) => $f['estado'] === 'pendiente'), 'id');
+        $i = array_search($this->sel, $antes, true);
+        if ($i !== false) {
+            foreach (array_merge(array_slice($antes, $i + 1), array_slice($antes, 0, $i)) as $id) {
+                if (in_array($id, $pendientes, true)) {
+                    $this->abrir($id);
+                    return;
+                }
             }
+        }
+        foreach ($pendientes as $id) {
+            $this->abrir($id);
+            return;
         }
         $this->cerrar();
         $this->dispatch('proceso-terminado', mensaje: '✅ No quedan facturas pendientes de revisar.');
@@ -1100,6 +1112,7 @@ class FacturasOcr extends Component
             $this->addError('validar', 'Opción no válida. Solo ejecutable desde un terminal autorizado.');
             return;
         }
+        $antes = array_column($this->cola(), 'id');
         // Se pasa ya a la siguiente factura; el Excel, mover el PDF y aprender lo hace la cola en segundo plano
         $cola = $this->dirDatos().'/_cola';
         @mkdir($cola, 0777, true);
@@ -1117,7 +1130,7 @@ class FacturasOcr extends Component
             return $e;
         });
         $this->lanzarCola();
-        $this->siguiente();
+        $this->siguiente($antes);
     }
 
     /** Arranca (si no está ya) el proceso que valida en segundo plano lo encolado. */
@@ -1140,8 +1153,9 @@ class FacturasOcr extends Component
             return;
         }
         $this->salida = '';
+        $antes = array_column($this->cola(), 'id');
         if ($this->ejecutar(['duplicada', $this->sel, '--motivo', $this->motivo], 60, 'Duplicada', false)) {
-            $this->siguiente();
+            $this->siguiente($antes);
         } else {
             $this->addError('validar', trim($this->salida));
         }
@@ -1153,8 +1167,9 @@ class FacturasOcr extends Component
             return;
         }
         $this->salida = '';
+        $antes = array_column($this->cola(), 'id');
         if ($this->ejecutar(['rechazar', $this->sel, '--motivo', $this->motivo], 60, 'Rechazar', false)) {
-            $this->siguiente();
+            $this->siguiente($antes);
         }
     }
 
