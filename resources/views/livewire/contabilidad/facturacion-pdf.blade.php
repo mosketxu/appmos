@@ -18,9 +18,10 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.facturacion-pdf'])
     @include('livewire.contabilidad._subnav')
 
-    <div class="p-4">
-    <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
-    <div class="space-y-6" style="flex:75 1 0;min-width:0">
+    <div class="p-4 space-y-6">
+    {{-- Fila de arriba: primer bloque + Salida a su altura; lo de debajo, a todo el ancho. --}}
+    <div class="fila-salida">
+    <div class="space-y-6 col-principal" style="--g:75">
 
     <h1 class="text-2xl font-semibold text-gray-900">Facturación PDF</h1>
     <p class="text-sm text-gray-500">
@@ -300,21 +301,8 @@
         </div>
     </div>
 
-    </div>{{-- /columna izquierda --}}
-
-    <div class="w-full" style="flex:25 1 0;min-width:0">
-        <div class="sticky top-4">
-            <div class="flex justify-start mb-2">
-                <x-button.secondary wire:click="limpiarSalida">Borrar salida</x-button.secondary>
-            </div>
-            <div class="p-4 rounded-lg shadow {{ $salida !== '' ? 'bg-gray-900' : 'bg-white border border-gray-200' }}">
-                <h2 class="mb-2 text-sm font-semibold {{ $salida !== '' ? 'text-gray-300' : 'text-gray-400' }}">Salida</h2>
-                <pre class="overflow-auto text-xs whitespace-pre-wrap {{ $salida !== '' ? 'text-green-400' : 'text-gray-400' }}" style="max-height:calc(100vh - 9rem)" wire:loading.class="opacity-50">{{ $salida ?: '(sin ejecuciones todavía)' }}</pre>
-                <div wire:loading class="mt-2 text-sm text-yellow-400">Ejecutando…</div>
-            </div>
-        </div>
-    </div>
-
-    </div>{{-- /flex 2 columnas --}}
+    </div>{{-- /col-principal --}}
+    @include('livewire.contabilidad._salida', ['ancho' => 25])
+    </div>{{-- /fila-salida --}}
     </div>
 </div>

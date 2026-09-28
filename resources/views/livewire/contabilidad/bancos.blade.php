@@ -18,9 +18,10 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.bancos'])
     @include('livewire.contabilidad._subnav', ['activa' => 'contabilidad.bancos'])
 
-    <div class="p-4">
-    <div class="flex flex-col gap-6 xl:flex-row xl:items-start">
-    <div class="space-y-6" style="flex:65 1 0;min-width:0">
+    <div class="p-4 space-y-6">
+    {{-- Fila de arriba: primer bloque + Salida a su altura; lo de debajo, a todo el ancho. --}}
+    <div class="fila-salida">
+    <div class="space-y-6 col-principal" style="--g:65">
 
     <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3">
         <span>Bancos — cliente:</span>
@@ -105,6 +106,12 @@
             </div>
         </div>
 
+        @endif
+    </div>{{-- /col-principal --}}
+    @include('livewire.contabilidad._salida', ['ancho' => 35, 'cargando' => false])
+    </div>{{-- /fila-salida --}}
+
+    @if ($cliente !== '')
         <div class="overflow-hidden bg-white border rounded-lg shadow">
             <div class="p-4 border-b border-gray-200 bg-gray-50">
                 <h2 class="mb-1 text-sm font-semibold text-gray-700">Extracto a procesar → bancos{{ $cuenta ?: '572xxx' }}.xlsx</h2>
@@ -461,20 +468,5 @@
         </div>
     @endif
 
-    </div>{{-- /columna izquierda --}}
-
-    <div class="w-full" style="flex:35 1 0;min-width:0">
-        <div class="sticky top-4">
-            <div class="flex justify-start mb-2">
-                <x-button.secondary wire:click="limpiarSalida">Borrar salida</x-button.secondary>
-            </div>
-            <div class="p-4 rounded-lg shadow {{ $salida !== '' ? 'bg-gray-900' : 'bg-white border border-gray-200' }}">
-                <h2 class="mb-2 text-sm font-semibold {{ $salida !== '' ? 'text-gray-300' : 'text-gray-400' }}">Salida</h2>
-                <pre class="overflow-auto text-xs whitespace-pre-wrap {{ $salida !== '' ? 'text-green-400' : 'text-gray-400' }}" style="max-height:calc(100vh - 9rem)">{{ $salida ?: '(sin ejecuciones todavía)' }}</pre>
-            </div>
-        </div>
-    </div>
-
-    </div>{{-- /flex 2 columnas --}}
     </div>
 </div>
