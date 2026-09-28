@@ -336,8 +336,17 @@ class FacturasOcr extends Component
             return '';
         }
         $ps = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
-        // Sin argumentos vacíos: al pasar a Windows se pierden y descolocan los demás
-        $args = array_values(array_filter($args, fn ($a) => $a !== ''));
+        // Sin argumentos vacíos: al pasar a Windows se pierden y descolocan los demás. Se quita también
+        // su nombre (-Inicial ''), o PowerShell se queja de que al parámetro le falta el valor
+        $limpios = [];
+        for ($i = 0; $i < count($args); $i++) {
+            if (str_starts_with($args[$i], '-') && ($args[$i + 1] ?? null) === '') {
+                $i++;
+            } elseif ($args[$i] !== '') {
+                $limpios[] = $args[$i];
+            }
+        }
+        $args = $limpios;
         $cmd = array_merge([is_file($ps) ? $ps : 'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA',
             '-File', $this->aWindows($this->baseDir().'/dialogo_windows.ps1')], $args);
         $t0 = microtime(true);
@@ -348,8 +357,10 @@ class FacturasOcr extends Component
             Log::error('FacturasOcr: diálogo de Windows', ['cmd' => $cmd, 'error' => $e->getMessage()]);
             return '';
         }
-        $salida = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $r->output()));
-        $err = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $r->errorOutput()));
+        // Los errores de PowerShell llegan en la página de códigos de la consola (850), no en UTF-8
+        $utf8 = fn ($t) => mb_check_encoding($t, 'UTF-8') ? $t : mb_convert_encoding($t, 'UTF-8', 'CP850');
+        $salida = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $utf8($r->output())));
+        $err = trim(preg_replace('/^Exception: ios_base::clear.*$/m', '', $utf8($r->errorOutput())));
         if (! $r->successful() || ($salida === '' && microtime(true) - $t0 < 2)) {
             // Salió sin que diera tiempo a elegir nada: no se ha llegado a ver la ventana
             $this->salida = '⚠️ No se pudo abrir el diálogo de Windows (código '.$r->exitCode().'): '.($err ?: 'sin mensaje')
