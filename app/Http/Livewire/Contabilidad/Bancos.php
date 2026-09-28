@@ -44,6 +44,9 @@ class Bancos extends Component
      */
     public array $subidas = [];
 
+    /** Un bancos<cuenta>.xlsx rellenado en Excel que se devuelve para que el programa aprenda. */
+    public $rellenado = null;
+
     /** Lo que hay en la base por fila (plan / cada cuenta): bancos_base.py --estado. */
     public array $estadoBase = [];
 
@@ -453,6 +456,50 @@ class Bancos extends Component
         }
         $ok = $r && $r->successful();
         $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ')."Maestro {$this->cliente}\n{$texto}");
+        $this->cargarMaestro();
+    }
+
+    /**
+     * bancos<cuenta>.xlsx rellenado en Excel (contrapartidas, "Concepto para el Maestro",
+     * "Vale para"): se guarda en Base/Recibidos y bancos_maestro.py excel lo pasa a la base.
+     */
+    public function updatedRellenado(): void
+    {
+        $this->resetErrorBag('rellenado');
+        $f = $this->rellenado;
+        $this->rellenado = null;
+        if (! $f instanceof UploadedFile) {
+            return;
+        }
+        if (! config('contabilidad.bancos_ejecucion')) {
+            $this->avisarNoAutorizado('Bancos · aprender del Excel');
+            return;
+        }
+        $nombre = str_replace(['/', '\\'], '_', $f->getClientOriginalName());
+        if (! $this->clienteValido() || strtolower(pathinfo($nombre, PATHINFO_EXTENSION)) !== 'xlsx') {
+            $this->addError('rellenado', 'Tiene que ser un bancos<cuenta>.xlsx.');
+            return;
+        }
+        $dir = $this->baseDir().'/'.$this->cliente.'/Base/Recibidos';
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        $destino = $dir.'/'.date('Ymd-His').' '.$nombre;
+        if (! @copy($f->getRealPath(), $destino)) {
+            $this->addError('rellenado', "No se ha podido guardar {$nombre}.");
+            return;
+        }
+        $this->salida .= "\n\n===== Bancos · {$this->cliente} · aprender de {$nombre} =====\n";
+        try {
+            $r = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'excel', $destino, $nombre]);
+            $texto = trim($r->output()."\n".$r->errorOutput());
+            $ok = $r->successful();
+        } catch (\Throwable $e) {
+            $texto = $e->getMessage();
+            $ok = false;
+        }
+        $this->salida .= $texto;
+        $this->dispatch('proceso-terminado', mensaje: ($ok ? '✅ ' : '⚠️ ')."Aprender de {$nombre}\n{$texto}");
         $this->cargarMaestro();
     }
 

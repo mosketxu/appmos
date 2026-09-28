@@ -245,6 +245,29 @@
         @endif
 
         @if ($hayBase)
+            <div class="p-4 bg-white border rounded-lg shadow"
+                 x-data="{ encima: false }"
+                 x-on:dragover.prevent="encima = true"
+                 x-on:dragleave.prevent="encima = false"
+                 x-on:drop.prevent="encima = false; $event.dataTransfer.files.length && $wire.upload('rellenado', $event.dataTransfer.files[0])">
+                <h2 class="mb-1 text-sm font-semibold text-gray-700">↩ Devolver un bancos&lt;cuenta&gt;.xlsx rellenado en Excel</h2>
+                <p class="mb-2 text-xs text-gray-500">
+                    En el Excel de bancos, filtra la Contrapartida por (Vacías) y elígela en el desplegable (al lado sale el nombre de la cuenta).
+                    Si quieres que sirva para más casos, pon en <b>Concepto para el Maestro</b> la parte fija (p.ej. GOOGLE CLOUD) y en
+                    <b>Vale para</b> si es solo para cobros o solo para pagos. Súbelo aquí: el programa aprende las cuentas, actualiza el
+                    Maestro y la copia del fichero en el servidor. Las columnas G-I y la pestaña oculta «Cuentas» son solo de ayuda (SAGE usa A-F).
+                </p>
+                <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
+                       class="flex items-center gap-2 px-3 py-2 text-sm border-2 border-dashed rounded-md cursor-pointer">
+                    <input type="file" wire:model="rellenado" accept=".xlsx" class="hidden">
+                    <span>📄</span><span class="text-gray-700">Arrastra aquí el bancos&lt;cuenta&gt;.xlsx rellenado o haz clic para elegirlo</span>
+                </label>
+                <div wire:loading wire:target="rellenado" class="mt-1 text-xs text-amber-700">⏳ Aprendiendo…</div>
+                @error('rellenado')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
             <div id="maestro" class="overflow-hidden bg-white border rounded-lg shadow"
                  x-data="{
                      abierto: true, q: '', filtro: 'todos',
@@ -274,6 +297,8 @@
                 <div x-show="abierto" class="p-4 space-y-3">
                     <p class="text-xs text-gray-500">
                         <b>SAGE</b> = sale de los mayores subidos (se rehace con cada subida).
+                        <b>Appmos</b> = sale de líneas ya procesadas aquí (bancos&lt;cuenta&gt;.xlsx) que aún no han vuelto en un mayor de SAGE;
+                        no se borra porque es el propio movimiento: si su cuenta no vale, edítala (crea una fila manual que manda).
                         <b>Manual</b> = añadido o corregido aquí; se guarda en la pestaña Variables de la base y
                         manda sobre SAGE. Cambiar la cuenta de una fila SAGE crea su fila manual.
                         Las filas manuales sin cuenta son conceptos de extractos que no se encontraron: ponles la cuenta.
