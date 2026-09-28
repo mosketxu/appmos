@@ -40,9 +40,14 @@ class FacturasOcr extends Component
     public array $form = [];
     public string $motivo = '';
 
-    public string $vista = 'revisar';   // revisar | historico
+    public string $vista = 'revisar';   // revisar | historico | duplicadas | proveedores
     public string $filtro = '';
     public string $filtroMes = '';
+
+    // Pestaña Proveedores: buscar y editar lo contable de cada proveedor (va a patrones.json)
+    public string $filtroProv = '';
+    public string $provSel = '';
+    public array $provForm = [];
 
     /** Hay cambios en el formulario de la factura abierta: se guardan al final de la petición. */
     protected bool $sucio = false;
@@ -766,6 +771,124 @@ class FacturasOcr extends Component
         return $out;
     }
 
+    // ------------------------------------------------------------ proveedores
+
+    /**
+     * Proveedores del listado de SAGE y nuevos de aquí, con lo que se propondrá en sus facturas:
+     * lo aprendido / editado aquí manda sobre la ficha de SAGE (misma regla que propuesta() de Python).
+     */
+    protected function listaProveedores(): array
+    {
+        $pats = $this->patrones();
+        $validadas = [];
+        foreach ($this->estado()['facturas'] as $f) {
+            if ($f['estado'] === 'validada') {
+                $c = (string) ($f['datos']['cuenta'] ?? '');
+                $validadas[$c]['n'] = ($validadas[$c]['n'] ?? 0) + 1;
+                $validadas[$c]['ultima'] = max($validadas[$c]['ultima'] ?? '', $f['validada_el'] ?? '');
+            }
+        }
+        $fila = function (string $cta, array $p, array $pat, bool $nuevo) use ($validadas) {
+            $trans = (string) (($pat['codigo_transaccion'] ?? '') !== '' ? $pat['codigo_transaccion'] : ($p['transaccion'] ?? ''));
+            $ret = (string) (($pat['codigo_retencion'] ?? '') !== '' ? $pat['codigo_retencion'] : ($p['retencion'] ?? ''));
+            return [
+                'cuenta' => $cta, 'nuevo' => $nuevo,
+                'nombre' => $nuevo ? ($pat['proveedor'] ?? '') : ($p['razon'] ?? ''),
+                'cif' => $nuevo ? ($pat['cif'] ?? '') : ((($p['cif_europeo'] ?? '') ?: (($p['sigla'] ?? '').($p['nif'] ?? '')))),
+                'contrapartida' => (string) (($pat['contrapartida'] ?? '') ?: ($p['contrapartida'] ?? '')),
+                'contrapartida_aqui' => ($pat['contrapartida'] ?? '') !== '',
+                'contrapartida_sage' => (string) ($p['contrapartida_listado'] ?? ''),
+                'codigo_transaccion' => $trans, 'transaccion_aqui' => ($pat['codigo_transaccion'] ?? '') !== '',
+                'transaccion_sage' => (string) ($p['transaccion'] ?? ''),
+                'clave_operacion' => (string) ($pat['clave_operacion'] ?? ''),
+                'codigo_retencion' => $ret, 'retencion_aqui' => ($pat['codigo_retencion'] ?? '') !== '',
+                'validadas' => $validadas[$cta]['n'] ?? 0, 'ultima' => $validadas[$cta]['ultima'] ?? '',
+            ];
+        };
+        $out = [];
+        foreach ($this->proveedores() as $cta => $p) {
+            $out[(string) $cta] = $fila((string) $cta, $p, $pats[$cta] ?? [], false);
+        }
+        foreach ($pats as $cta => $pat) {
+            if (! empty($pat['nuevo']) && ! isset($out[(string) $cta])) {
+                $out[(string) $cta] = $fila((string) $cta, [], $pat, true);
+            }
+        }
+        ksort($out, SORT_STRING);
+        return $out;
+    }
+
+    public function abrirProveedor(string $cta): void
+    {
+        $p = $this->listaProveedores()[$cta] ?? null;
+        if (! $p) {
+            return;
+        }
+        $this->resetErrorBag('proveedor');
+        $this->provSel = $cta;
+        $this->provForm = array_intersect_key($p, array_flip(['nombre', 'cif', 'contrapartida', 'codigo_transaccion', 'clave_operacion', 'codigo_retencion']));
+    }
+
+    public function guardarProveedor(): void
+    {
+        $this->resetErrorBag('proveedor');
+        if ($this->provSel === '') {
+            return;
+        }
+        $f = $this->provForm;
+        $datos = [
+            'proveedor' => trim((string) ($f['nombre'] ?? '')), 'cif' => trim((string) ($f['cif'] ?? '')),
+            'contrapartida' => trim((string) ($f['contrapartida'] ?? '')), 'codigo_transaccion' => trim((string) ($f['codigo_transaccion'] ?? '')),
+            'clave_operacion' => strtoupper(trim((string) ($f['clave_operacion'] ?? ''))), 'codigo_retencion' => trim((string) ($f['codigo_retencion'] ?? '')),
+        ];
+        foreach (['contrapartida', 'codigo_transaccion', 'codigo_retencion'] as $k) {
+            if ($datos[$k] !== '' && ! ctype_digit($datos[$k])) {
+                $this->addError('proveedor', 'Solo números en '.str_replace('_', ' ', $k).'.');
+                return;
+            }
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'focr-prov-');
+        file_put_contents($tmp, json_encode($datos, JSON_UNESCAPED_UNICODE));
+        $this->salida = '';
+        $ok = $this->ejecutar(['proveedor', $this->provSel, '--datos', $tmp], 300, 'Guardar proveedor');
+        @unlink($tmp);
+        if ($ok) {
+            $this->provSel = '';
+            $this->provForm = [];
+        } else {
+            $this->addError('proveedor', trim($this->salida));
+        }
+    }
+
+    /** El listado tal cual se ve (con el filtro), en CSV para Excel. */
+    public function descargarProveedores()
+    {
+        $provs = $this->listaProveedores();
+        if ($this->filtroProv !== '') {
+            $q = mb_strtolower($this->filtroProv);
+            $provs = array_filter($provs, fn ($p) => str_contains(mb_strtolower($p['cuenta'].' '.$p['nombre'].' '.$p['cif'].' '.$p['contrapartida']), $q));
+        }
+        $nombres = json_decode((string) @file_get_contents($this->dirCliente().'/Base/proveedores.json'), true)['cuentas'] ?? [];
+        return response()->streamDownload(function () use ($provs, $nombres) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Cuenta', 'Proveedor', 'CIF', 'Nuevo', 'Contrapartida', 'Nombre contrapartida', 'Contrapartida SAGE',
+                'Cód. transacción', 'Cód. transacción SAGE', 'Clave operación', 'Cód. retención', 'Validadas aquí', 'Última'], ';');
+            foreach ($provs as $p) {
+                fputcsv($out, [$p['cuenta'], $p['nombre'], $p['cif'], $p['nuevo'] ? 'sí' : '', $p['contrapartida'], $nombres[$p['contrapartida']] ?? '',
+                    $p['contrapartida_sage'], $p['codigo_transaccion'], $p['transaccion_sage'], $p['clave_operacion'], $p['codigo_retencion'],
+                    $p['validadas'] ?: '', $p['ultima']], ';');
+            }
+            fclose($out);
+        }, 'Proveedores_'.$this->cliente.'_'.date('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function cerrarProveedor(): void
+    {
+        $this->provSel = '';
+        $this->provForm = [];
+    }
+
     /** Recalcula la cuota de una línea con su base y tipo. */
     public function cuota(int $i): void
     {
@@ -1069,6 +1192,14 @@ class FacturasOcr extends Component
             array_filter($todas, fn ($f) => $f['estado'] === 'validada'))));
         rsort($mesesReg);
         $actual = $this->sel ? $this->factura($this->sel) : null;
+        $provs = [];
+        if ($valido && $this->vista === 'proveedores') {
+            $provs = $this->listaProveedores();
+            if ($this->filtroProv !== '') {
+                $q = mb_strtolower($this->filtroProv);
+                $provs = array_filter($provs, fn ($p) => str_contains(mb_strtolower($p['cuenta'].' '.$p['nombre'].' '.$p['cif'].' '.$p['contrapartida']), $q));
+            }
+        }
         $cola = $valido ? $this->cola() : [];
 
         // Otro PC ha tocado estas facturas hace poco (OneDrive puede no haberlo traído aún) o hay copias en conflicto
@@ -1090,6 +1221,10 @@ class FacturasOcr extends Component
             'cola' => $cola,
             'cuenta' => array_count_values(array_column($todas, 'estado')),
             'validadas' => $validadas,
+            'provs' => $provs,
+            'esNuevoProv' => $this->provSel !== '' && ! isset($this->proveedores()[$this->provSel]),
+            'nombresCuentas' => $this->vista === 'proveedores' && $valido
+                ? (json_decode((string) @file_get_contents($this->dirCliente().'/Base/proveedores.json'), true)['cuentas'] ?? []) : [],
             'mesesReg' => $mesesReg,
             'actual' => $actual,
             'posicion' => $actual ? array_search($this->sel, array_column($cola, 'id'), true) : false,

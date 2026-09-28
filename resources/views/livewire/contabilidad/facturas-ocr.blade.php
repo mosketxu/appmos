@@ -395,6 +395,7 @@
                         Validadas ({{ ($cuenta['validada'] ?? 0) + ($cuenta['validando'] ?? 0) }})
                         @if ($guardando) <span class="focr-chip c-gris" title="Excel, mover el PDF y aprender, en segundo plano">💾 {{ $guardando }}…</span> @endif
                     </button>
+                    <button type="button" wire:click="$set('vista','proveedores')" class="{{ $vista === 'proveedores' ? 'on' : '' }}">Proveedores</button>
                     @if ($cuenta['duplicada'] ?? 0)
                         <button type="button" wire:click="$set('vista','duplicadas')" class="{{ $vista === 'duplicadas' ? 'on' : '' }}">
                             Duplicadas ({{ $cuenta['duplicada'] }})
@@ -403,7 +404,65 @@
                 </div>
 
                 <div class="overflow-auto focr-card" style="border-top-left-radius:0; max-height:70vh">
-                    @if ($vista === 'duplicadas')
+                    @if ($vista === 'proveedores')
+                        <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200">
+                            <input type="search" wire:model.live.debounce.300ms="filtroProv" placeholder="Buscar cuenta, nombre, CIF o contrapartida…" class="focr-in" style="max-width:340px">
+                            <span class="text-xs text-gray-500">{{ count($provs) }} proveedores · <b>●</b> = puesto aquí (manda sobre la ficha de SAGE). Clic en uno para editarlo.</span>
+                            <button type="button" wire:click="descargarProveedores" class="focr-btn b-gris ml-auto" style="padding:.2rem .5rem; font-size:.75rem" title="El listado tal cual se ve (con el filtro), para abrir en Excel">💾 Listado (CSV)</button>
+                        </div>
+                        @if ($provSel !== '')
+                            <div class="p-3 border-b border-gray-200" style="background:#eef2ff">
+                                <div class="text-sm" style="margin-bottom:.4rem"><b>{{ $provSel }}</b> {{ $provForm['nombre'] ?? '' }}
+                                    @if ($esNuevoProv) <span class="focr-chip c-revisar">nuevo (aún no está en SAGE)</span> @endif</div>
+                                <div class="flex flex-wrap gap-2 items-end">
+                                    @if ($esNuevoProv)
+                                        <label class="text-xs">Nombre<br><input type="text" wire:model="provForm.nombre" class="focr-in" style="width:220px"></label>
+                                        <label class="text-xs">CIF<br><input type="text" wire:model="provForm.cif" class="focr-in" style="width:130px"></label>
+                                    @endif
+                                    <label class="text-xs">Contrapartida<br><input type="text" wire:model="provForm.contrapartida" list="focr-cuentas-prov" class="focr-in" style="width:110px"></label>
+                                    <label class="text-xs">Cód. transacción<br><input type="text" wire:model="provForm.codigo_transaccion" class="focr-in" style="width:80px"></label>
+                                    <label class="text-xs">Clave operación<br><input type="text" wire:model="provForm.clave_operacion" class="focr-in" style="width:80px"></label>
+                                    <label class="text-xs">Cód. retención<br><input type="text" wire:model="provForm.codigo_retencion" class="focr-in" style="width:80px"></label>
+                                    <button type="button" wire:click="guardarProveedor" wire:loading.attr="disabled" class="focr-btn b-verde">
+                                        <span wire:loading.remove wire:target="guardarProveedor">💾 Guardar</span><span wire:loading wire:target="guardarProveedor">Guardando…</span>
+                                    </button>
+                                    <button type="button" wire:click="cerrarProveedor" class="focr-btn b-gris">Cancelar</button>
+                                </div>
+                                <datalist id="focr-cuentas-prov">
+                                    @foreach ($nombresCuentas as $c => $n) <option value="{{ $c }}">{{ $n }}</option> @endforeach
+                                </datalist>
+                                <div class="text-xs text-gray-600" style="margin-top:.35rem">
+                                    Se usará en las próximas facturas de este proveedor (las pendientes sin tocar se vuelven a proponer al guardar).
+                                    Contrapartida vacía = la de la ficha de SAGE o la más usada en el mayor; cód. de transacción/retención igual al de la ficha = el de la ficha.
+                                    En SAGE no se cambia nada.
+                                </div>
+                                @error('proveedor') <pre class="focr-avisos" style="white-space:pre-wrap; background:#fef2f2; border-color:#fca5a5; color:#991b1b; margin-top:.4rem">{{ $message }}</pre> @enderror
+                            </div>
+                        @endif
+                        <table class="focr-tabla">
+                            <thead><tr><th>Cuenta</th><th>Proveedor</th><th>CIF</th><th>Contrapartida</th><th>Cód. trans.</th><th>Clave op.</th><th>Cód. ret.</th><th style="text-align:right">Validadas aquí</th><th>Última</th></tr></thead>
+                            <tbody>
+                            @forelse (array_slice($provs, 0, 300, true) as $p)
+                                <tr class="clic" wire:click="abrirProveedor('{{ $p['cuenta'] }}')" wire:key="p-{{ $p['cuenta'] }}" @if ($provSel === $p['cuenta']) style="background:#eef2ff" @endif>
+                                    <td>{{ $p['cuenta'] }}</td>
+                                    <td>{{ $p['nombre'] }} @if ($p['nuevo']) <span class="focr-chip c-revisar">nuevo</span> @endif</td>
+                                    <td>{{ $p['cif'] }}</td>
+                                    <td title="{{ $nombresCuentas[$p['contrapartida']] ?? '' }}{{ $p['contrapartida_sage'] !== '' ? ' · en SAGE: '.$p['contrapartida_sage'] : '' }}">{{ $p['contrapartida'] }} <span class="text-xs text-gray-500">{{ \Illuminate\Support\Str::limit($nombresCuentas[$p['contrapartida']] ?? '', 22) }}</span>@if ($p['contrapartida_aqui']) <b title="Puesto aquí">●</b>@endif</td>
+                                    <td title="{{ $p['transaccion_sage'] !== '' ? 'En SAGE: '.$p['transaccion_sage'] : '' }}">{{ $p['codigo_transaccion'] }}@if ($p['transaccion_aqui']) <b title="Puesto aquí">●</b>@endif</td>
+                                    <td>{{ $p['clave_operacion'] }}</td>
+                                    <td>{{ $p['codigo_retencion'] }}@if ($p['retencion_aqui']) <b title="Puesto aquí">●</b>@endif</td>
+                                    <td style="text-align:right">{{ $p['validadas'] ?: '' }}</td>
+                                    <td class="text-xs">{{ $p['ultima'] }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="9" class="p-4 text-center text-gray-500">Ningún proveedor{{ $filtroProv ? ' con ese filtro' : ' (falta subir el listado de proveedores en Ficheros base)' }}.</td></tr>
+                            @endforelse
+                            @if (count($provs) > 300)
+                                <tr><td colspan="9" class="p-2 text-center text-xs text-gray-500">… y {{ count($provs) - 300 }} más: afina la búsqueda.</td></tr>
+                            @endif
+                            </tbody>
+                        </table>
+                    @elseif ($vista === 'duplicadas')
                         <table class="focr-tabla">
                             <thead><tr><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th style="text-align:right">Total</th><th>Motivo</th><th>Fichero (en Duplicadas)</th><th>Cuándo</th><th></th></tr></thead>
                             <tbody>
