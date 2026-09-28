@@ -112,6 +112,7 @@
                     @if ($hayBase)
                         <button type="button" wire:click="descargar(@js('Base/Base '.$cliente.'.xlsx'))" class="text-blue-700 underline hover:text-blue-900">⬇ Excel con todo lo acumulado</button>
                         <span class="text-gray-400">(Base {{ $cliente }}.xlsx: Maestro, Variables, una pestaña por cuenta y el plan; solo para consultarlo)</span>
+                        <a href="#maestro" class="text-blue-700 underline hover:text-blue-900">Ver el Maestro ↓</a>
                     @endif
                     @if ($recibidos)
                         <details class="w-full">
@@ -243,129 +244,8 @@
             </div>
         @endif
 
-        <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: true }">
-            <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
-                <button type="button" x-on:click="abierto = ! abierto" class="text-sm font-semibold text-gray-700">
-                    <span x-text="abierto ? '▾' : '▸'"></span> Palabras a quitar / genéricas / abreviaturas
-                    <span class="font-normal text-gray-400">(comunes a todos los clientes · Doc_y_Config\Configuracion.xlsx)</span>
-                </button>
-                <span wire:loading.flex wire:target="anadirConfig, anadirAbreviatura, borrarConfig, probarConcepto" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando… (y rehaciendo el Maestro si cambia "Textos a quitar")</span>
-            </div>
-            <div x-show="abierto" class="p-4 space-y-4">
-                <div class="flex flex-wrap items-end gap-2">
-                    <div class="flex-1 min-w-[16rem]">
-                        <label class="block text-xs text-gray-600">Probar un concepto (cópialo del extracto o del mayor)</label>
-                        <input type="text" wire:model="pruebaTexto" wire:keydown.enter="probarConcepto"
-                               placeholder="p.ej. TRANSFERENCIA A EMERALD SKY INVESTMENT S L"
-                               class="w-full py-1 text-sm border-gray-300 rounded-md shadow-sm">
-                    </div>
-                    <x-button.secondary wire:click="probarConcepto">Probar</x-button.secondary>
-                </div>
-                @if ($pruebaResultado)
-                    <div class="p-2 text-xs border rounded bg-gray-50">
-                        <div>Concepto limpio (con el que se compara con el Maestro): <b class="font-mono">{{ $pruebaResultado['limpio'] !== '' ? $pruebaResultado['limpio'] : '(vacío)' }}</b></div>
-                        <div>Palabras que cuentan en la búsqueda por palabras:
-                            <b class="font-mono">{{ $pruebaResultado['palabras'] ? implode(' · ', $pruebaResultado['palabras']) : '(ninguna)' }}</b>
-                        </div>
-                        @if (isset($pruebaResultado['sage']))
-                            <div>Concepto que va a SAGE (máx. 40):
-                                <b class="font-mono px-1 bg-white border rounded">{{ $pruebaResultado['sage'] }}</b>
-                                <span class="text-gray-400">({{ mb_strlen($pruebaResultado['sage']) }} car.)</span>
-                            </div>
-                        @endif
-                    </div>
-                @endif
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    @foreach (['textos' => ['Textos a quitar', 'Se borran del concepto antes de comparar. Además siempre se quitan los números (fechas, nº de tarjeta, nº de factura).', 'p.ej. PAGO'],
-                               'genericas' => ['Palabras genéricas', 'No sirven para reconocer a nadie en la búsqueda por palabras (solo cuentan palabras de 5 letras o más).', 'p.ej. INVESTMENT']] as $clave => [$titulo, $ayuda, $ejemplo])
-                        {{-- clave va en x-data: dentro de <x-button ...> un @js no se compila y rompería el clic --}}
-                        <div x-data="{ texto: '', comentario: '', clave: @js($clave) }">
-                            <h3 class="text-xs font-semibold text-gray-700">{{ $titulo }} <span class="font-normal text-gray-400">({{ count($config[$clave] ?? []) }})</span></h3>
-                            <p class="mb-2 text-xs text-gray-500">{{ $ayuda }}</p>
-                            <div class="flex flex-wrap gap-1 mb-2">
-                                @foreach ($config[$clave] ?? [] as $item)
-                                    <span wire:key="cfg-{{ $clave }}-{{ md5($item['texto']) }}"
-                                          class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded-full"
-                                          @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
-                                        <span class="font-mono">{{ $item['texto'] }}</span>
-                                        <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
-                                                x-on:click="confirm('¿Quitar ' + @js($item['texto']) + ' de {{ $titulo }}?') && $wire.borrarConfig(@js($clave), @js($item['texto']))">&times;</button>
-                                    </span>
-                                @endforeach
-                            </div>
-                            <div class="flex flex-wrap gap-1">
-                                <input type="text" x-model="texto" placeholder="{{ $ejemplo }}"
-                                       x-on:keydown.enter="if (texto.trim()) { $wire.anadirConfig(clave, texto, comentario); texto = ''; comentario = ''; }"
-                                       class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
-                                <input type="text" x-model="comentario" placeholder="comentario (opcional)"
-                                       class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
-                                <x-button.primary
-                                    x-on:click="if (texto.trim()) { $wire.anadirConfig(clave, texto, comentario); texto = ''; comentario = ''; }">
-                                    ＋ Añadir
-                                </x-button.primary>
-                            </div>
-                            @if (($avisoConfig['clave'] ?? '') === $clave)
-                                <div wire:key="aviso-cfg-{{ $clave }}-{{ $avisoConfig['n'] }}"
-                                     x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
-                                     class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
-                                    {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
-                                </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-
-                <div x-data="{ texto: '', abreviatura: '', comentario: '' }" class="pt-3 border-t">
-                    <h3 class="text-xs font-semibold text-gray-700">Abreviaturas para SAGE <span class="font-normal text-gray-400">({{ count($config['abreviaturas'] ?? []) }})</span></h3>
-                    <p class="mb-2 text-xs text-gray-500">
-                        SAGE solo guarda 40 caracteres de concepto. En la columna Concepto de bancos&lt;cuenta&gt;.xlsx se quita el nº de
-                        tarjeta y las formas jurídicas (S.L., SA, SLU…), se aplican estas abreviaturas y, si no cabe, se recorta el
-                        nombre del proveedor (nunca los nº de factura): ELECTRICIDAD ENI PLENITUDE IBERIA S.L. F26ES-01269326 24 →
-                        ELECTRICIDAD ENI PLENI F26ES-01269326 24. No afecta a la búsqueda de contrapartidas.
-                    </p>
-                    <div class="flex flex-wrap gap-1 mb-2">
-                        @foreach ($config['abreviaturas'] ?? [] as $item)
-                            <span wire:key="cfg-abrev-{{ md5($item['texto']) }}"
-                                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded-full"
-                                  @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
-                                <span class="font-mono">{{ $item['texto'] }} → <b>{{ $item['abreviatura'] }}</b></span>
-                                <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
-                                        x-on:click="confirm('¿Quitar la abreviatura de ' + @js($item['texto']) + '?') && $wire.borrarConfig('abreviaturas', @js($item['texto']))">&times;</button>
-                            </span>
-                        @endforeach
-                    </div>
-                    <div class="flex flex-wrap gap-1">
-                        <input type="text" x-model="texto" placeholder="texto, p.ej. ADEUDO RECIBO"
-                               class="w-48 py-1 text-xs border-gray-300 rounded-md shadow-sm">
-                        <input type="text" x-model="abreviatura" placeholder="abreviatura, p.ej. Adeudo Rbo"
-                               x-on:keydown.enter="if (texto.trim() && abreviatura.trim()) { $wire.anadirAbreviatura(texto, abreviatura, comentario); texto = ''; abreviatura = ''; comentario = ''; }"
-                               class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
-                        <input type="text" x-model="comentario" placeholder="comentario (opcional)"
-                               class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
-                        <x-button.primary
-                            x-on:click="if (texto.trim() && abreviatura.trim()) { $wire.anadirAbreviatura(texto, abreviatura, comentario); texto = ''; abreviatura = ''; comentario = ''; }">
-                            ＋ Añadir
-                        </x-button.primary>
-                    </div>
-                    @if (($avisoConfig['clave'] ?? '') === 'abreviaturas')
-                        <div wire:key="aviso-cfg-abreviaturas-{{ $avisoConfig['n'] }}"
-                             x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
-                             class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
-                            {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
-                        </div>
-                    @endif
-                </div>
-
-                <p class="text-xs text-gray-400">
-                    Los cambios valen para la siguiente conciliación. Al cambiar "Textos a quitar" se rehace en el momento
-                    el Maestro de todos los clientes con base (lo manual de Variables no se toca).
-                </p>
-            </div>
-        </div>
-
         @if ($hayBase)
-            <div class="overflow-hidden bg-white border rounded-lg shadow"
+            <div id="maestro" class="overflow-hidden bg-white border rounded-lg shadow"
                  x-data="{
                      abierto: true, q: '', filtro: 'todos',
                      ver(texto, origen, pendiente, dudoso) {
@@ -489,6 +369,127 @@
                 </div>
             </div>
         @endif
+
+        <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: true }">
+            <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
+                <button type="button" x-on:click="abierto = ! abierto" class="text-sm font-semibold text-gray-700">
+                    <span x-text="abierto ? '▾' : '▸'"></span> Palabras a quitar / genéricas / abreviaturas
+                    <span class="font-normal text-gray-400">(comunes a todos los clientes · Doc_y_Config\Configuracion.xlsx)</span>
+                </button>
+                <span wire:loading.flex wire:target="anadirConfig, anadirAbreviatura, borrarConfig, probarConcepto" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando… (y rehaciendo el Maestro si cambia "Textos a quitar")</span>
+            </div>
+            <div x-show="abierto" class="p-4 space-y-4">
+                <div class="flex flex-wrap items-end gap-2">
+                    <div class="flex-1 min-w-[16rem]">
+                        <label class="block text-xs text-gray-600">Probar un concepto (cópialo del extracto o del mayor)</label>
+                        <input type="text" wire:model="pruebaTexto" wire:keydown.enter="probarConcepto"
+                               placeholder="p.ej. TRANSFERENCIA A EMERALD SKY INVESTMENT S L"
+                               class="w-full py-1 text-sm border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <x-button.secondary wire:click="probarConcepto">Probar</x-button.secondary>
+                </div>
+                @if ($pruebaResultado)
+                    <div class="p-2 text-xs border rounded bg-gray-50">
+                        <div>Concepto limpio (con el que se compara con el Maestro): <b class="font-mono">{{ $pruebaResultado['limpio'] !== '' ? $pruebaResultado['limpio'] : '(vacío)' }}</b></div>
+                        <div>Palabras que cuentan en la búsqueda por palabras:
+                            <b class="font-mono">{{ $pruebaResultado['palabras'] ? implode(' · ', $pruebaResultado['palabras']) : '(ninguna)' }}</b>
+                        </div>
+                        @if (isset($pruebaResultado['sage']))
+                            <div>Concepto que va a SAGE (máx. 40):
+                                <b class="font-mono px-1 bg-white border rounded">{{ $pruebaResultado['sage'] }}</b>
+                                <span class="text-gray-400">({{ mb_strlen($pruebaResultado['sage']) }} car.)</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    @foreach (['textos' => ['Textos a quitar', 'Se borran del concepto antes de comparar. Además siempre se quitan los números (fechas, nº de tarjeta, nº de factura).', 'p.ej. PAGO'],
+                               'genericas' => ['Palabras genéricas', 'No sirven para reconocer a nadie en la búsqueda por palabras (solo cuentan palabras de 5 letras o más).', 'p.ej. INVESTMENT']] as $clave => [$titulo, $ayuda, $ejemplo])
+                        {{-- clave va en x-data: dentro de <x-button ...> un @js no se compila y rompería el clic --}}
+                        <div x-data="{ texto: '', comentario: '', clave: @js($clave) }">
+                            <h3 class="text-xs font-semibold text-gray-700">{{ $titulo }} <span class="font-normal text-gray-400">({{ count($config[$clave] ?? []) }})</span></h3>
+                            <p class="mb-2 text-xs text-gray-500">{{ $ayuda }}</p>
+                            <div class="flex flex-wrap gap-1 mb-2">
+                                @foreach ($config[$clave] ?? [] as $item)
+                                    <span wire:key="cfg-{{ $clave }}-{{ md5($item['texto']) }}"
+                                          class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded-full"
+                                          @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
+                                        <span class="font-mono">{{ $item['texto'] }}</span>
+                                        <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
+                                                x-on:click="confirm('¿Quitar ' + @js($item['texto']) + ' de {{ $titulo }}?') && $wire.borrarConfig(@js($clave), @js($item['texto']))">&times;</button>
+                                    </span>
+                                @endforeach
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                <input type="text" x-model="texto" placeholder="{{ $ejemplo }}"
+                                       x-on:keydown.enter="if (texto.trim()) { $wire.anadirConfig(clave, texto, comentario); texto = ''; comentario = ''; }"
+                                       class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                                <input type="text" x-model="comentario" placeholder="comentario (opcional)"
+                                       class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                                <x-button.primary
+                                    x-on:click="if (texto.trim()) { $wire.anadirConfig(clave, texto, comentario); texto = ''; comentario = ''; }">
+                                    ＋ Añadir
+                                </x-button.primary>
+                            </div>
+                            @if (($avisoConfig['clave'] ?? '') === $clave)
+                                <div wire:key="aviso-cfg-{{ $clave }}-{{ $avisoConfig['n'] }}"
+                                     x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
+                                     class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
+                                    {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+
+                <div x-data="{ texto: '', abreviatura: '', comentario: '' }" class="pt-3 border-t">
+                    <h3 class="text-xs font-semibold text-gray-700">Abreviaturas para SAGE <span class="font-normal text-gray-400">({{ count($config['abreviaturas'] ?? []) }})</span></h3>
+                    <p class="mb-2 text-xs text-gray-500">
+                        SAGE solo guarda 40 caracteres de concepto. En la columna Concepto de bancos&lt;cuenta&gt;.xlsx se quita el nº de
+                        tarjeta y las formas jurídicas (S.L., SA, SLU…), se aplican estas abreviaturas y, si no cabe, se recorta el
+                        nombre del proveedor (nunca los nº de factura): ELECTRICIDAD ENI PLENITUDE IBERIA S.L. F26ES-01269326 24 →
+                        ELECTRICIDAD ENI PLENI F26ES-01269326 24. No afecta a la búsqueda de contrapartidas.
+                    </p>
+                    <div class="flex flex-wrap gap-1 mb-2">
+                        @foreach ($config['abreviaturas'] ?? [] as $item)
+                            <span wire:key="cfg-abrev-{{ md5($item['texto']) }}"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded-full"
+                                  @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
+                                <span class="font-mono">{{ $item['texto'] }} → <b>{{ $item['abreviatura'] }}</b></span>
+                                <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
+                                        x-on:click="confirm('¿Quitar la abreviatura de ' + @js($item['texto']) + '?') && $wire.borrarConfig('abreviaturas', @js($item['texto']))">&times;</button>
+                            </span>
+                        @endforeach
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                        <input type="text" x-model="texto" placeholder="texto, p.ej. ADEUDO RECIBO"
+                               class="w-48 py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                        <input type="text" x-model="abreviatura" placeholder="abreviatura, p.ej. Adeudo Rbo"
+                               x-on:keydown.enter="if (texto.trim() && abreviatura.trim()) { $wire.anadirAbreviatura(texto, abreviatura, comentario); texto = ''; abreviatura = ''; comentario = ''; }"
+                               class="w-40 py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                        <input type="text" x-model="comentario" placeholder="comentario (opcional)"
+                               class="flex-1 min-w-[8rem] py-1 text-xs border-gray-300 rounded-md shadow-sm">
+                        <x-button.primary
+                            x-on:click="if (texto.trim() && abreviatura.trim()) { $wire.anadirAbreviatura(texto, abreviatura, comentario); texto = ''; abreviatura = ''; comentario = ''; }">
+                            ＋ Añadir
+                        </x-button.primary>
+                    </div>
+                    @if (($avisoConfig['clave'] ?? '') === 'abreviaturas')
+                        <div wire:key="aviso-cfg-abreviaturas-{{ $avisoConfig['n'] }}"
+                             x-data="{ ver: true }" x-init="setTimeout(() => ver = false, 6000)" x-show="ver" x-transition
+                             class="mt-2 px-3 py-2 text-sm font-medium rounded-md border {{ $avisoConfig['ok'] ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800' }}">
+                            {{ $avisoConfig['ok'] ? '✅' : '⚠️' }} {{ $avisoConfig['texto'] }}
+                        </div>
+                    @endif
+                </div>
+
+                <p class="text-xs text-gray-400">
+                    Los cambios valen para la siguiente conciliación. Al cambiar "Textos a quitar" se rehace en el momento
+                    el Maestro de todos los clientes con base (lo manual de Variables no se toca).
+                </p>
+            </div>
+        </div>
 
         <div class="overflow-hidden bg-white border rounded-lg shadow" x-data="{ abierto: false }">
             <button type="button" x-on:click="abierto = ! abierto" class="flex items-center w-full gap-2 p-4 text-left bg-gray-50">
