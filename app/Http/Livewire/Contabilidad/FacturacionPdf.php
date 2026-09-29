@@ -104,7 +104,7 @@ class FacturacionPdf extends Component
      */
     public string $genericoCliente = '';
 
-    /** Tabla editable: una fila por página [pagina, numero, proveedor, tipo Fra|Abo|Pre, giro 0|90|180|270]. */
+    /** Tabla editable: una fila por página [pagina, numero, proveedor, tipo Fra|Abo|Pre|Prof, giro 0|90|180|270]. */
     public array $genericoPaginas = [];
 
     /**
@@ -478,7 +478,7 @@ class FacturacionPdf extends Component
             'pagina' => (int) ($f['pagina'] ?? 0),
             'numero' => trim((string) ($f['numero'] ?? '')),
             'proveedor' => trim((string) ($f['proveedor'] ?? '')),
-            'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre'], true) ? $f['tipo'] : 'Fra',
+            'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre', 'Prof'], true) ? $f['tipo'] : 'Fra',
             'giro' => ((int) ($f['giro'] ?? 0)) % 360,
             'archivo' => (string) ($f['archivo'] ?? ''),
         ], $this->genericoPaginas);

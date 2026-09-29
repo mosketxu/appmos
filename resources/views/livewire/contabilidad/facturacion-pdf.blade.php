@@ -487,6 +487,7 @@
                                             <option value="Fra">Fra</option>
                                             <option value="Abo">Abo</option>
                                             <option value="Pre">Pre</option>
+                                            <option value="Prof">Proforma</option>
                                         </select>
                                     </td>
                                     <td class="px-1 py-1">
