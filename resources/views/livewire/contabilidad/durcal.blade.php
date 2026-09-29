@@ -33,10 +33,12 @@
         Activa sueldos + SS.EMPRESA de los empleados marcados "ACTIVAR" en
         <code class="px-1 bg-gray-100 rounded">Datos\personal.xlsx</code> repartidos por proyecto, rellena la
         tabla de resultado en el propio fichero de nómina, y da de alta las filas de amortización a 36 meses en
-        <code class="px-1 bg-gray-100 rounded">Amortizacion Alpify 2026.xlsx</code>. Escribe siempre sobre los
+        <code class="px-1 bg-gray-100 rounded">Amortizacion Alpify 2026.xlsm</code>. Escribe siempre sobre los
         ficheros reales de
         <code class="px-1 bg-gray-100 rounded">OneDrive\_Clientes\2026\Durcal 2026\Laboral</code> —
         sube abajo el fichero de nómina del mes elegido solo para confirmar que es el correcto antes de ejecutar.
+        El Amortizacion tiene que estar <b>cerrado</b>: se escribe con el propio Excel para no perder la escala de
+        tiempo, las tablas dinámicas ni la macro.
     </p>
 
     <div class="overflow-hidden bg-white border rounded-lg shadow">
@@ -60,7 +62,7 @@
                 wire:loading.attr="disabled"
                 wire:target="ejecutar, archivo"
                 :disabled="$this->archivoCoincide !== true"
-                onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsx reales. ¿Seguro?')"
+                onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsm reales. ¿Seguro?')"
             >
                 <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar</span>
                 <span wire:loading wire:target="ejecutar">⏳ Ejecutando…</span>

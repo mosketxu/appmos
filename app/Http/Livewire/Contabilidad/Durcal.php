@@ -14,7 +14,7 @@ use Livewire\WithFileUploads;
  *   1. Rellena el bloque de resultado en el propio .XLS de nómina del mes
  *      (en la carpeta de OneDrive de Durcal 2026).
  *   2. Da de alta una fila por empleado+proyecto en "Amortizacion Alpify
- *      2026.xlsx" para amortizar en 36 meses.
+ *      2026.xlsm" para amortizar en 36 meses.
  * Ver PROCESO_GENERAL.md en Contabilidad/Durcal para el detalle.
  *
  * El script sigue escribiendo siempre sobre la ruta fija de OneDrive (la
