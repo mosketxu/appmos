@@ -380,10 +380,36 @@
                         contrapartidas (manda la más usada el último año; distinta del listado en {{ $base['difieren'] ?? 0 }} proveedores),
                         reconocer el formato del nº de factura y avisar de facturas ya contabilizadas. El <b>plan de cuentas</b>
                         (…Plan….xlsx, exportado de SAGE con "Código cuenta" y "Descripción") llena el combo de contrapartida con todas las cuentas.</p>
-                    @if ($base)
-                        <p class="mt-1">En uso: {{ implode(', ', $base['origen']) }}</p>
-                    @endif
-                    <input type="file" wire:model="subidas" multiple accept=".xlsx" class="mt-2 text-xs">
+                    <table class="mt-2 focr-tabla" style="font-size:.78rem">
+                        @foreach ([
+                            'prov' => ['Listado de proveedores', 'subidaProv', 'Se suman todos los listados; si un proveedor está en varios, manda el más reciente. Lo puesto a mano aquí (●, proveedores nuevos) no se toca.'],
+                            'mayor' => ['Mayor', 'subidaMayor', 'Se suman todos los mayores: uno de los últimos meses completa al de años anteriores (un asiento que esté en los dos se toma del más reciente).'],
+                            'plan' => ['Plan de cuentas', 'subidaPlan', 'Vale el más reciente.'],
+                        ] as $tipo => [$titulo, $prop, $ayuda])
+                            <tr>
+                                <td style="width:11rem; vertical-align:top"><b>{{ $titulo }}</b></td>
+                                <td style="vertical-align:top">
+                                    @forelse ($ficherosBase[$tipo] ?? [] as $k => $fb)
+                                        <div class="{{ $k && $tipo === 'plan' ? 'text-gray-400' : '' }}">
+                                            📄 {{ $fb['nombre'] }} <span class="text-gray-500">· {{ $fb['fecha'] }} · {{ $fb['mb'] }} MB</span>
+                                            <button type="button" wire:click="quitarBase(@js($fb['nombre']))" wire:confirm="¿Quitar {{ $fb['nombre'] }}? Se rehacen los datos de proveedores sin él."
+                                                    class="text-gray-400 hover:text-red-600" title="Quitar este fichero">✕</button>
+                                        </div>
+                                    @empty
+                                        <span class="text-gray-400">(ninguno)</span>
+                                    @endforelse
+                                    <div class="text-gray-500" style="font-size:.7rem">{{ $ayuda }}</div>
+                                </td>
+                                <td style="width:15rem; vertical-align:top">
+                                    <label class="focr-btn b-gris" style="padding:.2rem .6rem; font-size:.75rem; cursor:pointer">
+                                        <span wire:loading.remove wire:target="{{ $prop }}">📂 Elegir uno nuevo…</span>
+                                        <span wire:loading wire:target="{{ $prop }}">Subiendo y rehaciendo…</span>
+                                        <input type="file" wire:model="{{ $prop }}" accept=".xlsx" style="display:none">
+                                    </label>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </table>
                 </div>
             </details>
 

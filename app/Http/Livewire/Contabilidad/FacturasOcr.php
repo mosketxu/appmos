@@ -55,7 +55,10 @@ class FacturasOcr extends Component
     protected bool $sucio = false;
 
     /** Ficheros base subidos (listado de proveedores / mayor). */
-    public array $subidas = [];
+    /** Un fichero nuevo por tipo de fichero base (ver TIPOS_BASE) */
+    public $subidaProv = null;
+    public $subidaMayor = null;
+    public $subidaPlan = null;
 
     public function mount(): void
     {
@@ -1272,29 +1275,87 @@ class FacturasOcr extends Component
     // ------------------------------------------------------------ ficheros
 
     /** Listado de proveedores o mayor de SAGE: se guardan en <Cliente>/Base y se rehace proveedores.json. */
-    public function updatedSubidas(): void
+    /** Ficheros base: [patrón en el nombre, prefijo si no lo lleva, se suman todos (true) o vale el último]. Igual que en facturas_base.py. */
+    public const TIPOS_BASE = [
+        'prov' => ['/lisProveedores/i', 'lisProveedores_', true],
+        'mayor' => ['/^Mayor/i', 'Mayor_', true],
+        'plan' => ['/plan/i', 'Plan_', false],
+    ];
+
+    public function updatedSubidaProv(): void { $this->subirBase('prov', 'subidaProv'); }
+    public function updatedSubidaMayor(): void { $this->subirBase('mayor', 'subidaMayor'); }
+    public function updatedSubidaPlan(): void { $this->subirBase('plan', 'subidaPlan'); }
+
+    /** Guarda en Base/ el fichero elegido (con el prefijo de su tipo si no lo lleva) y rehace proveedores.json. */
+    protected function subirBase(string $tipo, string $prop): void
     {
-        if (! $this->clienteValido()) {
+        $f = $this->{$prop};
+        $this->{$prop} = null;
+        if (! $f || ! $this->clienteValido()) {
             return;
         }
-        $this->salida = '';
+        $nombre = basename($f->getClientOriginalName());
+        if (! preg_match('/\.xlsx$/i', $nombre)) {
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$nombre}: tiene que ser un Excel (.xlsx) exportado de SAGE.");
+            return;
+        }
+        [$patron, $prefijo] = self::TIPOS_BASE[$tipo];
+        if (! preg_match($patron, $nombre)) {
+            $nombre = $prefijo.$nombre;
+        }
         $dir = $this->dirDatos().'/Base';
         @mkdir($dir, 0775, true);
-        foreach ($this->subidas as $f) {
-            $nombre = $f->getClientOriginalName();
-            if (! preg_match('/lisProveedores|^Mayor|plan/i', $nombre) || ! preg_match('/\.xlsx$/i', $nombre)) {
-                $this->salida .= "⚠️ {$nombre}: no es el listado de proveedores (…lisProveedores….xlsx), un mayor (Mayor….xlsx) ni el plan de cuentas (…Plan….xlsx).\n";
-                continue;
-            }
-            copy($f->getRealPath(), $dir.'/'.$nombre);
-            $this->salida .= "Guardado Base/{$nombre}.\n";
+        if (! @copy($f->getRealPath(), $dir.'/'.$nombre)) {
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ No se pudo guardar {$nombre} (¿está abierto en Excel?).");
+            return;
         }
-        $this->subidas = [];
+        $this->rehacerBase("Guardado Base/{$nombre}.");
+    }
+
+    /** Quita un fichero base (p.ej. uno subido por error) y rehace proveedores.json sin él. */
+    public function quitarBase(string $nombre): void
+    {
+        $ruta = $this->dirDatos().'/Base/'.basename($nombre);
+        if (! $this->clienteValido() || ! is_file($ruta) || ! preg_match('/\.xlsx$/i', $ruta)) {
+            return;
+        }
+        @unlink($ruta);
+        $this->rehacerBase("Quitado Base/{$nombre}.");
+    }
+
+    protected function rehacerBase(string $hecho): void
+    {
         $this->dispatch('focr-listas');   // que los combos vuelvan a pedir las listas
+        $texto = $hecho;
         if (config('contabilidad.ejecucion_local')) {
             $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente, '--forzar']);
-            $this->salida .= trim($r->output()."\n".$r->errorOutput())."\n";
+            $texto .= "\n".trim($r->output()."\n".$r->errorOutput());
         }
+        $this->salida = $texto;
+        $this->dispatch('proceso-terminado', mensaje: '✅ '.$texto);
+    }
+
+    /** Ficheros base que hay, por tipo, del más reciente al más antiguo: [nombre, fecha, tamaño]. */
+    protected function ficherosBase(): array
+    {
+        $out = array_fill_keys(array_keys(self::TIPOS_BASE), []);
+        foreach (glob($this->dirDatos().'/Base/*.xlsx') ?: [] as $f) {
+            $n = basename($f);
+            if (str_starts_with($n, '~$')) {
+                continue;
+            }
+            foreach (self::TIPOS_BASE as $tipo => [$patron]) {
+                if (preg_match($patron, $n)) {
+                    $out[$tipo][] = ['nombre' => $n, 'fecha' => date('d/m/Y H:i', filemtime($f)), 't' => filemtime($f),
+                        'mb' => round(filesize($f) / 1048576, 1)];
+                    break;
+                }
+            }
+        }
+        foreach ($out as &$l) {
+            usort($l, fn ($a, $b) => $b['t'] <=> $a['t']);
+        }
+        return $out;
     }
 
     public function descargar(string $relativa)
@@ -1413,6 +1474,7 @@ class FacturasOcr extends Component
             'ultimoExcel' => $estado['ultimo_excel'] ?? null,
             'quitables' => count(array_filter($todas, fn ($f) => empty($f['oculta']) && in_array($f['estado'], ['rechazada', 'ilegible', 'duplicada'], true))),
             'base' => $valido ? $this->base() : [],
+            'ficherosBase' => $valido ? $this->ficherosBase() : [],
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
             'duplicados' => $this->sel ? $this->duplicados() : [],
