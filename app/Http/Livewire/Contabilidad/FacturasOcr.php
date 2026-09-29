@@ -1342,6 +1342,21 @@ class FacturasOcr extends Component
         $this->dispatch('proceso-terminado', mensaje: '✅ '.$texto);
     }
 
+    /** Botón ↻ de Por revisar: vuelve a proponer todas las pendientes (también las empezadas, conservando lo tocado a mano). */
+    public function revisarTodas(): void
+    {
+        if (! $this->clienteValido()) {
+            return;
+        }
+        $this->salida = '';
+        if ($this->ejecutar(array_merge(['reproponer'], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0', '--editadas']), 600, 'Revisar todas', false)) {
+            $this->dispatch('proceso-terminado', mensaje: '✅ '.trim($this->salida));
+        }
+        if ($this->sel) {
+            $this->abrir($this->sel);
+        }
+    }
+
     /** Ficheros base que hay, por tipo, del más reciente al más antiguo: [nombre, fecha, tamaño]. */
     protected function ficherosBase(): array
     {

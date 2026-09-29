@@ -513,10 +513,18 @@
                             </tbody>
                         </table>
                     @elseif ($vista === 'revisar')
-                        @if ($quitables)
+                        @if ($cola)
                             <div class="flex items-center gap-2 p-2 border-b border-gray-200 text-xs text-gray-500">
-                                <span class="ml-auto">Rechazadas, no legibles y duplicadas ya vistas:</span>
-                                <button type="button" wire:click="quitarDeLista" wire:confirm="¿Quitar de la lista todas las rechazadas, no legibles y duplicadas ({{ $quitables }})? No se borra ningún PDF." class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.75rem">✕ Quitarlas de la lista ({{ $quitables }})</button>
+                                <button type="button" wire:click="revisarTodas" wire:loading.attr="disabled"
+                                        wire:confirm="Volver a proponer todas las facturas por revisar con los ficheros base y las reglas de ahora? En las empezadas se conserva lo que has cambiado a mano."
+                                        class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.8rem" title="Volver a proponer todas las pendientes (también las empezadas: lo tocado a mano se conserva)">
+                                    <span wire:loading.remove wire:target="revisarTodas">↻ Revisar todas</span>
+                                    <span wire:loading wire:target="revisarTodas">↻ Revisando…</span>
+                                </button>
+                                @if ($quitables)
+                                    <span class="ml-auto">Rechazadas, no legibles y duplicadas ya vistas:</span>
+                                    <button type="button" wire:click="quitarDeLista" wire:confirm="¿Quitar de la lista todas las rechazadas, no legibles y duplicadas ({{ $quitables }})? No se borra ningún PDF." class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.75rem">✕ Quitarlas de la lista ({{ $quitables }})</button>
+                                @endif
                             </div>
                         @endif
                         <table class="focr-tabla">
