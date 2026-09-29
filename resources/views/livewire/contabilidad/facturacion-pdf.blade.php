@@ -20,14 +20,25 @@
 
     <div class="p-4 space-y-6">
 
-    <h1 class="text-2xl font-semibold text-gray-900">Facturación PDF</h1>
+    {{-- 2026-09-29: un proceso cada vez, elegido con los botones junto al título --}}
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <h1 class="text-2xl font-semibold text-gray-900">Facturación PDF</h1>
+        <div class="inline-flex overflow-hidden border border-indigo-600 rounded-md">
+            @foreach (['Suma' => 'Suma', 'Balerga' => 'Balerga', 'Generico' => 'Genérico'] as $clave => $texto)
+                <button type="button" wire:click="$set('proceso', '{{ $clave }}')"
+                        style="{{ $proceso === $clave ? 'background:#4f46e5; color:#fff' : 'background:#fff; color:#4338ca' }}"
+                        class="px-4 py-1.5 text-sm font-semibold {{ $loop->first ? '' : 'border-l border-indigo-600' }}">{{ $texto }}</button>
+            @endforeach
+        </div>
+    </div>
     <p class="text-sm text-gray-500">
-        Suma y Balerga son procesos independientes. <strong>Genérico</strong>: PDF con facturas de cualquier
-        proveedor (también escaneado o fotografiado), sin correo.
-        Suma y Balerga: Dos fases separadas: primero
-        <strong>Separar PDFs</strong> (parte el PDF-listado en facturas individuales, no toca el correo
-        en absoluto), y luego, ya con el resultado a la vista, <strong>Enviar correos</strong> (acción
-        aparte, con confirmación).
+        @if ($proceso === 'Generico')
+            Facturas de cualquier proveedor: uno o muchos ficheros (PDF o fotos), también escaneados.
+            Parte los PDF que traen varias facturas, gira las páginas torcidas y pone delante proveedor y número. Sin correo.
+        @else
+            Dos fases separadas: primero <strong>Separar PDFs</strong> (parte el PDF-listado en facturas individuales,
+            no toca el correo), y luego, ya con el resultado a la vista, <strong>Enviar correos</strong> (con confirmación).
+        @endif
     </p>
 
     {{-- Tarjeta "ancha" (2026-09-29): ocupa toda la fila, con lo suyo a la izquierda y a la derecha
@@ -47,12 +58,13 @@
         .visor { container-type:size; display:flex; align-items:center; justify-content:center; background:#f3f4f6; border-radius:.5rem; overflow:hidden; }
     </style>
 
-    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    <div>
         @foreach ($this->clientes as $id => $c)
+            @continue($proceso !== $id)
             @php($e = $estado[$id] ?? ['fase' => 'vacio', 'nombreOriginal' => null])
             @php($d = $destinatarios[$id] ?? null)
             @php($suSalida = $salidaCliente[$id] ?? '')
-            <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow {{ $suSalida !== '' ? 'tarjeta-ancha' : '' }}">
+            <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow tarjeta-ancha">
             <div class="fila-tarjeta">
             <div class="col-izq">
                 <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
@@ -195,7 +207,11 @@
                     @endif
                 </div>
             </div>{{-- /col-izq --}}
-            @if ($suSalida !== '')
+            @if ($suSalida === '')
+                <div class="col-der">
+                    <div class="p-4 text-sm text-gray-400 border border-dashed rounded-lg">Aquí saldrá el resultado de cada fase de {{ $c['label'] }}.</div>
+                </div>
+            @else
                 @php($est = \App\Support\EstadoSalida::de($suSalida))
                 <div class="col-der">
                     <div class="p-4 bg-gray-900 rounded-lg shadow" style="border-left:6px solid {{ $est['color'] }}">
@@ -210,15 +226,16 @@
 
         {{-- Genérico: facturas de cualquier proveedor (separar_generico.py), sin correo --}}
         @php($g = $generico)
+        @if ($proceso === 'Generico')
         @php($genAncha = $this->genericoPermitido && $g['fase'] !== 'vacio')
-        <div wire:key="cliente-Generico" class="p-4 bg-white border rounded-lg shadow {{ $genAncha ? 'tarjeta-ancha' : '' }}"
+        <div wire:key="cliente-Generico" class="p-4 bg-white border rounded-lg shadow tarjeta-ancha"
              x-data="{ sel: 0 }" style="--izq:40rem">
         <div class="fila-tarjeta">
         <div class="col-izq">
             <h2 class="text-lg font-semibold text-gray-900">Genérico</h2>
             <p class="mt-1 mb-3 text-xs text-gray-500">
-                PDF con varias facturas de cualquier proveedor (también escaneado o foto: se lee con OCR).
-                Un PDF por factura con proveedor y número. Sin correo.
+                Uno o muchos ficheros (PDF o fotos jpg/png…; también escaneados: se leen con OCR).
+                Sale un PDF por factura, con proveedor y número en el nombre.
             </p>
 
             @if (! $this->genericoPermitido)
@@ -234,19 +251,59 @@
                 </datalist>
                 <p class="mb-3 text-xs text-gray-500">Nunca se propone como proveedor, aunque el OCR lea mal su nombre.</p>
 
-                <label class="block mb-2 text-xs font-medium text-gray-600">PDF con las facturas</label>
-                <x-contabilidad.soltar-fichero model="archivoGenerico" accept="application/pdf,.pdf" :fichero="$archivoGenerico"
-                    texto="Arrastra aquí el PDF o haz clic para elegirlo" />
-                @error('archivoGenerico')
+                <label class="block mb-2 text-xs font-medium text-gray-600">Facturas (PDF o imágenes; uno o muchos)</label>
+                {{-- Se suben de uno en uno (sin tope de tamaño total); cada uno se guarda al momento en el lote --}}
+                <div x-data="{ encima: false, cola: [], subiendo: false,
+                               subir(files) {
+                                   this.cola.push(...Array.from(files).filter(f => /\.(pdf|jpe?g|jfif|png|tiff?|bmp|gif|webp)$/i.test(f.name)));
+                                   if (! this.subiendo) this.siguiente();
+                               },
+                               siguiente() {
+                                   const f = this.cola.shift();
+                                   if (! f) { this.subiendo = false; return; }
+                                   this.subiendo = true;
+                                   this.$wire.upload('nuevoArchivoGenerico', f, () => this.siguiente(), () => this.siguiente());
+                               } }"
+                     x-on:dragover.prevent="encima = true"
+                     x-on:dragleave.prevent="encima = false"
+                     x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)">
+                    <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
+                           class="flex items-center gap-2 px-3 py-3 text-sm border-2 border-dashed rounded-md cursor-pointer">
+                        <input type="file" multiple accept="application/pdf,.pdf,image/*" class="hidden"
+                               x-on:change="subir($event.target.files); $event.target.value = ''">
+                        <span>📄</span>
+                        <span class="text-gray-700">Arrastra aquí los ficheros o haz clic para elegirlos</span>
+                    </label>
+                    <label class="inline-block mt-1 text-xs text-indigo-700 cursor-pointer hover:underline">
+                        <input type="file" webkitdirectory multiple class="hidden"
+                               x-on:change="subir($event.target.files); $event.target.value = ''">
+                        📁 o elegir una carpeta entera
+                    </label>
+                    <div x-show="subiendo" x-cloak class="mt-1 text-xs text-gray-500">
+                        ⏳ Subiendo… <span x-text="cola.length ? '(quedan ' + cola.length + ')' : ''"></span>
+                    </div>
+                </div>
+                @error('nuevoArchivoGenerico')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
-                <div wire:loading wire:target="archivoGenerico" class="mt-1 text-xs text-gray-400">Subiendo…</div>
+
+                @if ($archivosGenerico)
+                    <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
+                        @foreach ($archivosGenerico as $i => $a)
+                            <div wire:key="gen-arch-{{ $i }}-{{ md5($a['ruta']) }}" class="flex items-center justify-between gap-2 px-2 py-1 text-xs border-b last:border-b-0">
+                                <span class="text-gray-700 break-all">{{ $a['nombre'] }}</span>
+                                <button type="button" wire:click="quitarArchivoGenerico({{ $i }})" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">{{ count($archivosGenerico) }} fichero(s)</p>
+                @endif
 
                 <div class="mt-3">
                     <x-button.primary
                         wire:click="analizarGenerico"
                         wire:loading.attr="disabled"
-                        wire:target="analizarGenerico, archivoGenerico"
+                        wire:target="analizarGenerico, nuevoArchivoGenerico"
                     >
                         <span wire:loading.remove wire:target="analizarGenerico">Fase 1 · Analizar</span>
                         <span wire:loading wire:target="analizarGenerico">⏳ Leyendo (OCR)…</span>
@@ -292,6 +349,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @foreach ($genericoPaginas as $i => $f)
+                                @if (count($archivosGenerico) > 1 && ($f['archivo'] ?? '') !== ($genericoPaginas[$i - 1]['archivo'] ?? null))
+                                    <tr wire:key="gen-arch-cab-{{ $i }}"><td colspan="6" class="px-1 pt-2 pb-1 text-xs font-semibold text-gray-600 bg-gray-50">📄 {{ $f['archivo'] ?? '' }}</td></tr>
+                                @endif
                                 <tr wire:key="gen-pag-{{ $i }}" x-on:click="sel = {{ $i }}" x-on:focusin="sel = {{ $i }}"
                                     :style="sel === {{ $i }} ? 'background:#e0e7ff' : ''" style="cursor:pointer">
                                     <td class="px-1 py-1 text-gray-500">{{ $f['pagina'] }}</td>
@@ -335,6 +395,10 @@
                     </table>
                 </div>
 
+                <label class="flex items-center gap-2 mb-2 text-xs text-gray-700">
+                    <input type="checkbox" wire:model="genericoNombreOriginal" class="border-gray-300 rounded">
+                    Poner el nombre original detrás (<span class="font-mono">Fra Proveedor 123 - nombre original.pdf</span>)
+                </label>
                 <div class="flex flex-wrap gap-2">
                     <x-button.primary
                         wire:click="generarGenerico"
@@ -374,6 +438,7 @@
         @endif
         </div>{{-- /fila-tarjeta --}}
         </div>
+        @endif
     </div>
 
 

@@ -24,11 +24,23 @@
     .hojas a.activa { margin-bottom:-1px; padding-bottom:7px; background:#f9fafb; color:#047857; font-weight:700;
                       border-color:#9ca3af; box-shadow:inset 0 3px 0 #059669; }
 </style>
+<script>
+    function avisoOtraPestana(texto) {
+        var d = document.createElement('div');
+        d.textContent = '🌐 ' + texto + ' se usa desde la web: te lo abro en otra pestaña.';
+        d.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:100;background:#312e81;color:#fff;'
+            + 'padding:.75rem 1.25rem;border-radius:.5rem;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3)';
+        document.body.appendChild(d);
+        setTimeout(function () { d.remove(); }, 5000);
+    }
+</script>
 <nav class="hojas">
     @foreach ($pestanas as [$permiso, $ruta, $texto, $url])
         @can($permiso)
+            {{-- Las que se usan desde la web (Bancos, IS) se abren en otra pestaña, con aviso (pedido 2026-09-29) --}}
             <a href="{{ $url ?: route($ruta) }}"
-               class="{{ (($activa ?? null) === $ruta || request()->routeIs($ruta)) ? 'activa' : '' }}">{{ $texto }}</a>
+               @if ($url) target="_blank" rel="noopener" onclick="avisoOtraPestana('{{ $texto }}')" @endif
+               class="{{ (($activa ?? null) === $ruta || request()->routeIs($ruta)) ? 'activa' : '' }}">{{ $texto }}{{ $url ? ' ↗' : '' }}</a>
         @endcan
     @endforeach
 </nav>

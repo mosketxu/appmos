@@ -73,8 +73,25 @@ class FacturacionPdf extends Component
      * config/contabilidad.php 'generico_*'). Fases: 'vacio' -> 'analizado'
      * (tabla editable página -> número/proveedor) -> 'generado' (.zip
      * descargable).
+     *
+     * 2026-09-29: admite VARIOS ficheros (PDF o imágenes, que se pasan a PDF):
+     * sirve tanto para partir un PDF con muchas facturas como para renombrar
+     * un montón de facturas sueltas (proveedor + número delante del nombre
+     * original). El navegador los sube de uno en uno a $nuevoArchivoGenerico
+     * (así no hay tope de tamaño total por petición) y cada uno se guarda al
+     * momento en $archivosGenerico.
      */
-    public $archivoGenerico = null;
+    public $nuevoArchivoGenerico = null;
+
+    /** Ficheros ya subidos del lote: [['nombre' => original, 'ruta' => absoluta], ...]. */
+    #[Locked]
+    public array $archivosGenerico = [];
+
+    /** Poner el nombre del archivo original detrás del nuevo nombre (por defecto sí con varios ficheros). */
+    public bool $genericoNombreOriginal = false;
+
+    /** Proceso que se ve en pantalla: 'Suma' | 'Balerga' | 'Generico' (botones junto al título). */
+    public string $proceso = 'Suma';
 
     /** Rutas del PDF subido y del .zip: bloqueado para que el navegador no pueda cambiarlas. */
     #[Locked]
@@ -147,6 +164,16 @@ class FacturacionPdf extends Component
         }
         $this->generico = $this->genericoVacio();
         $this->genericoCliente = (string) session('facturacion-pdf.generico-cliente', '');
+        $proceso = (string) session('facturacion-pdf.proceso', 'Suma');
+        $this->proceso = in_array($proceso, ['Suma', 'Balerga', 'Generico'], true) ? $proceso : 'Suma';
+    }
+
+    public function updatedProceso(string $valor): void
+    {
+        if (! in_array($valor, ['Suma', 'Balerga', 'Generico'], true)) {
+            $this->proceso = 'Suma';
+        }
+        session(['facturacion-pdf.proceso' => $this->proceso]);
     }
 
     /** Opciones del combo de cliente del Genérico: "Nombre (NIF)" => [nombre, nif], solo entidades permitidas y no de baja. */
@@ -312,6 +339,30 @@ class FacturacionPdf extends Component
         return getenv('WSL_INTEROP') || ! is_dir('/run/WSL') ? [] : ['WSL_INTEROP' => '/run/WSL/1_interop'];
     }
 
+    /** Cada fichero que sube el navegador (de uno en uno) se guarda al momento y se añade al lote. */
+    public function updatedNuevoArchivoGenerico(): void
+    {
+        $this->validate(['nuevoArchivoGenerico' => 'required|file|max:51200|mimes:pdf,jpg,jpeg,png,tif,tiff,bmp,gif,webp']);
+        $f = $this->nuevoArchivoGenerico;
+        $nombre = $f->getClientOriginalName();
+        $ext = strtolower($f->getClientOriginalExtension() ?: 'pdf');
+        $rel = $f->storeAs('facturacion-pdf/Generico/lotes/'.Str::uuid(), 'f.'.$ext, 'local');
+        $this->archivosGenerico[] = ['nombre' => $nombre, 'ruta' => Storage::disk('local')->path($rel)];
+        $this->nuevoArchivoGenerico = null;
+        if (count($this->archivosGenerico) === 2) {
+            $this->genericoNombreOriginal = true;  // varios ficheros: por defecto se conserva su nombre detrás
+        }
+    }
+
+    public function quitarArchivoGenerico(int $i): void
+    {
+        if (isset($this->archivosGenerico[$i])) {
+            @unlink($this->archivosGenerico[$i]['ruta']);
+            @rmdir(dirname($this->archivosGenerico[$i]['ruta']));
+            array_splice($this->archivosGenerico, $i, 1);
+        }
+    }
+
     public function analizarGenerico(): void
     {
         $etiqueta = 'Facturación PDF · Genérico (Analizar)';
@@ -319,18 +370,31 @@ class FacturacionPdf extends Component
             $this->salida .= "\n\n===== {$etiqueta} =====\n⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.";
             return;
         }
-        $this->validate(['archivoGenerico' => 'required|file|mimes:pdf|max:51200']);
+        $archivos = array_values(array_filter($this->archivosGenerico, fn ($a) => is_file($a['ruta'])));
+        if (! $archivos) {
+            $this->addError('nuevoArchivoGenerico', 'Sube al menos un PDF o una imagen.');
+            return;
+        }
 
-        $nombreOriginal = $this->archivoGenerico->getClientOriginalName();
+        $nombreOriginal = count($archivos) === 1 ? $archivos[0]['nombre'] : count($archivos).' ficheros';
         $id = (string) Str::uuid();
-        $rutaRelativa = $this->archivoGenerico->storeAs('facturacion-pdf/Generico', $id.'.pdf', 'local');
+        // PDF de trabajo: el script junta aquí todos los ficheros (las imágenes pasan a PDF)
+        $rutaMaster = Storage::disk('local')->path("facturacion-pdf/Generico/{$id}.pdf");
+        $entradas = [];
+        foreach ($archivos as $a) {
+            // Con el nombre original, que es el que aparece en la tabla y en el nombre final
+            $dir = Storage::disk('local')->path("facturacion-pdf/Generico/{$id}.orig");
+            @mkdir($dir, 0775, true);
+            $destino = $dir.'/'.str_replace(['/', '\\'], '-', $a['nombre']);
+            @copy($a['ruta'], $destino);
+            $entradas[] = $destino;
+        }
         $this->generico = array_merge($this->genericoVacio(), [
             'nombreOriginal' => $nombreOriginal,
-            'rutaMaster' => Storage::disk('local')->path($rutaRelativa),
+            'rutaMaster' => $rutaMaster,
             'id' => $id,
         ]);
         $this->genericoPaginas = [];
-        $this->archivoGenerico = null;
         $this->resultados['Generico'] = [];
 
         $this->genericoCliente = trim($this->genericoCliente);
@@ -338,12 +402,17 @@ class FacturacionPdf extends Component
         [$clienteNombre, $clienteNif] = $this->entidadesCliente[$this->genericoCliente]
             ?? [preg_replace('/\s*\([^)]*\)\s*$/', '', $this->genericoCliente), ''];
 
-        $this->salida .= "\n\n===== {$etiqueta} =====\n📄 {$nombreOriginal}\n"
+        $this->salida .= "\n\n===== {$etiqueta} =====\n📄 ".implode(', ', array_column($archivos, 'nombre'))."\n"
             .($clienteNombre !== '' ? "Cliente: {$clienteNombre}".($clienteNif !== '' ? " ({$clienteNif})" : '')."\n" : '');
+        $args = [$this->genericoPython(), 'separar_generico.py', 'analizar'];
+        foreach ($entradas as $e) {
+            array_push($args, '--input', $e);
+        }
+        array_push($args, '--combinado', $rutaMaster);
+        array_push($args, '--miniaturas', self::carpetaMiniaturas($id), '--cliente', $clienteNombre, '--cliente-nif', $clienteNif);
         try {
             $result = Process::path($this->genericoDir())->timeout(900)->env($this->entornoWindows())
-                ->run([$this->genericoPython(), 'separar_generico.py', 'analizar', '--input', $this->generico['rutaMaster'],
-                    '--miniaturas', self::carpetaMiniaturas($id), '--cliente', $clienteNombre, '--cliente-nif', $clienteNif]);
+                ->run($args);
             $data = json_decode(trim($result->output()), true);
             if (! $result->successful() || ! is_array($data)) {
                 $this->salida .= trim($result->errorOutput()."\n".$result->output())
@@ -406,6 +475,7 @@ class FacturacionPdf extends Component
             'proveedor' => trim((string) ($f['proveedor'] ?? '')),
             'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre'], true) ? $f['tipo'] : 'Fra',
             'giro' => ((int) ($f['giro'] ?? 0)) % 360,
+            'archivo' => (string) ($f['archivo'] ?? ''),
         ], $this->genericoPaginas);
         $rutaPlan = $master.'.plan.json';
         file_put_contents($rutaPlan, json_encode($plan, JSON_UNESCAPED_UNICODE));
@@ -414,7 +484,8 @@ class FacturacionPdf extends Component
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         try {
             $result = Process::path($this->genericoDir())->timeout(300)
-                ->run([$this->genericoPython(), 'separar_generico.py', 'generar', '--input', $master, '--plan', $rutaPlan]);
+                ->run([$this->genericoPython(), 'separar_generico.py', 'generar', '--input', $master, '--plan', $rutaPlan,
+                    ...($this->genericoNombreOriginal ? ['--nombre-original'] : [])]);
             $texto = trim($result->output()."\n".$result->errorOutput());
         } catch (\Throwable $e) {
             $this->salida .= '⚠️ '.get_class($e).': '.$e->getMessage();
@@ -449,15 +520,21 @@ class FacturacionPdf extends Component
             return null;
         }
         $base = pathinfo((string) $this->generico['nombreOriginal'], PATHINFO_FILENAME) ?: 'facturas';
-        return response()->download($zip, "{$base} - separado.zip");
+        return response()->download($zip, str_contains($base, 'ficheros') ? 'facturas renombradas.zip' : "{$base} - separado.zip");
     }
 
-    /** Solo reinicia la pantalla; el PDF subido se queda en storage/app/facturacion-pdf/Generico. */
+    /** Reinicia la pantalla y borra los ficheros subidos del lote (el PDF de trabajo se queda en storage/app/facturacion-pdf/Generico). */
     public function empezarDeNuevoGenerico(): void
     {
+        foreach (array_keys($this->archivosGenerico) as $i) {
+            @unlink($this->archivosGenerico[$i]['ruta']);
+            @rmdir(dirname($this->archivosGenerico[$i]['ruta']));
+        }
+        $this->archivosGenerico = [];
+        $this->genericoNombreOriginal = false;
         $this->generico = $this->genericoVacio();
         $this->genericoPaginas = [];
-        $this->archivoGenerico = null;
+        $this->nuevoArchivoGenerico = null;
         $this->resultados['Generico'] = [];
     }
 
