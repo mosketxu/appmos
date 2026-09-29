@@ -41,8 +41,8 @@
                 @if ($e['fase'] === 'vacio')
                     {{-- Fase 0: elegir/subir el PDF --}}
                     <label class="block mb-2 text-xs font-medium text-gray-600">PDF-listado del mes</label>
-                    <input type="file" wire:model="archivo.{{ $id }}" accept="application/pdf"
-                           class="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm">
+                    <x-contabilidad.soltar-fichero model="archivo.{{ $id }}" accept="application/pdf,.pdf" :fichero="$archivo[$id] ?? null"
+                        texto="Arrastra aquí el PDF o haz clic para elegirlo" />
                     @error("archivo.{$id}")
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
@@ -190,8 +190,8 @@
                 <p class="text-xs text-amber-600">⚠️ No disponible en este servidor.</p>
             @elseif ($g['fase'] === 'vacio')
                 <label class="block mb-2 text-xs font-medium text-gray-600">PDF con las facturas</label>
-                <input type="file" wire:model="archivoGenerico" accept="application/pdf"
-                       class="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm">
+                <x-contabilidad.soltar-fichero model="archivoGenerico" accept="application/pdf,.pdf" :fichero="$archivoGenerico"
+                    texto="Arrastra aquí el PDF o haz clic para elegirlo" />
                 @error('archivoGenerico')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror

@@ -44,8 +44,8 @@
             <label class="block mb-2 text-xs font-medium text-gray-600">
                 Fichero de nómina del mes (solo para confirmar, se sigue escribiendo sobre el real de OneDrive)
             </label>
-            <input type="file" wire:model="archivo" accept=".xls,.xlsx"
-                   class="block w-full text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm">
+            <x-contabilidad.soltar-fichero model="archivo" accept=".xls,.xlsx" :fichero="$archivo"
+                texto="Arrastra aquí la nómina o haz clic para elegirla" />
             <div wire:loading wire:target="archivo" class="mt-1 text-xs text-gray-400">Subiendo…</div>
             @error('archivo')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
