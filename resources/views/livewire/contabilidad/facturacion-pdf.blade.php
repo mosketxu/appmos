@@ -58,6 +58,117 @@
         .visor { container-type:size; display:flex; align-items:center; justify-content:center; background:#f3f4f6; border-radius:.5rem; overflow:hidden; }
     </style>
 
+    {{-- Genérico con carpeta (2026-09-29): File System Access API (Chrome/Edge). El navegador guarda el
+         permiso de la carpeta; se suben COPIAS de los ficheros marcados, Appmos analiza y genera, y al
+         final el navegador escribe en la carpeta: renombra los PDF que salen enteros y sin girar, escribe
+         los nuevos (partidos, girados, imágenes) y mueve esos originales a "originales". --}}
+    <script>
+        window.genericoCarpeta = function () {
+            let dir = null;       // FileSystemDirectoryHandle: fuera de lo reactivo (un Proxy de Alpine rompe los handles)
+            let handles = {};     // nombre -> FileSystemFileHandle
+            const EXT = /\.(pdf|jpe?g|jfif|png|tiff?|bmp|gif|webp)$/i;
+            const existe = async (d, n) => { try { await d.getFileHandle(n); return true; } catch (e) { return false; } };
+            const libre = async (d, n) => {
+                if (! await existe(d, n)) return n;
+                const m = n.match(/^(.*?)(\.[^.]*)?$/);
+                for (let k = 2; ; k++) { const c = m[1] + ' (' + k + ')' + (m[2] || ''); if (! await existe(d, c)) return c; }
+            };
+            const escribir = async (d, n, blob) => {
+                const h = await d.getFileHandle(n, { create: true });
+                const w = await h.createWritable(); await w.write(blob); await w.close();
+            };
+            const mover = async (h, desde, destino, n) => {
+                try { await h.move(destino, n); }
+                catch (e) { await escribir(destino, n, await h.getFile()); await desde.removeEntry(h.name); }
+            };
+            return {
+                sel: 0, soportado: 'showDirectoryPicker' in window, carpeta: '', ficheros: [], estado: '', ayuda: false, ocupado: false,
+                hayCarpeta() { return !! dir && this.carpeta !== ''; },
+                get marcados() { return this.ficheros.filter(f => f.marcado); },
+                marcar(v) { this.ficheros.forEach(f => f.marcado = v); },
+                async elegirCarpeta() {
+                    let d;
+                    try { d = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { return; }
+                    dir = d; handles = {};
+                    const lista = [];
+                    for await (const [nombre, h] of d.entries()) {
+                        if (h.kind === 'file' && EXT.test(nombre)) { handles[nombre] = h; lista.push({ nombre, marcado: true }); }
+                    }
+                    lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
+                    this.carpeta = d.name; this.ficheros = lista; this.estado = '';
+                },
+                async subirSueltos(files) {
+                    this.ocupado = true;
+                    const lista = Array.from(files).filter(f => EXT.test(f.name));
+                    for (let i = 0; i < lista.length; i++) {
+                        this.estado = 'Subiendo ' + (i + 1) + ' de ' + lista.length + '…';
+                        await new Promise(ok => this.$wire.upload('nuevoArchivoGenerico', lista[i], ok, ok));
+                    }
+                    this.estado = ''; this.ocupado = false;
+                },
+                async analizar() {
+                    this.ocupado = true;
+                    try {
+                        if (this.soportado) {
+                            const lista = this.marcados;
+                            if (! lista.length) { this.estado = 'Elige una carpeta y marca al menos un fichero.'; return; }
+                            await this.$wire.empezarLoteCarpeta();
+                            for (let i = 0; i < lista.length; i++) {
+                                this.estado = 'Subiendo ' + (i + 1) + ' de ' + lista.length + ': ' + lista[i].nombre;
+                                const file = await handles[lista[i].nombre].getFile();
+                                await new Promise(ok => this.$wire.upload('nuevoArchivoGenerico', file, ok, ok));
+                            }
+                        }
+                        this.estado = 'Leyendo (OCR)…';
+                        await this.$wire.analizarGenerico();
+                        this.estado = ''; this.sel = 0;
+                    } finally { this.ocupado = false; }
+                },
+                async generar() {
+                    this.ocupado = true;
+                    try {
+                        this.estado = 'Generando…';
+                        const res = await this.$wire.generarGenerico();
+                        this.estado = '';
+                        if (! this.hayCarpeta() || ! res || ! res.length) return;
+                        const log = [];
+                        for (const r of res) {
+                            try {
+                                if (r.intacto) {
+                                    const h = handles[r.archivo];
+                                    if (! h || r.fichero === r.archivo) continue;
+                                    const n = await libre(dir, r.fichero);
+                                    await mover(h, dir, dir, n);
+                                    log.push(r.archivo + '  →  ' + n);
+                                } else {
+                                    const resp = await fetch(r.url);
+                                    if (! resp.ok) throw new Error('no se pudo bajar (' + resp.status + ')');
+                                    const n = await libre(dir, r.fichero);
+                                    await escribir(dir, n, await resp.blob());
+                                    log.push('+ ' + n + '   (de ' + r.archivo + ')');
+                                }
+                            } catch (e) { log.push('⚠️ ' + r.fichero + ': ' + e.message); }
+                        }
+                        const cambiados = [...new Set(res.filter(r => ! r.intacto).map(r => r.archivo))];
+                        if (cambiados.length) {
+                            const orig = await dir.getDirectoryHandle('originales', { create: true });
+                            for (const a of cambiados) {
+                                const h = handles[a];
+                                if (! h) continue;
+                                try { const n = await libre(orig, a); await mover(h, dir, orig, n); log.push(a + '  →  originales/' + n); }
+                                catch (e) { log.push('⚠️ ' + a + ' (a originales): ' + e.message); }
+                            }
+                        }
+                        await this.$wire.anotarCarpeta('Carpeta ' + this.carpeta + ':\n' + log.join('\n'));
+                        this.estado = '✅ Hecho en la carpeta ' + this.carpeta + ' (detalle en la Salida). Para otra tanda, «Empezar de nuevo».';
+                        dir = null;   // ya aplicado: no se repite sobre ficheros que ya no están
+                    } finally { this.ocupado = false; }
+                },
+                limpiar() { dir = null; handles = {}; this.carpeta = ''; this.ficheros = []; this.estado = ''; this.sel = 0; },
+            };
+        };
+    </script>
+
     <div>
         @foreach ($this->clientes as $id => $c)
             @continue($proceso !== $id)
@@ -229,7 +340,7 @@
         @if ($proceso === 'Generico')
         @php($genAncha = $this->genericoPermitido && $g['fase'] !== 'vacio')
         <div wire:key="cliente-Generico" class="p-4 bg-white border rounded-lg shadow tarjeta-ancha"
-             x-data="{ sel: 0 }" style="--izq:40rem">
+             x-data="genericoCarpeta()" style="--izq:40rem">
         <div class="fila-tarjeta">
         <div class="col-izq">
             <h2 class="text-lg font-semibold text-gray-900">Genérico</h2>
@@ -251,63 +362,68 @@
                 </datalist>
                 <p class="mb-3 text-xs text-gray-500">Nunca se propone como proveedor, aunque el OCR lea mal su nombre.</p>
 
-                <label class="block mb-2 text-xs font-medium text-gray-600">Facturas (PDF o imágenes; uno o muchos)</label>
-                {{-- Se suben de uno en uno (sin tope de tamaño total); cada uno se guarda al momento en el lote --}}
-                <div x-data="{ encima: false, cola: [], subiendo: false,
-                               subir(files) {
-                                   this.cola.push(...Array.from(files).filter(f => /\.(pdf|jpe?g|jfif|png|tiff?|bmp|gif|webp)$/i.test(f.name)));
-                                   if (! this.subiendo) this.siguiente();
-                               },
-                               siguiente() {
-                                   const f = this.cola.shift();
-                                   if (! f) { this.subiendo = false; return; }
-                                   this.subiendo = true;
-                                   this.$wire.upload('nuevoArchivoGenerico', f, () => this.siguiente(), () => this.siguiente());
-                               } }"
-                     x-on:dragover.prevent="encima = true"
-                     x-on:dragleave.prevent="encima = false"
-                     x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)">
-                    <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
-                           class="flex items-center gap-2 px-3 py-3 text-sm border-2 border-dashed rounded-md cursor-pointer">
-                        <input type="file" multiple accept="application/pdf,.pdf,image/*" class="hidden"
-                               x-on:change="subir($event.target.files); $event.target.value = ''">
-                        <span>📄</span>
-                        <span class="text-gray-700">Arrastra aquí los ficheros o haz clic para elegirlos</span>
-                    </label>
-                    <label class="inline-block mt-1 text-xs text-indigo-700 cursor-pointer hover:underline">
-                        <input type="file" webkitdirectory multiple class="hidden"
-                               x-on:change="subir($event.target.files); $event.target.value = ''">
-                        📁 o elegir una carpeta entera
-                    </label>
-                    <div x-show="subiendo" x-cloak class="mt-1 text-xs text-gray-500">
-                        ⏳ Subiendo… <span x-text="cola.length ? '(quedan ' + cola.length + ')' : ''"></span>
+                <label class="block mb-2 text-xs font-medium text-gray-600">Facturas (PDF o imágenes; una, varias o toda la carpeta)</label>
+                <template x-if="soportado">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <x-button.secondary x-on:click="elegirCarpeta()">📁 Elegir carpeta…</x-button.secondary>
+                            <button type="button" x-on:click="ayuda = ! ayuda" class="text-lg font-bold text-indigo-700" title="¿Por qué no se pueden arrastrar?">*</button>
+                        </div>
+                        <div x-show="ayuda" x-cloak class="p-2 mt-2 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
+                            <strong>¿Por qué no se pueden arrastrar?</strong> Al arrastrar (o elegir con el botón normal de
+                            subir ficheros) el navegador solo le da a la página una <em>copia</em> de cada fichero: ni sabe en
+                            qué carpeta estaba ni puede escribir en ella, así que no se podrían renombrar allí. Eligiendo la
+                            carpeta, Chrome/Edge piden permiso para editarla y así los PDF se renombran en su sitio.
+                            Con arrastrar solo se podría descargar un .zip.
+                        </div>
+                        <template x-if="carpeta">
+                            <div class="mt-2">
+                                <div class="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                                    <span>📁 <strong x-text="carpeta"></strong> · <span x-text="marcados.length + ' de ' + ficheros.length + ' marcados'"></span></span>
+                                    <button type="button" x-on:click="marcar(true)" class="text-indigo-700 hover:underline">todos</button>
+                                    <button type="button" x-on:click="marcar(false)" class="text-indigo-700 hover:underline">ninguno</button>
+                                </div>
+                                <div class="mt-1 overflow-auto border rounded" style="max-height:18rem">
+                                    <template x-for="f in ficheros" :key="f.nombre">
+                                        <label class="flex items-center gap-2 px-2 py-1 text-xs border-b cursor-pointer last:border-b-0">
+                                            <input type="checkbox" x-model="f.marcado" class="border-gray-300 rounded">
+                                            <span class="text-gray-700 break-all" x-text="f.nombre"></span>
+                                        </label>
+                                    </template>
+                                    <p x-show="! ficheros.length" class="px-2 py-2 text-xs text-gray-400">No hay PDF ni imágenes en esta carpeta.</p>
+                                </div>
+                            </div>
+                        </template>
                     </div>
-                </div>
+                </template>
+                <template x-if="! soportado">
+                    {{-- Sin File System Access API (Firefox, Safari): se suben copias y el resultado va en .zip --}}
+                    <div>
+                        <p class="mb-1 text-xs text-amber-700">Este navegador no deja escribir en tus carpetas (usa Chrome o Edge para renombrar en su sitio). Aquí el resultado sale en un .zip.</p>
+                        <input type="file" multiple accept="application/pdf,.pdf,image/*" class="text-xs"
+                               x-on:change="subirSueltos($event.target.files); $event.target.value = ''">
+                        @if ($archivosGenerico)
+                            <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
+                                @foreach ($archivosGenerico as $i => $a)
+                                    <div wire:key="gen-arch-{{ $i }}-{{ md5($a['ruta']) }}" class="flex items-center justify-between gap-2 px-2 py-1 text-xs border-b last:border-b-0">
+                                        <span class="text-gray-700 break-all">{{ $a['nombre'] }}</span>
+                                        <button type="button" wire:click="quitarArchivoGenerico({{ $i }})" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </template>
                 @error('nuevoArchivoGenerico')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
 
-                @if ($archivosGenerico)
-                    <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
-                        @foreach ($archivosGenerico as $i => $a)
-                            <div wire:key="gen-arch-{{ $i }}-{{ md5($a['ruta']) }}" class="flex items-center justify-between gap-2 px-2 py-1 text-xs border-b last:border-b-0">
-                                <span class="text-gray-700 break-all">{{ $a['nombre'] }}</span>
-                                <button type="button" wire:click="quitarArchivoGenerico({{ $i }})" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button>
-                            </div>
-                        @endforeach
-                    </div>
-                    <p class="mt-1 text-xs text-gray-500">{{ count($archivosGenerico) }} fichero(s)</p>
-                @endif
-
-                <div class="mt-3">
-                    <x-button.primary
-                        wire:click="analizarGenerico"
-                        wire:loading.attr="disabled"
-                        wire:target="analizarGenerico, nuevoArchivoGenerico"
-                    >
-                        <span wire:loading.remove wire:target="analizarGenerico">Fase 1 · Analizar</span>
-                        <span wire:loading wire:target="analizarGenerico">⏳ Leyendo (OCR)…</span>
+                <div class="flex items-center gap-3 mt-3">
+                    <x-button.primary x-on:click="analizar()" x-bind:disabled="ocupado">
+                        <span x-show="! ocupado">Fase 1 · Analizar</span>
+                        <span x-show="ocupado" x-cloak>⏳ Trabajando…</span>
                     </x-button.primary>
+                    <span class="text-xs text-gray-500" x-text="estado"></span>
                 </div>
             @else
                 <div class="p-2 mb-3 text-xs border rounded bg-gray-50 text-gray-700">
@@ -400,25 +516,26 @@
                     Poner el nombre original detrás (<span class="font-mono">Fra Proveedor 123 - nombre original.pdf</span>)
                 </label>
                 <div class="flex flex-wrap gap-2">
-                    <x-button.primary
-                        wire:click="generarGenerico"
-                        wire:loading.attr="disabled"
-                        wire:target="generarGenerico"
-                    >
-                        <span wire:loading.remove wire:target="generarGenerico">Fase 2 · Generar PDFs</span>
-                        <span wire:loading wire:target="generarGenerico">⏳ Generando…</span>
+                    <x-button.primary x-on:click="generar()" x-bind:disabled="ocupado">
+                        <span x-show="! ocupado" x-text="hayCarpeta() ? 'Fase 2 · Generar y renombrar en la carpeta' : 'Fase 2 · Generar PDFs'"></span>
+                        <span x-show="ocupado" x-cloak>⏳ Trabajando…</span>
                     </x-button.primary>
                     @if ($g['fase'] === 'generado' && $g['zip'])
                         <x-button.secondary wire:click="descargarZipGenerico">⬇️ Descargar .zip</x-button.secondary>
                     @endif
                     <x-button.secondary
-                        wire:click="empezarDeNuevoGenerico"
+                        wire:click="empezarDeNuevoGenerico" x-on:click="limpiar()"
                         wire:loading.attr="disabled"
                         wire:target="empezarDeNuevoGenerico"
                     >
-                        Empezar de nuevo (otro PDF)
+                        Empezar de nuevo
                     </x-button.secondary>
                 </div>
+                <p class="mt-2 text-xs text-gray-600" x-show="estado" x-text="estado"></p>
+                <p class="mt-2 text-xs text-gray-500" x-show="hayCarpeta()">
+                    En la carpeta: los PDF que salen enteros y sin girar solo se renombran; los que se parten, giran o
+                    son imágenes se escriben nuevos y el original va a la subcarpeta <strong>originales</strong>.
+                </p>
             @endif
         </div>{{-- /col-izq --}}
         @if ($genAncha && $g['id'])

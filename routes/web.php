@@ -52,6 +52,11 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         abort_unless(is_file($f), 404);
         return response()->file($f, ['Cache-Control' => 'private, max-age=86400']);
     })->whereUuid('id')->whereNumber('pagina')->name('contabilidad.facturacion-pdf.miniatura')->middleware('can:contabilidad.facturacionpdf');
+    Route::get('/contabilidad/facturacion-pdf/generado/{id}/{n}', function (string $id, int $n) {
+        $rutas = json_decode((string) @file_get_contents(\App\Http\Livewire\Contabilidad\FacturacionPdf::rutaGenerados($id)), true) ?: [];
+        abort_unless(isset($rutas[$n]) && is_file($rutas[$n]), 404);
+        return response()->file($rutas[$n], ['Content-Type' => 'application/pdf']);
+    })->whereUuid('id')->whereNumber('n')->name('contabilidad.facturacion-pdf.generado')->middleware('can:contabilidad.facturacionpdf');
 
     // Contabilidad (Durcal): activación de sueldos/SS por proyecto y amortización
     Route::get('/contabilidad/durcal', function () {return view('contabilidad.durcal');})->name('contabilidad.durcal')->middleware('can:contabilidad.durcal');

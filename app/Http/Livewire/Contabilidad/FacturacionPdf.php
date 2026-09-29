@@ -458,15 +458,20 @@ class FacturacionPdf extends Component
         }
     }
 
-    public function generarGenerico(): void
+    /**
+     * Genera los PDF (carpeta + .zip). Devuelve al navegador la lista de lo generado para que, si se
+     * eligió una carpeta (File System Access API), los escriba allí: [['fichero', 'archivo', 'intacto',
+     * 'url'], ...]. intacto = el PDF de origen sale entero y sin girar: en la carpeta solo se renombra.
+     */
+    public function generarGenerico(): array
     {
         if (! in_array($this->generico['fase'] ?? '', ['analizado', 'generado'], true) || ! $this->genericoPermitido) {
-            return;
+            return [];
         }
         $master = $this->generico['rutaMaster'] ?? null;
         if (! $master || ! is_file($master)) {
             $this->salida .= "\n\n⚠️ No encuentro el PDF subido (Genérico). Vuelve a subirlo.";
-            return;
+            return [];
         }
 
         $plan = array_map(fn ($f) => [
@@ -490,9 +495,11 @@ class FacturacionPdf extends Component
         } catch (\Throwable $e) {
             $this->salida .= '⚠️ '.get_class($e).': '.$e->getMessage();
             $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nExcepción al ejecutar. Mira la caja de Salida.");
-            return;
+            return [];
         }
 
+        $manifiesto = preg_match('/^RESULT_MANIFEST:\s*(.+?)\s*$/m', $texto, $mj) ? (json_decode($mj[1], true) ?: []) : [];
+        $texto = preg_replace('/^RESULT_MANIFEST:.*(\r?\n)?/m', '', $texto);
         $zip = preg_match('/^RESULT_ZIP:\s*(.+?)\s*$/m', $texto, $m) ? $m[1] : null;
         $carpetas = preg_match_all('/^RESULT_FILE:\s*(.+?)\s*$/m', $texto, $mm) ? $mm[1] : [];
         $this->salida .= trim(preg_replace('/^RESULT_(FILE|ZIP):.*(\r?\n)?/m', '', $texto));
@@ -505,11 +512,37 @@ class FacturacionPdf extends Component
         if (! $result->successful()) {
             $this->salida .= "\n\n⚠️ El proceso terminó con código de salida ".$result->exitCode().'.';
             $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error. Mira la caja de Salida.");
-            return;
+            return [];
         }
         $this->generico['zip'] = $zip && is_file($zip) ? $zip : null;
         $this->generico['fase'] = 'generado';
         $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
+
+        // Rutas de lo generado, para servir cada PDF al navegador (ruta contabilidad.facturacion-pdf.generado)
+        $id = $this->generico['id'];
+        file_put_contents(self::rutaGenerados($id), json_encode(array_column($manifiesto, 'ruta'), JSON_UNESCAPED_UNICODE));
+        return array_map(fn ($m, $n) => [
+            'fichero' => $m['fichero'], 'archivo' => $m['archivo'], 'intacto' => (bool) $m['intacto'],
+            'url' => route('contabilidad.facturacion-pdf.generado', [$id, $n]),
+        ], $manifiesto, array_keys($manifiesto));
+    }
+
+    public static function rutaGenerados(string $id): string
+    {
+        return Storage::disk('local')->path("facturacion-pdf/Generico/{$id}.generados.json");
+    }
+
+    /** Lo que el navegador ha hecho en la carpeta del usuario (renombrar, escribir, mover a originales), a la Salida. */
+    public function anotarCarpeta(string $texto): void
+    {
+        $this->salida .= "\n\n===== Facturación PDF · Genérico (en tu carpeta) =====\n".mb_substr($texto, 0, 20000);
+    }
+
+    /** Antes de subir los ficheros marcados de una carpeta: lote nuevo y nombre original detrás. */
+    public function empezarLoteCarpeta(): void
+    {
+        $this->empezarDeNuevoGenerico();
+        $this->genericoNombreOriginal = true;
     }
 
     public function descargarZipGenerico()
