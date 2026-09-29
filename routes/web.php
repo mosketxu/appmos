@@ -47,6 +47,11 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
 
     // Contabilidad (Facturación PDF): lanzar procesar_facturas.py de Suma/Balerga
     Route::get('/contabilidad/facturacion-pdf', function () {return view('contabilidad.facturacion-pdf');})->name('contabilidad.facturacion-pdf')->middleware('can:contabilidad.facturacionpdf');
+    Route::get('/contabilidad/facturacion-pdf/miniatura/{id}/{pagina}', function (string $id, int $pagina) {
+        $f = \App\Http\Livewire\Contabilidad\FacturacionPdf::carpetaMiniaturas($id)."/p{$pagina}.jpg";
+        abort_unless(is_file($f), 404);
+        return response()->file($f, ['Cache-Control' => 'private, max-age=86400']);
+    })->whereUuid('id')->whereNumber('pagina')->name('contabilidad.facturacion-pdf.miniatura')->middleware('can:contabilidad.facturacionpdf');
 
     // Contabilidad (Durcal): activación de sueldos/SS por proyecto y amortización
     Route::get('/contabilidad/durcal', function () {return view('contabilidad.durcal');})->name('contabilidad.durcal')->middleware('can:contabilidad.durcal');

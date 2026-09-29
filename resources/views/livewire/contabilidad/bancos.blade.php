@@ -19,9 +19,6 @@
     @include('livewire.contabilidad._subnav', ['activa' => 'contabilidad.bancos'])
 
     <div class="p-4 space-y-6">
-    {{-- Fila de arriba: primer bloque + Salida a su altura; lo de debajo, a todo el ancho. --}}
-    <div class="fila-salida">
-    <div class="space-y-6 col-principal" style="--g:65">
 
     <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3">
         <span>Bancos — cliente:</span>
@@ -152,9 +149,6 @@
         @endif
 
         @endif
-    </div>{{-- /col-principal --}}
-    @include('livewire.contabilidad._salida', ['ancho' => 35, 'cargando' => false])
-    </div>{{-- /fila-salida --}}
 
     @if ($cliente !== '')
         <div class="overflow-hidden bg-white border rounded-lg shadow">
@@ -799,6 +793,8 @@
         </div>
     @endif
 
+
+    @include('livewire.contabilidad._salida', ['cargando' => false])
     </div>
     {{-- Asignar las columnas de un extracto (no reconocido, o para corregir un formato) --}}
     @if ($mapeo)

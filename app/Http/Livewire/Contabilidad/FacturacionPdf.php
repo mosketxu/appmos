@@ -72,7 +72,7 @@ class FacturacionPdf extends Component
     #[Locked]
     public array $generico = [];
 
-    /** Tabla editable: una fila por página [pagina, numero, proveedor, tipo Fra|Abo|Pre]. */
+    /** Tabla editable: una fila por página [pagina, numero, proveedor, tipo Fra|Abo|Pre, giro 0|90|180|270]. */
     public array $genericoPaginas = [];
 
     /**
@@ -243,7 +243,7 @@ class FacturacionPdf extends Component
 
     protected function genericoVacio(): array
     {
-        return ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null,
+        return ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null, 'id' => null,
             'destinatario' => '', 'avisos' => [], 'zip' => null];
     }
 
@@ -260,6 +260,12 @@ class FacturacionPdf extends Component
         }
         $venv = $this->genericoDir().'/.venv/bin/python3';
         return is_file($venv) ? $venv : 'python3';
+    }
+
+    /** Imágenes p<N>.jpg de cada página del PDF subido (las sirve la ruta contabilidad.facturacion-pdf.miniatura). */
+    public static function carpetaMiniaturas(string $id): string
+    {
+        return Storage::disk('local')->path("facturacion-pdf/Generico/{$id}.mini");
     }
 
     public function getGenericoPermitidoProperty(): bool
@@ -283,10 +289,12 @@ class FacturacionPdf extends Component
         $this->validate(['archivoGenerico' => 'required|file|mimes:pdf|max:51200']);
 
         $nombreOriginal = $this->archivoGenerico->getClientOriginalName();
-        $rutaRelativa = $this->archivoGenerico->storeAs('facturacion-pdf/Generico', Str::uuid().'.pdf', 'local');
+        $id = (string) Str::uuid();
+        $rutaRelativa = $this->archivoGenerico->storeAs('facturacion-pdf/Generico', $id.'.pdf', 'local');
         $this->generico = array_merge($this->genericoVacio(), [
             'nombreOriginal' => $nombreOriginal,
             'rutaMaster' => Storage::disk('local')->path($rutaRelativa),
+            'id' => $id,
         ]);
         $this->genericoPaginas = [];
         $this->archivoGenerico = null;
@@ -295,7 +303,8 @@ class FacturacionPdf extends Component
         $this->salida .= "\n\n===== {$etiqueta} =====\n📄 {$nombreOriginal}\n";
         try {
             $result = Process::path($this->genericoDir())->timeout(900)->env($this->entornoWindows())
-                ->run([$this->genericoPython(), 'separar_generico.py', 'analizar', '--input', $this->generico['rutaMaster']]);
+                ->run([$this->genericoPython(), 'separar_generico.py', 'analizar', '--input', $this->generico['rutaMaster'],
+                    '--miniaturas', self::carpetaMiniaturas($id)]);
             $data = json_decode(trim($result->output()), true);
             if (! $result->successful() || ! is_array($data)) {
                 $this->salida .= trim($result->errorOutput()."\n".$result->output())
@@ -321,6 +330,14 @@ class FacturacionPdf extends Component
             $this->salida .= "\n⚠️ {$a}";
         }
         $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nRevisa número y proveedor de cada página.");
+    }
+
+    /** Gira 90° (sentido horario) una página: se aplica al generar los PDF. */
+    public function girarPagina(int $i): void
+    {
+        if (isset($this->genericoPaginas[$i])) {
+            $this->genericoPaginas[$i]['giro'] = (((int) ($this->genericoPaginas[$i]['giro'] ?? 0)) + 90) % 360;
+        }
     }
 
     /** Copia número/proveedor/tipo de una fila a la siguiente (para unir una página a la factura anterior). */
@@ -349,6 +366,7 @@ class FacturacionPdf extends Component
             'numero' => trim((string) ($f['numero'] ?? '')),
             'proveedor' => trim((string) ($f['proveedor'] ?? '')),
             'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre'], true) ? $f['tipo'] : 'Fra',
+            'giro' => ((int) ($f['giro'] ?? 0)) % 360,
         ], $this->genericoPaginas);
         $rutaPlan = $master.'.plan.json';
         file_put_contents($rutaPlan, json_encode($plan, JSON_UNESCAPED_UNICODE));

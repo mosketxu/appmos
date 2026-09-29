@@ -19,9 +19,6 @@
     @include('livewire.contabilidad._subnav')
 
     <div class="p-4 space-y-6">
-    {{-- Fila de arriba: primer bloque + Salida a su altura; lo de debajo, a todo el ancho. --}}
-    <div class="fila-salida">
-    <div class="space-y-6 col-principal" style="--g:75">
 
     <h1 class="text-2xl font-semibold text-gray-900">Facturación PDF</h1>
     <p class="text-sm text-gray-500">
@@ -234,12 +231,23 @@
 
                 <p class="mb-1 text-xs text-gray-500">
                     Páginas seguidas con el mismo número y proveedor salen en un solo PDF. Corrige lo que el OCR haya leído mal.
+                    Clic en la miniatura para verla en grande; ↻ gira la página 90° (las torcidas ya vienen giradas).
                 </p>
-                <div class="mb-3 overflow-auto border rounded" style="max-height:22rem">
+                <div class="mb-3 overflow-auto border rounded" style="max-height:40rem" x-data="{ grande: null }">
+                    {{-- Página en grande (clic en una miniatura); clic o Esc para cerrar --}}
+                    <template x-if="grande">
+                        <div x-on:click="grande = null" x-on:keydown.escape.window="grande = null"
+                             style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; padding:1rem; cursor:zoom-out">
+                            <img :src="grande.src" alt=""
+                                 :style="'background:#fff; box-shadow:0 10px 30px rgba(0,0,0,.5); transform:rotate(' + grande.giro + 'deg); '
+                                         + (grande.giro % 180 ? 'max-width:95vh; max-height:95vw' : 'max-width:100%; max-height:100%')">
+                        </div>
+                    </template>
                     <table class="min-w-full text-xs divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-1 py-1 text-left">Pág.</th>
+                                <th class="px-1 py-1"></th>
                                 <th class="px-1 py-1 text-left">Tipo</th>
                                 <th class="px-1 py-1 text-left">Proveedor</th>
                                 <th class="px-1 py-1 text-left">Número</th>
@@ -250,6 +258,18 @@
                             @foreach ($genericoPaginas as $i => $f)
                                 <tr wire:key="gen-pag-{{ $i }}">
                                     <td class="px-1 py-1 text-gray-500">{{ $f['pagina'] }}</td>
+                                    <td class="px-1 py-1">
+                                        @if ($g['id'])
+                                            {{-- La miniatura es de la página tal cual viene; se gira aquí con el giro que se aplicará --}}
+                                            @php($mini = route('contabilidad.facturacion-pdf.miniatura', [$g['id'], $f['pagina']]))
+                                            @php($giro = (int) ($f['giro'] ?? 0))
+                                            <div style="width:4rem; height:4rem; display:flex; align-items:center; justify-content:center">
+                                                <img src="{{ $mini }}" alt="Página {{ $f['pagina'] }}" loading="lazy"
+                                                     x-on:click="grande = { src: '{{ $mini }}', giro: {{ $giro }} }" title="Ver en grande"
+                                                     style="max-width:4rem; max-height:4rem; transform:rotate({{ $giro }}deg); border:1px solid #d1d5db; cursor:zoom-in; background:#fff">
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td class="px-1 py-1">
                                         <select wire:model="genericoPaginas.{{ $i }}.tipo" class="py-0.5 pl-1 pr-6 text-xs border-gray-300 rounded">
                                             <option value="Fra">Fra</option>
@@ -266,6 +286,8 @@
                                                style="min-width:6rem" class="w-full py-0.5 px-1 text-xs border-gray-300 rounded {{ trim($f['numero'] ?? '') === '' ? 'bg-red-50' : '' }}">
                                     </td>
                                     <td class="px-1 py-1 whitespace-nowrap">
+                                        <button type="button" wire:click="girarPagina({{ $i }})"
+                                                class="text-gray-400 hover:text-gray-700" title="Girar 90° (se aplica al generar los PDF)">↻</button>
                                         @if ($i > 0)
                                             <button type="button" wire:click="igualQueAnterior({{ $i }})"
                                                     class="text-gray-400 hover:text-gray-700" title="Igual que la anterior (misma factura)">↑=</button>
@@ -301,8 +323,7 @@
         </div>
     </div>
 
-    </div>{{-- /col-principal --}}
-    @include('livewire.contabilidad._salida', ['ancho' => 25])
-    </div>{{-- /fila-salida --}}
+
+    @include('livewire.contabilidad._salida')
     </div>
 </div>

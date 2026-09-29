@@ -23,9 +23,6 @@
     @include('livewire.contabilidad._subnav')
 
     <div class="p-4 space-y-6">
-    {{-- Fila de arriba: primer bloque + Salida a su altura; lo de debajo, a todo el ancho. --}}
-    <div class="fila-salida">
-    <div class="space-y-6 col-principal" style="--g:65">
 
     <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3">
         <span>Procesos de Fashion IQ del mes:</span>
@@ -101,9 +98,6 @@
         </table>
     </div>
 
-    </div>{{-- /col-principal --}}
-    @include('livewire.contabilidad._salida', ['ancho' => 35])
-    </div>{{-- /fila-salida --}}
 
 
     <div id="rentas-variables" class="p-4 bg-white border rounded-lg shadow">
@@ -386,5 +380,7 @@
         </div>
     </div>
 
+
+    @include('livewire.contabilidad._salida')
     </div>
 </div>
