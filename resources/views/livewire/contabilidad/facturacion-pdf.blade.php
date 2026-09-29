@@ -61,7 +61,9 @@
     {{-- Genérico con carpeta (2026-09-29): File System Access API (Chrome/Edge). El navegador guarda el
          permiso de la carpeta; se suben COPIAS de los ficheros marcados, Appmos analiza y genera, y al
          final el navegador escribe en la carpeta: renombra los PDF que salen enteros y sin girar, escribe
-         los nuevos (partidos, girados, imágenes) y mueve esos originales a "originales". --}}
+         los nuevos (partidos, girados, imágenes) y mueve esos originales a "originales".
+         Con "Elegir ficheros" (showOpenFilePicker) se cogen uno o varios sueltos; al generar se pide la
+         carpeta donde están (el diálogo ya se abre en ella) para poder escribir, y sigue igual. --}}
     <script>
         window.genericoCarpeta = function () {
             let dir = null;       // FileSystemDirectoryHandle: fuera de lo reactivo (un Proxy de Alpine rompe los handles)
@@ -82,7 +84,7 @@
                 catch (e) { await escribir(destino, n, await h.getFile()); await desde.removeEntry(h.name); }
             };
             return {
-                sel: 0, soportado: 'showDirectoryPicker' in window, carpeta: '', ficheros: [], estado: '', ayuda: false, ocupado: false,
+                sel: 0, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
                 hayCarpeta() { return !! dir && this.carpeta !== ''; },
                 get marcados() { return this.ficheros.filter(f => f.marcado); },
                 marcar(v) { this.ficheros.forEach(f => f.marcado = v); },
@@ -95,7 +97,35 @@
                         if (h.kind === 'file' && EXT.test(nombre)) { handles[nombre] = h; lista.push({ nombre, marcado: true }); }
                     }
                     lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
-                    this.carpeta = d.name; this.ficheros = lista; this.estado = '';
+                    this.carpeta = d.name; this.sueltos = false; this.ficheros = lista; this.estado = '';
+                },
+                async elegirFicheros() {
+                    let hs;
+                    try {
+                        hs = await window.showOpenFilePicker({ id: 'generico', multiple: true, types: [{ description: 'PDF o imágenes',
+                            accept: { 'application/pdf': ['.pdf'], 'image/*': ['.jpg', '.jpeg', '.jfif', '.png', '.tif', '.tiff', '.bmp', '.gif', '.webp'] } }] });
+                    } catch (e) { return; }
+                    dir = null; handles = {};
+                    const lista = [];
+                    for (const h of hs) if (EXT.test(h.name)) { handles[h.name] = h; lista.push({ nombre: h.name, marcado: true }); }
+                    lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
+                    this.carpeta = ''; this.sueltos = true; this.ficheros = lista; this.estado = '';
+                },
+                // Ficheros sueltos: para renombrar hace falta permiso sobre su carpeta. Se pide al generar (necesita
+                // el clic del usuario, por eso va antes de cualquier await), abriendo el diálogo ya en esa carpeta.
+                async pedirCarpetaDeSueltos() {
+                    const primero = Object.values(handles)[0];
+                    if (! primero) return '';
+                    let d;
+                    try { d = await window.showDirectoryPicker({ id: 'generico', mode: 'readwrite', startIn: primero }); }
+                    catch (e) { return 'Sin permiso sobre la carpeta: los PDF salen solo en el .zip.'; }
+                    for (const [n, h] of Object.entries(handles)) {
+                        let dentro = false;
+                        try { const hd = await d.getFileHandle(n); dentro = await hd.isSameEntry(h); if (dentro) handles[n] = hd; } catch (e) {}
+                        if (! dentro) return '⚠️ «' + n + '» no está en la carpeta ' + d.name + ': los PDF salen solo en el .zip.';
+                    }
+                    dir = d; this.carpeta = d.name;
+                    return '';
                 },
                 async subirSueltos(files) {
                     this.ocupado = true;
@@ -111,7 +141,7 @@
                     try {
                         if (this.soportado) {
                             const lista = this.marcados;
-                            if (! lista.length) { this.estado = 'Elige una carpeta y marca al menos un fichero.'; return; }
+                            if (! lista.length) { this.estado = 'Elige una carpeta o ficheros y marca al menos uno.'; return; }
                             await this.$wire.empezarLoteCarpeta();
                             for (let i = 0; i < lista.length; i++) {
                                 this.estado = 'Subiendo ' + (i + 1) + ' de ' + lista.length + ': ' + lista[i].nombre;
@@ -125,11 +155,12 @@
                     } finally { this.ocupado = false; }
                 },
                 async generar() {
+                    const aviso = this.sueltos && ! dir && this.ficheros.length ? await this.pedirCarpetaDeSueltos() : '';
                     this.ocupado = true;
                     try {
                         this.estado = 'Generando…';
                         const res = await this.$wire.generarGenerico();
-                        this.estado = '';
+                        this.estado = aviso;
                         if (! this.hayCarpeta() || ! res || ! res.length) return;
                         const log = [];
                         for (const r of res) {
@@ -164,7 +195,7 @@
                         dir = null;   // ya aplicado: no se repite sobre ficheros que ya no están
                     } finally { this.ocupado = false; }
                 },
-                limpiar() { dir = null; handles = {}; this.carpeta = ''; this.ficheros = []; this.estado = ''; this.sel = 0; },
+                limpiar() { dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = []; this.estado = ''; this.sel = 0; },
             };
         };
     </script>
@@ -367,6 +398,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <x-button.secondary x-on:click="elegirCarpeta()">📁 Elegir carpeta…</x-button.secondary>
+                            <x-button.secondary x-on:click="elegirFicheros()">📄 Elegir ficheros…</x-button.secondary>
                             <button type="button" x-on:click="ayuda = ! ayuda" class="text-lg font-bold text-indigo-700" title="¿Por qué no se pueden arrastrar?">*</button>
                         </div>
                         <div x-show="ayuda" x-cloak class="p-2 mt-2 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
@@ -376,10 +408,10 @@
                             carpeta, Chrome/Edge piden permiso para editarla y así los PDF se renombran en su sitio.
                             Con arrastrar solo se podría descargar un .zip.
                         </div>
-                        <template x-if="carpeta">
+                        <template x-if="carpeta || sueltos">
                             <div class="mt-2">
                                 <div class="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                                    <span>📁 <strong x-text="carpeta"></strong> · <span x-text="marcados.length + ' de ' + ficheros.length + ' marcados'"></span></span>
+                                    <span><span x-show="carpeta">📁 <strong x-text="carpeta"></strong> · </span><span x-show="sueltos && ! carpeta">📄 Ficheros sueltos · </span><span x-text="marcados.length + ' de ' + ficheros.length + ' marcados'"></span></span>
                                     <button type="button" x-on:click="marcar(true)" class="text-indigo-700 hover:underline">todos</button>
                                     <button type="button" x-on:click="marcar(false)" class="text-indigo-700 hover:underline">ninguno</button>
                                 </div>
@@ -518,7 +550,7 @@
                 </label>
                 <div class="flex flex-wrap gap-2">
                     <x-button.primary x-on:click="generar()" x-bind:disabled="ocupado">
-                        <span x-show="! ocupado" x-text="hayCarpeta() ? 'Fase 2 · Generar y renombrar en la carpeta' : 'Fase 2 · Generar PDFs'"></span>
+                        <span x-show="! ocupado" x-text="hayCarpeta() || sueltos ? 'Fase 2 · Generar y renombrar en la carpeta' : 'Fase 2 · Generar PDFs'"></span>
                         <span x-show="ocupado" x-cloak>⏳ Trabajando…</span>
                     </x-button.primary>
                     @if ($g['fase'] === 'generado' && $g['zip'])
@@ -533,9 +565,11 @@
                     </x-button.secondary>
                 </div>
                 <p class="mt-2 text-xs text-gray-600" x-show="estado" x-text="estado"></p>
-                <p class="mt-2 text-xs text-gray-500" x-show="hayCarpeta()">
+                <p class="mt-2 text-xs text-gray-500" x-show="hayCarpeta() || sueltos">
                     En la carpeta: los PDF que salen enteros y sin girar solo se renombran; los que se parten, giran o
                     son imágenes se escriben nuevos y el original va a la subcarpeta <strong>originales</strong>.
+                    <span x-show="sueltos && ! hayCarpeta()">Con ficheros sueltos, al generar se abre su carpeta: pulsa
+                    «Seleccionar carpeta» y acepta el permiso de edición (si no, solo sale el .zip).</span>
                 </p>
             @endif
         </div>{{-- /col-izq --}}
