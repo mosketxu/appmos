@@ -736,7 +736,7 @@ class Procesos extends Component
         $this->pfRecOriginal = '';
     }
 
-    /** Lee de Enviados de Outlook el correo de pagos de ese mes y carga sus filas. */
+    /** Lee de Outlook el correo de pagos de ese mes (y el último de su hilo) y carga sus filas. */
     public function leerEnviadoPagosFinMes(): void
     {
         $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
@@ -748,14 +748,17 @@ class Procesos extends Component
         $filas = [];
         if (preg_match_all('/^FILA (.*)$/m', $nuevo, $m)) {
             foreach ($m[1] as $linea) {
-                [$a, $b, $c, $d] = array_pad(explode("\t", rtrim($linea, "\r")), 4, '');
-                $filas[] = [$a, $b, $c, $d, 'pending'];
+                // 5ª columna: Paid/Pending del último recordatorio del hilo (si lo hay).
+                [$a, $b, $c, $d, $e] = array_pad(explode("\t", rtrim($linea, "\r")), 5, '');
+                $filas[] = [$a, $b, $c, $d, $e === 'paid' ? 'paid' : 'pending'];
             }
         }
         if ($filas) {
             $this->pfRecFilas = $filas;
             $this->pfRecTexto = (string) ($this->confPagosFinMes()['texto_recordatorio'] ?? '');
-            $this->pfRecOriginal = preg_match('/Correo original: (.*), \d+ filas/', $nuevo, $o) ? $o[1] : '';
+            // Responde al último correo del hilo (recordatorio anterior o respuesta de Plein).
+            $this->pfRecOriginal = preg_match('/Último del hilo: (.*) → /u', $nuevo, $o)
+                || preg_match('/Correo original: (.*), \d+ filas/', $nuevo, $o) ? $o[1] : '';
         }
         $this->salida = substr($this->salida, 0, $desde) . trim(preg_replace('/^FILA .*(\r?\n)?/m', '', $nuevo));
     }
