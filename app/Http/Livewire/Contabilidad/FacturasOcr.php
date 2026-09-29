@@ -43,6 +43,8 @@ class FacturasOcr extends Component
     public string $vista = 'revisar';   // revisar | historico | duplicadas | proveedores
     public string $filtro = '';
     public string $filtroMes = '';
+    /** Validadas: '' = las del proceso en curso (aún sin guardar), 'todas', o el Excel guardado (Guardados/...). */
+    public string $filtroProceso = '';
 
     // Pestaña Proveedores: buscar y editar lo contable de cada proveedor (va a patrones.json)
     public string $filtroProv = '';
@@ -1322,6 +1324,12 @@ class FacturasOcr extends Component
             'difieren' => count($d['contrapartida_difiere'] ?? [])];
     }
 
+    /** "Guardados/PluginFacturas_Recibidas_2026-09-28_1904.xlsx" -> "28/09/2026 19:04" */
+    public static function fechaProceso(string $excel): string
+    {
+        return preg_match('/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})/', $excel, $m) ? "{$m[3]}/{$m[2]}/{$m[1]} {$m[4]}:{$m[5]}" : basename($excel);
+    }
+
     public function render()
     {
         $valido = $this->clienteValido();
@@ -1336,6 +1344,20 @@ class FacturasOcr extends Component
         }
         if ($this->filtroMes !== '') {
             $validadas = array_values(array_filter($validadas, fn ($f) => str_starts_with($f['datos']['fecha_registro'] ?? '', $this->filtroMes)));
+        }
+        // Procesos ya guardados para SAGE (uno por Excel en Output/Guardados), del más reciente al más antiguo
+        $procesos = [];
+        foreach ($todas as $f) {
+            $x = (string) ($f['excel'] ?? '');
+            if (str_starts_with($x, 'Guardados/') && in_array($f['estado'], ['validada', 'validando'], true)) {
+                $procesos[$x] = ($procesos[$x] ?? 0) + 1;
+            }
+        }
+        krsort($procesos);
+        if ($this->filtroProceso !== 'todas') {
+            $validadas = array_values(array_filter($validadas, fn ($f) => $this->filtroProceso === ''
+                ? ! str_starts_with((string) ($f['excel'] ?? ''), 'Guardados/')
+                : ($f['excel'] ?? '') === $this->filtroProceso));
         }
         usort($validadas, fn ($a, $b) => strcmp($b['validada_el'] ?? '', $a['validada_el'] ?? ''));
         $mesesReg = array_values(array_unique(array_map(fn ($f) => substr($f['datos']['fecha_registro'] ?? '', 0, 7),
@@ -1386,6 +1408,7 @@ class FacturasOcr extends Component
             'periodos' => $this->periodos(),
             'mesesCierre' => $this->mesesCierre(),
             'pdfs' => $valido ? $this->pdfsEnCarpeta() : 0,
+            'procesos' => $procesos,
             'enExcel' => count(array_filter($todas, fn ($f) => ($f['excel'] ?? '') === self::EXCEL && in_array($f['estado'], ['validada', 'validando'], true))),
             'ultimoExcel' => $estado['ultimo_excel'] ?? null,
             'quitables' => count(array_filter($todas, fn ($f) => empty($f['oculta']) && in_array($f['estado'], ['rechazada', 'ilegible', 'duplicada'], true))),

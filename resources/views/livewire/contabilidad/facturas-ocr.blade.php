@@ -394,7 +394,7 @@
                         Por revisar ({{ $cuenta['pendiente'] ?? 0 }} pendientes{{ ($cuenta['rechazada'] ?? 0) + ($cuenta['ilegible'] ?? 0) ? ', '.(($cuenta['rechazada'] ?? 0) + ($cuenta['ilegible'] ?? 0)).' al final' : '' }})
                     </button>
                     <button type="button" wire:click="$set('vista','historico')" class="{{ $vista === 'historico' ? 'on' : '' }}">
-                        Validadas ({{ ($cuenta['validada'] ?? 0) + ($cuenta['validando'] ?? 0) }})
+                        Validadas ({{ $enExcel }} sin guardar{{ array_sum($procesos) ? ' · '.array_sum($procesos).' ya guardadas' : '' }})
                         @if ($guardando) <span class="focr-chip c-gris" title="Excel, mover el PDF y aprender, en segundo plano">💾 {{ $guardando }}…</span> @endif
                     </button>
                     <button type="button" wire:click="$set('vista','proveedores')" class="{{ $vista === 'proveedores' ? 'on' : '' }}">Proveedores</button>
@@ -537,6 +537,13 @@
                     @else
                         <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200">
                             <input type="search" wire:model.live.debounce.300ms="filtro" placeholder="Buscar proveedor, cuenta, nº, fichero…" class="focr-in" style="max-width:320px">
+                            <select wire:model.live="filtroProceso" class="focr-in" style="max-width:260px" title="Cada vez que guardas el Excel para SAGE se cierra un proceso">
+                                <option value="">Proceso en curso (sin guardar: {{ $enExcel }})</option>
+                                @foreach ($procesos as $x => $n)
+                                    <option value="{{ $x }}">Guardado el {{ \App\Http\Livewire\Contabilidad\FacturasOcr::fechaProceso($x) }} ({{ $n }})</option>
+                                @endforeach
+                                <option value="todas">Todas</option>
+                            </select>
                             <select wire:model.live="filtroMes" class="focr-in" style="max-width:200px">
                                 <option value="">Todos los meses de registro</option>
                                 @foreach ($mesesReg as $m)
@@ -576,7 +583,13 @@
                                     <td style="text-align:right" title="{{ $im['detalle'] }}">{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']) !!}</td>
                                     <td style="text-align:right">{{ $eur($im['iva']) }}</td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
-                                    <td class="text-xs">{{ $f['excel'] ?? '' }} (fila {{ $f['fila_excel'] ?? '' }})</td>
+                                    <td class="text-xs" style="white-space:nowrap">
+                                        @if (str_starts_with($f['excel'] ?? '', 'Guardados/'))
+                                            <span class="focr-chip c-gris" title="{{ $f['excel'] }}">Guardado {{ \App\Http\Livewire\Contabilidad\FacturasOcr::fechaProceso($f['excel']) }}</span>
+                                        @elseif (! empty($f['excel']))
+                                            <span class="focr-chip c-ok">En curso</span>
+                                        @endif
+                                        fila {{ $f['fila_excel'] ?? '' }}</td>
                                     <td class="text-xs" style="max-width:340px; word-break:break-all">
                                         <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline">{{ $f['ruta'] }}</a>
                                     </td>
@@ -584,7 +597,7 @@
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="12" class="p-4 text-center text-gray-500">Ninguna factura validada{{ $filtro || $filtroMes ? ' con ese filtro' : '' }}.</td></tr>
+                                <tr><td colspan="12" class="p-4 text-center text-gray-500">{{ $filtroProceso === '' && ! $filtro && ! $filtroMes ? 'Nada validado en este proceso todavía (lo guardado antes está en el desplegable de procesos).' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso ? ' con ese filtro' : '').'.' }}</td></tr>
                             @endforelse
                             </tbody>
                         </table>
