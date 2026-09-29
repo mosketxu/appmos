@@ -391,7 +391,7 @@
                                 <td style="vertical-align:top">
                                     @forelse ($ficherosBase[$tipo] ?? [] as $k => $fb)
                                         <div class="{{ $k && $tipo === 'plan' ? 'text-gray-400' : '' }}">
-                                            📄 {{ $fb['nombre'] }} <span class="text-gray-500">· {{ $fb['fecha'] }} · {{ $fb['mb'] }} MB</span>
+                                            <a href="#" wire:click.prevent="descargar(@js('Base/'.$fb['nombre']))" class="text-indigo-600 underline" title="Abrir (se descarga una copia)">📄 {{ $fb['nombre'] }}</a> <span class="text-gray-500">· {{ $fb['fecha'] }} · {{ $fb['mb'] }} MB</span>
                                             <button type="button" wire:click="quitarBase(@js($fb['nombre']))" wire:confirm="¿Quitar {{ $fb['nombre'] }}? Se rehacen los datos de proveedores sin él."
                                                     class="text-gray-400 hover:text-red-600" title="Quitar este fichero">✕</button>
                                         </div>
