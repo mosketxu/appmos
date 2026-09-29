@@ -1330,6 +1330,13 @@ class FacturasOcr extends Component
         if (config('contabilidad.ejecucion_local')) {
             $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente, '--forzar']);
             $texto .= "\n".trim($r->output()."\n".$r->errorOutput());
+            // Con otra base cambian cuentas, CIF, contrapartidas y duplicadas: las pendientes que no se han
+            // tocado a mano se vuelven a proponer (lo tocado a mano se respeta).
+            if ($r->successful() && is_file($this->dirDatos().'/facturas.json')) {
+                $this->salida = '';
+                $this->ejecutar(array_merge(['reproponer'], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 600, 'Volver a proponer las pendientes', false);
+                $texto .= "\n".trim($this->salida);
+            }
         }
         $this->salida = $texto;
         $this->dispatch('proceso-terminado', mensaje: '✅ '.$texto);
