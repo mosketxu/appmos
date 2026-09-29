@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Models\Entidad;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -45,6 +46,13 @@ class FacturacionPdf extends Component
     public string $salida = '';
 
     /**
+     * Salida de la última ejecución de cada cliente (Suma/Balerga), que se
+     * enseña a la derecha de su tarjeta nada más ejecutar (2026-09-29). La
+     * caja "Salida" del final sigue teniendo el historial completo.
+     */
+    public array $salidaCliente = [];
+
+    /**
      * Carpeta de resultados de la última ejecución de cada cliente, para
      * enseñar el enlace igual que en Procesos FIQ (ver
      * Contabilidad\Procesos::$resultados). Forma:
@@ -71,6 +79,13 @@ class FacturacionPdf extends Component
     /** Rutas del PDF subido y del .zip: bloqueado para que el navegador no pueda cambiarlas. */
     #[Locked]
     public array $generico = [];
+
+    /**
+     * Genérico: a quién van las facturas ("Nombre (NIF)" de Entidades, o
+     * texto libre). Se pasa al script para que nunca lo proponga como
+     * proveedor. Se recuerda en la sesión.
+     */
+    public string $genericoCliente = '';
 
     /** Tabla editable: una fila por página [pagina, numero, proveedor, tipo Fra|Abo|Pre, giro 0|90|180|270]. */
     public array $genericoPaginas = [];
@@ -131,6 +146,21 @@ class FacturacionPdf extends Component
             $this->filtroEnviar[$id] = 'todos';
         }
         $this->generico = $this->genericoVacio();
+        $this->genericoCliente = (string) session('facturacion-pdf.generico-cliente', '');
+    }
+
+    /** Opciones del combo de cliente del Genérico: "Nombre (NIF)" => [nombre, nif], solo entidades permitidas y no de baja. */
+    public function getEntidadesClienteProperty(): array
+    {
+        $out = [];
+        foreach (Entidad::where('estado', '!=', 0)->orderBy('entidad')->get(['entidad', 'nif']) as $e) {
+            $nombre = trim((string) $e->entidad);
+            $nif = trim((string) $e->nif);
+            if ($nombre !== '') {
+                $out[$nif !== '' ? "{$nombre} ({$nif})" : $nombre] = [$nombre, $nif];
+            }
+        }
+        return $out;
     }
 
     public function limpiarSalida(): void
@@ -195,6 +225,7 @@ class FacturacionPdf extends Component
         $this->estado[$cliente] = ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null];
         $this->archivo[$cliente] = null;
         $this->resultados[$cliente] = [];
+        $this->salidaCliente[$cliente] = '';
     }
 
     /**
@@ -233,8 +264,10 @@ class FacturacionPdf extends Component
         $args = [$this->pythonBin(), 'procesar_facturas.py', '--client', $cliente, '--input', $rutaCopia];
         $args[] = $enviar ? '--send' : '--no-mail';
 
+        $inicio = strlen($this->salida);
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $res = $this->ejecutarScript($args, 180, $etiqueta);
+        $this->salidaCliente[$cliente] = trim(substr($this->salida, $inicio));
         $this->anexarResultados($cliente, $res['archivos']);
         return $res['ok'];
     }
@@ -300,11 +333,17 @@ class FacturacionPdf extends Component
         $this->archivoGenerico = null;
         $this->resultados['Generico'] = [];
 
-        $this->salida .= "\n\n===== {$etiqueta} =====\n📄 {$nombreOriginal}\n";
+        $this->genericoCliente = trim($this->genericoCliente);
+        session(['facturacion-pdf.generico-cliente' => $this->genericoCliente]);
+        [$clienteNombre, $clienteNif] = $this->entidadesCliente[$this->genericoCliente]
+            ?? [preg_replace('/\s*\([^)]*\)\s*$/', '', $this->genericoCliente), ''];
+
+        $this->salida .= "\n\n===== {$etiqueta} =====\n📄 {$nombreOriginal}\n"
+            .($clienteNombre !== '' ? "Cliente: {$clienteNombre}".($clienteNif !== '' ? " ({$clienteNif})" : '')."\n" : '');
         try {
             $result = Process::path($this->genericoDir())->timeout(900)->env($this->entornoWindows())
                 ->run([$this->genericoPython(), 'separar_generico.py', 'analizar', '--input', $this->generico['rutaMaster'],
-                    '--miniaturas', self::carpetaMiniaturas($id)]);
+                    '--miniaturas', self::carpetaMiniaturas($id), '--cliente', $clienteNombre, '--cliente-nif', $clienteNif]);
             $data = json_decode(trim($result->output()), true);
             if (! $result->successful() || ! is_array($data)) {
                 $this->salida .= trim($result->errorOutput()."\n".$result->output())

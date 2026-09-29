@@ -30,11 +30,31 @@
         aparte, con confirmación).
     </p>
 
+    {{-- Tarjeta "ancha" (2026-09-29): ocupa toda la fila, con lo suyo a la izquierda y a la derecha
+         la salida de su última ejecución (Suma/Balerga) o la página seleccionada en grande (Genérico).
+         Estilos propios porque el app.css de Tailwind 2 está compilado y purgado. --}}
+    <style>
+        [x-cloak] { display:none !important; }
+        .tarjeta-ancha { grid-column: 1 / -1; }
+        .fila-tarjeta { display:flex; flex-direction:column; gap:1.5rem; }
+        .tarjeta-ancha .col-der .visor { height:80vh; }
+        @media (min-width:1024px) {
+            .tarjeta-ancha .fila-tarjeta { flex-direction:row; align-items:flex-start; }
+            .tarjeta-ancha .col-izq { flex:0 0 var(--izq, 30rem); min-width:0; }
+            .tarjeta-ancha .col-der { flex:1 1 0; min-width:0; position:sticky; top:1rem; }
+            .tarjeta-ancha .col-der .visor { height:calc(100vh - 2rem); }
+        }
+        .visor { container-type:size; display:flex; align-items:center; justify-content:center; background:#f3f4f6; border-radius:.5rem; overflow:hidden; }
+    </style>
+
     <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         @foreach ($this->clientes as $id => $c)
             @php($e = $estado[$id] ?? ['fase' => 'vacio', 'nombreOriginal' => null])
             @php($d = $destinatarios[$id] ?? null)
-            <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow">
+            @php($suSalida = $salidaCliente[$id] ?? '')
+            <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow {{ $suSalida !== '' ? 'tarjeta-ancha' : '' }}">
+            <div class="fila-tarjeta">
+            <div class="col-izq">
                 <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
                 <p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>
 
@@ -174,12 +194,27 @@
                         </div>
                     @endif
                 </div>
+            </div>{{-- /col-izq --}}
+            @if ($suSalida !== '')
+                @php($est = \App\Support\EstadoSalida::de($suSalida))
+                <div class="col-der">
+                    <div class="p-4 bg-gray-900 rounded-lg shadow" style="border-left:6px solid {{ $est['color'] }}">
+                        <h3 class="mb-2 text-sm font-semibold text-gray-300">{{ $est['icono'] }} Salida de {{ $c['label'] }}</h3>
+                        <pre class="overflow-auto text-xs text-green-400 whitespace-pre-wrap" style="max-height:calc(100vh - 6rem)">{{ $suSalida }}</pre>
+                    </div>
+                </div>
+            @endif
+            </div>{{-- /fila-tarjeta --}}
             </div>
         @endforeach
 
         {{-- Genérico: facturas de cualquier proveedor (separar_generico.py), sin correo --}}
         @php($g = $generico)
-        <div wire:key="cliente-Generico" class="p-4 bg-white border rounded-lg shadow">
+        @php($genAncha = $this->genericoPermitido && $g['fase'] !== 'vacio')
+        <div wire:key="cliente-Generico" class="p-4 bg-white border rounded-lg shadow {{ $genAncha ? 'tarjeta-ancha' : '' }}"
+             x-data="{ sel: 0 }" style="--izq:40rem">
+        <div class="fila-tarjeta">
+        <div class="col-izq">
             <h2 class="text-lg font-semibold text-gray-900">Genérico</h2>
             <p class="mt-1 mb-3 text-xs text-gray-500">
                 PDF con varias facturas de cualquier proveedor (también escaneado o foto: se lee con OCR).
@@ -189,6 +224,16 @@
             @if (! $this->genericoPermitido)
                 <p class="text-xs text-amber-600">⚠️ No disponible en este servidor.</p>
             @elseif ($g['fase'] === 'vacio')
+                <label class="block mb-1 text-xs font-medium text-gray-600">Cliente (a quien van las facturas)</label>
+                <input type="text" wire:model="genericoCliente" list="gen-entidades" placeholder="Escribe para buscar en Entidades (opcional)"
+                       class="block w-full mb-1 text-sm border-gray-300 rounded-md shadow-sm">
+                <datalist id="gen-entidades" wire:ignore>
+                    @foreach (array_keys($this->entidadesCliente) as $opcion)
+                        <option value="{{ $opcion }}"></option>
+                    @endforeach
+                </datalist>
+                <p class="mb-3 text-xs text-gray-500">Nunca se propone como proveedor, aunque el OCR lea mal su nombre.</p>
+
                 <label class="block mb-2 text-xs font-medium text-gray-600">PDF con las facturas</label>
                 <x-contabilidad.soltar-fichero model="archivoGenerico" accept="application/pdf,.pdf" :fichero="$archivoGenerico"
                     texto="Arrastra aquí el PDF o haz clic para elegirlo" />
@@ -231,18 +276,9 @@
 
                 <p class="mb-1 text-xs text-gray-500">
                     Páginas seguidas con el mismo número y proveedor salen en un solo PDF. Corrige lo que el OCR haya leído mal.
-                    Clic en la miniatura para verla en grande; ↻ gira la página 90° (las torcidas ya vienen giradas).
+                    Clic en una fila para ver su página en grande a la derecha; ↻ la gira 90° (las torcidas ya vienen giradas).
                 </p>
-                <div class="mb-3 overflow-auto border rounded" style="max-height:40rem" x-data="{ grande: null }">
-                    {{-- Página en grande (clic en una miniatura); clic o Esc para cerrar --}}
-                    <template x-if="grande">
-                        <div x-on:click="grande = null" x-on:keydown.escape.window="grande = null"
-                             style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; padding:1rem; cursor:zoom-out">
-                            <img :src="grande.src" alt=""
-                                 :style="'background:#fff; box-shadow:0 10px 30px rgba(0,0,0,.5); transform:rotate(' + grande.giro + 'deg); '
-                                         + (grande.giro % 180 ? 'max-width:95vh; max-height:95vw' : 'max-width:100%; max-height:100%')">
-                        </div>
-                    </template>
+                <div class="mb-3 overflow-auto border rounded" style="max-height:calc(100vh - 16rem)">
                     <table class="min-w-full text-xs divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -256,7 +292,8 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @foreach ($genericoPaginas as $i => $f)
-                                <tr wire:key="gen-pag-{{ $i }}">
+                                <tr wire:key="gen-pag-{{ $i }}" x-on:click="sel = {{ $i }}" x-on:focusin="sel = {{ $i }}"
+                                    :style="sel === {{ $i }} ? 'background:#e0e7ff' : ''" style="cursor:pointer">
                                     <td class="px-1 py-1 text-gray-500">{{ $f['pagina'] }}</td>
                                     <td class="px-1 py-1">
                                         @if ($g['id'])
@@ -265,8 +302,7 @@
                                             @php($giro = (int) ($f['giro'] ?? 0))
                                             <div style="width:4rem; height:4rem; display:flex; align-items:center; justify-content:center">
                                                 <img src="{{ $mini }}" alt="Página {{ $f['pagina'] }}" loading="lazy"
-                                                     x-on:click="grande = { src: '{{ $mini }}', giro: {{ $giro }} }" title="Ver en grande"
-                                                     style="max-width:4rem; max-height:4rem; transform:rotate({{ $giro }}deg); border:1px solid #d1d5db; cursor:zoom-in; background:#fff">
+                                                     style="max-width:4rem; max-height:4rem; transform:rotate({{ $giro }}deg); border:1px solid #d1d5db; background:#fff">
                                             </div>
                                         @endif
                                     </td>
@@ -320,6 +356,23 @@
                     </x-button.secondary>
                 </div>
             @endif
+        </div>{{-- /col-izq --}}
+        @if ($genAncha && $g['id'])
+            {{-- Página seleccionada en grande, con el alto de la pantalla y el giro que se aplicará --}}
+            <div class="col-der">
+                <div class="visor">
+                    @foreach ($genericoPaginas as $i => $f)
+                        @php($giro = (int) ($f['giro'] ?? 0))
+                        <img wire:key="gen-grande-{{ $i }}" x-show="sel === {{ $i }}" x-cloak loading="lazy"
+                             src="{{ route('contabilidad.facturacion-pdf.miniatura', [$g['id'], $f['pagina']]) }}" alt="Página {{ $f['pagina'] }}"
+                             style="background:#fff; box-shadow:0 4px 16px rgba(0,0,0,.2); transform:rotate({{ $giro }}deg);
+                                    {{ $giro % 180 ? 'max-width:100cqh; max-height:100cqw' : 'max-width:100cqw; max-height:100cqh' }}">
+                    @endforeach
+                </div>
+                <p class="mt-1 text-xs text-center text-gray-500" x-text="'Página ' + (sel + 1) + ' de {{ count($genericoPaginas) }}'"></p>
+            </div>
+        @endif
+        </div>{{-- /fila-tarjeta --}}
         </div>
     </div>
 
