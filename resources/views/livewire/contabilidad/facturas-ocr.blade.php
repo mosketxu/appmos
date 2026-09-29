@@ -382,9 +382,9 @@
                         (…Plan….xlsx, exportado de SAGE con "Código cuenta" y "Descripción") llena el combo de contrapartida con todas las cuentas.</p>
                     <table class="mt-2 focr-tabla" style="font-size:.78rem">
                         @foreach ([
-                            'prov' => ['Listado de proveedores', 'subidaProv', 'Se suman todos los listados; si un proveedor está en varios, manda el más reciente. Lo puesto a mano aquí (●, proveedores nuevos) no se toca.'],
-                            'mayor' => ['Mayor', 'subidaMayor', 'Se suman todos los mayores: uno de los últimos meses completa al de años anteriores (un asiento que esté en los dos se toma del más reciente).'],
-                            'plan' => ['Plan de cuentas', 'subidaPlan', 'Vale el más reciente.'],
+                            'prov' => ['Listado de proveedores', 'subidaProv', 'Vale el último que subes; el anterior pasa a Base/OLD. Lo puesto a mano aquí (●, proveedores nuevos) no se toca.'],
+                            'mayor' => ['Mayor', 'subidaMayor', 'El anterior pasa a Base/OLD pero se sigue sumando: uno de los últimos meses completa al de años anteriores (un asiento que esté en los dos se toma del más reciente).'],
+                            'plan' => ['Plan de cuentas', 'subidaPlan', 'Vale el último que subes; el anterior pasa a Base/OLD.'],
                         ] as $tipo => [$titulo, $prop, $ayuda])
                             <tr>
                                 <td style="width:11rem; vertical-align:top"><b>{{ $titulo }}</b></td>
@@ -392,13 +392,15 @@
                                     @forelse ($ficherosBase[$tipo] ?? [] as $k => $fb)
                                         <div class="{{ $k && $tipo === 'plan' ? 'text-gray-400' : '' }}">
                                             <a href="#" wire:click.prevent="descargar(@js('Base/'.$fb['nombre']))" class="text-indigo-600 underline" title="Abrir (se descarga una copia)">📄 {{ $fb['nombre'] }}</a> <span class="text-gray-500">· {{ $fb['fecha'] }} · {{ $fb['mb'] }} MB</span>
-                                            <button type="button" wire:click="quitarBase(@js($fb['nombre']))" wire:confirm="¿Quitar {{ $fb['nombre'] }}? Se rehacen los datos de proveedores sin él."
+                                            <button type="button" wire:click="quitarBase(@js($fb['nombre']))" wire:confirm="¿Quitar {{ $fb['nombre'] }}? Se borra y vuelve el anterior de Base/OLD (si hay)."
                                                     class="text-gray-400 hover:text-red-600" title="Quitar este fichero">✕</button>
                                         </div>
                                     @empty
                                         <span class="text-gray-400">(ninguno)</span>
                                     @endforelse
-                                    <div class="text-gray-500" style="font-size:.7rem">{{ $ayuda }}</div>
+                                    <div class="text-gray-500" style="font-size:.7rem">{{ $ayuda }}
+                                        @if ($ficherosBase['old_'.$tipo] ?? 0) ({{ $ficherosBase['old_'.$tipo] }} en OLD{{ $tipo === 'mayor' ? ', sumándose' : '' }}.) @endif
+                                        ✕ = quitar el de arriba (vuelve el anterior de OLD).</div>
                                 </td>
                                 <td style="width:15rem; vertical-align:top">
                                     <label class="focr-btn b-gris" style="padding:.2rem .6rem; font-size:.75rem; cursor:pointer">

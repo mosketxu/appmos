@@ -1277,9 +1277,9 @@ class FacturasOcr extends Component
     // ------------------------------------------------------------ ficheros
 
     /** Listado de proveedores o mayor de SAGE: se guardan en <Cliente>/Base y se rehace proveedores.json. */
-    /** Ficheros base: [patrón en el nombre, prefijo si no lo lleva, se suman todos (true) o vale el último]. Igual que en facturas_base.py. */
+    /** Ficheros base: [patrón en el nombre, prefijo si no lo lleva, se suman también los de Base/OLD (true) o vale el último]. Igual que en facturas_base.py. */
     public const TIPOS_BASE = [
-        'prov' => ['/lisProveedores/i', 'lisProveedores_', true],
+        'prov' => ['/lisProveedores/i', 'lisProveedores_', false],
         'mayor' => ['/^Mayor/i', 'Mayor_', true],
         'plan' => ['/plan/i', 'Plan_', false],
     ];
@@ -1307,22 +1307,57 @@ class FacturasOcr extends Component
         }
         $dir = $this->dirDatos().'/Base';
         @mkdir($dir, 0775, true);
-        if (! @copy($f->getRealPath(), $dir.'/'.$nombre)) {
+        $tmp = $dir.'/.subiendo-'.$nombre;
+        if (! @copy($f->getRealPath(), $tmp)) {
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ No se pudo guardar {$nombre}.");
+            return;
+        }
+        // Solo queda a la vista el último de cada tipo: los anteriores van a Base/OLD (de ahí se siguen
+        // sumando los mayores; del listado y el plan vale el último)
+        $apartados = [];
+        foreach (glob($dir.'/*.xlsx') ?: [] as $viejo) {
+            if (preg_match($patron, basename($viejo)) && ! str_starts_with(basename($viejo), '~$')) {
+                @mkdir($dir.'/OLD', 0775, true);
+                $dest = $dir.'/OLD/'.basename($viejo);
+                if (is_file($dest)) {
+                    $dest = $dir.'/OLD/'.pathinfo($viejo, PATHINFO_FILENAME).'_'.date('Ymd-His', filemtime($viejo)).'.xlsx';
+                }
+                if (@rename($viejo, $dest)) {
+                    $apartados[] = basename($viejo);
+                }
+            }
+        }
+        if (! @rename($tmp, $dir.'/'.$nombre)) {
             $this->dispatch('proceso-terminado', mensaje: "⚠️ No se pudo guardar {$nombre} (¿está abierto en Excel?).");
             return;
         }
-        $this->rehacerBase("Guardado Base/{$nombre}.");
+        $this->rehacerBase("Guardado Base/{$nombre}.".($apartados ? ' A Base/OLD: '.implode(', ', $apartados).'.' : ''));
     }
 
-    /** Quita un fichero base (p.ej. uno subido por error) y rehace proveedores.json sin él. */
+    /** Quita el fichero base a la vista (p.ej. subido por error): se borra y vuelve el anterior de su tipo desde Base/OLD. */
     public function quitarBase(string $nombre): void
     {
-        $ruta = $this->dirDatos().'/Base/'.basename($nombre);
+        $dir = $this->dirDatos().'/Base';
+        $ruta = $dir.'/'.basename($nombre);
         if (! $this->clienteValido() || ! is_file($ruta) || ! preg_match('/\.xlsx$/i', $ruta)) {
             return;
         }
-        @unlink($ruta);
-        $this->rehacerBase("Quitado Base/{$nombre}.");
+        if (! @unlink($ruta)) {
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ No se pudo quitar {$nombre} (¿está abierto en Excel?).");
+            return;
+        }
+        $hecho = "Quitado Base/{$nombre}.";
+        foreach (self::TIPOS_BASE as [$patron]) {
+            if (preg_match($patron, basename($nombre))) {
+                $anteriores = array_filter(glob($dir.'/OLD/*.xlsx') ?: [], fn ($f) => preg_match($patron, basename($f)));
+                usort($anteriores, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+                if ($anteriores && @rename($anteriores[0], $dir.'/'.basename($anteriores[0]))) {
+                    $hecho .= ' Vuelve el anterior: '.basename($anteriores[0]).'.';
+                }
+                break;
+            }
+        }
+        $this->rehacerBase($hecho);
     }
 
     protected function rehacerBase(string $hecho): void
@@ -1378,6 +1413,10 @@ class FacturasOcr extends Component
         }
         foreach ($out as &$l) {
             usort($l, fn ($a, $b) => $b['t'] <=> $a['t']);
+        }
+        unset($l);
+        foreach (self::TIPOS_BASE as $tipo => [$patron]) {
+            $out['old_'.$tipo] = count(array_filter(glob($this->dirDatos().'/Base/OLD/*.xlsx') ?: [], fn ($f) => preg_match($patron, basename($f))));
         }
         return $out;
     }
