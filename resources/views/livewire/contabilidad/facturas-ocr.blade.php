@@ -558,9 +558,9 @@
                                     </td>
                                     <td class="text-xs text-gray-600">{{ implode(' · ', $f['avisos'] ?? []) }}
                                         @if (! empty($f['motivo_rechazo'])) <b>Rechazo:</b> {{ $f['motivo_rechazo'] }} @endif
-                                        @if (in_array($f['estado'], ['rechazada', 'ilegible'], true))
-                                            <button type="button" wire:click.stop="quitarDeLista('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.7rem" title="Quitarla de la lista (el PDF no se toca)">✕ Quitar</button>
-                                        @endif
+                                        <button type="button" wire:click.stop="quitarDeLista('{{ $f['id'] }}')"
+                                                @if ($f['estado'] === 'pendiente') wire:confirm="¿Quitar {{ basename($f['ruta']) }} de la lista? (p.ej. si la contabilizas a mano en SAGE). El PDF no se toca." @endif
+                                                class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.7rem" title="Quitarla de la lista (el PDF no se toca)">✕ Quitar</button>
                                     </td>
                                 </tr>
                             @empty

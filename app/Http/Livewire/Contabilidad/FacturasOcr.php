@@ -423,12 +423,14 @@ class FacturasOcr extends Component
         }
     }
 
-    /** Rechazadas, no legibles y duplicadas fuera de la lista (una o, sin id, todas). No se borra nada. */
+    /** Fuera de la lista: una factura (pendiente, rechazada, no legible o duplicada) o, sin id, todas las descartadas. No se borra nada. */
     public function quitarDeLista(?string $id = null): void
     {
         $this->modificarEstado(function (array $e) use ($id) {
             foreach ($e['facturas'] as &$f) {
-                if (($id === null || $f['id'] === $id) && in_array($f['estado'], ['rechazada', 'ilegible', 'duplicada'], true)) {
+                // Una a una también las pendientes (p.ej. contabilizada a mano en SAGE); en bloque, solo las ya descartadas
+                if ($id === null ? in_array($f['estado'], ['rechazada', 'ilegible', 'duplicada'], true)
+                        : $f['id'] === $id && in_array($f['estado'], ['pendiente', 'rechazada', 'ilegible', 'duplicada'], true)) {
                     $f['oculta'] = date('Y-m-d H:i');
                 }
             }
