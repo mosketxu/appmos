@@ -128,6 +128,7 @@
                     return '';
                 },
                 async subirSueltos(files) {
+                    dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = [];
                     this.ocupado = true;
                     const lista = Array.from(files).filter(f => EXT.test(f.name));
                     for (let i = 0; i < lista.length; i++) {
@@ -139,7 +140,7 @@
                 async analizar() {
                     this.ocupado = true;
                     try {
-                        if (this.soportado) {
+                        if (this.soportado && this.ficheros.length) {
                             const lista = this.marcados;
                             if (! lista.length) { this.estado = 'Elige una carpeta o ficheros y marca al menos uno.'; return; }
                             await this.$wire.empezarLoteCarpeta();
@@ -429,23 +430,27 @@
                     </div>
                 </template>
                 <template x-if="! soportado">
-                    {{-- Sin File System Access API (Firefox, Safari): se suben copias y el resultado va en .zip --}}
-                    <div>
-                        <p class="mb-1 text-xs text-amber-700">Este navegador no deja escribir en tus carpetas (usa Chrome o Edge para renombrar en su sitio). Aquí el resultado sale en un .zip.</p>
-                        <input type="file" multiple accept="application/pdf,.pdf,image/*" class="text-xs"
-                               x-on:change="subirSueltos($event.target.files); $event.target.value = ''">
-                        @if ($archivosGenerico)
-                            <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
-                                @foreach ($archivosGenerico as $i => $a)
-                                    <div wire:key="gen-arch-{{ $i }}-{{ md5($a['ruta']) }}" class="flex items-center justify-between gap-2 px-2 py-1 text-xs border-b last:border-b-0">
-                                        <span class="text-gray-700 break-all">{{ $a['nombre'] }}</span>
-                                        <button type="button" wire:click="quitarArchivoGenerico({{ $i }})" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
+                    <p class="mt-1 mb-1 text-xs text-amber-700">Este navegador no deja escribir en tus carpetas (usa Chrome o Edge para renombrar en su sitio). Aquí el resultado sale en un .zip.</p>
                 </template>
+                {{-- Subir copias: sin File System Access API, o carpetas que Chrome bloquea (C:\ProgramData,
+                     Archivos de programa, AppData...). El resultado va solo en el .zip. --}}
+                <div class="mt-2" x-show="! carpeta && ! sueltos">
+                    <label class="block text-xs text-gray-600">
+                        <span x-show="soportado">…o <strong>subir una copia</strong> (desde cualquier carpeta, también las que Chrome no deja abrir; sale solo en .zip):</span>
+                        <input type="file" multiple accept="application/pdf,.pdf,image/*" class="block mt-1 text-xs"
+                               x-on:change="subirSueltos($event.target.files); $event.target.value = ''">
+                    </label>
+                    @if ($archivosGenerico)
+                        <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
+                            @foreach ($archivosGenerico as $i => $a)
+                                <div wire:key="gen-arch-{{ $i }}-{{ md5($a['ruta']) }}" class="flex items-center justify-between gap-2 px-2 py-1 text-xs border-b last:border-b-0">
+                                    <span class="text-gray-700 break-all">{{ $a['nombre'] }}</span>
+                                    <button type="button" wire:click="quitarArchivoGenerico({{ $i }})" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
                 @error('nuevoArchivoGenerico')
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
