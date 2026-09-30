@@ -18,7 +18,9 @@ use Livewire\WithFileUploads;
  *   - plan de cuentas y mayor de SAGE (uno solo con todas las cuentas): neteges_base.py los
  *     acumula en Base/Base Neteges.xlsx, como Bancos. Del mayor solo se guardan las cuentas
  *     de banco: 572... y las "otras cuentas de banco" marcadas en pantalla.
- *   - fichero de Ventas: de momento solo se guarda (y se apunta en Base/recibidos.json).
+ *   - ficheros de Ventas (varios, de una vez o en varias): neteges_ventas.py los acumula sin
+ *     duplicados en Base/Ventas Neteges.xlsx (con el que se trabaja) y avisa si una factura
+ *     que ya estaba llega distinta.
  * Extracto del banco con su cuenta: de momento solo se guarda en Input (el proceso, después).
  *
  * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
@@ -40,7 +42,10 @@ class Neteges extends Component
     /** neteges_base.py --estado: plan, cada cuenta, último mayor, otras cuentas de banco, ventas. */
     public array $estadoBase = [];
 
-    /** Salida de la última ejecución de neteges_base.py. */
+    /** neteges_ventas.py --estado: líneas, facturas, desde/hasta, ficheros, cambios. */
+    public array $estadoVentas = [];
+
+    /** Salida de la última ejecución de neteges_base.py / neteges_ventas.py. */
     public string $salida = '';
 
     public function mount(): void
@@ -73,6 +78,12 @@ class Neteges extends Component
         } catch (\Throwable $e) {
             $this->estadoBase = [];
         }
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_ventas.py', '--estado']);
+            $this->estadoVentas = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            $this->estadoVentas = [];
+        }
     }
 
     /** Cuentas de banco cargadas en la base (pestañas con código de cuenta). */
@@ -91,11 +102,11 @@ class Neteges extends Component
         return $c;
     }
 
-    /** Ejecuta neteges_base.py y deja el texto en $salida; devuelve si fue bien. */
-    protected function ejecutar(array $args, string $etiqueta): bool
+    /** Ejecuta neteges_base.py (o el script que se diga) y deja el texto en $salida; devuelve si fue bien. */
+    protected function ejecutar(array $args, string $etiqueta, string $script = 'neteges_base.py'): bool
     {
         try {
-            $r = Process::path($this->baseDir())->timeout(180)->run(array_merge([$this->pythonBin(), 'neteges_base.py'], $args));
+            $r = Process::path($this->baseDir())->timeout(300)->run(array_merge([$this->pythonBin(), $script], $args));
             $ok = $r->successful();
             $texto = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', $r->output()."\n".$r->errorOutput()));
         } catch (\Throwable $e) {
@@ -150,18 +161,11 @@ class Neteges extends Component
             $rutas[] = "{$dir}/{$sello} {$nombre}";
         }
 
-        if ($fila !== 'ventas') {
-            $this->ejecutar(array_merge(['--espera', $fila], $rutas), $etiqueta);
+        if ($fila === 'ventas') {
+            $this->ejecutar($rutas, $etiqueta, 'neteges_ventas.py');
             return;
         }
-        // Ventas: de momento solo se guarda y se apunta en recibidos.json (el que usa neteges_base.py)
-        $path = $this->baseDir().'/Base/recibidos.json';
-        $recibidos = json_decode((string) @file_get_contents($path), true) ?: [];
-        $recibidos['ventas'] = ['fichero' => basename(end($rutas)), 'fecha' => date('Y-m-d H:i')];
-        $recibidos['ventas']['fichero'] = preg_replace('/^\d{8}-\d{6} /', '', $recibidos['ventas']['fichero']);
-        file_put_contents($path, json_encode($recibidos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        $this->cargarEstado();
-        $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nGuardado: ".implode(', ', array_map(fn ($r) => preg_replace('/^\d{8}-\d{6} /', '', basename($r)), $rutas)));
+        $this->ejecutar(array_merge(['--espera', $fila], $rutas), $etiqueta);
     }
 
     public function anadirOtraCuenta(): void
@@ -290,7 +294,6 @@ class Neteges extends Component
         return view('livewire.contabilidad.neteges', [
             'cuentas' => $this->cuentasBanco(),
             'hayBase' => is_file($this->basePath()),
-            'ventas' => (json_decode((string) @file_get_contents($this->baseDir().'/Base/recibidos.json'), true) ?: [])['ventas'] ?? null,
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
             'pendientes' => $this->ficheros('Input'),
             'carpeta' => $this->rutaWindows($this->baseDir()),

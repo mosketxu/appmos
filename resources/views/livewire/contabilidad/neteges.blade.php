@@ -23,7 +23,7 @@
         $filasBase = [
             ['clave' => 'plan', 'icono' => '📘', 'titulo' => 'Plan de cuentas', 'boton' => 'Subir plan', 'accept' => '.xlsx,.xls', 'datos' => $estadoBase['plan'] ?? null],
             ['clave' => 'mayor', 'icono' => '🏦', 'titulo' => 'Mayor', 'boton' => 'Subir mayor', 'accept' => '.xlsx,.xls', 'datos' => $estadoBase['mayor'] ?? null],
-            ['clave' => 'ventas', 'icono' => '🧾', 'titulo' => 'Fichero Ventas', 'boton' => 'Subir ventas', 'accept' => '.xlsx,.xls,.csv', 'datos' => $ventas ? ['recibido' => $ventas] : null],
+            ['clave' => 'ventas', 'icono' => '🧾', 'titulo' => 'Ficheros Ventas', 'boton' => 'Subir ventas', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
         ];
         $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
     @endphp
@@ -74,6 +74,23 @@
                                     @endif
                                 </div>
                             @endforeach
+                        @elseif ($fb['clave'] === 'ventas' && $estadoVentas)
+                            <b>{{ $estadoVentas['lineas'] }}</b> líneas
+                            @if ($estadoVentas['facturas'] !== null) · <b>{{ $estadoVentas['facturas'] }}</b> facturas @endif
+                            @if ($estadoVentas['desde'] !== '') del {{ $estadoVentas['desde'] }} al {{ $estadoVentas['hasta'] }} @endif
+                            · {{ count($estadoVentas['ficheros']) }} {{ count($estadoVentas['ficheros']) === 1 ? 'fichero' : 'ficheros' }}
+                            @if ($estadoVentas['cambios'])
+                                <span class="font-semibold text-red-700" title="Facturas que ya estaban y han llegado distintas: pestaña Cambios">· ⚠️ {{ $estadoVentas['cambios'] }} facturas llegadas distintas</span>
+                            @endif
+                            <button type="button" wire:click="descargar('Base/Ventas Neteges.xlsx')" class="ml-1 text-blue-700 underline hover:text-blue-900">⬇ Ventas acumuladas</button>
+                            <details class="text-gray-400">
+                                <summary class="cursor-pointer">Ficheros incluidos</summary>
+                                @foreach ($estadoVentas['ficheros'] as $vf)
+                                    <div>{{ $vf }}</div>
+                                @endforeach
+                            </details>
+                        @elseif ($fb['clave'] === 'ventas')
+                            <span class="text-gray-400">(todavía nada) — puedes subir varios a la vez o en varias veces: se juntan sin duplicados</span>
                         @elseif (! $fb['datos'])
                             <span class="text-gray-400">(todavía nada)</span>
                         @endif
