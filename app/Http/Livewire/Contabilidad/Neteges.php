@@ -3,6 +3,8 @@
 namespace App\Http\Livewire\Contabilidad;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Process;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -11,12 +13,13 @@ use Livewire\WithFileUploads;
  * más ficheros (de momento, además, el fichero de Ventas). Se replica aparte
  * porque tendrá características propias. Ver Contabilidad/Neteges/PLAN.md.
  *
- * Por ahora solo recoge los ficheros (el proceso se hará después):
- *   - Ficheros base, cada uno en su fila (botón o arrastrando): plan de cuentas,
- *     mayor de cada cuenta de banco (572xxx...), mayor de otra cuenta y fichero
- *     de Ventas. Se guardan en Base/Recibidos con fecha/hora delante y se apuntan
- *     en Base/recibidos.json (de ahí salen las cuentas de banco y el estado de cada fila).
- *   - Extracto del banco con su cuenta: se guarda en Input.
+ * Ficheros base, cada uno en su fila (botón o arrastrando), guardados en Base/Recibidos
+ * con fecha/hora delante:
+ *   - plan de cuentas y mayor de SAGE (uno solo con todas las cuentas): neteges_base.py los
+ *     acumula en Base/Base Neteges.xlsx, como Bancos. Del mayor solo se guardan las cuentas
+ *     de banco: 572... y las "otras cuentas de banco" marcadas en pantalla.
+ *   - fichero de Ventas: de momento solo se guarda (y se apunta en Base/recibidos.json).
+ * Extracto del banco con su cuenta: de momento solo se guarda en Input (el proceso, después).
  *
  * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
  */
@@ -27,52 +30,82 @@ class Neteges extends Component
     /** Ficheros base recién subidos; al terminar la subida el navegador llama a procesarSubidas(fila). */
     public array $subidas = [];
 
-    /** Cuenta del "mayor de otra cuenta" si el nombre del fichero no empieza por ella. */
+    /** Cuenta que no empieza por 572 a marcar como de banco (p.ej. 551002). */
     public string $otraCuenta = '';
 
     /** Extracto del banco y cuenta a la que pertenece. */
     public $extracto = null;
     public string $cuenta = '';
 
-    public const FILAS = [
-        'plan' => ['icono' => '📘', 'titulo' => 'Plan de cuentas', 'boton' => 'Subir plan'],
-        'ventas' => ['icono' => '🧾', 'titulo' => 'Fichero Ventas', 'boton' => 'Subir ventas'],
-    ];
+    /** neteges_base.py --estado: plan, cada cuenta, último mayor, otras cuentas de banco, ventas. */
+    public array $estadoBase = [];
+
+    /** Salida de la última ejecución de neteges_base.py. */
+    public string $salida = '';
+
+    public function mount(): void
+    {
+        $this->cargarEstado();
+    }
 
     protected function baseDir(): string
     {
         return rtrim(config('contabilidad.neteges_dir'), '/');
     }
 
-    protected function manifiestoPath(): string
+    protected function basePath(): string
     {
-        return $this->baseDir().'/Base/recibidos.json';
+        return $this->baseDir().'/Base/Base Neteges.xlsx';
     }
 
-    /** [{fila, cuenta, fichero, guardado, fecha}] en orden de subida. */
-    protected function manifiesto(): array
+    /** venv propio si existe (openpyxl + xlrd), si no el python3 del sistema. */
+    protected function pythonBin(): string
     {
-        $d = json_decode((string) @file_get_contents($this->manifiestoPath()), true);
-        return is_array($d) ? $d : [];
+        $venv = $this->baseDir().'/.venv/bin/python3';
+        return is_file($venv) ? $venv : 'python3';
     }
 
-    /** Cuentas de banco con mayor subido, ordenadas. */
+    public function cargarEstado(): void
+    {
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_base.py', '--estado']);
+            $this->estadoBase = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            $this->estadoBase = [];
+        }
+    }
+
+    /** Cuentas de banco cargadas en la base (pestañas con código de cuenta). */
     protected function cuentasBanco(): array
     {
-        $c = array_values(array_unique(array_filter(array_column($this->manifiesto(), 'cuenta'))));
+        if (! is_file($this->basePath())) {
+            return [];
+        }
+        try {
+            $hojas = IOFactory::createReader('Xlsx')->listWorksheetNames($this->basePath());
+        } catch (\Throwable $e) {
+            return [];
+        }
+        $c = array_values(array_filter($hojas, fn ($n) => preg_match('/^\d{6,}$/', $n)));
         sort($c);
         return $c;
     }
 
-    /** Último fichero y número de ficheros por fila ('plan', 'ventas' o la cuenta). */
-    protected function estado(): array
+    /** Ejecuta neteges_base.py y deja el texto en $salida; devuelve si fue bien. */
+    protected function ejecutar(array $args, string $etiqueta): bool
     {
-        $out = [];
-        foreach ($this->manifiesto() as $m) {
-            $clave = $m['cuenta'] ?: $m['fila'];
-            $out[$clave] = ['n' => ($out[$clave]['n'] ?? 0) + 1, 'ultimo' => $m];
+        try {
+            $r = Process::path($this->baseDir())->timeout(180)->run(array_merge([$this->pythonBin(), 'neteges_base.py'], $args));
+            $ok = $r->successful();
+            $texto = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', $r->output()."\n".$r->errorOutput()));
+        } catch (\Throwable $e) {
+            $ok = false;
+            $texto = $e->getMessage();
         }
-        return $out;
+        $this->salida = "===== {$etiqueta} =====\n{$texto}";
+        $this->dispatch('proceso-terminado', mensaje: ($ok ? "✅ {$etiqueta}\nTerminado." : "⚠️ {$etiqueta}\nCon avisos o errores: mira la Salida."));
+        $this->cargarEstado();
+        return $ok;
     }
 
     public function procesarSubidas(string $fila): void
@@ -83,11 +116,11 @@ class Neteges extends Component
         if (! $ficheros) {
             return;
         }
-        if (! isset(self::FILAS[$fila]) && $fila !== 'mayor' && ! preg_match('/^\d{6,}$/', $fila)) {
+        if (! in_array($fila, ['plan', 'mayor', 'ventas'], true)) {
             $this->addError('subidas', 'Fila desconocida.');
             return;
         }
-        $etiqueta = 'Neteges · '.(self::FILAS[$fila]['titulo'] ?? ($fila === 'mayor' ? 'mayor de otra cuenta' : "mayor {$fila}"));
+        $etiqueta = 'Neteges · '.['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas'][$fila];
         if (! config('contabilidad.ejecucion_local')) {
             $this->avisarNoAutorizado($etiqueta);
             return;
@@ -101,46 +134,61 @@ class Neteges extends Component
             return;
         }
 
-        // Cuenta de cada mayor: la de la fila, o la del principio del nombre, o la escrita a mano
-        $cuentas = [];
-        foreach ($ficheros as $i => $f) {
-            if (isset(self::FILAS[$fila])) {
-                $cuentas[$i] = '';
-            } elseif ($fila !== 'mayor') {
-                $cuentas[$i] = $fila;
-            } elseif (preg_match('/^(\d{6,})/', $f->getClientOriginalName(), $m)) {
-                $cuentas[$i] = $m[1];
-            } elseif (preg_match('/^\d{6,}$/', trim($this->otraCuenta))) {
-                $cuentas[$i] = trim($this->otraCuenta);
-            } else {
-                $this->addError('subidas', "No sé de qué cuenta es {$f->getClientOriginalName()}: escribe la cuenta (p.ej. 551002) o pon el código al principio del nombre del fichero.");
-                return;
-            }
-        }
-
         $dir = $this->baseDir().'/Base/Recibidos';
         if (! is_dir($dir) && ! @mkdir($dir, 0777, true)) {
             $this->addError('subidas', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
             return;
         }
         $sello = date('Ymd-His');
-        $manifiesto = $this->manifiesto();
-        $guardados = [];
-        foreach ($ficheros as $i => $f) {
+        $rutas = [];
+        foreach ($ficheros as $f) {
             $nombre = str_replace(['/', '\\'], '_', $f->getClientOriginalName());
             if (! @copy($f->getRealPath(), "{$dir}/{$sello} {$nombre}")) {
                 $this->addError('subidas', "No se ha podido guardar {$nombre} en {$this->rutaWindows($dir)}.");
-                break;
+                return;
             }
-            $manifiesto[] = ['fila' => isset(self::FILAS[$fila]) ? $fila : 'mayor', 'cuenta' => $cuentas[$i],
-                'fichero' => $nombre, 'guardado' => "Base/Recibidos/{$sello} {$nombre}", 'fecha' => date('c')];
-            $guardados[] = $nombre.($cuentas[$i] !== '' ? " (cuenta {$cuentas[$i]})" : '');
+            $rutas[] = "{$dir}/{$sello} {$nombre}";
         }
-        file_put_contents($this->manifiestoPath(), json_encode($manifiesto, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        if ($guardados) {
-            $this->otraCuenta = '';
-            $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nGuardado: ".implode(', ', $guardados));
+
+        if ($fila !== 'ventas') {
+            $this->ejecutar(array_merge(['--espera', $fila], $rutas), $etiqueta);
+            return;
         }
+        // Ventas: de momento solo se guarda y se apunta en recibidos.json (el que usa neteges_base.py)
+        $path = $this->baseDir().'/Base/recibidos.json';
+        $recibidos = json_decode((string) @file_get_contents($path), true) ?: [];
+        $recibidos['ventas'] = ['fichero' => basename(end($rutas)), 'fecha' => date('Y-m-d H:i')];
+        $recibidos['ventas']['fichero'] = preg_replace('/^\d{8}-\d{6} /', '', $recibidos['ventas']['fichero']);
+        file_put_contents($path, json_encode($recibidos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $this->cargarEstado();
+        $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nGuardado: ".implode(', ', array_map(fn ($r) => preg_replace('/^\d{8}-\d{6} /', '', basename($r)), $rutas)));
+    }
+
+    public function anadirOtraCuenta(): void
+    {
+        $cuenta = trim($this->otraCuenta);
+        if (! preg_match('/^\d{6,}$/', $cuenta)) {
+            $this->addError('otraCuenta', 'Escribe la cuenta completa (6 cifras o más).');
+            return;
+        }
+        $this->otraCuenta = '';
+        $this->editarOtrasCuentas('anadir', $cuenta);
+    }
+
+    public function quitarOtraCuenta(string $cuenta): void
+    {
+        $this->editarOtrasCuentas('quitar', $cuenta);
+    }
+
+    protected function editarOtrasCuentas(string $accion, string $cuenta): void
+    {
+        $this->resetErrorBag('otraCuenta');
+        $etiqueta = 'Neteges · '.($accion === 'anadir' ? 'añadir' : 'quitar')." cuenta de banco {$cuenta}";
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado($etiqueta);
+            return;
+        }
+        $this->ejecutar(['--otras-cuentas', $accion, $cuenta], $etiqueta);
     }
 
     /** Si el nombre del extracto empieza por una de las cuentas, se preselecciona. */
@@ -192,7 +240,12 @@ class Neteges extends Component
         $this->dispatch('proceso-terminado', mensaje: "✅ Neteges · extracto {$this->cuenta}\nGuardado en Input como ".basename($destino).".\n(El proceso todavía no está hecho.)");
     }
 
-    /** Descarga un fichero de la carpeta de Neteges (Base/Recibidos/..., Input/...). */
+    public function limpiarSalida(): void
+    {
+        $this->salida = '';
+    }
+
+    /** Descarga un fichero de la carpeta de Neteges (Base/..., Input/...). */
     public function descargar(string $relativa)
     {
         $raiz = realpath($this->baseDir());
@@ -236,7 +289,8 @@ class Neteges extends Component
     {
         return view('livewire.contabilidad.neteges', [
             'cuentas' => $this->cuentasBanco(),
-            'estado' => $this->estado(),
+            'hayBase' => is_file($this->basePath()),
+            'ventas' => (json_decode((string) @file_get_contents($this->baseDir().'/Base/recibidos.json'), true) ?: [])['ventas'] ?? null,
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
             'pendientes' => $this->ficheros('Input'),
             'carpeta' => $this->rutaWindows($this->baseDir()),

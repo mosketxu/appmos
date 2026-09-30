@@ -13,8 +13,8 @@ use Livewire\WithFileUploads;
  * Contabilidad/Bancos). Ver PLAN.md en Contabilidad/Bancos para el detalle.
  *
  * Al empezar cada proceso se suben (botón o arrastrando, cada uno en su fila) los ficheros base:
- *   - uno por cuenta de banco, mayor de SAGE con nombre 572xxx...
- *   - puntualmente, el mayor de otra cuenta que hace de banco (551002...),
+ *   - el mayor de SAGE, uno solo con todas las cuentas (30-sep-2026): se guardan las de banco,
+ *     572... y las "otras cuentas de banco" marcadas en pantalla (p.ej. 551002 de Pevima),
  *   - el plan de cuentas del cliente.
  * Se guardan tal cual en <Cliente>/Base/Recibidos (con fecha/hora delante) y
  * bancos_base.py añade sus filas nuevas a <Cliente>/Base/Base <Cliente>.xlsx.
@@ -39,8 +39,7 @@ class Bancos extends Component
 
     /**
      * Ficheros base recién subidos (botón o arrastrando a su fila); al terminar la subida el
-     * navegador llama a procesarSubidas() con la fila: 'plan', una cuenta (572003...) o 'mayor'
-     * (otra cuenta todavía sin cargar).
+     * navegador llama a procesarSubidas() con la fila: 'plan' o 'mayor'.
      */
     public array $subidas = [];
 
@@ -57,8 +56,11 @@ class Bancos extends Component
     public string $avisoRevisar = '';
     public int $revisionN = 0;
 
-    /** Lo que hay en la base por fila (plan / cada cuenta): bancos_base.py --estado. */
+    /** Lo que hay en la base (plan, cada cuenta, último mayor, otras cuentas de banco): bancos_base.py --estado. */
     public array $estadoBase = [];
+
+    /** Cuenta que no empieza por 572 a marcar como de banco (p.ej. 551002). */
+    public string $otraCuenta = '';
 
     /** Extracto del banco a conciliar y cuenta (partida) a la que pertenece. */
     public $extracto = null;
@@ -414,7 +416,17 @@ class Bancos extends Component
         $this->avisoMaestro = '';
         $this->estadoBase = [];
         $this->cuentasNuevas = [];
-        if (! $this->clienteValido() || ! is_file($this->basePath())) {
+        if (! $this->clienteValido()) {
+            return;
+        }
+        try {
+            // También sin base: las otras cuentas de banco se pueden marcar antes del primer mayor
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--estado']);
+            $this->estadoBase = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            // Sin el estado solo se pierde el resumen de cada fila; no debe romper la pantalla.
+        }
+        if (! is_file($this->basePath())) {
             return;
         }
         try {
@@ -422,12 +434,6 @@ class Bancos extends Component
             $this->cuentasNuevas = $r->successful() ? (json_decode($r->output(), true)['cuentas'] ?? []) : [];
         } catch (\Throwable $e) {
             $this->cuentasNuevas = [];
-        }
-        try {
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--estado']);
-            $this->estadoBase = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
-        } catch (\Throwable $e) {
-            // Sin el estado solo se pierde el resumen de cada fila; no debe romper la pantalla.
         }
         try {
             $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'listar']);
@@ -681,12 +687,8 @@ class Bancos extends Component
             return;
         }
 
-        $etiqueta = "Bancos · {$this->cliente} · ".match ($fila) {
-            'plan' => 'plan de cuentas',
-            'mayor' => 'mayor de otra cuenta',
-            default => "mayor {$fila}",
-        };
-        if (! in_array($fila, ['plan', 'mayor'], true) && ! preg_match('/^\d{6,}$/', $fila)) {
+        $etiqueta = "Bancos · {$this->cliente} · ".($fila === 'plan' ? 'plan de cuentas' : 'mayor');
+        if (! in_array($fila, ['plan', 'mayor'], true)) {
             $this->addError('subidas', 'Fila desconocida.');
             return;
         }
@@ -732,6 +734,36 @@ class Bancos extends Component
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $archivos = $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--espera', $fila], $rutas), 120, $etiqueta);
         $this->anexarResultados($archivos);
+        $this->cargarMaestro();
+    }
+
+    /** Marca (o desmarca) como de banco una cuenta que no empieza por 572; al marcarla se saca de los mayores ya subidos. */
+    public function anadirOtraCuenta(): void
+    {
+        $cuenta = trim($this->otraCuenta);
+        if (! preg_match('/^\d{6,}$/', $cuenta)) {
+            $this->addError('otraCuenta', 'Escribe la cuenta completa (6 cifras o más).');
+            return;
+        }
+        $this->otraCuenta = '';
+        $this->editarOtrasCuentas('anadir', $cuenta);
+    }
+
+    public function quitarOtraCuenta(string $cuenta): void
+    {
+        $this->editarOtrasCuentas('quitar', $cuenta);
+    }
+
+    protected function editarOtrasCuentas(string $accion, string $cuenta): void
+    {
+        $this->resetErrorBag('otraCuenta');
+        if (! $this->clienteValido()) {
+            return;
+        }
+        $etiqueta = "Bancos · {$this->cliente} · ".($accion === 'anadir' ? 'añadir' : 'quitar')." cuenta de banco {$cuenta}";
+        $this->resultados = [];
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->ejecutarScript([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--otras-cuentas', $accion, $cuenta], 120, $etiqueta);
         $this->cargarMaestro();
     }
 

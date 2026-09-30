@@ -33,18 +33,19 @@
 
     @if ($cliente !== '')
         @php
-            $filasBase = [['clave' => 'plan', 'icono' => '📘', 'titulo' => 'Plan de cuentas', 'datos' => $estadoBase['plan'] ?? null]];
-            foreach ($cuentas as $codigo => $nombreCuenta) {
-                $filasBase[] = ['clave' => (string) $codigo, 'icono' => '🏦', 'titulo' => $codigo.($nombreCuenta !== '' ? ' · '.$nombreCuenta : ''), 'datos' => $estadoBase['cuentas'][$codigo] ?? null];
-            }
-            $filasBase[] = ['clave' => 'mayor', 'icono' => '＋', 'titulo' => 'Mayor de otra cuenta', 'datos' => null];
+            $filasBase = [
+                ['clave' => 'plan', 'icono' => '📘', 'titulo' => 'Plan de cuentas', 'datos' => $estadoBase['plan'] ?? null],
+                ['clave' => 'mayor', 'icono' => '🏦', 'titulo' => 'Mayor', 'datos' => $estadoBase['mayor'] ?? null],
+            ];
+            $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
         @endphp
         <div class="overflow-hidden bg-white border rounded-lg shadow">
             <div class="p-4 border-b border-gray-200 bg-gray-50">
                 <h2 class="mb-1 text-sm font-semibold text-gray-700">Ficheros base (de SAGE)</h2>
                 <p class="text-xs text-gray-500">
-                    El plan de cuentas y el mayor de cada cuenta de banco, exportados de SAGE. Cada uno va en su fila
-                    (arrástralo encima o pulsa ⬆): se acumulan en la base de {{ $cliente }} y lo repetido no se duplica.
+                    El plan de cuentas y el mayor, exportados de SAGE. Cada uno va en su fila (arrástralo encima o pulsa ⬆):
+                    se acumulan en la base de {{ $cliente }} y lo repetido no se duplica. El mayor puede traer todas las
+                    cuentas: solo se guardan las de banco (las 572… y las que marques abajo).
                     <b>Los extractos del banco no van aquí</b>, van abajo en «Extracto a procesar».
                 </p>
             </div>
@@ -72,24 +73,28 @@
                                x-on:change="subir($event.target.files); $event.target.value = ''">
                         <div class="w-64 text-sm font-medium text-gray-800">{{ $fb['icono'] }} {{ $fb['titulo'] }}</div>
                         <div class="flex-1 min-w-[14rem] text-xs text-gray-600">
-                            @if ($fb['clave'] === 'mayor')
-                                <span class="text-gray-400">Una cuenta de banco nueva (572…) o otra que haga de banco (p.ej. 551002).</span>
-                            @elseif (! $fb['datos'])
-                                <span class="text-gray-400">(todavía nada)</span>
+                            @if ($fb['clave'] === 'plan' && $fb['datos'])
+                                <b>{{ $fb['datos']['cuentas'] }}</b> cuentas
+                            @elseif ($fb['clave'] === 'mayor' && $cuentas)
+                                @foreach ($cuentas as $codigo => $nombreCuenta)
+                                    @php $dc = $estadoBase['cuentas'][$codigo] ?? null; @endphp
+                                    <div>
+                                        <b>{{ $codigo }}</b>{{ $nombreCuenta !== '' ? ' · '.$nombreCuenta : '' }}:
+                                        @if ($dc)
+                                            {{ $dc['apuntes'] }} apuntes
+                                            @if ($dc['desde'] !== '') del {{ $dc['desde'] }} al {{ $dc['hasta'] }} @endif
+                                            @if ($dc['provisionales'])
+                                                <span class="text-amber-700" title="Movimientos que Appmos ya ha pasado a bancos{{ $codigo }}.xlsx y todavía no han vuelto en un mayor de SAGE">· {{ $dc['provisionales'] }} provisionales de Appmos</span>
+                                            @endif
+                                        @endif
+                                    </div>
+                                @endforeach
                             @else
-                                @if ($fb['clave'] === 'plan')
-                                    <b>{{ $fb['datos']['cuentas'] }}</b> cuentas
-                                @else
-                                    <b>{{ $fb['datos']['apuntes'] }}</b> apuntes
-                                    @if ($fb['datos']['desde'] !== '') del {{ $fb['datos']['desde'] }} al {{ $fb['datos']['hasta'] }} @endif
-                                    @if ($fb['datos']['provisionales'])
-                                        <span class="text-amber-700" title="Movimientos que Appmos ya ha pasado a bancos{{ $fb['clave'] }}.xlsx y todavía no han vuelto en un mayor de SAGE">· {{ $fb['datos']['provisionales'] }} provisionales de Appmos</span>
-                                    @endif
-                                @endif
-                                @if (! empty($fb['datos']['recibido']))
-                                    <span class="text-gray-400">· último: {{ $fb['datos']['recibido']['fichero'] }}
-                                        ({{ \Illuminate\Support\Carbon::parse($fb['datos']['recibido']['fecha'])->format('d/m/Y H:i') }})</span>
-                                @endif
+                                <span class="text-gray-400">(todavía nada)</span>
+                            @endif
+                            @if (! empty($fb['datos']['recibido']))
+                                <span class="text-gray-400">último: {{ $fb['datos']['recibido']['fichero'] }}
+                                    ({{ \Illuminate\Support\Carbon::parse($fb['datos']['recibido']['fecha'])->format('d/m/Y H:i') }})</span>
                             @endif
                         </div>
                         <div class="flex items-center gap-2">
@@ -98,10 +103,30 @@
                         </div>
                     </div>
                 @endforeach
+                <div class="flex flex-wrap items-center px-4 py-2 text-xs text-gray-600 gap-x-2 gap-y-1">
+                    <span class="w-64 text-sm font-medium text-gray-800">＋ Otras cuentas de banco</span>
+                    <span class="text-gray-400">Además de las 572…, que siempre lo son:</span>
+                    @forelse ($otrasCuentas as $oc)
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 border rounded-full">
+                            <b>{{ $oc }}</b>{{ ($planCuentas[$oc] ?? '') !== '' ? ' · '.$planCuentas[$oc] : '' }}
+                            <button type="button" wire:click="quitarOtraCuenta(@js($oc))"
+                                    wire:confirm="¿Quitar la {{ $oc }} de las cuentas de banco? Se borra su pestaña de la base (se recupera volviendo a añadirla)."
+                                    class="text-gray-400 hover:text-red-600" title="Quitar">&times;</button>
+                        </span>
+                    @empty
+                        <span class="text-gray-400">ninguna</span>
+                    @endforelse
+                    <input type="text" wire:model="otraCuenta" wire:keydown.enter="anadirOtraCuenta" placeholder="p.ej. 551002"
+                           class="w-32 py-0.5 text-xs border-gray-300 rounded-md shadow-sm">
+                    <x-button.secondary wire:click="anadirOtraCuenta" wire:loading.attr="disabled" wire:target="anadirOtraCuenta">Añadir</x-button.secondary>
+                    @error('otraCuenta')
+                        <span class="text-red-600">{{ $message }}</span>
+                    @enderror
+                </div>
             </div>
 
             <div class="px-4 py-2 border-t bg-gray-50">
-                <div wire:loading.flex wire:target="procesarSubidas" class="items-center gap-2 mb-1 text-xs font-semibold text-amber-800">⏳ Actualizando la base…</div>
+                <div wire:loading.flex wire:target="procesarSubidas, anadirOtraCuenta, quitarOtraCuenta" class="items-center gap-2 mb-1 text-xs font-semibold text-amber-800">⏳ Actualizando la base…</div>
                 @error('subidas')
                     <p class="mb-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
@@ -167,7 +192,7 @@
                 </p>
 
                 @if (! $hayBase || empty($cuentas))
-                    <p class="text-sm text-amber-700">Primero sube arriba el plan de cuentas y el mayor de cada cuenta de banco.</p>
+                    <p class="text-sm text-amber-700">Primero sube arriba el plan de cuentas y el mayor.</p>
                 @else
                     <div class="flex flex-wrap items-start gap-4">
                         <div>
