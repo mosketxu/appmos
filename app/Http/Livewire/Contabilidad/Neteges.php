@@ -222,8 +222,8 @@ class Neteges extends Component
             return;
         }
         $nombre = str_replace(['/', '\\'], '_', $this->extracto->getClientOriginalName());
-        if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls'], true)) {
-            $this->addError('extracto', 'El extracto tiene que ser un Excel (.xlsx / .xls).');
+        if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls', 'xml', 'txt', 'n43', 'csv'], true)) {
+            $this->addError('extracto', 'El extracto tiene que ser Excel (.xlsx / .xls), XML o TXT (Norma 43).');
             return;
         }
         $dir = $this->baseDir().'/Input';

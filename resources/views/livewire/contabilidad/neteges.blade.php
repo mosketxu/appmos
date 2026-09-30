@@ -185,8 +185,8 @@
 
                     <div class="flex-1 min-w-[16rem]">
                         <label class="block mb-1 text-xs font-medium text-gray-600">Extracto del banco</label>
-                        <x-contabilidad.soltar-fichero model="extracto" accept=".xlsx,.xls" :fichero="$extracto"
-                            texto="Arrastra aquí el extracto o haz clic para elegirlo" />
+                        <x-contabilidad.soltar-fichero model="extracto" accept=".xlsx,.xls,.xml,.txt,.n43,.csv" :fichero="$extracto"
+                            texto="Arrastra aquí el extracto (Excel, XML o TXT) o haz clic para elegirlo" />
                         <div wire:loading wire:target="extracto" class="mt-1 text-xs text-gray-400">Subiendo…</div>
                         @error('extracto')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
