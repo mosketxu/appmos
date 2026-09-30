@@ -158,60 +158,72 @@
         </div>
     @endif
 
-    <div class="overflow-hidden bg-white border rounded-lg shadow">
+    <div class="overflow-hidden bg-white border rounded-lg shadow"
+         x-data="{
+             encima: false, subiendo: false, progreso: 0,
+             subir(files) {
+                 if (! files || ! files.length) return;
+                 this.subiendo = true; this.progreso = 0;
+                 $wire.uploadMultiple('extractos', files,
+                     () => { this.subiendo = false; $wire.procesarExtractos(); },
+                     () => { this.subiendo = false; },
+                     (e) => { this.progreso = e.detail.progress; });
+             },
+         }">
         <div class="p-4 border-b border-gray-200 bg-gray-50">
-            <h2 class="mb-1 text-sm font-semibold text-gray-700">Extracto a procesar</h2>
+            <h2 class="mb-1 text-sm font-semibold text-gray-700">Extractos del banco</h2>
             <p class="mb-3 text-xs text-gray-500">
-                Elige la cuenta del banco y sube su extracto. De momento solo se guarda en {{ $carpeta }}\Input
-                (con la cuenta delante del nombre): el proceso se hará más adelante.
+                Suelta aquí todos los que quieras a la vez (Excel, XML o TXT). Se guardan en {{ $carpeta }}\Input y se
+                reconoce la cuenta de cada uno: por el IBAN de dentro del fichero o, si no, por el nombre del banco en el
+                nombre del fichero. Si no se reconoce, elígela en su fila. De momento solo se guardan: el proceso, después.
             </p>
-
             @if (empty($cuentas))
                 <p class="text-sm text-amber-700">Primero sube arriba el mayor.</p>
             @else
-                <div class="flex flex-wrap items-start gap-4">
-                    <div>
-                        <label class="block mb-1 text-xs font-medium text-gray-600">Cuenta del banco</label>
-                        <select wire:model.live="cuenta" class="text-sm border-gray-300 rounded-md shadow-sm">
-                            <option value="">— elige —</option>
-                            @foreach ($cuentas as $codigo)
-                                <option value="{{ $codigo }}">{{ $codigo }}</option>
-                            @endforeach
-                        </select>
-                        @error('cuenta')
-                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div class="flex-1 min-w-[16rem]">
-                        <label class="block mb-1 text-xs font-medium text-gray-600">Extracto del banco</label>
-                        <x-contabilidad.soltar-fichero model="extracto" accept=".xlsx,.xls,.xml,.txt,.n43,.csv" :fichero="$extracto"
-                            texto="Arrastra aquí el extracto (Excel, XML o TXT) o haz clic para elegirlo" />
-                        <div wire:loading wire:target="extracto" class="mt-1 text-xs text-gray-400">Subiendo…</div>
-                        @error('extracto')
-                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div class="pt-5">
-                        <x-button.primary wire:click="guardarExtracto" wire:loading.attr="disabled" wire:target="guardarExtracto, extracto"
-                            :disabled="$cuenta === '' || ! $extracto">
-                            <span wire:loading.remove wire:target="guardarExtracto">⬆ Guardar extracto</span>
-                            <span wire:loading wire:target="guardarExtracto">⏳ Guardando…</span>
-                        </x-button.primary>
-                    </div>
-                </div>
-            @endif
-
-            @if ($pendientes)
-                <div class="mt-3 text-xs text-gray-600">
-                    <span class="font-medium">En Input:</span>
-                    @foreach ($pendientes as $p)
-                        <button type="button" wire:click="descargar(@js('Input/'.$p))" class="ml-2 underline hover:text-gray-900">{{ $p }}</button>
-                    @endforeach
-                </div>
+                <label x-on:dragover.prevent="encima = true" x-on:dragleave.prevent="encima = false"
+                       x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
+                       :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
+                       class="flex items-center gap-2 px-3 py-3 text-sm border-2 border-dashed rounded-md cursor-pointer">
+                    <input type="file" multiple accept=".xlsx,.xls,.xml,.txt,.n43,.csv" class="hidden"
+                           x-on:change="subir($event.target.files); $event.target.value = ''">
+                    <span>📄</span>
+                    <span class="text-gray-700">Arrastra aquí los extractos (varios a la vez) o haz clic para elegirlos</span>
+                    <span x-show="subiendo" x-cloak class="ml-auto text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
+                </label>
+                <div wire:loading.flex wire:target="procesarExtractos" class="items-center gap-2 mt-1 text-xs font-semibold text-amber-800">⏳ Reconociendo las cuentas…</div>
+                @error('extractos')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
             @endif
         </div>
+
+        @if ($extractosInput)
+            <table class="min-w-full text-xs">
+                <thead class="text-left text-gray-500 bg-gray-50">
+                    <tr><th class="px-4 py-1">Extracto (en Input)</th><th class="px-2 py-1">Tipo</th><th class="px-2 py-1">Cuenta</th><th class="px-2 py-1">Cómo</th></tr>
+                </thead>
+                <tbody>
+                    @foreach ($extractosInput as $ex)
+                        <tr class="border-t" wire:key="ex-{{ md5($ex['fichero']) }}">
+                            <td class="px-4 py-1">
+                                <button type="button" wire:click="descargar(@js('Input/'.$ex['fichero']))" class="underline hover:text-gray-900">{{ $ex['fichero'] }}</button>
+                            </td>
+                            <td class="px-2 py-1">{{ $ex['tipo'] }}</td>
+                            <td class="px-2 py-1">
+                                <select x-on:change="$wire.asignarCuenta(@js($ex['fichero']), $event.target.value)"
+                                        class="py-0.5 text-xs rounded-md shadow-sm {{ $ex['cuenta'] === '' ? 'border-red-400 bg-red-50' : 'border-gray-300' }}">
+                                    <option value="">— elige —</option>
+                                    @foreach ($cuentas as $codigo)
+                                        <option value="{{ $codigo }}" @selected($ex['cuenta'] === $codigo)>{{ $codigo }}{{ ($nombresCuentas[$codigo] ?? '') !== '' ? ' · '.$nombresCuentas[$codigo] : '' }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="px-2 py-1 {{ $ex['cuenta'] === '' ? 'text-red-700' : 'text-gray-500' }}">{{ $ex['como'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
     </div>
 
     </div>

@@ -195,53 +195,69 @@ class Neteges extends Component
         $this->ejecutar(['--otras-cuentas', $accion, $cuenta], $etiqueta);
     }
 
-    /** Si el nombre del extracto empieza por una de las cuentas, se preselecciona. */
-    public function updatedExtracto(): void
-    {
-        $this->resetErrorBag('extracto');
-        if ($this->extracto instanceof UploadedFile && $this->cuenta === ''
-            && preg_match('/^(\d{6,})/', $this->extracto->getClientOriginalName(), $m)
-            && in_array($m[1], $this->cuentasBanco(), true)) {
-            $this->cuenta = $m[1];
-        }
-    }
+    /** Extractos recién subidos (varios a la vez, Excel/XML/TXT): se guardan en Input y se detecta su cuenta. */
+    public array $extractos = [];
 
-    public function guardarExtracto(): void
+    public function procesarExtractos(): void
     {
-        $this->resetErrorBag(['extracto', 'cuenta']);
+        $this->resetErrorBag('extractos');
+        $ficheros = array_values(array_filter($this->extractos, fn ($f) => $f instanceof UploadedFile));
+        $this->extractos = [];
+        if (! $ficheros) {
+            return;
+        }
         if (! config('contabilidad.ejecucion_local')) {
-            $this->avisarNoAutorizado('Neteges · extracto');
+            $this->avisarNoAutorizado('Neteges · extractos');
             return;
         }
-        if (! in_array($this->cuenta, $this->cuentasBanco(), true)) {
-            $this->addError('cuenta', 'Elige la cuenta del banco.');
-            return;
-        }
-        if (! $this->extracto instanceof UploadedFile) {
-            $this->addError('extracto', 'Sube el extracto del banco.');
-            return;
-        }
-        $nombre = str_replace(['/', '\\'], '_', $this->extracto->getClientOriginalName());
-        if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls', 'xml', 'txt', 'n43', 'csv'], true)) {
-            $this->addError('extracto', 'El extracto tiene que ser Excel (.xlsx / .xls), XML o TXT (Norma 43).');
+        $validas = ['xlsx', 'xls', 'xml', 'txt', 'n43', 'csv'];
+        $malos = array_map(fn ($f) => $f->getClientOriginalName(),
+            array_filter($ficheros, fn ($f) => ! in_array(strtolower($f->getClientOriginalExtension()), $validas, true)));
+        if ($malos) {
+            $this->addError('extractos', 'Solo Excel, XML o TXT. No se ha subido nada; sobran: '.implode(', ', $malos));
             return;
         }
         $dir = $this->baseDir().'/Input';
         if (! is_dir($dir) && ! @mkdir($dir, 0777, true)) {
-            $this->addError('extracto', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
+            $this->addError('extractos', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
             return;
         }
-        // Con la cuenta delante, para saber a qué cuenta pertenece cuando se procese
-        $destino = "{$dir}/".(str_starts_with($nombre, $this->cuenta) ? $nombre : "{$this->cuenta} {$nombre}");
-        if (file_exists($destino)) {
-            $destino = "{$dir}/".date('Ymd-His').' '.basename($destino);
+        $rutas = [];
+        foreach ($ficheros as $f) {
+            $nombre = str_replace(['/', '\\'], '_', $f->getClientOriginalName());
+            $destino = file_exists("{$dir}/{$nombre}") ? "{$dir}/".date('Ymd-His')." {$nombre}" : "{$dir}/{$nombre}";
+            if (! @copy($f->getRealPath(), $destino)) {
+                $this->addError('extractos', "No se ha podido guardar {$nombre} en {$this->rutaWindows($dir)}.");
+                return;
+            }
+            $rutas[] = $destino;
         }
-        if (! @copy($this->extracto->getRealPath(), $destino)) {
-            $this->addError('extracto', "No se ha podido guardar {$nombre} en {$this->rutaWindows($dir)}.");
+        $this->ejecutar(array_merge(['detectar'], $rutas), 'Neteges · extractos ('.count($rutas).')', 'neteges_extractos.py');
+    }
+
+    /** Cuenta elegida a mano para un extracto de Input ('' = sin cuenta). */
+    public function asignarCuenta(string $fichero, string $cuenta): void
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado('Neteges · extractos');
             return;
         }
-        $this->extracto = null;
-        $this->dispatch('proceso-terminado', mensaje: "✅ Neteges · extracto {$this->cuenta}\nGuardado en Input como ".basename($destino).".\n(El proceso todavía no está hecho.)");
+        try {
+            Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_extractos.py', 'asignar', $fichero, $cuenta]);
+        } catch (\Throwable $e) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ '.$e->getMessage());
+        }
+    }
+
+    /** Extractos de Input con su cuenta y nombres de las cuentas de banco (neteges_extractos.py listar). */
+    protected function listaExtractos(): array
+    {
+        try {
+            $r = Process::path($this->baseDir())->timeout(90)->run([$this->pythonBin(), 'neteges_extractos.py', 'listar']);
+            return $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     public function limpiarSalida(): void
@@ -295,7 +311,8 @@ class Neteges extends Component
             'cuentas' => $this->cuentasBanco(),
             'hayBase' => is_file($this->basePath()),
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
-            'pendientes' => $this->ficheros('Input'),
+            'extractosInput' => ($lista = $this->listaExtractos())['extractos'] ?? [],
+            'nombresCuentas' => $lista['cuentas'] ?? [],
             'carpeta' => $this->rutaWindows($this->baseDir()),
         ]);
     }
