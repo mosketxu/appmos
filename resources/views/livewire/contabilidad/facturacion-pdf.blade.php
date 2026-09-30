@@ -210,7 +210,19 @@
             <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow tarjeta-ancha">
             <div class="fila-tarjeta">
             <div class="col-izq">
-                <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
+                <div x-data="{ porque: false }">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
+                        <button type="button" x-on:click="porque = ! porque" class="text-lg font-bold text-indigo-700" title="¿Por qué no se puede usar en la web?">*</button>
+                    </div>
+                    <div x-show="porque" x-cloak class="p-2 mt-2 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
+                        <strong>¿Por qué solo en los PCs y no en la web?</strong> Partir el PDF y mandar los correos se podría
+                        hacer en el servidor, pero el proceso necesita tu OneDrive: {{ $id === 'Suma' ? 'lee los destinatarios del Excel maestro (ToDO Alex) y ' : '' }}copia
+                        las facturas a las carpetas de OneDrive (Facturas del mes y la carpeta de cada cliente), y el paso
+                        «revisar el Excel» abre Excel en tu PC. El servidor no ve tu OneDrive; para eso habría que darle
+                        a la app de Microsoft permiso sobre tus ficheros (ahora solo puede enviar correo).
+                    </div>
+                </div>
                 <p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>
 
                 @if ($e['fase'] === 'vacio')
