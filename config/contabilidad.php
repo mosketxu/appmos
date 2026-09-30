@@ -81,6 +81,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Neteges (30-sep-2026): conciliación bancaria como Bancos, con más ficheros
+    |--------------------------------------------------------------------------
+    |
+    | Mismo esquema que Bancos (plan de cuentas + mayores de SAGE + extracto) y
+    | además el fichero de Ventas. De momento se ejecuta solo en local, como
+    | Procesos FIQ (contabilidad.ejecucion_local). Datos en Contabilidad/Neteges.
+    */
+
+    'neteges_dir' => env('NETEGES_DIR') ?: (collect(['e', 'f', 'd'])
+        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Neteges")
+        ->first(fn ($d) => is_dir($d)) ?? '/mnt/e/Claude/Contabilidad/Neteges'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Facturación PDF · Genérico (28-sep-2026): partir un PDF de facturas de
     | cualquier proveedor (FacturacionPDFyMail/separar_generico.py)
     |--------------------------------------------------------------------------

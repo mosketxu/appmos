@@ -7,6 +7,7 @@
         'contabilidad.bancos' => 'contabilidad.bancos',
         'contabilidad.facturasocr' => 'contabilidad.facturas-ocr',
         'contabilidad.is' => 'contabilidad.is',
+        'contabilidad.neteges' => 'contabilidad.neteges',
     ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
 @endphp
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">

@@ -83,6 +83,9 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return view('contabilidad.is');
     })->name('contabilidad.is')->middleware('can:contabilidad.is');
 
+    // Contabilidad (Neteges): como Bancos pero con más ficheros de consulta (Ventas...). Se ejecuta en local (ejecucion_local)
+    Route::get('/contabilidad/neteges', function () {return view('contabilidad.neteges');})->name('contabilidad.neteges')->middleware('can:contabilidad.neteges');
+
     // Entidades: consulta
     Route::middleware('can:entidades.ver')->group(function () {
         Route::get('/entidades', function () {return view('entidades');})->name('entidades');
