@@ -26,6 +26,18 @@ class BancosCuentasController extends Controller
         return $base;
     }
 
+    /** Doc_y_Config/Configuracion.xlsx de Bancos: Neteges (en los PCs) usa las mismas listas que la web. */
+    public function configuracion(Request $request)
+    {
+        $token = (string) config('contabilidad.bancos_sync_token');
+        abort_unless(config('contabilidad.bancos_ejecucion') && $token !== ''
+            && hash_equals($token, (string) $request->header('X-Token')), 403);
+        $fichero = rtrim(config('contabilidad.bancos_dir'), '/').'/Doc_y_Config/Configuracion.xlsx';
+        abort_unless(is_file($fichero), 404);
+
+        return response()->download($fichero, 'Configuracion.xlsx');
+    }
+
     protected function python(string $base, array $args)
     {
         $venv = $base.'/.venv/bin/python3';

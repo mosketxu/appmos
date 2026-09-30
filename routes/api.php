@@ -21,3 +21,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Cuentas nuevas compartidas entre Bancos (VPS) y Facturas OCR (PCs). Clave en X-Token.
 Route::get('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCuentasController::class, 'listar']);
 Route::post('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCuentasController::class, 'alta']);
+// Configuracion.xlsx de Bancos (Textos a quitar...), para Neteges en los PCs (misma lista que la web)
+Route::get('/bancos-configuracion', [\App\Http\Controllers\BancosCuentasController::class, 'configuracion']);
