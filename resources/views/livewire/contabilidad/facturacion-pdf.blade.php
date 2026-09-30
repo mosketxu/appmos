@@ -98,6 +98,7 @@
                     }
                     lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
                     this.carpeta = d.name; this.sueltos = false; this.ficheros = lista; this.estado = '';
+                    this.$wire.proponerClienteGenerico(d.name, lista.map(f => f.nombre));
                 },
                 async elegirFicheros() {
                     let hs;
@@ -110,6 +111,7 @@
                     for (const h of hs) if (EXT.test(h.name)) { handles[h.name] = h; lista.push({ nombre: h.name, marcado: true }); }
                     lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
                     this.carpeta = ''; this.sueltos = true; this.ficheros = lista; this.estado = '';
+                    this.$wire.proponerClienteGenerico('', lista.map(f => f.nombre));
                 },
                 // Ficheros sueltos: para renombrar hace falta permiso sobre su carpeta. Se pide al generar (necesita
                 // el clic del usuario, por eso va antes de cualquier await), abriendo el diálogo ya en esa carpeta.
@@ -131,6 +133,7 @@
                     dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = [];
                     this.ocupado = true;
                     const lista = Array.from(files).filter(f => EXT.test(f.name));
+                    await this.$wire.proponerClienteGenerico('', lista.map(f => f.name));
                     for (let i = 0; i < lista.length; i++) {
                         this.estado = 'Subiendo ' + (i + 1) + ' de ' + lista.length + '…';
                         await new Promise(ok => this.$wire.upload('nuevoArchivoGenerico', lista[i], ok, ok));
@@ -404,7 +407,10 @@
                         <option value="{{ $opcion }}"></option>
                     @endforeach
                 </datalist>
-                <p class="mb-3 text-xs text-gray-500">Nunca se propone como proveedor, aunque el OCR lea mal su nombre.</p>
+                @if ($genericoClienteOrigen !== '' && $genericoCliente !== '')
+                    <p class="mb-1 text-xs text-emerald-700">✔ Propuesto por {{ $genericoClienteOrigen }}. Si no es, cámbialo.</p>
+                @endif
+                <p class="mb-3 text-xs text-gray-500">Nunca se propone como proveedor, aunque el OCR lea mal su nombre. Al elegir la carpeta o los ficheros se propone solo (por su nombre).</p>
 
                 <label class="block mb-2 text-xs font-medium text-gray-600">Facturas (PDF o imágenes; una, varias o toda la carpeta)</label>
                 <template x-if="soportado">

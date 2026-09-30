@@ -104,6 +104,9 @@ class FacturacionPdf extends Component
      */
     public string $genericoCliente = '';
 
+    /** De dónde ha salido el cliente propuesto solo ("la carpeta «Sunbelt 2026»"); '' si lo ha puesto Alex. */
+    public string $genericoClienteOrigen = '';
+
     /** Tabla editable: una fila por página [pagina, numero, proveedor, tipo Fra|Abo|Pre|Prof, giro 0|90|180|270]. */
     public array $genericoPaginas = [];
 
@@ -188,6 +191,74 @@ class FacturacionPdf extends Component
             }
         }
         return $out;
+    }
+
+    /**
+     * Genérico: propone el cliente por el nombre de la carpeta ("Sunbelt 2026" -> SUNBELT IBERICA...) o, si no
+     * hay carpeta o no casa, por el de los ficheros ("Factura 24-000054 SUNBELT IBÉRICA ...pdf": la entidad que
+     * sale en la mitad o más). Solo si hay una única candidata; siempre se puede cambiar a mano.
+     */
+    public function proponerClienteGenerico(string $carpeta, array $ficheros = []): void
+    {
+        $norm = function (string $s): string {
+            $s = strtoupper(Str::ascii($s));
+            $s = preg_replace('/\([^)]*\)|\.PDF$|[^A-Z0-9 ]/', ' ', $s);
+            $s = preg_replace('/\b(20\d\d|S ?L ?U?|S ?A ?U?|SLNE|SL|SA|SLU|CLIENTES?|FACTURAS?|FRA|ABO)\b/', ' ', $s);
+            return trim(preg_replace('/\s+/', ' ', $s));
+        };
+        $entidades = [];
+        foreach ($this->entidadesCliente as $etiqueta => [$nombre]) {
+            if (strlen($n = $norm($nombre)) >= 4) {
+                $entidades[$etiqueta] = explode(' ', $n);
+            }
+        }
+        // Palabras iniciales en común (la primera tiene que coincidir y tener 4+ letras)
+        $comunes = function (array $a, array $b): int {
+            $k = 0;
+            while (isset($a[$k], $b[$k]) && $a[$k] === $b[$k]) {
+                $k++;
+            }
+            return ($k > 0 && strlen($a[0]) >= 4) ? $k : 0;
+        };
+        $elegir = function (array $puntos): ?string {
+            arsort($puntos);
+            $puntos = array_filter($puntos);
+            $top = array_slice($puntos, 0, 2, true);
+            if (! $top || (count($top) === 2 && reset($top) === end($top))) {
+                return null;   // ninguna o empate: mejor no proponer
+            }
+            return array_key_first($top);
+        };
+
+        $carpetaN = $norm($carpeta);
+        if ($carpetaN !== '') {
+            $puntos = array_map(fn ($e) => $comunes(explode(' ', $carpetaN), $e), $entidades);
+            if ($etiqueta = $elegir($puntos)) {
+                $this->genericoCliente = $etiqueta;
+                $this->genericoClienteOrigen = "la carpeta «{$carpeta}»";
+                return;
+            }
+        }
+        if ($ficheros) {
+            $puntos = [];
+            foreach ($entidades as $etiqueta => $palabras) {
+                $clave = ' '.implode(' ', array_slice($palabras, 0, 2)).' ';
+                if (strlen(trim($clave)) < 5) {
+                    continue;
+                }
+                $veces = count(array_filter($ficheros, fn ($f) => str_contains(' '.$norm((string) $f).' ', $clave)));
+                $puntos[$etiqueta] = $veces * 2 >= count($ficheros) ? $veces : 0;
+            }
+            if ($etiqueta = $elegir($puntos)) {
+                $this->genericoCliente = $etiqueta;
+                $this->genericoClienteOrigen = 'el nombre de los ficheros';
+            }
+        }
+    }
+
+    public function updatedGenericoCliente(): void
+    {
+        $this->genericoClienteOrigen = '';
     }
 
     public function limpiarSalida(): void
