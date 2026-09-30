@@ -201,7 +201,7 @@ class FacturacionPdf extends Component
     public function proponerClienteGenerico(string $carpeta, array $ficheros = []): void
     {
         $norm = function (string $s): string {
-            $s = strtoupper(Str::ascii($s));
+            $s = strtoupper(Str::ascii(str_replace(['´', "'", '’', '`'], '', $s)));
             $s = preg_replace('/\([^)]*\)|\.PDF$|[^A-Z0-9 ]/', ' ', $s);
             $s = preg_replace('/\b(20\d\d|S ?L ?U?|S ?A ?U?|SLNE|SL|SA|SLU|CLIENTES?|FACTURAS?|FRA|ABO)\b/', ' ', $s);
             return trim(preg_replace('/\s+/', ' ', $s));
@@ -212,13 +212,15 @@ class FacturacionPdf extends Component
                 $entidades[$etiqueta] = explode(' ', $n);
             }
         }
-        // Palabras iniciales en común (la primera tiene que coincidir y tener 4+ letras)
-        $comunes = function (array $a, array $b): int {
+        // Palabras iniciales en común ("INVESTMENT" ~ "INVESTMENTS"); la primera, de 4+ letras y, si va sola, no genérica
+        $igual = fn (string $x, string $y) => $x === $y
+            || (min(strlen($x), strlen($y)) >= 5 && (str_starts_with($x, $y) || str_starts_with($y, $x)));
+        $comunes = function (array $a, array $b) use ($igual): int {
             $k = 0;
-            while (isset($a[$k], $b[$k]) && $a[$k] === $b[$k]) {
+            while (isset($a[$k], $b[$k]) && $igual($a[$k], $b[$k])) {
                 $k++;
             }
-            return ($k > 0 && strlen($a[0]) >= 4) ? $k : 0;
+            return ($k > 0 && strlen($a[0]) >= 4 && ($k > 1 || ! in_array($a[0], ['GRUPO', 'NUEVA', 'NUEVO', 'CARPETA', 'DOCUMENTOS'], true))) ? $k : 0;
         };
         $elegir = function (array $puntos): ?string {
             arsort($puntos);
@@ -232,7 +234,12 @@ class FacturacionPdf extends Component
 
         $carpetaN = $norm($carpeta);
         if ($carpetaN !== '') {
-            $puntos = array_map(fn ($e) => $comunes(explode(' ', $carpetaN), $e), $entidades);
+            // Todas las palabras de la carpeta (o de la entidad) tienen que casar: "Xavier Ramis" no es "Xavier Martin"
+            $palabras = explode(' ', $carpetaN);
+            $puntos = array_map(function ($e) use ($comunes, $palabras) {
+                $k = $comunes($palabras, $e);
+                return ($k === count($palabras) || $k === count($e)) ? $k : 0;
+            }, $entidades);
             if ($etiqueta = $elegir($puntos)) {
                 $this->genericoCliente = $etiqueta;
                 $this->genericoClienteOrigen = "la carpeta «{$carpeta}»";
