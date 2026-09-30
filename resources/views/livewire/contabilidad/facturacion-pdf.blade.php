@@ -399,18 +399,25 @@
             @if (! $this->genericoPermitido)
                 <p class="text-xs text-amber-600">⚠️ No disponible en este servidor.</p>
             @elseif ($g['fase'] === 'vacio')
-                <label class="block mb-1 text-xs font-medium text-gray-600">Cliente (a quien van las facturas)</label>
-                <input type="text" wire:model="genericoCliente" list="gen-entidades" placeholder="Escribe para buscar en Entidades (opcional)"
+                <label class="block mb-1 text-xs font-medium text-gray-600">Cliente (a quien van las facturas) <span class="text-emerald-700">· recomendado</span></label>
+                <input type="text" wire:model.blur="genericoCliente" list="gen-entidades" placeholder="Elígelo de Entidades (escribe para buscar)"
                        class="block w-full mb-1 text-sm border-gray-300 rounded-md shadow-sm">
                 <datalist id="gen-entidades" wire:ignore>
                     @foreach (array_keys($this->entidadesCliente) as $opcion)
                         <option value="{{ $opcion }}"></option>
                     @endforeach
                 </datalist>
-                @if ($genericoClienteOrigen !== '' && $genericoCliente !== '')
+                @if ($genericoCliente === '')
+                    <p class="mb-1 text-xs text-amber-600">⚠️ Mejor elegirlo: sin cliente, se adivina (la empresa que más se repite) y puede
+                        confundirlo con el proveedor si todas las facturas son del mismo.</p>
+                @elseif (! isset($this->entidadesCliente[$genericoCliente]))
+                    <p class="mb-1 text-xs text-amber-600">⚠️ No está en Entidades: elígelo de la lista para que use también su NIF
+                        (así lo reconoce aunque el OCR lea mal el nombre).</p>
+                @elseif ($genericoClienteOrigen !== '')
                     <p class="mb-1 text-xs text-emerald-700">✔ Propuesto por {{ $genericoClienteOrigen }}. Si no es, cámbialo.</p>
                 @endif
-                <p class="mb-3 text-xs text-gray-500">Nunca se propone como proveedor, aunque el OCR lea mal su nombre. Al elegir la carpeta o los ficheros se propone solo (por su nombre).</p>
+                <p class="mb-3 text-xs text-gray-500">Sale de Entidades (nombre + NIF) y nunca se propone como proveedor. Al elegir la carpeta
+                    o los ficheros se rellena solo si su nombre lo deja claro ("Sunbelt 2026").</p>
 
                 <label class="block mb-2 text-xs font-medium text-gray-600">Facturas (PDF o imágenes; una, varias o toda la carpeta)</label>
                 <template x-if="soportado">
