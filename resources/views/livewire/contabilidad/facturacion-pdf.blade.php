@@ -576,7 +576,7 @@
 
                 <label class="flex items-center gap-2 mb-2 text-xs text-gray-700">
                     <input type="checkbox" wire:model="genericoNombreOriginal" class="border-gray-300 rounded">
-                    Poner el nombre original detrás (<span class="font-mono">Fra Proveedor 123 - nombre original.pdf</span>)
+                    Poner el nombre original detrás (<span class="font-mono">Proveedor Fra 123 - nombre original.pdf</span>)
                 </label>
                 <div class="flex flex-wrap gap-2">
                     <x-button.primary x-on:click="generar()" x-bind:disabled="ocupado">
