@@ -556,6 +556,8 @@ class FacturacionPdf extends Component
             'pagina' => (int) ($f['pagina'] ?? 0),
             'numero' => trim((string) ($f['numero'] ?? '')),
             'proveedor' => trim((string) ($f['proveedor'] ?? '')),
+            // el nombre entero: para ver si el fichero ya empieza por el proveedor (basta una palabra suya)
+            'proveedor_completo' => trim((string) ($f['proveedor_completo'] ?? '')),
             'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre', 'Prof'], true) ? $f['tipo'] : 'Fra',
             'giro' => ((int) ($f['giro'] ?? 0)) % 360,
             'archivo' => (string) ($f['archivo'] ?? ''),
