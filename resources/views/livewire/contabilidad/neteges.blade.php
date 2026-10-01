@@ -15,142 +15,163 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.neteges'])
     @include('livewire.contabilidad._subnav', ['activa' => 'contabilidad.neteges'])
 
-    <div class="p-4 space-y-6">
+    <div class="p-4 space-y-4">
 
     <h1 class="text-2xl font-semibold text-gray-900">Neteges</h1>
 
     @php
-        $filasBase = [
-            ['clave' => 'plan', 'titulo' => '📘 Plan de cuentas', 'accept' => '.xlsx,.xls', 'datos' => $estadoBase['plan'] ?? null],
-            ['clave' => 'mayor', 'titulo' => '🏦 Mayor', 'accept' => '.xlsx,.xls', 'datos' => $estadoBase['mayor'] ?? null],
-            ['clave' => 'ventas', 'titulo' => '🧾 Ventas', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
-            ['clave' => 'listado', 'titulo' => '👥 Listado SAGE', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
-            ['clave' => 'misclientes', 'titulo' => '✍️ Mis clientes', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
-        ];
-        $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
         $ev = $estadoVentas;
+        $lis = $ev['listados'] ?? [];
+        $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
+        $xls = '.xlsx,.xls,.csv';
+        $bloques = [
+            'bancos' => ['titulo' => '🏦 Bancos', 'filas' => [
+                ['clave' => 'plan', 'titulo' => '📘 Plan de cuentas', 'accept' => '.xlsx,.xls'],
+                ['clave' => 'mayor', 'titulo' => '📒 Mayor', 'accept' => '.xlsx,.xls'],
+                ['clave' => 'proveedoressage', 'titulo' => '🏭 Proveedores SAGE', 'accept' => $xls],
+            ]],
+            'ventas' => ['titulo' => '🧾 Ventas', 'filas' => [
+                ['clave' => 'ventas', 'titulo' => '🧾 Ficheros de ventas', 'accept' => $xls],
+                ['clave' => 'clientessage', 'titulo' => '👥 Clientes SAGE', 'accept' => $xls],
+                ['clave' => 'misclientes', 'titulo' => '✍️ Mis clientes', 'accept' => $xls],
+            ]],
+            'remesas' => ['titulo' => '📑 Remesas', 'filas' => [
+                ['clave' => 'remesas', 'titulo' => '📑 Ficheros de remesas', 'accept' => '.xlsx,.xls,.csv,.txt,.xml,.pdf,.q19,.n19'],
+            ]],
+        ];
+        $resumen = [
+            'bancos' => (($estadoBase['plan']['cuentas'] ?? null) ? $estadoBase['plan']['cuentas'].' cuentas' : 'sin plan').' · '.
+                ($cuentas ? implode(' · ', array_map(fn ($c) => $c.((($estadoBase['cuentas'][$c]['hasta'] ?? '') !== '') ? ' hasta '.$estadoBase['cuentas'][$c]['hasta'] : ''), $cuentas)) : 'sin mayor'),
+            'ventas' => ! empty($ev['facturas'])
+                ? "{$ev['facturas']} facturas {$ev['desde']}–{$ev['hasta']} · {$ev['clientes']} clientes".($ev['sin_cuenta'] ? " · {$ev['sin_cuenta']} sin cuenta SAGE" : ' · todos con cuenta SAGE')
+                : 'sin ventas',
+            'remesas' => $remesas ? count($remesas).' '.(count($remesas) === 1 ? 'fichero' : 'ficheros').' (se procesarán más adelante)' : 'segundo proceso, pendiente',
+        ];
+        $boton = 'px-2 py-0.5 text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50';
     @endphp
-    <details class="bg-white border rounded-lg shadow" x-data="{ abierto: false }" x-on:toggle="abierto = $el.open">
-        <summary class="flex flex-wrap items-center px-4 py-2 text-xs text-gray-600 cursor-pointer gap-x-4 gap-y-1">
-            <span class="text-sm font-semibold text-gray-700">Ficheros base</span>
-            <span>📘 {{ ($estadoBase['plan']['cuentas'] ?? null) ? $estadoBase['plan']['cuentas'].' cuentas' : 'sin plan' }}</span>
-            <span>🏦
-                @forelse ($cuentas as $codigo)
-                    @php $dc = $estadoBase['cuentas'][$codigo] ?? null; @endphp
-                    <b>{{ $codigo }}</b>@if ($dc && $dc['hasta'] !== '') hasta {{ $dc['hasta'] }}@endif{{ $loop->last ? '' : ' ·' }}
-                @empty
-                    sin mayor
-                @endforelse
-            </span>
-            <span>🧾 @if (! empty($ev['facturas'])) {{ $ev['facturas'] }} facturas {{ $ev['desde'] }}–{{ $ev['hasta'] }}
-                    @if ($ev['sin_cuenta']) · <b class="text-red-700">{{ $ev['sin_cuenta'] }} clientes sin cuenta SAGE</b> @endif
-                    @if ($ev['cambios']) · <b class="text-red-700">⚠️ {{ $ev['cambios'] }} distintas</b> @endif
-                 @else sin ventas @endif</span>
-            <span>👥 {{ ($ev['listados'] ?? []) ? implode(' · ', array_map(fn ($t, $f) => "{$t} ({$f})", array_keys($ev['listados']), $ev['listados'])) : 'sin listados de clientes' }}</span>
-            <span class="ml-auto text-indigo-700" x-text="abierto ? '▲ cerrar' : '▼ subir / ver'"></span>
-        </summary>
 
-        <div class="text-xs border-t divide-y">
-            @foreach ($filasBase as $fb)
-                <div wire:key="fila-base-{{ $fb['clave'] }}"
-                     x-data="{
-                         encima: false, subiendo: false, progreso: 0,
-                         subir(files) {
-                             if (! files || ! files.length) return;
-                             this.subiendo = true; this.progreso = 0;
-                             $wire.uploadMultiple('subidas', files,
-                                 () => { this.subiendo = false; $wire.procesarSubidas(@js($fb['clave'])); },
-                                 () => { this.subiendo = false; },
-                                 (e) => { this.progreso = e.detail.progress; });
-                         },
-                     }"
-                     x-on:dragover.prevent="encima = true"
-                     x-on:dragleave.prevent="encima = false"
-                     x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
-                     :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''"
-                     class="flex flex-wrap items-center px-4 py-1 gap-x-3 gap-y-1">
-                    <input type="file" multiple accept="{{ $fb['accept'] }}" class="hidden" x-ref="input"
-                           x-on:change="subir($event.target.files); $event.target.value = ''">
-                    <div class="w-44 font-medium text-gray-800">{{ $fb['titulo'] }}</div>
-                    <div class="flex-1 text-gray-600 min-w-[14rem]">
-                        @if ($fb['clave'] === 'plan')
-                            @if ($fb['datos']) <b>{{ $fb['datos']['cuentas'] }}</b> cuentas @else <span class="text-gray-400">(todavía nada)</span> @endif
-                        @elseif ($fb['clave'] === 'mayor')
-                            @forelse ($cuentas as $codigo)
-                                @php $dc = $estadoBase['cuentas'][$codigo] ?? null; @endphp
-                                <b>{{ $codigo }}</b>@if ($dc): {{ $dc['apuntes'] }} apuntes @if ($dc['desde'] !== '') del {{ $dc['desde'] }} al {{ $dc['hasta'] }} @endif @endif{{ $loop->last ? '' : ' · ' }}
-                            @empty
-                                <span class="text-gray-400">(todavía nada) — puede traer todas las cuentas: se guardan las de banco</span>
-                            @endforelse
-                        @elseif ($fb['clave'] === 'ventas')
-                            @if (! empty($ev['facturas']))
-                                <b>{{ $ev['facturas'] }}</b> facturas ({{ $ev['lineas'] }} líneas) del {{ $ev['desde'] }} al {{ $ev['hasta'] }}
-                                · <b>{{ $ev['clientes'] }}</b> clientes
-                                @if ($ev['sin_cuenta']) <span class="font-semibold text-red-700" title="Pestaña Clientes del Excel: columna «Cuenta a mano»">({{ $ev['sin_cuenta'] }} sin cuenta SAGE)</span> @endif
-                                @if ($ev['cambios']) <span class="font-semibold text-red-700" title="Facturas que ya estaban y han llegado distintas: pestaña Cambios">· ⚠️ {{ $ev['cambios'] }} llegadas distintas</span> @endif
-                                <button type="button" wire:click="descargar('Base/Ventas Neteges.xlsx')" class="ml-1 text-blue-700 underline hover:text-blue-900">⬇ Excel</button>
-                                <button type="button" wire:click="vaciarVentas"
-                                        wire:confirm="¿Vaciar las ventas acumuladas para volver a subirlas? (El acumulado actual se guarda en Base/Recibidos; se pierde lo puesto a mano en «Cuenta a mano».)"
-                                        class="ml-1 text-red-600 underline hover:text-red-800">🗑 Vaciar</button>
-                                <span class="text-gray-400" title="{{ implode("\n", $ev['ficheros']) }}">· {{ count($ev['ficheros']) }} {{ count($ev['ficheros']) === 1 ? 'fichero' : 'ficheros' }}</span>
-                            @else
-                                <span class="text-gray-400">(todavía nada) — varios a la vez o en varias veces; una fila por factura o por línea</span>
-                            @endif
-                        @elseif ($fb['clave'] === 'listado')
-                            @php $lsage = array_intersect_key($ev['listados'] ?? [], ['clientes' => 1, 'proveedores' => 1]); @endphp
-                            @forelse ($lsage as $tipo => $fecha)
-                                <b>{{ $tipo }}</b> ({{ $fecha }}){{ $loop->last ? '' : ' · ' }}
-                            @empty
-                                <span class="text-gray-400">(todavía nada)</span>
-                            @endforelse
-                            <span class="text-gray-400">— el de clientes o el de proveedores, tal como sale de SAGE (se reconoce cuál es; vale el último de cada uno)</span>
-                        @elseif ($fb['clave'] === 'misclientes')
-                            @if ($ev['listados']['mis clientes'] ?? null)
-                                subido el {{ $ev['listados']['mis clientes'] }}
-                            @else
-                                <span class="text-gray-400">(todavía nada)</span>
-                            @endif
-                            <span class="text-gray-400">— el tuyo: vale el último que subas y manda sobre el de SAGE y el de ventas (solo «Cuenta a mano» del Excel de Ventas manda más)</span>
-                        @endif
+    <div wire:loading.flex wire:target="procesarSubidas, anadirOtraCuenta, quitarOtraCuenta, vaciarVentas" class="items-center gap-2 text-xs font-semibold text-amber-800">⏳ Actualizando…</div>
+    @error('subidas')
+        <p class="text-xs text-red-600">{{ $message }}</p>
+    @enderror
+
+    @foreach ($bloques as $bk => $bloque)
+        <details open class="bg-white border rounded-lg shadow" wire:key="bloque-{{ $bk }}" x-data="{ abierto: true }" x-on:toggle="abierto = $el.open">
+            <summary class="flex flex-wrap items-center px-4 py-2 text-xs text-gray-600 cursor-pointer gap-x-4 gap-y-1">
+                <span class="text-sm font-semibold text-gray-700">{{ $bloque['titulo'] }}</span>
+                <span class="{{ $bk === 'ventas' && ($ev['sin_cuenta'] ?? 0) ? 'text-red-700' : '' }}">{{ $resumen[$bk] }}</span>
+                <span class="ml-auto text-indigo-700" x-text="abierto ? '▲ plegar' : '▼ desplegar'"></span>
+            </summary>
+            <div class="text-xs border-t divide-y">
+                @foreach ($bloque['filas'] as $fb)
+                    <div wire:key="fila-base-{{ $fb['clave'] }}"
+                         x-data="{
+                             encima: false, subiendo: false, progreso: 0,
+                             subir(files) {
+                                 if (! files || ! files.length) return;
+                                 this.subiendo = true; this.progreso = 0;
+                                 $wire.uploadMultiple('subidas', files,
+                                     () => { this.subiendo = false; $wire.procesarSubidas(@js($fb['clave'])); },
+                                     () => { this.subiendo = false; },
+                                     (e) => { this.progreso = e.detail.progress; });
+                             },
+                         }"
+                         x-on:dragover.prevent="encima = true"
+                         x-on:dragleave.prevent="encima = false"
+                         x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
+                         :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''"
+                         class="flex flex-wrap items-center px-4 py-1 gap-x-3 gap-y-1">
+                        <input type="file" multiple accept="{{ $fb['accept'] }}" class="hidden" x-ref="input"
+                               x-on:change="subir($event.target.files); $event.target.value = ''">
+                        <div class="font-medium text-gray-800 w-44">{{ $fb['titulo'] }}</div>
+                        <div class="flex-1 text-gray-600 min-w-[14rem]">
+                            @switch($fb['clave'])
+                                @case('plan')
+                                    @if ($estadoBase['plan'] ?? null) <b>{{ $estadoBase['plan']['cuentas'] }}</b> cuentas @else <span class="text-gray-400">(todavía nada)</span> @endif
+                                    @break
+                                @case('mayor')
+                                    @forelse ($cuentas as $codigo)
+                                        @php $dc = $estadoBase['cuentas'][$codigo] ?? null; @endphp
+                                        <b>{{ $codigo }}</b>@if ($dc): {{ $dc['apuntes'] }} apuntes @if ($dc['desde'] !== '') del {{ $dc['desde'] }} al {{ $dc['hasta'] }} @endif @endif{{ $loop->last ? '' : ' · ' }}
+                                    @empty
+                                        <span class="text-gray-400">(todavía nada) — puede traer todas las cuentas: se guardan las de banco</span>
+                                    @endforelse
+                                    @if ($hayBase)
+                                        <button type="button" wire:click="descargar('Base/Base Neteges.xlsx')" class="ml-1 text-blue-700 underline hover:text-blue-900">⬇ Base</button>
+                                    @endif
+                                    @break
+                                @case('proveedoressage')
+                                    @if ($lis['proveedores'] ?? null) subido el {{ $lis['proveedores'] }} @else <span class="text-gray-400">(todavía nada)</span> @endif
+                                    <span class="text-gray-400">— el listado de proveedores tal como sale de SAGE (vale el último)</span>
+                                    @break
+                                @case('ventas')
+                                    @if (! empty($ev['facturas']))
+                                        <b>{{ $ev['facturas'] }}</b> facturas ({{ $ev['lineas'] }} líneas) del {{ $ev['desde'] }} al {{ $ev['hasta'] }}
+                                        · <b>{{ $ev['clientes'] }}</b> clientes
+                                        @if ($ev['sin_cuenta']) <span class="font-semibold text-red-700" title="Pestaña Clientes del Excel: columna «Cuenta a mano»">({{ $ev['sin_cuenta'] }} sin cuenta SAGE)</span> @endif
+                                        @if ($ev['cambios']) <span class="font-semibold text-red-700" title="Facturas que ya estaban y han llegado distintas: pestaña Cambios">· ⚠️ {{ $ev['cambios'] }} llegadas distintas</span> @endif
+                                        <button type="button" wire:click="descargar('Base/Ventas Neteges.xlsx')" class="ml-1 text-blue-700 underline hover:text-blue-900">⬇ Excel</button>
+                                        <button type="button" wire:click="vaciarVentas"
+                                                wire:confirm="¿Vaciar las ventas acumuladas para volver a subirlas? (El acumulado actual se guarda en Base/Recibidos; se pierde lo puesto a mano en «Cuenta a mano».)"
+                                                class="ml-1 text-red-600 underline hover:text-red-800">🗑 Vaciar</button>
+                                        <span class="text-gray-400" title="{{ implode("\n", $ev['ficheros']) }}">· {{ count($ev['ficheros']) }} {{ count($ev['ficheros']) === 1 ? 'fichero' : 'ficheros' }}</span>
+                                    @else
+                                        <span class="text-gray-400">(todavía nada) — varios a la vez o en varias veces; una fila por factura o por línea</span>
+                                    @endif
+                                    @break
+                                @case('clientessage')
+                                    @if ($lis['clientes'] ?? null) subido el {{ $lis['clientes'] }} @else <span class="text-gray-400">(todavía nada)</span> @endif
+                                    <span class="text-gray-400">— el listado de clientes tal como sale de SAGE (vale el último)</span>
+                                    @break
+                                @case('misclientes')
+                                    @if ($lis['mis clientes'] ?? null) subido el {{ $lis['mis clientes'] }} @else <span class="text-gray-400">(todavía nada)</span> @endif
+                                    <span class="text-gray-400">— el tuyo: vale el último y manda sobre Clientes SAGE (solo «Cuenta a mano» del Excel de Ventas manda más)</span>
+                                    @break
+                                @case('remesas')
+                                    @if ($remesas)
+                                        <span title="{{ implode("\n", $remesas) }}"><b>{{ count($remesas) }}</b> {{ count($remesas) === 1 ? 'fichero' : 'ficheros' }}</span>
+                                    @else
+                                        <span class="text-gray-400">(todavía nada)</span>
+                                    @endif
+                                    <span class="text-gray-400">— de momento solo se guardan (Base/Remesas): el proceso, más adelante</span>
+                                    @break
+                            @endswitch
+                        </div>
+                        <span x-show="subiendo" x-cloak class="text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
+                        <button type="button" x-on:click="$refs.input.click()" class="{{ $boton }}">⬆ Subir</button>
                     </div>
-                    <span x-show="subiendo" x-cloak class="text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
-                    <button type="button" x-on:click="$refs.input.click()" class="px-2 py-0.5 text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">⬆ Subir</button>
-                </div>
-            @endforeach
-            <div class="flex flex-wrap items-center px-4 py-1 text-gray-600 gap-x-2 gap-y-1">
-                <span class="font-medium text-gray-800 w-44">＋ Otras cuentas de banco</span>
-                <span class="text-gray-400">además de las 572…:</span>
-                @forelse ($otrasCuentas as $oc)
-                    <span class="inline-flex items-center gap-1 px-2 bg-gray-100 border rounded-full">
-                        <b>{{ $oc }}</b>
-                        <button type="button" wire:click="quitarOtraCuenta(@js($oc))"
-                                wire:confirm="¿Quitar la {{ $oc }} de las cuentas de banco? Se borra su pestaña de la base (se recupera volviendo a añadirla)."
-                                class="text-gray-400 hover:text-red-600" title="Quitar">&times;</button>
-                    </span>
-                @empty
-                    <span class="text-gray-400">ninguna</span>
-                @endforelse
-                <input type="text" wire:model="otraCuenta" wire:keydown.enter="anadirOtraCuenta" placeholder="p.ej. 551002"
-                       class="w-28 py-0 text-xs border-gray-300 rounded-md shadow-sm">
-                <button type="button" wire:click="anadirOtraCuenta" class="px-2 py-0.5 text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">Añadir</button>
-                @error('otraCuenta')
-                    <span class="text-red-600">{{ $message }}</span>
-                @enderror
-            </div>
-            <div class="flex flex-wrap items-center px-4 py-1 gap-x-4 gap-y-1 bg-gray-50">
-                <div wire:loading.flex wire:target="procesarSubidas, anadirOtraCuenta, quitarOtraCuenta, vaciarVentas" class="items-center gap-2 font-semibold text-amber-800">⏳ Actualizando…</div>
-                @error('subidas')
-                    <span class="text-red-600">{{ $message }}</span>
-                @enderror
-                @if ($hayBase)
-                    <button type="button" wire:click="descargar('Base/Base Neteges.xlsx')" class="text-blue-700 underline hover:text-blue-900">⬇ Base (plan + mayor de bancos)</button>
-                @endif
-                @if ($recibidos)
-                    <span class="text-gray-400 cursor-help" title="{{ implode("\n", $recibidos) }}">Últimos ficheros subidos ({{ count($recibidos) }})</span>
+                @endforeach
+
+                @if ($bk === 'bancos')
+                    <div class="flex flex-wrap items-center px-4 py-1 text-gray-600 gap-x-2 gap-y-1">
+                        <span class="font-medium text-gray-800 w-44">＋ Otras cuentas de banco</span>
+                        <span class="text-gray-400">además de las 572…:</span>
+                        @forelse ($otrasCuentas as $oc)
+                            <span class="inline-flex items-center gap-1 px-2 bg-gray-100 border rounded-full">
+                                <b>{{ $oc }}</b>
+                                <button type="button" wire:click="quitarOtraCuenta(@js($oc))"
+                                        wire:confirm="¿Quitar la {{ $oc }} de las cuentas de banco? Se borra su pestaña de la base (se recupera volviendo a añadirla)."
+                                        class="text-gray-400 hover:text-red-600" title="Quitar">&times;</button>
+                            </span>
+                        @empty
+                            <span class="text-gray-400">ninguna</span>
+                        @endforelse
+                        <input type="text" wire:model="otraCuenta" wire:keydown.enter="anadirOtraCuenta" placeholder="p.ej. 551002"
+                               class="py-0 text-xs border-gray-300 rounded-md shadow-sm w-28">
+                        <button type="button" wire:click="anadirOtraCuenta" class="{{ $boton }}">Añadir</button>
+                        @error('otraCuenta')
+                            <span class="text-red-600">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    @if ($recibidos)
+                        <div class="px-4 py-1 text-gray-400 bg-gray-50">
+                            <span class="cursor-help" title="{{ implode("\n", $recibidos) }}">Últimos ficheros subidos ({{ count($recibidos) }})</span>
+                        </div>
+                    @endif
                 @endif
             </div>
-        </div>
-    </details>
+        </details>
+    @endforeach
 
     <div class="overflow-hidden bg-white border rounded-lg shadow"
          x-data="{

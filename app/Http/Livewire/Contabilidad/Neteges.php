@@ -130,17 +130,23 @@ class Neteges extends Component
         if (! $ficheros) {
             return;
         }
-        if (! in_array($fila, ['plan', 'mayor', 'ventas', 'listado', 'misclientes'], true)) {
+        $filas = ['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas', 'clientessage' => 'clientes SAGE',
+            'proveedoressage' => 'proveedores SAGE', 'misclientes' => 'mis clientes', 'remesas' => 'ficheros de remesas'];
+        if (! isset($filas[$fila])) {
             $this->addError('subidas', 'Fila desconocida.');
             return;
         }
-        $etiqueta = 'Neteges · '.['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas', 'listado' => 'listado de SAGE', 'misclientes' => 'mis clientes'][$fila];
+        $etiqueta = 'Neteges · '.$filas[$fila];
         if (! config('contabilidad.ejecucion_local')) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
 
-        $extensiones = in_array($fila, ['ventas', 'listado', 'misclientes'], true) ? ['xlsx', 'xls', 'csv'] : ['xlsx', 'xls'];
+        $extensiones = match ($fila) {
+            'plan', 'mayor' => ['xlsx', 'xls'],
+            'remesas' => ['xlsx', 'xls', 'csv', 'txt', 'xml', 'pdf', 'q19', 'n19'],
+            default => ['xlsx', 'xls', 'csv'],
+        };
         $malos = array_map(fn ($f) => $f->getClientOriginalName(),
             array_filter($ficheros, fn ($f) => ! in_array(strtolower($f->getClientOriginalExtension()), $extensiones, true)));
         if ($malos) {
@@ -148,7 +154,7 @@ class Neteges extends Component
             return;
         }
 
-        $dir = $this->baseDir().'/Base/Recibidos';
+        $dir = $this->baseDir().($fila === 'remesas' ? '/Base/Remesas' : '/Base/Recibidos');
         if (! is_dir($dir) && ! @mkdir($dir, 0777, true)) {
             $this->addError('subidas', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
             return;
@@ -168,8 +174,18 @@ class Neteges extends Component
             $this->ejecutar($rutas, $etiqueta, 'neteges_ventas.py');
             return;
         }
-        if ($fila === 'listado' || $fila === 'misclientes') {
-            $this->ejecutar([$fila === 'listado' ? '--listado' : '--mis-clientes', end($rutas)], $etiqueta, 'neteges_ventas.py');
+        if ($fila === 'remesas') {
+            $this->salida = "===== {$etiqueta} =====\n".implode("\n", array_map(fn ($r) => '• '.basename($r), $rutas))
+                ."\nGuardados en Base/Remesas: se procesarán más adelante (segundo proceso).";
+            $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nGuardados.");
+            return;
+        }
+        if ($fila === 'misclientes') {
+            $this->ejecutar(['--mis-clientes', end($rutas)], $etiqueta, 'neteges_ventas.py');
+            return;
+        }
+        if ($fila === 'clientessage' || $fila === 'proveedoressage') {
+            $this->ejecutar(['--listado', end($rutas), $fila === 'clientessage' ? 'clientes' : 'proveedores'], $etiqueta, 'neteges_ventas.py');
             return;
         }
         $ok = $this->ejecutar(array_merge(['--espera', $fila], $rutas), $etiqueta);
@@ -347,6 +363,7 @@ class Neteges extends Component
             'cuentas' => $this->cuentasBanco(),
             'hayBase' => is_file($this->basePath()),
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
+            'remesas' => $this->ficheros('Base/Remesas'),
             'extractosInput' => ($lista = $this->listaExtractos())['extractos'] ?? [],
             'nombresCuentas' => $lista['cuentas'] ?? [],
             'carpeta' => $this->rutaWindows($this->baseDir()),
