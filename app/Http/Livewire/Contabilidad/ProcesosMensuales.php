@@ -188,7 +188,7 @@ class ProcesosMensuales extends Component
             ->where('cliente', 1)
             ->where(fn ($q) => $q->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
                 ->when($editar, fn ($q) => $q->orWhereNull('suma_id')))
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc', 'estado', 'suma_id']);
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc', 'estado', 'suma_id', 'cliente', 'proveedor', 'contacto']);
     }
 
     /** Solo se toca una empresa que gestiona el usuario (o sin responsable, si puede editar entidades). */
@@ -254,6 +254,23 @@ class ProcesosMensuales extends Component
         $nuevo = self::ORDEN_CICLOS[$i === false ? 0 : ($i + 1) % count(self::ORDEN_CICLOS)];
         Entidad::withoutGlobalScopes()->whereKey($id)->update(['cicloimpuesto_id' => $nuevo]);
         $this->ciclosEnt[$id] = $nuevo;
+    }
+
+    /** Clic en Cli / Pro / Con: cambia y se guarda en la entidad. Si deja de ser cliente, sale de la lista. */
+    public function alternarRelacion(int $id, string $campo): void
+    {
+        if (! in_array($campo, ['cliente', 'proveedor', 'contacto'], true) || ! $this->mia($id) || ! auth()->user()->can('entidades.editar')) {
+            return;
+        }
+        $e = Entidad::withoutGlobalScopes()->find($id);
+        $e->{$campo} = ! $e->{$campo};
+        $e->save();
+        if ($campo === 'cliente' && ! $e->cliente) {
+            $this->ponerAhora($id, false);
+            if ($this->seleccionada === $id) {
+                $this->seleccionada = null;
+            }
+        }
     }
 
     public function seleccionar(int $id): void

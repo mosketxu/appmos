@@ -89,6 +89,7 @@
                                     <th class="px-2 py-2 text-center" title="🚀 Enviar ahora ({{ $periodo }}): solo se envía a estas">Enviar</th>
                                     <th class="px-2 py-2 text-left">Empresa ({{ $empresas->count() }})</th>
                                     @if ($puedeEditar) <th class="px-2 py-2 text-left">Responsable</th> @endif
+                                    <th class="px-2 py-2 text-center" title="Cliente / Proveedor / Contacto (clic para cambiar; si deja de ser cliente sale de la lista)">Relación</th>
                                     <th class="px-2 py-2 text-center">Activa</th>
                                     <th class="px-2 py-2 text-center" title="Clic: pasa al siguiente">Idioma</th>
                                     <th class="px-2 py-2 text-center" title="Ciclo de impuestos. Clic: pasa al siguiente">Ciclo</th>
@@ -119,6 +120,16 @@
                                                 </select>
                                             </td>
                                         @endif
+                                        <td class="px-2 py-1 text-center whitespace-nowrap" x-on:click.stop>
+                                            @foreach (['cliente' => ['Cli', 'Cliente', 'bg-green-100 text-green-800 border-green-300'], 'proveedor' => ['Pro', 'Proveedor', 'bg-blue-100 text-blue-800 border-blue-300'], 'contacto' => ['Con', 'Contacto', 'bg-purple-100 text-purple-800 border-purple-300']] as $campo => [$corto, $largo, $color])
+                                                @if ($puedeEditar)
+                                                    <button type="button" wire:click="alternarRelacion({{ $e->id }}, '{{ $campo }}')" title="{{ $largo }}: {{ $e->{$campo} ? 'sí' : 'no' }} (clic para cambiar)"
+                                                            class="px-1 text-xs border rounded {{ $e->{$campo} ? $color.' font-semibold' : 'text-gray-300 border-gray-200' }}">{{ $corto }}</button>
+                                                @else
+                                                    <span class="px-1 text-xs border rounded {{ $e->{$campo} ? $color : 'text-gray-300 border-gray-200' }}">{{ $corto }}</span>
+                                                @endif
+                                            @endforeach
+                                        </td>
                                         <td class="px-2 py-1 text-center" x-on:click.stop>
                                             <input type="checkbox" wire:model.live="activas.{{ $e->id }}" title="Estado de la entidad" class="text-green-600 border-gray-300 rounded">
                                         </td>
@@ -136,7 +147,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="8" class="p-6 text-sm italic text-center text-gray-400">
+                                    <tr><td colspan="9" class="p-6 text-sm italic text-center text-gray-400">
                                         @if ($total)
                                             Ninguna empresa que mostrar (marca «Ver también las no marcadas» o cambia la búsqueda).
                                         @else
