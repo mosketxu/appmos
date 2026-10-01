@@ -170,11 +170,15 @@ class ProcesosMensuales extends Component
         return array_values(array_filter(array_map('trim', preg_split('/[;,\s]+/', (string) $emailadm))));
     }
 
-    /** Las que gestiona y, si puede editar entidades, también las que no tienen Responsable Suma. */
+    /**
+     * Las que gestiona y, si puede editar entidades, también las que no tienen Responsable Suma.
+     * Solo clientes (entidades.cliente = 1): ni proveedores ni contactos, salvo que también sean clientes.
+     */
     protected function empresas()
     {
         $editar = auth()->user()->can('entidades.editar');
         return Entidad::withoutGlobalScopes()
+            ->where('cliente', 1)
             ->where(fn ($q) => $q->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
                 ->when($editar, fn ($q) => $q->orWhereNull('suma_id')))
             ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc', 'estado', 'suma_id']);
