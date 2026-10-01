@@ -15,8 +15,10 @@ use Livewire\Component;
  * Ver Contabilidad/ProcesosMensuales/PLAN.md.
  *
  * Pet. Documentación Impuestos: por empresa, el check entidades.mail_peticion_check
- * y el texto entidades.mail_peticion, que parte de la plantilla de su idioma
- * (tabla plantillas_mail, ES / EN) y se personaliza.
+ * (de inicio todas marcadas; solo salen las marcadas salvo «ver también las no marcadas»),
+ * el idioma (entidades.idioma: cambiarlo aquí lo cambia en la entidad) y el texto
+ * entidades.mail_peticion, que parte de la plantilla de su idioma (tabla plantillas_mail,
+ * ES / EN) y se personaliza. El check y el idioma se guardan al momento.
  *
  * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
  */
@@ -42,6 +44,9 @@ class ProcesosMensuales extends Component
     /** Plantillas del proceso (idioma => texto). */
     public array $plantillas = [];
     public bool $verPlantillas = false;
+
+    /** Por defecto solo las marcadas. */
+    public bool $verNoMarcadas = false;
 
     public function mount(): void
     {
@@ -114,6 +119,21 @@ class ProcesosMensuales extends Component
         $this->dispatch('proceso-terminado', mensaje: $n ? "✅ {$n} empresas rellenadas con la plantilla" : 'No había empresas marcadas sin texto');
     }
 
+    /** El check y el idioma se guardan en la entidad en cuanto se cambian. */
+    public function updated(string $propiedad, $valor): void
+    {
+        if (! preg_match('/^(checks|idiomas)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
+            return;
+        }
+        $e = Entidad::withoutGlobalScopes()->find((int) $m[2]);
+        if ($m[1] === 'checks') {
+            $e->mail_peticion_check = (bool) $valor;
+        } elseif (isset(self::IDIOMAS[$valor])) {
+            $e->idioma = $valor;
+        }
+        $e->save();
+    }
+
     public function guardar(int $id, bool $avisar = true): void
     {
         if (! $this->mia($id)) {
@@ -131,6 +151,7 @@ class ProcesosMensuales extends Component
     public function render()
     {
         $empresas = $this->empresas()
+            ->when(! $this->verNoMarcadas, fn ($c) => $c->filter(fn ($e) => $this->checks[$e->id] ?? false))
             ->when($this->buscar !== '', fn ($c) => $c->filter(fn ($e) => stripos($e->entidad.' '.$e->alias, $this->buscar) !== false));
 
         return view('livewire.contabilidad.procesos-mensuales', [
@@ -138,6 +159,8 @@ class ProcesosMensuales extends Component
             'idiomasDisponibles' => self::IDIOMAS,
             'usuario' => auth()->user(),
             'empresas' => $empresas,
+            'marcadas' => count(array_filter($this->checks)),
+            'total' => count($this->checks),
         ]);
     }
 }

@@ -24,8 +24,8 @@
 
         @if ($proceso === 'petdocimpuestos')
             <p class="text-sm text-gray-600">
-                Empresas que gestiona <b>{{ $usuario->name }}</b> ({{ $empresas->count() }}). Marca a cuáles se les pide la documentación
-                y su texto: parte de la plantilla de su idioma y se puede personalizar. <code>{empresa}</code> se cambia al aplicar la plantilla;
+                Empresas que gestiona <b>{{ $usuario->name }}</b>: se le pide a {{ $marcadas }} de {{ $total }}. El check (enviar o no) y el idioma
+                se guardan al momento en la entidad. El texto parte de la plantilla de su idioma y se puede personalizar. <code>{empresa}</code> se cambia al aplicar la plantilla;
                 <code>{mes}</code> y <code>{año}</code>, al enviar.
             </p>
 
@@ -51,6 +51,9 @@
 
             <div class="flex flex-wrap items-center gap-3">
                 <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar empresa..." class="py-1 text-sm border-gray-300 rounded-md">
+                <label class="inline-flex items-center gap-1 text-sm text-gray-700">
+                    <input type="checkbox" wire:model.live="verNoMarcadas" class="border-gray-300 rounded"> Ver también las no marcadas
+                </label>
                 <button type="button" wire:click="rellenarVacias" class="px-3 py-1 text-sm text-indigo-700 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50"
                         title="Las marcadas que aún no tienen texto, con la plantilla de su idioma">Rellenar con la plantilla las marcadas sin texto</button>
             </div>
@@ -60,13 +63,13 @@
                     <div wire:key="pet-{{ $e->id }}" class="p-3 bg-white border rounded-lg shadow-sm {{ ($checks[$e->id] ?? false) ? 'border-indigo-300' : 'border-gray-200' }}">
                         <div class="flex flex-wrap items-center gap-3">
                             <label class="inline-flex items-center gap-2 font-semibold text-gray-900">
-                                <input type="checkbox" wire:model="checks.{{ $e->id }}" class="text-indigo-600 border-gray-300 rounded">
+                                <input type="checkbox" wire:model.live="checks.{{ $e->id }}" title="Enviarle el correo" class="text-indigo-600 border-gray-300 rounded">
                                 {{ $e->entidad }}
                             </label>
                             @if ($e->alias && $e->alias !== $e->entidad) <span class="text-xs text-gray-400">({{ $e->alias }})</span> @endif
                             <span class="text-xs text-gray-500">✉ {{ $e->emailadm ?: ($e->emailgral ?: 'sin correo') }}</span>
                             <div class="flex items-center gap-2 ml-auto">
-                                <select wire:model="idiomas.{{ $e->id }}" class="py-0.5 text-xs border-gray-300 rounded-md">
+                                <select wire:model.live="idiomas.{{ $e->id }}" title="Idioma (se guarda en la entidad)" class="py-0.5 text-xs border-gray-300 rounded-md">
                                     @foreach ($idiomasDisponibles as $i => $nombre) <option value="{{ $i }}">{{ $i }}</option> @endforeach
                                 </select>
                                 <button type="button" wire:click="aplicarPlantilla({{ $e->id }})" class="px-2 py-0.5 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>
@@ -79,7 +82,11 @@
                     </div>
                 @empty
                     <div class="p-6 text-sm italic text-center text-gray-400 bg-white border border-gray-200 border-dashed rounded-lg">
-                        Sin empresas: el Admin las asigna en el panel de control (Responsable Suma o marcadas a mano).
+                        @if ($total)
+                            Ninguna empresa que mostrar (marca «Ver también las no marcadas» o cambia la búsqueda).
+                        @else
+                            Sin empresas: el Admin las asigna en el panel de control (Responsable Suma o marcadas a mano).
+                        @endif
                     </div>
                 @endforelse
             </div>
