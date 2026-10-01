@@ -131,10 +131,11 @@ class Usuarios extends Component
             ->orderBy('name')->get();
 
         // Nº de entidades que ve cada usuario (null = todas)
-        $vistas = [];
+        $vistas = $gestiona = [];
         foreach ($usuarios as $u) {
             $ids = Accesos::entidadesPermitidas($u);
             $vistas[$u->id] = $ids === null ? null : count($ids);
+            $gestiona[$u->id] = count(Accesos::entidadesPropias($u));
         }
 
         $entidades = collect();
@@ -154,6 +155,7 @@ class Usuarios extends Component
         return view('livewire.admin.usuarios', [
             'usuarios' => $usuarios,
             'vistas' => $vistas,
+            'gestiona' => $gestiona,
             'roles' => Role::orderBy('id')->pluck('name'),
             'sumas' => Suma::orderBy('nombre')->get(['id', 'nombre', 'user_id']),
             'gruposPermisos' => config('accesos.permisos'),

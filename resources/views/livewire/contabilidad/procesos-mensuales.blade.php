@@ -7,17 +7,7 @@
         <p class="text-sm text-gray-600">Los procesos van por empresa: cada usuario los ejecuta para sus empresas (las del panel de control).</p>
 
         <div class="flex flex-wrap items-center gap-3">
-            @if ($usuarios->isNotEmpty())
-                <label class="text-sm text-gray-700">Empresas de
-                    <select wire:model.live="usuarioId" class="py-1 ml-1 text-sm border-gray-300 rounded-md">
-                        @foreach ($usuarios as $u)
-                            <option value="{{ $u->id }}">{{ $u->name }}</option>
-                        @endforeach
-                    </select>
-                </label>
-            @else
-                <span class="text-sm text-gray-700">Empresas de <b>{{ $usuario->name }}</b></span>
-            @endif
+            <span class="text-sm text-gray-700">Empresas que gestiona <b>{{ $usuario->name }}</b></span>
             <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar empresa..." class="py-1 text-sm border-gray-300 rounded-md">
             <span class="text-sm text-gray-500">{{ $empresas->count() }} empresas</span>
         </div>
@@ -45,7 +35,7 @@
                         </tr>
                     @empty
                         <tr><td colspan="{{ count($procesos) + 1 }}" class="px-3 py-6 italic text-center text-gray-400">
-                            Sin empresas: se asignan en el panel de control (Responsable Suma o asignadas a mano).
+                            Sin empresas: el Admin las asigna en el panel de control (Responsable Suma o marcadas a mano).
                         </td></tr>
                     @endforelse
                 </tbody>

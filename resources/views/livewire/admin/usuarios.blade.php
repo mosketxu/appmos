@@ -47,7 +47,7 @@
                                     <span class="px-2 py-0.5 text-xs rounded-full {{ $r === 'Admin' ? 'bg-red-100 text-red-800' : ($r === 'Suma' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-700') }}">{{ $r ?? '—' }}</span>
                                 </td>
                                 <td class="px-3 py-2">{{ $u->suma?->nombre }}</td>
-                                <td class="px-3 py-2 text-right">{{ $vistas[$u->id] === null ? 'todas' : $vistas[$u->id] }}</td>
+                                <td class="px-3 py-2 text-right">{{ $vistas[$u->id] === null ? 'todas · gestiona '.$gestiona[$u->id] : $vistas[$u->id] }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -129,16 +129,26 @@
                             </div>
                         </div>
 
+                    @else
+                        <p class="text-sm text-red-700">Admin: acceso a todo, sin excepciones.</p>
+                    @endif
+
                         <div>
                             <h3 class="text-sm font-semibold text-gray-700">Acceso a entidades</h3>
-                            @if (in_array('entidades.todas', $permisosDelRol, true) || in_array('entidades.todas', $permisosExtra, true))
-                                <p class="text-xs text-indigo-700">Ve todas las entidades (permiso "Ver TODAS las entidades").</p>
+                            {{-- Admin y quien tiene "Ver TODAS" ven todas en Entidades, pero las que gestiona (Responsable Suma +
+                                 marcadas aquí) son las que le salen en Proc.Mensuales y en «Mis empresas» (pedido 1-oct-2026) --}}
+                            @if ($rol === 'Admin' || in_array('entidades.todas', $permisosDelRol, true) || in_array('entidades.todas', $permisosExtra, true))
+                                <p class="mb-2 text-xs text-indigo-700">
+                                    En Entidades ve todas. Las que gestiona son las {{ count($porResponsable) }} de las que es Responsable Suma
+                                    y las que marques aquí ({{ count($entidadesAsignadas) }}): solo esas le salen en Proc.Mensuales y en «Mis empresas».
+                                </p>
                             @else
                                 <p class="mb-2 text-xs text-gray-500">
-                                    Ve las {{ count($porResponsable) }} entidades de las que es Responsable Suma
+                                    Ve (y gestiona) las {{ count($porResponsable) }} entidades de las que es Responsable Suma
                                     @if (count($porResponsable)) <span class="text-gray-400">({{ \Illuminate\Support\Str::limit(implode(', ', $porResponsable), 160) }})</span> @endif
                                     y además las que marques aquí ({{ count($entidadesAsignadas) }}).
                                 </p>
+                            @endif
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
                                     <input type="search" wire:model.live.debounce.300ms="buscarEntidad" placeholder="Buscar entidad…"
                                            class="py-1 text-sm border-gray-300 rounded-md shadow-sm w-60">
@@ -164,11 +174,7 @@
                                         <p class="p-2 text-xs text-gray-400">Sin resultados.</p>
                                     @endforelse
                                 </div>
-                            @endif
                         </div>
-                    @else
-                        <p class="text-sm text-red-700">Admin: acceso a todo, sin excepciones.</p>
-                    @endif
 
                     <div class="flex items-center gap-3">
                         <x-button.primary wire:click="guardar">Guardar</x-button.primary>
