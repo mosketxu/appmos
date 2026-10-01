@@ -128,6 +128,7 @@ class Procesos extends Component
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
         $this->pfMes = (int) date('n');
         $this->cargarBasePagosFinMes();
+        $this->cargarCashInStore();
     }
 
     protected function confPagosFinMes(): array
@@ -845,7 +846,7 @@ class Procesos extends Component
 
     public function updatedMes(): void
     {
-        $this->cisFilas = [];
+        $this->cargarCashInStore();
     }
 
     protected function cisMm(): string
@@ -881,13 +882,22 @@ class Procesos extends Component
         // windowsEnv(): el script llama a powershell.exe (Outlook) y bajo Apache necesita WSL_INTEROP.
         $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--buscar'], 300, $etiqueta, null, $this->windowsEnv());
         $this->salida = preg_replace('/^CASH_JSON:.*(\r?\n)?/m', '', $this->salida);
-        $fichero = $this->scriptDir() . "/CashInStore/_cashInStore_{$mm}.json";
+        $this->cargarCashInStore(true);
+    }
+
+    /**
+     * Lee el resultado de la última búsqueda del mes (CashInStore/_cashInStore_MM.json),
+     * sin volver a Outlook: así al entrar en la pantalla ya está «Ver importes».
+     */
+    protected function cargarCashInStore(bool $abrir = false): void
+    {
+        $this->cisFilas = [];
+        $this->cisAbierto = $abrir;
+        $fichero = $this->scriptDir() . '/CashInStore/_cashInStore_' . $this->cisMm() . '.json';
         $datos = is_file($fichero) ? json_decode((string) file_get_contents($fichero), true) : null;
         if (! is_array($datos)) {
             return;
         }
-        $this->cisFilas = [];
-        $this->cisAbierto = true;
         foreach ($datos as $tienda => $r) {
             $this->cisFilas[$tienda] = [
                 'cash' => $this->cisEur($r['cash'] ?? null),
