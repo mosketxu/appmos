@@ -1023,6 +1023,17 @@ class Procesos extends Component
         }
     }
 
+    /** Botón «Marcar» de los procesos manuales: ✓ (o lo quita) en el mes del título. */
+    public function marcarMesActual(string $id): void
+    {
+        if (! in_array($id, array_column($this->checklist, 'id'), true)) {
+            return;
+        }
+        $mes = sprintf('2026-%02d', $this->mes);
+        $hecho = ($this->checklistMarcas[$mes][$id]['estado'] ?? '') === 'ok';
+        $this->guardarChecklist($id, $mes, $hecho ? null : ['estado' => 'ok', 'cuando' => date('Y-m-d H:i'), 'como' => 'manual']);
+    }
+
     /** Clic en un check: vacío → ✓ → «no toca» → vacío. */
     public function alternarChecklist(string $id, string $mes): void
     {
