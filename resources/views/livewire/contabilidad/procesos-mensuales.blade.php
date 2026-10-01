@@ -39,6 +39,7 @@
                         @foreach ($idiomasDisponibles as $i => $nombre)
                             <div>
                                 <label class="block mb-1 text-xs font-semibold text-gray-600">{{ $nombre }} ({{ $i }})</label>
+                                <input type="text" wire:model="plantillasAsunto.{{ $i }}" placeholder="Asunto" class="w-full mb-1 text-xs border-gray-300 rounded-md">
                                 <textarea wire:model="plantillas.{{ $i }}" rows="10" class="w-full text-xs border-gray-300 rounded-md"></textarea>
                             </div>
                         @endforeach
@@ -183,6 +184,15 @@
                                     <input type="text" wire:model="ccs.{{ $sel->id }}" placeholder="(nadie en copia)" title="Varios separados por ; — se guarda con «Guardar»"
                                            class="flex-1 py-1 text-xs border-gray-300 rounded-md">
                                 </label>
+                                {{-- Asunto: por defecto el de la plantilla de su idioma; si se cambia, se guarda en la entidad al salir del campo --}}
+                                <div>
+                                    <label class="flex items-center gap-2 text-xs">
+                                        <span class="text-gray-500">Asunto:</span>
+                                        <input type="text" wire:model.blur="asuntos.{{ $sel->id }}" maxlength="255" title="Se guarda en la entidad al salir del campo. Vacío = el de la plantilla"
+                                               class="flex-1 py-1 text-xs border-gray-300 rounded-md">
+                                    </label>
+                                    <p class="mt-1 text-xs text-gray-400" style="margin-left:3.4rem">Saldrá: {{ str_replace('{periodo}', $pt, $asuntos[$sel->id] ?? '') }}</p>
+                                </div>
                                 <textarea wire:model="textos.{{ $sel->id }}" rows="16" class="w-full text-sm border-gray-300 rounded-md" placeholder="Texto a enviar (pulsa «Usar plantilla» para partir de la de su idioma)"></textarea>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <button type="button" wire:click="aplicarPlantilla({{ $sel->id }})" class="px-3 py-1 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>

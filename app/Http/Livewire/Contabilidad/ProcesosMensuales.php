@@ -51,6 +51,8 @@ class ProcesosMensuales extends Component
     public array $ccs = [];
     /** id => Email Adm (entidades.emailadm): destinatarios, editable aquí. */
     public array $paras = [];
+    /** id => asunto (entidades.mail_peticion_asunto; vacío en la entidad = el de la plantilla de su idioma). */
+    public array $asuntos = [];
     /** id => activa (entidades.estado: 1 activo, 0 baja). Solo salen las activas. */
     public array $activas = [];
     /** id => Responsable Suma (entidades.suma_id), editable aquí. */
@@ -66,6 +68,7 @@ class ProcesosMensuales extends Component
 
     /** Plantillas del proceso (idioma => texto). */
     public array $plantillas = [];
+    public array $plantillasAsunto = [];
     public bool $verPlantillas = false;
 
     /** Mes al que se refiere la petición (AAAA-MM); por defecto, el anterior. */
@@ -85,6 +88,7 @@ class ProcesosMensuales extends Component
 
     public function mount(): void
     {
+        $this->cargarPlantillas();
         foreach ($this->empresas() as $e) {
             $this->textos[$e->id] = (string) $e->mail_peticion;
             $this->ccs[$e->id] = (string) $e->mail_peticion_cc;
@@ -94,9 +98,9 @@ class ProcesosMensuales extends Component
             $this->ciclosEnt[$e->id] = $e->cicloimpuesto_id;
             $this->checks[$e->id] = (bool) $e->mail_peticion_check;
             $this->idiomas[$e->id] = $e->idioma === 'EN' ? 'EN' : 'ES';
+            $this->asuntos[$e->id] = (string) ($e->mail_peticion_asunto ?? $this->plantillasAsunto[$this->idiomas[$e->id]] ?? '');
         }
         $this->periodo = now()->subMonthNoOverflow()->format('Y-m');
-        $this->cargarPlantillas();
         $this->cargarAhora();
     }
 
@@ -196,9 +200,10 @@ class ProcesosMensuales extends Component
 
     protected function cargarPlantillas(): void
     {
-        $guardadas = DB::table('plantillas_mail')->where('proceso', $this->proceso)->pluck('texto', 'idioma')->all();
+        $guardadas = DB::table('plantillas_mail')->where('proceso', $this->proceso)->get()->keyBy('idioma');
         foreach (array_keys(self::IDIOMAS) as $i) {
-            $this->plantillas[$i] = (string) ($guardadas[$i] ?? '');
+            $this->plantillas[$i] = (string) ($guardadas[$i]->texto ?? '');
+            $this->plantillasAsunto[$i] = (string) ($guardadas[$i]->asunto ?? '');
         }
     }
 
@@ -208,7 +213,14 @@ class ProcesosMensuales extends Component
             if (isset(self::IDIOMAS[$idioma])) {
                 DB::table('plantillas_mail')->updateOrInsert(
                     ['proceso' => $this->proceso, 'idioma' => $idioma],
-                    ['texto' => $texto, 'updated_at' => now(), 'created_at' => now()]);
+                    ['texto' => $texto, 'asunto' => $this->plantillasAsunto[$idioma] ?? null, 'updated_at' => now(), 'created_at' => now()]);
+            }
+        }
+        // Las que no tienen asunto propio pasan a ver el nuevo de la plantilla
+        $propios = Entidad::withoutGlobalScopes()->whereIn('id', array_keys($this->asuntos))->whereNotNull('mail_peticion_asunto')->pluck('id')->all();
+        foreach ($this->asuntos as $id => $a) {
+            if (! in_array($id, $propios)) {
+                $this->asuntos[$id] = $this->plantillasAsunto[$this->idiomas[$id] ?? 'ES'] ?? '';
             }
         }
         $this->dispatch('proceso-terminado', mensaje: '✅ Plantillas guardadas');
@@ -254,6 +266,8 @@ class ProcesosMensuales extends Component
     {
         if ($this->mia($id)) {
             $this->textos[$id] = $this->desdePlantilla($id, $this->idiomas[$id] ?? 'ES');
+            $this->asuntos[$id] = $this->plantillasAsunto[$this->idiomas[$id] ?? 'ES'] ?? '';
+            $this->updated("asuntos.{$id}", $this->asuntos[$id]);
         }
     }
 
@@ -274,7 +288,7 @@ class ProcesosMensuales extends Component
     /** El check y el idioma se guardan en la entidad en cuanto se cambian. */
     public function updated(string $propiedad, $valor): void
     {
-        if (! preg_match('/^(checks|idiomas|ahora|activas|sumaIds|paras)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
+        if (! preg_match('/^(checks|idiomas|ahora|activas|sumaIds|paras|asuntos)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
             return;
         }
         if ($m[1] === 'ahora') {
@@ -282,7 +296,13 @@ class ProcesosMensuales extends Component
             return;
         }
         $e = Entidad::withoutGlobalScopes()->find((int) $m[2]);
-        if ($m[1] === 'paras') {
+        if ($m[1] === 'asuntos') {
+            // Igual que la plantilla de su idioma o vacío = sin asunto propio (sigue a la plantilla)
+            $porDefecto = $this->plantillasAsunto[$this->idiomas[$e->id] ?? 'ES'] ?? '';
+            $a = trim((string) $valor);
+            $e->mail_peticion_asunto = ($a === '' || $a === $porDefecto) ? null : mb_substr($a, 0, 255);
+            $this->asuntos[$e->id] = $e->mail_peticion_asunto ?? $porDefecto;
+        } elseif ($m[1] === 'paras') {
             $e->emailadm = mb_substr(implode('; ', self::destinatarios((string) $valor)), 0, 500) ?: null;
             $this->paras[$e->id] = (string) $e->emailadm;
         } elseif ($m[1] === 'sumaIds') {
@@ -304,6 +324,9 @@ class ProcesosMensuales extends Component
             }
         } elseif (isset(self::IDIOMAS[$valor])) {
             $e->idioma = $valor;
+            if ($e->mail_peticion_asunto === null) {
+                $this->asuntos[$e->id] = $this->plantillasAsunto[$valor] ?? '';
+            }
         }
         $e->save();
     }
