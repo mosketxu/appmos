@@ -53,6 +53,7 @@
                 <div class="hidden pl-2 lg:w-10 lg:flex">{{ __('Fav') }} </div>
                 <div class="w-7/12 pl-2 lg:w-3/12 ">{{ __('Entidad') }}</div>
                 <div class="hidden lg:block lg:w-1/12">{{ __('Nif') }} </div>
+                <div class="hidden lg:w-1/12 lg:flex" title="Cliente / Proveedor / Contacto (clic para cambiar)">{{ __('Relación') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('Facturar') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('Forma Pago') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Impuestos') }}</div>
@@ -76,6 +77,17 @@
                 </div>
                 <div class="hidden p-1 m-1 lg:block lg:w-1/12">
                     <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
+                </div>
+                {{-- Cliente / Proveedor / Contacto: clic = cambia y se guarda (pueden ser varias a la vez) --}}
+                <div class="items-center hidden gap-1 lg:w-1/12 lg:flex">
+                    @foreach (['cliente' => ['Cli', 'Cliente', 'bg-green-100 text-green-800 border-green-300'], 'proveedor' => ['Pro', 'Proveedor', 'bg-blue-100 text-blue-800 border-blue-300'], 'contacto' => ['Con', 'Contacto', 'bg-purple-100 text-purple-800 border-purple-300']] as $campo => [$corto, $largo, $color])
+                        @can('entidades.editar')
+                            <button type="button" wire:click="alternar({{ $entidad->id }}, '{{ $campo }}')" title="{{ $largo }}: {{ $entidad->{$campo} ? 'sí' : 'no' }} (clic para cambiar)"
+                                    class="px-1 text-xs border rounded {{ $entidad->{$campo} ? $color.' font-semibold' : 'text-gray-300 border-gray-200' }}">{{ $corto }}</button>
+                        @else
+                            <span title="{{ $largo }}: {{ $entidad->{$campo} ? 'sí' : 'no' }}" class="px-1 text-xs border rounded {{ $entidad->{$campo} ? $color : 'text-gray-300 border-gray-200' }}">{{ $corto }}</span>
+                        @endcan
+                    @endforeach
                 </div>
                 <div class="hidden lg:w-1/12 lg:flex">
                     @if($entidad->facturar=="1")

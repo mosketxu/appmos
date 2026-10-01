@@ -18,6 +18,9 @@ class Ent extends Component
 
     public $showPlanModal=false;
 
+    /** A dónde vuelve «Volver»: el listado de Entidades con la búsqueda y filtros con que se salió. */
+    public $volver='';
+
 
     protected function rules()
     {
@@ -41,6 +44,8 @@ class Ent extends Component
             'entidad.emailadm'=>'nullable',
             'entidad.web'=>'nullable',
             'entidad.cliente'=>'nullable',
+            'entidad.proveedor'=>'nullable',
+            'entidad.contacto'=>'nullable',
             'entidad.cicloimpuesto_id'=>'nullable',
             'entidad.ciclofacturacion_id'=>'nullable',
             'entidad.metodopago_id'=>'nullable',
@@ -79,6 +84,8 @@ class Ent extends Component
         );
         $this->contacto=$contacto;
         $this->ruta=$ruta;
+        $anterior = url()->previous();
+        $this->volver = str_starts_with($anterior, route('entidades')) ? $anterior : route('entidades');
     }
 
     public function render(){
@@ -138,7 +145,9 @@ class Ent extends Component
             'emailgral'=>$this->entidad['emailgral'],
             'emailadm'=>$this->entidad['emailadm'],
             'web'=>$this->entidad['web'],
-            'cliente'=>$this->entidad['cliente'],
+            'cliente'=>(bool) ($this->entidad['cliente'] ?? false),
+            'proveedor'=>(bool) ($this->entidad['proveedor'] ?? false),
+            'contacto'=>(bool) ($this->entidad['contacto'] ?? false),
             'cicloimpuesto_id'=>$this->entidad['cicloimpuesto_id'],
             'ciclofacturacion_id'=>$this->entidad['ciclofacturacion_id'],
             'metodopago_id'=>$this->entidad['metodopago_id'],

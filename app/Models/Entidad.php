@@ -24,7 +24,7 @@ class Entidad extends Model
                         'diafactura','diavencimiento','referenciacliente',
                         'tipoiva','porcentajemarta','porcentajesusana',
                         'cuentacontable','observaciones','mail_peticion_check','mail_peticion','mail_peticion_asunto','mail_peticion_cc',
-                        'suma_id','suma_id','cliente',
+                        'suma_id','suma_id','cliente','proveedor','contacto',
                         'estado','facturar','enviar','created_at'];
 
     const STATUSES =[

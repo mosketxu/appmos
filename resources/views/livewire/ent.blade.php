@@ -105,6 +105,12 @@
                         <x-input.checkbox wire:model.defer="entidad.cliente" class="w-4 h-4 text-green-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Cliente') }}</span>
                     </x-jet-label>
                     <x-jet-label class="inline-flex items-center mt-3">
+                        <x-input.checkbox wire:model.defer="entidad.proveedor" class="w-4 h-4 text-blue-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Proveedor') }}</span>
+                    </x-jet-label>
+                    <x-jet-label class="inline-flex items-center mt-3">
+                        <x-input.checkbox wire:model.defer="entidad.contacto" class="w-4 h-4 text-purple-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Contacto') }}</span>
+                    </x-jet-label>
+                    <x-jet-label class="inline-flex items-center mt-3">
                         <x-input.checkbox wire:model.defer="entidad.enviar" class="w-4 h-4 text-red-400 -500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Enviar') }}</span>
                     </x-jet-label>
                 </div>
@@ -293,7 +299,7 @@
                         class="text-gray-500"
                         >Saved!</span>
                     @endif --}}
-                    <x-jet-secondary-button  onclick="location.href = '{{route('entidades')}}'">{{ __('Volver') }}</x-jet-secondary-button>
+                    <x-jet-secondary-button  onclick="location.href = '{{ $volver }}'">{{ __('Volver') }}</x-jet-secondary-button>
                 </div>
             </div>
                 </fieldset>

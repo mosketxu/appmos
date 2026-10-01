@@ -23,6 +23,19 @@ class Ents extends Component
     public Entidad $entidad;
     public $ruta;
 
+    /** Clic en Cliente / Proveedor / Contacto del listado: cambia y se guarda al momento (independientes entre sí). */
+    public function alternar(int $entidadId, string $campo)
+    {
+        if (! in_array($campo, ['cliente', 'proveedor', 'contacto'], true) || ! auth()->user()->can('entidades.editar')) {
+            return;
+        }
+        $entidad = Entidad::find($entidadId);
+        if ($entidad) {
+            $entidad->{$campo} = ! $entidad->{$campo};
+            $entidad->save();
+        }
+    }
+
     /** Al cambiar la búsqueda o un filtro, a la primera página. */
     public function updated($propiedad)
     {
