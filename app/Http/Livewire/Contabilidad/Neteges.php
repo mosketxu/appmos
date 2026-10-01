@@ -198,9 +198,7 @@ class Neteges extends Component
             return;
         }
         if ($fila === 'remesas') {
-            $this->salida = "===== {$etiqueta} =====\n".implode("\n", array_map(fn ($r) => '• '.basename($r), $rutas))
-                ."\nGuardados en Base/Remesas: se procesarán más adelante (segundo proceso).";
-            $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nGuardados.");
+            $this->ejecutar([], $etiqueta, 'neteges_cobros.py');
             return;
         }
         if ($fila === 'netcobros') {

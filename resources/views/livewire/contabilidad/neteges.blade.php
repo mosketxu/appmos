@@ -50,7 +50,7 @@
             'ventas' => ! empty($ev['facturas'])
                 ? "{$ev['facturas']} facturas {$ev['desde']}–{$ev['hasta']} · {$ev['clientes']} clientes".($ev['sin_cuenta'] ? " · {$ev['sin_cuenta']} sin cuenta SAGE" : ' · todos con cuenta SAGE')
                 : 'sin ventas',
-            'remesas' => $remesas ? count($remesas).' '.(count($remesas) === 1 ? 'fichero' : 'ficheros').' (se procesarán más adelante)' : 'segundo proceso, pendiente',
+            'remesas' => ($estadoNeteges['remesas'] ?? null) ? $estadoNeteges['remesas']['remesas'].' remesas, '.$estadoNeteges['remesas']['devueltas'].' devoluciones, hasta el '.$estadoNeteges['remesas']['hasta'] : 'sin ficheros de remesas',
         ];
         $boton = 'px-2 py-0.5 text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50';
     @endphp
@@ -156,7 +156,11 @@
                                     @else
                                         <span class="text-gray-400">(todavía nada)</span>
                                     @endif
-                                    <span class="text-gray-400">— de momento solo se guardan (Base/Remesas): el proceso, más adelante</span>
+                                    @if ($estadoNeteges['remesas'] ?? null)
+                                        · <b>{{ $estadoNeteges['remesas']['remesas'] }}</b> remesas, {{ $estadoNeteges['remesas']['facturas'] }} facturas
+                                        ({{ $estadoNeteges['remesas']['devueltas'] }} devueltas) del {{ $estadoNeteges['remesas']['desde'] }} al {{ $estadoNeteges['remesas']['hasta'] }}
+                                    @endif
+                                    <span class="text-gray-400">— los «REMESAS dd-mm.xlsx» de Neteges: al conciliar, cada abono de remesa se reparte por cliente y las devoluciones vuelven a su cliente</span>
                                     @break
                             @endswitch
                         </div>
