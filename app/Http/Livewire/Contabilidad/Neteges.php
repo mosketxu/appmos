@@ -280,6 +280,16 @@ class Neteges extends Component
         }
     }
 
+    /** Concilia los cobros de los extractos con Ventas (neteges_conciliar.py → Output/Conciliacion cobros Neteges.xlsx). */
+    public function conciliar(): void
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado('Neteges · conciliar cobros');
+            return;
+        }
+        $this->ejecutar([], 'Neteges · conciliar cobros', 'neteges_conciliar.py');
+    }
+
     /** Quita extractos de Input ($fichero = '' → todos); quedan en Input/Borrados. */
     public function borrarExtracto(string $fichero = ''): void
     {
@@ -364,6 +374,7 @@ class Neteges extends Component
             'hayBase' => is_file($this->basePath()),
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
             'remesas' => $this->ficheros('Base/Remesas'),
+            'hayConciliacion' => is_file($f = $this->baseDir().'/Output/Conciliacion cobros Neteges.xlsx') ? date('d/m H:i', filemtime($f)) : null,
             'extractosInput' => ($lista = $this->listaExtractos())['extractos'] ?? [],
             'nombresCuentas' => $lista['cuentas'] ?? [],
             'carpeta' => $this->rutaWindows($this->baseDir()),

@@ -25,23 +25,27 @@
         $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
         $xls = '.xlsx,.xls,.csv';
         $bloques = [
-            'bancos' => ['titulo' => '🏦 Bancos', 'filas' => [
+            'comunes' => ['titulo' => '📚 Ficheros comunes', 'filas' => [
                 ['clave' => 'plan', 'titulo' => '📘 Plan de cuentas', 'accept' => '.xlsx,.xls'],
-                ['clave' => 'mayor', 'titulo' => '📒 Mayor', 'accept' => '.xlsx,.xls'],
+                ['clave' => 'clientessage', 'titulo' => '👥 Clientes SAGE', 'accept' => $xls],
                 ['clave' => 'proveedoressage', 'titulo' => '🏭 Proveedores SAGE', 'accept' => $xls],
+                ['clave' => 'misclientes', 'titulo' => '✍️ Mis clientes', 'accept' => $xls],
+            ]],
+            'bancos' => ['titulo' => '🏦 Bancos', 'filas' => [
+                ['clave' => 'mayor', 'titulo' => '📒 Mayor', 'accept' => '.xlsx,.xls'],
             ]],
             'ventas' => ['titulo' => '🧾 Ventas', 'filas' => [
                 ['clave' => 'ventas', 'titulo' => '🧾 Ficheros de ventas', 'accept' => $xls],
-                ['clave' => 'clientessage', 'titulo' => '👥 Clientes SAGE', 'accept' => $xls],
-                ['clave' => 'misclientes', 'titulo' => '✍️ Mis clientes', 'accept' => $xls],
             ]],
             'remesas' => ['titulo' => '📑 Remesas', 'filas' => [
                 ['clave' => 'remesas', 'titulo' => '📑 Ficheros de remesas', 'accept' => '.xlsx,.xls,.csv,.txt,.xml,.pdf,.q19,.n19'],
             ]],
         ];
         $resumen = [
-            'bancos' => (($estadoBase['plan']['cuentas'] ?? null) ? $estadoBase['plan']['cuentas'].' cuentas' : 'sin plan').' · '.
-                ($cuentas ? implode(' · ', array_map(fn ($c) => $c.((($estadoBase['cuentas'][$c]['hasta'] ?? '') !== '') ? ' hasta '.$estadoBase['cuentas'][$c]['hasta'] : ''), $cuentas)) : 'sin mayor'),
+            'comunes' => (($estadoBase['plan']['cuentas'] ?? null) ? $estadoBase['plan']['cuentas'].' cuentas' : 'sin plan')
+                .' · clientes SAGE '.(($lis['clientes'] ?? null) ?: 'no').' · proveedores SAGE '.(($lis['proveedores'] ?? null) ?: 'no')
+                .' · mis clientes '.(($lis['mis clientes'] ?? null) ?: 'no'),
+            'bancos' => ($cuentas ? implode(' · ', array_map(fn ($c) => $c.((($estadoBase['cuentas'][$c]['hasta'] ?? '') !== '') ? ' hasta '.$estadoBase['cuentas'][$c]['hasta'] : ''), $cuentas)) : 'sin mayor'),
             'ventas' => ! empty($ev['facturas'])
                 ? "{$ev['facturas']} facturas {$ev['desde']}–{$ev['hasta']} · {$ev['clientes']} clientes".($ev['sin_cuenta'] ? " · {$ev['sin_cuenta']} sin cuenta SAGE" : ' · todos con cuenta SAGE')
                 : 'sin ventas',
@@ -163,6 +167,18 @@
                             <span class="text-red-600">{{ $message }}</span>
                         @enderror
                     </div>
+                    @include('livewire.contabilidad.neteges._extractos')
+                    <div class="flex flex-wrap items-center px-4 py-2 border-t-2 border-gray-200 gap-x-3 gap-y-1">
+                        <span class="text-sm font-semibold text-gray-700">⚖️ Conciliar cobros</span>
+                        <span class="text-gray-500">cada ingreso → su(s) factura(s) de Ventas y su cuenta 430 (las remesas, aparte)</span>
+                        <button type="button" wire:click="conciliar" wire:loading.attr="disabled" wire:target="conciliar"
+                                class="px-3 py-1 font-semibold text-white bg-indigo-600 rounded hover:bg-indigo-700">
+                            <span wire:loading.remove wire:target="conciliar">Conciliar</span><span wire:loading wire:target="conciliar">⏳ Conciliando…</span>
+                        </button>
+                        @if ($hayConciliacion)
+                            <button type="button" wire:click="descargar('Output/Conciliacion cobros Neteges.xlsx')" class="text-blue-700 underline hover:text-blue-900">⬇ Resultado ({{ $hayConciliacion }})</button>
+                        @endif
+                    </div>
                     @if ($recibidos)
                         <div class="px-4 py-1 text-gray-400 bg-gray-50">
                             <span class="cursor-help" title="{{ implode("\n", $recibidos) }}">Últimos ficheros subidos ({{ count($recibidos) }})</span>
@@ -172,84 +188,6 @@
             </div>
         </details>
     @endforeach
-
-    <div class="overflow-hidden bg-white border rounded-lg shadow"
-         x-data="{
-             encima: false, subiendo: false, progreso: 0,
-             subir(files) {
-                 if (! files || ! files.length) return;
-                 this.subiendo = true; this.progreso = 0;
-                 $wire.uploadMultiple('extractos', files,
-                     () => { this.subiendo = false; $wire.procesarExtractos(); },
-                     () => { this.subiendo = false; },
-                     (e) => { this.progreso = e.detail.progress; });
-             },
-         }">
-        <div class="p-4 border-b border-gray-200 bg-gray-50">
-            <h2 class="mb-1 text-sm font-semibold text-gray-700">Extractos del banco</h2>
-            <p class="mb-3 text-xs text-gray-500">
-                Suelta aquí todos los que quieras a la vez (Excel, XML o TXT). Se guardan en {{ $carpeta }}\Input y se
-                reconoce la cuenta de cada uno: por el IBAN de dentro del fichero o, si no, por el nombre del banco en el
-                nombre del fichero. Si no se reconoce, elígela en su fila. De momento solo se guardan: el proceso, después.
-            </p>
-            @if (empty($cuentas))
-                <p class="text-sm text-amber-700">Primero sube arriba el mayor.</p>
-            @else
-                <label x-on:dragover.prevent="encima = true" x-on:dragleave.prevent="encima = false"
-                       x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
-                       :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
-                       class="flex items-center gap-2 px-3 py-3 text-sm border-2 border-dashed rounded-md cursor-pointer">
-                    <input type="file" multiple accept=".xlsx,.xls,.xml,.txt,.n43,.csv" class="hidden"
-                           x-on:change="subir($event.target.files); $event.target.value = ''">
-                    <span>📄</span>
-                    <span class="text-gray-700">Arrastra aquí los extractos (varios a la vez) o haz clic para elegirlos</span>
-                    <span x-show="subiendo" x-cloak class="ml-auto text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
-                </label>
-                <div wire:loading.flex wire:target="procesarExtractos" class="items-center gap-2 mt-1 text-xs font-semibold text-amber-800">⏳ Reconociendo las cuentas…</div>
-                @error('extractos')
-                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                @enderror
-            @endif
-        </div>
-
-        @if ($extractosInput)
-            <table class="min-w-full text-xs">
-                <thead class="text-left text-gray-500 bg-gray-50">
-                    <tr><th class="px-4 py-1">Extracto (en Input)</th><th class="px-2 py-1">Tipo</th><th class="px-2 py-1">Cuenta</th><th class="px-2 py-1">Cómo</th>
-                        <th class="px-2 py-1 text-right">
-                            <button type="button" wire:click="borrarExtracto('')"
-                                    wire:confirm="¿Quitar TODOS los extractos de Input? (Quedan en Input/Borrados.)"
-                                    class="font-normal text-red-600 underline hover:text-red-800">🗑 Borrar todos</button>
-                        </th></tr>
-                </thead>
-                <tbody>
-                    @foreach ($extractosInput as $ex)
-                        <tr class="border-t" wire:key="ex-{{ md5($ex['fichero']) }}">
-                            <td class="px-4 py-1">
-                                <button type="button" wire:click="descargar(@js('Input/'.$ex['fichero']))" class="underline hover:text-gray-900">{{ $ex['fichero'] }}</button>
-                            </td>
-                            <td class="px-2 py-1">{{ $ex['tipo'] }}</td>
-                            <td class="px-2 py-1">
-                                <select x-on:change="$wire.asignarCuenta(@js($ex['fichero']), $event.target.value)"
-                                        class="py-0.5 text-xs rounded-md shadow-sm {{ $ex['cuenta'] === '' ? 'border-red-400 bg-red-50' : 'border-gray-300' }}">
-                                    <option value="">— elige —</option>
-                                    @foreach ($cuentas as $codigo)
-                                        <option value="{{ $codigo }}" @selected($ex['cuenta'] === $codigo)>{{ $codigo }}{{ ($nombresCuentas[$codigo] ?? '') !== '' ? ' · '.$nombresCuentas[$codigo] : '' }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
-                            <td class="px-2 py-1 {{ $ex['cuenta'] === '' ? 'text-red-700' : 'text-gray-500' }}">{{ $ex['como'] }}</td>
-                            <td class="px-2 py-1 text-right">
-                                <button type="button" wire:click="borrarExtracto(@js($ex['fichero']))"
-                                        wire:confirm="¿Quitar {{ $ex['fichero'] }} de Input?"
-                                        class="text-gray-400 hover:text-red-600" title="Borrar">&times;</button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
 
     </div>
 
