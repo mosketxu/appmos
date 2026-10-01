@@ -83,6 +83,9 @@
                                 <span class="font-semibold text-red-700" title="Facturas que ya estaban y han llegado distintas: pestaña Cambios">· ⚠️ {{ $estadoVentas['cambios'] }} facturas llegadas distintas</span>
                             @endif
                             <button type="button" wire:click="descargar('Base/Ventas Neteges.xlsx')" class="ml-1 text-blue-700 underline hover:text-blue-900">⬇ Ventas acumuladas</button>
+                            <button type="button" wire:click="vaciarVentas"
+                                    wire:confirm="¿Vaciar las ventas acumuladas para volver a subirlas? (El acumulado actual se guarda en Base/Recibidos.)"
+                                    class="ml-1 text-red-600 underline hover:text-red-800">🗑 Vaciar</button>
                             <details class="text-gray-400">
                                 <summary class="cursor-pointer">Ficheros incluidos</summary>
                                 @foreach ($estadoVentas['ficheros'] as $vf)
@@ -200,7 +203,12 @@
         @if ($extractosInput)
             <table class="min-w-full text-xs">
                 <thead class="text-left text-gray-500 bg-gray-50">
-                    <tr><th class="px-4 py-1">Extracto (en Input)</th><th class="px-2 py-1">Tipo</th><th class="px-2 py-1">Cuenta</th><th class="px-2 py-1">Cómo</th></tr>
+                    <tr><th class="px-4 py-1">Extracto (en Input)</th><th class="px-2 py-1">Tipo</th><th class="px-2 py-1">Cuenta</th><th class="px-2 py-1">Cómo</th>
+                        <th class="px-2 py-1 text-right">
+                            <button type="button" wire:click="borrarExtracto('')"
+                                    wire:confirm="¿Quitar TODOS los extractos de Input? (Quedan en Input/Borrados.)"
+                                    class="font-normal text-red-600 underline hover:text-red-800">🗑 Borrar todos</button>
+                        </th></tr>
                 </thead>
                 <tbody>
                     @foreach ($extractosInput as $ex)
@@ -219,6 +227,11 @@
                                 </select>
                             </td>
                             <td class="px-2 py-1 {{ $ex['cuenta'] === '' ? 'text-red-700' : 'text-gray-500' }}">{{ $ex['como'] }}</td>
+                            <td class="px-2 py-1 text-right">
+                                <button type="button" wire:click="borrarExtracto(@js($ex['fichero']))"
+                                        wire:confirm="¿Quitar {{ $ex['fichero'] }} de Input?"
+                                        class="text-gray-400 hover:text-red-600" title="Borrar">&times;</button>
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

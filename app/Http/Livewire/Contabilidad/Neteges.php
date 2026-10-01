@@ -249,6 +249,27 @@ class Neteges extends Component
         }
     }
 
+    /** Quita extractos de Input ($fichero = '' → todos); quedan en Input/Borrados. */
+    public function borrarExtracto(string $fichero = ''): void
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado('Neteges · extractos');
+            return;
+        }
+        $this->ejecutar(['borrar', $fichero === '' ? '--todos' : $fichero],
+            'Neteges · borrar '.($fichero === '' ? 'todos los extractos' : $fichero), 'neteges_extractos.py');
+    }
+
+    /** Empieza las ventas de cero (el acumulado se aparta a Base/Recibidos). */
+    public function vaciarVentas(): void
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado('Neteges · ventas');
+            return;
+        }
+        $this->ejecutar(['--vaciar'], 'Neteges · vaciar ventas', 'neteges_ventas.py');
+    }
+
     /** Extractos de Input con su cuenta y nombres de las cuentas de banco (neteges_extractos.py listar). */
     protected function listaExtractos(): array
     {
