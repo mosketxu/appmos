@@ -4,39 +4,139 @@ namespace App\Http\Livewire\Contabilidad;
 
 use App\Models\Entidad;
 use App\Support\Accesos;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 /**
  * Proc.Mensuales (1-oct-2026): agrupa varios procesos que se hacen cada mes.
- * Los procesos van por empresa: cada usuario ve sus empresas (las del panel de
- * control: Responsable Suma + asignadas, Accesos::entidadesPropias) y ejecuta
- * para cada una los procesos de PROCESOS. También Admin y gestores: aunque en
- * Entidades vean todas, aquí solo las que gestionan (se les marcan en el panel).
+ * Los procesos van por empresa: cada usuario ve solo las empresas que gestiona
+ * (las del panel de control: Responsable Suma + asignadas, Accesos::entidadesPropias).
+ * También Admin y gestores: aunque en Entidades vean todas, aquí solo las suyas.
  * Ver Contabilidad/ProcesosMensuales/PLAN.md.
+ *
+ * Pet. Documentación Impuestos: por empresa, el check entidades.mail_peticion_check
+ * y el texto entidades.mail_peticion, que parte de la plantilla de su idioma
+ * (tabla plantillas_mail, ES / EN) y se personaliza.
  *
  * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
  */
 class ProcesosMensuales extends Component
 {
-    /** [clave => ['icono', 'titulo', 'descripcion', 'listo']]: una columna por proceso. */
+    /** [clave => ['icono', 'titulo', 'descripcion']]: una pestaña por proceso. */
     public const PROCESOS = [
         'petdocimpuestos' => ['icono' => '📨', 'titulo' => 'Pet. Documentación Impuestos',
-            'descripcion' => 'Petición mensual de la documentación para los impuestos.', 'listo' => false],
+            'descripcion' => 'Petición mensual de la documentación para los impuestos.'],
     ];
+
+    public const IDIOMAS = ['ES' => 'Español', 'EN' => 'Inglés'];
+
+    public string $proceso = 'petdocimpuestos';
 
     public string $buscar = '';
 
+    /** Por empresa (id => valor), lo que se está editando en pantalla. */
+    public array $textos = [];
+    public array $checks = [];
+    public array $idiomas = [];
+
+    /** Plantillas del proceso (idioma => texto). */
+    public array $plantillas = [];
+    public bool $verPlantillas = false;
+
+    public function mount(): void
+    {
+        foreach ($this->empresas() as $e) {
+            $this->textos[$e->id] = (string) $e->mail_peticion;
+            $this->checks[$e->id] = (bool) $e->mail_peticion_check;
+            $this->idiomas[$e->id] = $e->idioma === 'EN' ? 'EN' : 'ES';
+        }
+        $this->cargarPlantillas();
+    }
+
+    protected function empresas()
+    {
+        return Entidad::withoutGlobalScopes()
+            ->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'emailgral', 'mail_peticion_check', 'mail_peticion']);
+    }
+
+    /** Solo se toca una empresa que gestiona el usuario. */
+    protected function mia(int $id): bool
+    {
+        return in_array($id, Accesos::entidadesPropias(auth()->user()), true);
+    }
+
+    protected function cargarPlantillas(): void
+    {
+        $guardadas = DB::table('plantillas_mail')->where('proceso', $this->proceso)->pluck('texto', 'idioma')->all();
+        foreach (array_keys(self::IDIOMAS) as $i) {
+            $this->plantillas[$i] = (string) ($guardadas[$i] ?? '');
+        }
+    }
+
+    public function guardarPlantillas(): void
+    {
+        foreach ($this->plantillas as $idioma => $texto) {
+            if (isset(self::IDIOMAS[$idioma])) {
+                DB::table('plantillas_mail')->updateOrInsert(
+                    ['proceso' => $this->proceso, 'idioma' => $idioma],
+                    ['texto' => $texto, 'updated_at' => now(), 'created_at' => now()]);
+            }
+        }
+        $this->dispatch('proceso-terminado', mensaje: '✅ Plantillas guardadas');
+    }
+
+    protected function desdePlantilla(int $id, string $idioma): string
+    {
+        $nombre = Entidad::withoutGlobalScopes()->whereKey($id)->value('entidad');
+        return str_replace('{empresa}', (string) $nombre, $this->plantillas[$idioma] ?? '');
+    }
+
+    /** Pone en el cuadro de la empresa la plantilla del idioma elegido (no guarda). */
+    public function aplicarPlantilla(int $id): void
+    {
+        if ($this->mia($id)) {
+            $this->textos[$id] = $this->desdePlantilla($id, $this->idiomas[$id] ?? 'ES');
+        }
+    }
+
+    /** Rellena con la plantilla de su idioma las empresas marcadas que aún no tienen texto, y guarda. */
+    public function rellenarVacias(): void
+    {
+        $n = 0;
+        foreach ($this->checks as $id => $check) {
+            if ($check && trim($this->textos[$id] ?? '') === '' && $this->mia((int) $id)) {
+                $this->textos[$id] = $this->desdePlantilla((int) $id, $this->idiomas[$id] ?? 'ES');
+                $this->guardar((int) $id, false);
+                $n++;
+            }
+        }
+        $this->dispatch('proceso-terminado', mensaje: $n ? "✅ {$n} empresas rellenadas con la plantilla" : 'No había empresas marcadas sin texto');
+    }
+
+    public function guardar(int $id, bool $avisar = true): void
+    {
+        if (! $this->mia($id)) {
+            return;
+        }
+        $e = Entidad::withoutGlobalScopes()->find($id);
+        $e->mail_peticion_check = (bool) ($this->checks[$id] ?? false);
+        $e->mail_peticion = trim($this->textos[$id] ?? '') === '' ? null : $this->textos[$id];
+        $e->save();
+        if ($avisar) {
+            $this->dispatch('proceso-terminado', mensaje: '✅ Guardado: '.$e->entidad);
+        }
+    }
+
     public function render()
     {
-        $usuario = auth()->user();
-        $empresas = Entidad::withoutGlobalScopes()
-            ->whereIn('id', Accesos::entidadesPropias($usuario) ?: [0])
-            ->when($this->buscar !== '', fn ($q) => $q->where(fn ($q) => $q->where('entidad', 'like', '%'.$this->buscar.'%')->orWhere('alias', 'like', '%'.$this->buscar.'%')))
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'mail_peticion_check', 'mail_peticion']);
+        $empresas = $this->empresas()
+            ->when($this->buscar !== '', fn ($c) => $c->filter(fn ($e) => stripos($e->entidad.' '.$e->alias, $this->buscar) !== false));
 
         return view('livewire.contabilidad.procesos-mensuales', [
             'procesos' => self::PROCESOS,
-            'usuario' => $usuario,
+            'idiomasDisponibles' => self::IDIOMAS,
+            'usuario' => auth()->user(),
             'empresas' => $empresas,
         ]);
     }

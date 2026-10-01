@@ -1,51 +1,88 @@
-<div>
+<div x-data="{ avisos: [] }"
+     x-on:proceso-terminado.window="avisos.push({ id: Date.now() + '-' + Math.random(), mensaje: $event.detail.mensaje }); setTimeout(() => avisos.shift(), 4000)">
+    <div class="fixed top-4 right-4 z-50 flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-2">
+        <template x-for="aviso in avisos" :key="aviso.id">
+            <div x-on:click="avisos = avisos.filter(a => a.id !== aviso.id)" class="p-3 text-sm text-gray-800 bg-white border border-gray-300 rounded-lg shadow-lg cursor-pointer" x-text="aviso.mensaje"></div>
+        </template>
+    </div>
+
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.procesos-mensuales'])
     @include('livewire.contabilidad._subnav', ['activa' => 'contabilidad.procesos-mensuales'])
 
     <div class="p-4 space-y-4">
         <h1 class="text-2xl font-semibold text-gray-900">Procesos mensuales</h1>
-        <p class="text-sm text-gray-600">Los procesos van por empresa: cada usuario los ejecuta para sus empresas (las del panel de control).</p>
 
-        <div class="flex flex-wrap items-center gap-3">
-            <span class="text-sm text-gray-700">Empresas que gestiona <b>{{ $usuario->name }}</b></span>
-            <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar empresa..." class="py-1 text-sm border-gray-300 rounded-md">
-            <span class="text-sm text-gray-500">{{ $empresas->count() }} empresas</span>
+        {{-- Un botón por proceso --}}
+        <div class="flex flex-wrap gap-2">
+            @foreach ($procesos as $clave => $p)
+                <button type="button" wire:click="$set('proceso', '{{ $clave }}')" title="{{ $p['descripcion'] }}"
+                        class="px-3 py-1.5 text-sm font-medium border rounded-md {{ $proceso === $clave ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                    {{ $p['icono'] }} {{ $p['titulo'] }}
+                </button>
+            @endforeach
         </div>
 
-        <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
-            <table class="min-w-full text-sm">
-                <thead class="text-left text-gray-700 bg-gray-100">
-                    <tr>
-                        <th class="px-3 py-2 font-semibold">Empresa</th>
-                        @foreach ($procesos as $p)
-                            <th class="px-3 py-2 font-semibold text-center" title="{{ $p['descripcion'] }}">{{ $p['icono'] }} {{ $p['titulo'] }}</th>
+        @if ($proceso === 'petdocimpuestos')
+            <p class="text-sm text-gray-600">
+                Empresas que gestiona <b>{{ $usuario->name }}</b> ({{ $empresas->count() }}). Marca a cuáles se les pide la documentación
+                y su texto: parte de la plantilla de su idioma y se puede personalizar. <code>{empresa}</code> se cambia al aplicar la plantilla;
+                <code>{mes}</code> y <code>{año}</code>, al enviar.
+            </p>
+
+            {{-- Plantillas ES / EN, comunes a todos --}}
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                <button type="button" wire:click="$toggle('verPlantillas')" class="flex items-center justify-between w-full px-4 py-2 text-sm font-semibold text-left text-gray-800">
+                    <span>📝 Plantillas (español / inglés)</span><span>{{ $verPlantillas ? '▲' : '▼' }}</span>
+                </button>
+                @if ($verPlantillas)
+                    <div class="grid gap-4 px-4 pb-4 md:grid-cols-2">
+                        @foreach ($idiomasDisponibles as $i => $nombre)
+                            <div>
+                                <label class="block mb-1 text-xs font-semibold text-gray-600">{{ $nombre }} ({{ $i }})</label>
+                                <textarea wire:model="plantillas.{{ $i }}" rows="10" class="w-full text-xs border-gray-300 rounded-md"></textarea>
+                            </div>
                         @endforeach
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse ($empresas as $e)
-                        <tr wire:key="emp-{{ $e->id }}" class="hover:bg-gray-50">
-                            <td class="px-3 py-1">{{ $e->entidad }}@if ($e->alias && $e->alias !== $e->entidad) <span class="text-xs text-gray-400">({{ $e->alias }})</span>@endif</td>
-                            @foreach ($procesos as $clave => $p)
-                                <td class="px-3 py-1 text-center whitespace-nowrap">
-                                    @if ($clave === 'petdocimpuestos')
-                                        <span class="mr-1 text-xs {{ $e->mail_peticion_check ? 'text-green-700' : 'text-gray-400' }}"
-                                              title="{{ $e->mail_peticion_check ? 'Se le pide por correo' : 'No marcado en la entidad' }}{{ $e->mail_peticion_check && blank($e->mail_peticion) ? ' (sin mensaje escrito)' : '' }}">
-                                            {{ $e->mail_peticion_check ? (blank($e->mail_peticion) ? '✉ sin mensaje' : '✉ sí') : '—' }}
-                                        </span>
-                                    @endif
-                                    <button type="button" disabled title="{{ $p['listo'] ? 'Ejecutar' : 'En preparación' }}"
-                                            class="px-2 py-1 text-xs text-gray-400 bg-gray-100 border border-gray-200 rounded cursor-not-allowed">▶ Ejecutar</button>
-                                </td>
-                            @endforeach
-                        </tr>
-                    @empty
-                        <tr><td colspan="{{ count($procesos) + 1 }}" class="px-3 py-6 italic text-center text-gray-400">
-                            Sin empresas: el Admin las asigna en el panel de control (Responsable Suma o marcadas a mano).
-                        </td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                        <div class="md:col-span-2">
+                            <button type="button" wire:click="guardarPlantillas" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Guardar plantillas</button>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar empresa..." class="py-1 text-sm border-gray-300 rounded-md">
+                <button type="button" wire:click="rellenarVacias" class="px-3 py-1 text-sm text-indigo-700 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50"
+                        title="Las marcadas que aún no tienen texto, con la plantilla de su idioma">Rellenar con la plantilla las marcadas sin texto</button>
+            </div>
+
+            <div class="space-y-2">
+                @forelse ($empresas as $e)
+                    <div wire:key="pet-{{ $e->id }}" class="p-3 bg-white border rounded-lg shadow-sm {{ ($checks[$e->id] ?? false) ? 'border-indigo-300' : 'border-gray-200' }}">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label class="inline-flex items-center gap-2 font-semibold text-gray-900">
+                                <input type="checkbox" wire:model="checks.{{ $e->id }}" class="text-indigo-600 border-gray-300 rounded">
+                                {{ $e->entidad }}
+                            </label>
+                            @if ($e->alias && $e->alias !== $e->entidad) <span class="text-xs text-gray-400">({{ $e->alias }})</span> @endif
+                            <span class="text-xs text-gray-500">✉ {{ $e->emailadm ?: ($e->emailgral ?: 'sin correo') }}</span>
+                            <div class="flex items-center gap-2 ml-auto">
+                                <select wire:model="idiomas.{{ $e->id }}" class="py-0.5 text-xs border-gray-300 rounded-md">
+                                    @foreach ($idiomasDisponibles as $i => $nombre) <option value="{{ $i }}">{{ $i }}</option> @endforeach
+                                </select>
+                                <button type="button" wire:click="aplicarPlantilla({{ $e->id }})" class="px-2 py-0.5 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>
+                                <button type="button" wire:click="guardar({{ $e->id }})" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Guardar</button>
+                            </div>
+                        </div>
+                        @if ($checks[$e->id] ?? false)
+                            <textarea wire:model="textos.{{ $e->id }}" rows="6" class="w-full mt-2 text-xs border-gray-300 rounded-md" placeholder="Texto a enviar (pulsa «Usar plantilla» para partir de la de su idioma)"></textarea>
+                        @endif
+                    </div>
+                @empty
+                    <div class="p-6 text-sm italic text-center text-gray-400 bg-white border border-gray-200 border-dashed rounded-lg">
+                        Sin empresas: el Admin las asigna en el panel de control (Responsable Suma o marcadas a mano).
+                    </div>
+                @endforelse
+            </div>
+        @endif
     </div>
 </div>
