@@ -23,6 +23,7 @@ use Livewire\WithFileUploads;
  *     Clientes con su cuenta SAGE, Cambios) y avisa si una factura que ya estaba llega distinta.
  *   - listado de clientes o de proveedores de SAGE (el último de cada tipo; se reconoce cuál es):
  *     sirve para la cuenta SAGE de cada cliente (plugin de facturas).
+ *   - "Mis clientes": el fichero de clientes que mantiene Alex (vale el último; manda sobre el de SAGE).
  * Extracto del banco con su cuenta: de momento solo se guarda en Input (el proceso, después).
  *
  * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
@@ -129,17 +130,17 @@ class Neteges extends Component
         if (! $ficheros) {
             return;
         }
-        if (! in_array($fila, ['plan', 'mayor', 'ventas', 'listado'], true)) {
+        if (! in_array($fila, ['plan', 'mayor', 'ventas', 'listado', 'misclientes'], true)) {
             $this->addError('subidas', 'Fila desconocida.');
             return;
         }
-        $etiqueta = 'Neteges · '.['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas', 'listado' => 'listado de clientes/proveedores'][$fila];
+        $etiqueta = 'Neteges · '.['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas', 'listado' => 'listado de SAGE', 'misclientes' => 'mis clientes'][$fila];
         if (! config('contabilidad.ejecucion_local')) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
 
-        $extensiones = in_array($fila, ['ventas', 'listado'], true) ? ['xlsx', 'xls', 'csv'] : ['xlsx', 'xls'];
+        $extensiones = in_array($fila, ['ventas', 'listado', 'misclientes'], true) ? ['xlsx', 'xls', 'csv'] : ['xlsx', 'xls'];
         $malos = array_map(fn ($f) => $f->getClientOriginalName(),
             array_filter($ficheros, fn ($f) => ! in_array(strtolower($f->getClientOriginalExtension()), $extensiones, true)));
         if ($malos) {
@@ -167,8 +168,8 @@ class Neteges extends Component
             $this->ejecutar($rutas, $etiqueta, 'neteges_ventas.py');
             return;
         }
-        if ($fila === 'listado') {
-            $this->ejecutar(['--listado', end($rutas)], $etiqueta, 'neteges_ventas.py');
+        if ($fila === 'listado' || $fila === 'misclientes') {
+            $this->ejecutar([$fila === 'listado' ? '--listado' : '--mis-clientes', end($rutas)], $etiqueta, 'neteges_ventas.py');
             return;
         }
         $ok = $this->ejecutar(array_merge(['--espera', $fila], $rutas), $etiqueta);

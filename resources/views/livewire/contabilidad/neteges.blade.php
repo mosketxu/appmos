@@ -24,7 +24,8 @@
             ['clave' => 'plan', 'titulo' => '📘 Plan de cuentas', 'accept' => '.xlsx,.xls', 'datos' => $estadoBase['plan'] ?? null],
             ['clave' => 'mayor', 'titulo' => '🏦 Mayor', 'accept' => '.xlsx,.xls', 'datos' => $estadoBase['mayor'] ?? null],
             ['clave' => 'ventas', 'titulo' => '🧾 Ventas', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
-            ['clave' => 'listado', 'titulo' => '👥 Clientes / proveedores', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
+            ['clave' => 'listado', 'titulo' => '👥 Listado SAGE', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
+            ['clave' => 'misclientes', 'titulo' => '✍️ Mis clientes', 'accept' => '.xlsx,.xls,.csv', 'datos' => null],
         ];
         $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
         $ev = $estadoVentas;
@@ -45,7 +46,7 @@
                     @if ($ev['sin_cuenta']) · <b class="text-red-700">{{ $ev['sin_cuenta'] }} clientes sin cuenta SAGE</b> @endif
                     @if ($ev['cambios']) · <b class="text-red-700">⚠️ {{ $ev['cambios'] }} distintas</b> @endif
                  @else sin ventas @endif</span>
-            <span>👥 {{ ($ev['listados'] ?? []) ? implode(' · ', array_map(fn ($t, $f) => "{$t} ({$f})", array_keys($ev['listados']), $ev['listados'])) : 'sin listados' }}</span>
+            <span>👥 {{ ($ev['listados'] ?? []) ? implode(' · ', array_map(fn ($t, $f) => "{$t} ({$f})", array_keys($ev['listados']), $ev['listados'])) : 'sin listados de clientes' }}</span>
             <span class="ml-auto text-indigo-700" x-text="abierto ? '▲ cerrar' : '▼ subir / ver'"></span>
         </summary>
 
@@ -96,11 +97,20 @@
                                 <span class="text-gray-400">(todavía nada) — varios a la vez o en varias veces; una fila por factura o por línea</span>
                             @endif
                         @elseif ($fb['clave'] === 'listado')
-                            @forelse ($ev['listados'] ?? [] as $tipo => $fecha)
-                                listado de <b>{{ $tipo }}</b> ({{ $fecha }}){{ $loop->last ? '' : ' · ' }}
+                            @php $lsage = array_intersect_key($ev['listados'] ?? [], ['clientes' => 1, 'proveedores' => 1]); @endphp
+                            @forelse ($lsage as $tipo => $fecha)
+                                <b>{{ $tipo }}</b> ({{ $fecha }}){{ $loop->last ? '' : ' · ' }}
                             @empty
-                                <span class="text-gray-400">(todavía nada) — listado de clientes o de proveedores de SAGE: se reconoce cuál es</span>
+                                <span class="text-gray-400">(todavía nada)</span>
                             @endforelse
+                            <span class="text-gray-400">— el de clientes o el de proveedores, tal como sale de SAGE (se reconoce cuál es; vale el último de cada uno)</span>
+                        @elseif ($fb['clave'] === 'misclientes')
+                            @if ($ev['listados']['mis clientes'] ?? null)
+                                subido el {{ $ev['listados']['mis clientes'] }}
+                            @else
+                                <span class="text-gray-400">(todavía nada)</span>
+                            @endif
+                            <span class="text-gray-400">— el tuyo: vale el último que subas y manda sobre el de SAGE y el de ventas (solo «Cuenta a mano» del Excel de Ventas manda más)</span>
                         @endif
                     </div>
                     <span x-show="subiendo" x-cloak class="text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
