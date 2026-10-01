@@ -144,10 +144,11 @@
                                 {{ __('Profile') }}
                             </x-jet-dropdown-link>
 
-                            {{-- Sus empresas según el panel de control (Responsable Suma + asignadas), aunque pueda ver todas --}}
+                            {{-- Sus empresas activas según el panel de control (Responsable Suma + asignadas), aunque pueda ver todas --}}
                             @php
                                 $misEmpresas = \App\Models\Entidad::withoutGlobalScopes()
                                     ->whereIn('id', \App\Support\Accesos::entidadesPropias(Auth::user()) ?: [0])
+                                    ->where('estado', 1)
                                     ->orderBy('entidad')->get(['id', 'entidad']);
                             @endphp
                             <div class="border-t border-gray-100"></div>
