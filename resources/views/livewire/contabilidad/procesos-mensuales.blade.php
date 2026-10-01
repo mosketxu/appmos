@@ -205,6 +205,11 @@
                                     <p class="mt-1 text-xs text-gray-400" style="margin-left:3.4rem">Saldrá: {{ str_replace('{periodo}', $pt, $asuntos[$sel->id] ?? '') }}</p>
                                 </div>
                                 <textarea wire:model="textos.{{ $sel->id }}" rows="16" class="w-full text-sm border-gray-300 rounded-md" placeholder="Texto a enviar (pulsa «Usar plantilla» para partir de la de su idioma)"></textarea>
+                                {{-- Cómo saldrá: {periodo} (y {empresa} si quedara) ya sustituidos --}}
+                                <details class="text-xs">
+                                    <summary class="text-gray-500 cursor-pointer">👁 Ver cómo saldrá ({{ $pt }})</summary>
+                                    <pre class="p-3 mt-1 font-sans whitespace-pre-wrap border border-gray-200 rounded-md bg-gray-50">{{ str_replace(['{periodo}', '{empresa}'], [$pt, $sel->entidad], $textos[$sel->id] ?? '') }}</pre>
+                                </details>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <button type="button" wire:click="aplicarPlantilla({{ $sel->id }})" class="px-3 py-1 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>
                                     <button type="button" wire:click="guardar({{ $sel->id }})" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">Guardar</button>
