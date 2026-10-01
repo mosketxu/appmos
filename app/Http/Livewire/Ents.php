@@ -3,6 +3,7 @@
 namespace App\Http\Livewire;
 
 use App\Models\Entidad;
+use App\Models\Suma;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -20,26 +21,52 @@ class Ents extends Component
     public $filtroactivo='';
     #[Url(except: '')]
     public $filtrofacturar='';
+    /** '' = todos, '0' = sin responsable, id de sumas = ese responsable. */
+    #[Url(except: '')]
+    public $filtroresponsable='';
     public Entidad $entidad;
     public $ruta;
 
-    /** Clic en Cliente / Proveedor / Contacto del listado: cambia y se guarda al momento (independientes entre sí). */
+    /** Clic en Cliente / Proveedor / Contacto / Facturar / Estado del listado: cambia y se guarda al momento. */
     public function alternar(int $entidadId, string $campo)
     {
-        if (! in_array($campo, ['cliente', 'proveedor', 'contacto'], true) || ! auth()->user()->can('entidades.editar')) {
+        if (! in_array($campo, ['cliente', 'proveedor', 'contacto', 'facturar', 'estado'], true) || ! auth()->user()->can('entidades.editar')) {
             return;
         }
         $entidad = Entidad::find($entidadId);
         if ($entidad) {
-            $entidad->{$campo} = ! $entidad->{$campo};
+            $entidad->{$campo} = $campo === 'estado' ? ($entidad->estado == 1 ? 0 : 1) : ! $entidad->{$campo};
             $entidad->save();
         }
+    }
+
+    /** Responsable Suma desde el listado (se guarda al momento). */
+    public function cambiarResponsable(int $entidadId, $sumaId)
+    {
+        if (! auth()->user()->can('entidades.editar') || ! ($entidad = Entidad::find($entidadId))) {
+            return;
+        }
+        $entidad->suma_id = $sumaId !== '' && Suma::whereKey((int) $sumaId)->exists() ? (int) $sumaId : null;
+        $entidad->save();
+        \App\Support\Accesos::olvidar();
+    }
+
+    /** Clic en el ciclo de impuestos: pasa al siguiente (mismo orden que Proc.Mensuales) y se guarda. */
+    public function siguienteCiclo(int $entidadId)
+    {
+        if (! auth()->user()->can('entidades.editar') || ! ($entidad = Entidad::find($entidadId))) {
+            return;
+        }
+        $orden = \App\Http\Livewire\Contabilidad\ProcesosMensuales::ORDEN_CICLOS;
+        $i = array_search((int) $entidad->cicloimpuesto_id, $orden, true);
+        $entidad->cicloimpuesto_id = $orden[$i === false ? 0 : ($i + 1) % count($orden)];
+        $entidad->save();
     }
 
     /** Al cambiar la búsqueda o un filtro, a la primera página. */
     public function updated($propiedad)
     {
-        if (in_array($propiedad, ['search', 'filtrocliente', 'filtroactivo', 'filtrofacturar'])) {
+        if (in_array($propiedad, ['search', 'filtrocliente', 'filtroactivo', 'filtrofacturar', 'filtroresponsable'])) {
             $this->resetPage();
         }
     }
@@ -50,7 +77,6 @@ class Ents extends Component
         $this->ruta='entidades';
         $entidades=Entidad::query()
             ->with('entidadtipo')
-            ->with('cicloimp')
             ->with('ciclofac')
             ->when($this->filtrocliente!='', function ($query){
                 $query->where('cliente',$this->filtrocliente);
@@ -61,13 +87,20 @@ class Ents extends Component
             ->when($this->filtrofacturar!='', function ($query){
                 $query->where('facturar',$this->filtrofacturar);
                 })
+            ->when((string) $this->filtroresponsable!=='', function ($query){
+                (string) $this->filtroresponsable==='0' ? $query->whereNull('suma_id') : $query->where('suma_id',$this->filtroresponsable);
+                })
             // Entre paréntesis, para que el OR del NIF no se salte los filtros
             ->where(fn ($q) => $q->search('entidad',$this->search)->orSearch('nif',$this->search))
             ->orderBy('favorito','desc')
             ->orderBy('entidad','asc')
             ->paginate(15);
 
-        return view('livewire.ents',compact('entidades'));
+        $nombresCiclo = \Illuminate\Support\Facades\DB::table('ciclos')->pluck('ciclo', 'id')->map(fn ($c, $id) => $id === 0 ? 'Sin definir' : $c)->all();
+
+        $sumas = Suma::orderBy('nombre')->get(['id', 'nombre']);
+
+        return view('livewire.ents',compact('entidades', 'nombresCiclo', 'sumas'));
     }
 
     public function delete($entidadId)

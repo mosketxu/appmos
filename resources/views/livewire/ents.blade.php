@@ -18,10 +18,10 @@
                 </div>
             @endif
 
-            <div class="flex justify-between">
-                <div class="flex w-2/4 space-x-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <input type="text" wire:model.live.debounce.1000ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
-                    <div class="hidden px-1 text-xs sm:block">
+                    <div class="px-1 text-xs">
                         <label class="px-1 text-gray-600">Clientes</label>
                         <select wire:model.live="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -29,7 +29,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="hidden px-1 text-xs sm:block">
+                    <div class="px-1 text-xs">
                         <label class="px-1 text-gray-600">Activos</label>
                         <select wire:model.live="filtroactivo" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -37,7 +37,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="hidden px-1 text-xs sm:block">
+                    <div class="px-1 text-xs">
                         <label class="px-1 text-gray-600">Facturar</label>
                         <select wire:model.live="filtrofacturar" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -45,71 +45,56 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
+                    <div class="px-1 text-xs">
+                        <label class="px-1 text-gray-600">Responsable</label>
+                        <select wire:model.live="filtroresponsable" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
+                            <option value="">Todos</option>
+                            <option value="0">— sin responsable —</option>
+                            @foreach ($sumas as $s) <option value="{{ $s->id }}">{{ $s->nombre }}</option> @endforeach
+                        </select>
+                    </div>
                 </div>
                 <x-button.button  onclick="location.href = '{{ route('entidad.nueva',$ruta) }}'" color="blue"><x-icon.plus/>{{ __('Nueva Entidad') }}</x-button.button>
             </div>
-            {{-- tabla entidades --}}
-            <div class="flex w-full mt-1 bg-blue-100 rounded-t-md">
+            {{-- tabla entidades: en móvil, nombre + acciones y debajo los controles; en pantalla grande, columnas --}}
+            <div class="flex w-full mt-1 text-sm bg-blue-100 rounded-t-md">
                 <div class="hidden pl-2 lg:w-10 lg:flex">{{ __('Fav') }} </div>
-                <div class="w-7/12 pl-2 lg:w-3/12 ">{{ __('Entidad') }}</div>
+                <div class="w-7/12 pl-2 md:w-5/12 lg:w-3/12">{{ __('Entidad') }}</div>
                 <div class="hidden lg:block lg:w-1/12">{{ __('Nif') }} </div>
+                <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Responsable') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex" title="Cliente / Proveedor / Contacto (clic para cambiar)">{{ __('Relación') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('Facturar') }}</div>
-                <div class="hidden lg:w-1/12 lg:flex">{{ __('Forma Pago') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Impuestos') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Fact.') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('Estado') }}</div>
-                <div class="w-5/12 lg:w-2/12"></div>
+                <div class="w-5/12 md:w-5/12 lg:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
-            <div class="flex w-full py-0 space-x-1 space-y-1 text-sm font-thin text-gray-500 truncate" wire:loading.class.delay="opacity-50">
+            <div class="w-full py-0 text-sm font-thin text-gray-500 border-b border-gray-100 lg:border-0" wire:key="ent-{{ $entidad->id }}" wire:loading.class.delay="opacity-50">
+            <div class="flex items-center w-full space-x-1">
                 <div class="items-center hidden ml-2 text-xs text-gray-200 lg:w-10 lg:flex">
-                        {{-- {{ $entidad->id }} &nbsp; --}}
-                        @if ($entidad->favorito)
-                            <x-icon.star-solid class="text-yellow-500"></x-icon.star-solid>
-                        @else
-                            <x-icon.star class="text-gray-500 "></x-icon.star>
-                        @endif
-                    </span>
+                    @if ($entidad->favorito)
+                        <x-icon.star-solid class="text-yellow-500"></x-icon.star-solid>
+                    @else
+                        <x-icon.star class="text-gray-500 "></x-icon.star>
+                    @endif
                 </div>
-                <div class="w-7/12 lg:w-3/12">
+                <div class="w-7/12 md:w-5/12 lg:w-3/12">
                     <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
                 <div class="hidden p-1 m-1 lg:block lg:w-1/12">
                     <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
-                {{-- Cliente / Proveedor / Contacto: clic = cambia y se guarda (pueden ser varias a la vez) --}}
-                <div class="items-center hidden gap-1 lg:w-1/12 lg:flex">
-                    @foreach (['cliente' => ['Cli', 'Cliente', 'bg-green-100 text-green-800 border-green-300'], 'proveedor' => ['Pro', 'Proveedor', 'bg-blue-100 text-blue-800 border-blue-300'], 'contacto' => ['Con', 'Contacto', 'bg-purple-100 text-purple-800 border-purple-300']] as $campo => [$corto, $largo, $color])
-                        @can('entidades.editar')
-                            <button type="button" wire:click="alternar({{ $entidad->id }}, '{{ $campo }}')" title="{{ $largo }}: {{ $entidad->{$campo} ? 'sí' : 'no' }} (clic para cambiar)"
-                                    class="px-1 text-xs border rounded {{ $entidad->{$campo} ? $color.' font-semibold' : 'text-gray-300 border-gray-200' }}">{{ $corto }}</button>
-                        @else
-                            <span title="{{ $largo }}: {{ $entidad->{$campo} ? 'sí' : 'no' }}" class="px-1 text-xs border rounded {{ $entidad->{$campo} ? $color : 'text-gray-300 border-gray-200' }}">{{ $corto }}</span>
-                        @endcan
-                    @endforeach
-                </div>
-                <div class="hidden lg:w-1/12 lg:flex">
-                    @if($entidad->facturar=="1")
-                        <span class="px-2.5 py-0.5 font-bold text-green-400">&#10003;</span>
-                    @endif
-                </div>
-                <div class="hidden lg:w-1/12 lg:flex">
-                    <span class="text-sm text-gray-500 ">{{$entidad->metodopago->metodopagocorto ?? '-'}}</span>
-                </div>
-                <div class="hidden lg:w-1/12 lg:flex">
-                    <span class="text-sm text-gray-500 ">{{$entidad->cicloimp->ciclo ?? '-'}}</span>
-                </div>
-
+                {{-- Responsable: solo en pantalla media o grande --}}
+                <div class="items-center hidden md:flex md:w-2/12 lg:w-1/12">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'responsable'])</div>
+                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])</div>
+                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])</div>
+                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])</div>
                 <div class="hidden lg:w-1/12 lg:flex">
                     <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
                 </div>
-                <div class="hidden lg:w-1/12 lg:flex">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 bg-{{ $entidad->status_color[0] }}-100 text-green-800">
-                        {{ $entidad->status_color[1] }}
-                    </span>
-                </div>
-                <div class="w-5/12 lg:w-2/12">
+                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
+                <div class="w-5/12 md:w-5/12 lg:w-2/12">
                     <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:flex-nowrap lg:space-x-3">
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
@@ -121,6 +106,14 @@
                         <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1"/>
                     </div>
                 </div>
+            </div>
+            {{-- Móvil / tablet: los controles debajo del nombre --}}
+            <div class="flex flex-wrap items-center gap-2 px-2 pb-2 lg:hidden">
+                @include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])
+                <span class="text-xs text-gray-400">Fact.</span>@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])
+                @include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])
+                @include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])
+            </div>
             </div>
             @empty
             <div class="flex items-center justify-center">
