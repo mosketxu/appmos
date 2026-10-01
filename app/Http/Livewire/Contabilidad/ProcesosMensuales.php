@@ -53,6 +53,11 @@ class ProcesosMensuales extends Component
     public array $activas = [];
     /** id => Responsable Suma (entidades.suma_id), editable aquí. */
     public array $sumaIds = [];
+    /** id => ciclo de impuestos (entidades.cicloimpuesto_id), editable aquí con clic. */
+    public array $ciclosEnt = [];
+
+    /** Orden en que pasa el ciclo con cada clic (ids de la tabla ciclos). */
+    public const ORDEN_CICLOS = [1, 3, 12, 20, 0];
 
     /** Con permiso de editar entidades: enseñar también las que no tienen Responsable Suma, para asignarlas. */
     public bool $verSinResponsable = false;
@@ -83,6 +88,7 @@ class ProcesosMensuales extends Component
             $this->ccs[$e->id] = (string) $e->mail_peticion_cc;
             $this->activas[$e->id] = (int) $e->estado === 1;
             $this->sumaIds[$e->id] = $e->suma_id ? (string) $e->suma_id : '';
+            $this->ciclosEnt[$e->id] = $e->cicloimpuesto_id;
             $this->checks[$e->id] = (bool) $e->mail_peticion_check;
             $this->idiomas[$e->id] = $e->idioma === 'EN' ? 'EN' : 'ES';
         }
@@ -207,6 +213,30 @@ class ProcesosMensuales extends Component
         return str_replace('{empresa}', (string) $nombre, $this->plantillas[$idioma] ?? '');
     }
 
+    /** Clic en el idioma: pasa al siguiente y se guarda en la entidad. */
+    public function siguienteIdioma(int $id): void
+    {
+        if (! $this->mia($id)) {
+            return;
+        }
+        $claves = array_keys(self::IDIOMAS);
+        $i = array_search($this->idiomas[$id] ?? 'ES', $claves, true);
+        $this->idiomas[$id] = $claves[(($i === false ? -1 : $i) + 1) % count($claves)];
+        $this->updated("idiomas.{$id}", $this->idiomas[$id]);
+    }
+
+    /** Clic en el ciclo de impuestos: pasa al siguiente y se guarda en la entidad. */
+    public function siguienteCiclo(int $id): void
+    {
+        if (! $this->mia($id)) {
+            return;
+        }
+        $i = array_search((int) ($this->ciclosEnt[$id] ?? -1), self::ORDEN_CICLOS, true);
+        $nuevo = self::ORDEN_CICLOS[$i === false ? 0 : ($i + 1) % count(self::ORDEN_CICLOS)];
+        Entidad::withoutGlobalScopes()->whereKey($id)->update(['cicloimpuesto_id' => $nuevo]);
+        $this->ciclosEnt[$id] = $nuevo;
+    }
+
     public function seleccionar(int $id): void
     {
         $this->seleccionada = $this->mia($id) && $this->seleccionada !== $id ? $id : null;
@@ -301,6 +331,7 @@ class ProcesosMensuales extends Component
             'marcadas' => count(array_filter($this->checks, fn ($c, $id) => $c && ($this->activas[$id] ?? false) && in_array($id, $propias), ARRAY_FILTER_USE_BOTH)),
             'total' => count(array_filter($this->activas, fn ($a, $id) => $a && in_array($id, $propias), ARRAY_FILTER_USE_BOTH)),
             'sumas' => Suma::orderBy('nombre')->get(['id', 'nombre']),
+            'nombresCiclo' => DB::table('ciclos')->whereIn('id', self::ORDEN_CICLOS)->pluck('ciclo', 'id')->map(fn ($c, $id) => $id === 0 ? 'Sin definir' : $c)->all(),
             'puedeEditar' => auth()->user()->can('entidades.editar'),
             'nAhora' => count(array_filter($this->ahora)),
             // Último envío de cada empresa en el periodo
