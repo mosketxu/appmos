@@ -301,6 +301,15 @@ class Procesos extends Component
                 'soportaReal' => true,
                 'ayuda' => 'Facturas semanales de cada tienda para el plugin de SAGE.',
             ],
+            // 2026-10-01: Cashflow 2026 MM.xlsx = el del mes anterior + lo que falta
+            // de los dos bancos según el mayor de SAGE (mayor*.xlsx de Descargas).
+            'cashflow' => [
+                'label' => 'Cash flow',
+                'script' => 'CashFlow/cashflow.py',
+                'python' => true,
+                'soportaReal' => true,
+                'ayuda' => 'Cashflow del mes a partir del mayor de los bancos.',
+            ],
             'adyen' => [
                 'label' => 'Adyen',
                 'script' => 'adyenReparto.js',
