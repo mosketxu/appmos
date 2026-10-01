@@ -33,74 +33,155 @@
         </select>
         {{-- Saltos a cada zona de la pantalla (pedido 2026-09-25) --}}
         <span class="flex flex-wrap items-center text-sm font-normal gap-x-2 gap-y-1">
-            @foreach (['procesos-mes' => 'Procesos', 'rentas-variables' => 'Rentas Variables', 'cash-in-store' => 'Cash in store', 'pagos-fin-mes' => 'Pagos fin de mes'] as $ancla => $txt)
+            @foreach (['rentas-variables' => 'Rentas Variables', 'cash-in-store' => 'Cash in store', 'pagos-fin-mes' => 'Pagos fin de mes'] as $ancla => $txt)
                 <a href="#{{ $ancla }}"
-                   onclick="event.preventDefault(); document.getElementById('{{ $ancla }}').scrollIntoView({behavior: 'smooth', block: 'start'})"
+                   onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('abrir-panel', {detail: '{{ $ancla }}'})); document.getElementById('{{ $ancla }}').scrollIntoView({behavior: 'smooth', block: 'start'})"
                    class="px-2 py-1 text-indigo-700 border border-indigo-200 rounded-md bg-indigo-50 hover:bg-indigo-100">{{ $txt }}</a>
             @endforeach
         </span>
     </h1>
 
-    <div id="procesos-mes" class="overflow-hidden bg-white border rounded-lg shadow">
-        <div class="flex flex-wrap items-center p-4 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
-            <x-button.primary
-                wire:click="ejecutarMarcados"
-                wire:loading.attr="disabled"
-                wire:target="ejecutarMarcados"
-                onclick="return confirm('¿Ejecutar los procesos marcados (escriben sobre los ficheros reales), en orden, para el mes seleccionado?')"
-            >
-                <span wire:loading.remove wire:target="ejecutarMarcados">▶ Ejecutar marcados</span>
-                <span wire:loading wire:target="ejecutarMarcados">⏳ Ejecutando…</span>
-            </x-button.primary>
+    {{-- Procesos del mes + checklist de cierre (pedido 2026-10-01): una fila por
+         proceso de monthlyFIQ/checklist.json, ⓘ con el detalle, botón si se lanza
+         desde aquí y un check por mes (se marca solo al terminar bien; a mano:
+         clic = ✓ → «no toca» → vacío). Las marcas viven en OneDrive. --}}
+    <div id="procesos-mes" class="bg-white border rounded-lg shadow">
+        <div class="flex flex-wrap items-center px-3 py-2 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
+            <span class="text-xs text-gray-500">Checks: se marcan solos al ejecutar bien; a mano, clic = ✓ → «no toca» → vacío. Columna resaltada = mes del título.</span>
         </div>
-        <table class="min-w-full divide-y divide-gray-200">
+        @php
+            $marcas = $this->checklistMarcas;
+            $mesSel = sprintf('2026-%02d', $mes);
+            $botones = $this->procesos;
+        @endphp
+        <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
             <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-4 py-2"></th>
-                    <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Proceso</th>
-                    <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Ejecutar / resultado</th>
-                    <th class="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Detalle</th>
+                <tr class="text-xs font-medium text-left text-gray-500">
+                    <th class="px-2 py-1">Proceso</th>
+                    <th class="px-2 py-1">Ejecutar / resultado</th>
+                    @foreach ($this->checklistMeses as $k => $n)
+                        <th class="px-1 py-1 text-center {{ $k === $mesSel ? 'bg-indigo-100 text-indigo-800' : '' }}">{{ $n }}</th>
+                    @endforeach
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
-                @foreach ($this->procesos as $id => $p)
-                    <tr wire:key="proceso-{{ $id }}">
-                        <td class="px-4 py-2 align-top">
-                            <input type="checkbox" wire:model="marcados" value="{{ $id }}" class="border-gray-300 rounded">
-                        </td>
-                        <td class="px-4 py-2 font-medium text-gray-900 align-top">
-                            {{ $p['label'] }}
-                        </td>
-                        <td class="px-4 py-2 align-top">
-                            <div class="flex items-start gap-x-3">
-                                <x-button.secondary
-                                    wire:click="ejecutar('{{ $id }}')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="ejecutar('{{ $id }}')"
-                                    onclick="return confirm('Esto escribe sobre los ficheros reales. ¿Seguro?')"
-                                >
-                                    <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
-                                    <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳ Ejecutando…</span>
-                                </x-button.secondary>
-                                @if (! empty($resultados[$id]))
-                                    <div class="flex flex-col min-w-0 gap-y-1 pt-1.5">
-                                        @foreach ($resultados[$id] as $r)
-                                            <x-contabilidad.resultado-fichero :r="$r" />
-                                        @endforeach
-                                    </div>
-                                @endif
+            <tbody class="divide-y divide-gray-100">
+                @forelse ($this->checklist as $p)
+                    @php $id = $p['id']; $auto = $p['auto'] ?? null; @endphp
+                    <tr wire:key="chk-{{ $id }}" @if ($id === 'cash_in_store') id="cash-in-store" @endif class="align-top hover:bg-gray-50">
+                        <td class="px-2 py-1" x-data="{ info: false }">
+                            <div class="flex items-start gap-x-1">
+                                <button type="button" x-on:click="info = !info" class="text-indigo-500 shrink-0 hover:text-indigo-700" title="Detalle">ⓘ</button>
+                                <span class="{{ $auto ? 'font-medium text-gray-900' : 'text-gray-700' }}">{{ $p['nombre'] }}</span>
                             </div>
+                            <div x-show="info" style="display:none;max-width:420px" x-on:click.outside="info = false" class="p-2 mt-1 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">{{ $p['detalle'] ?? '' }}</div>
                         </td>
-                        <td class="px-4 py-2 text-sm text-gray-500 align-top">{{ $p['ayuda'] }}</td>
+                        <td class="px-2 py-1">
+                            @if ($auto === 'tabla' && isset($botones[$id]))
+                                <div class="flex items-start gap-x-2">
+                                    <x-button.secondary
+                                        wire:click="ejecutar('{{ $id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="ejecutar('{{ $id }}')"
+                                        onclick="return confirm('Esto escribe sobre los ficheros reales. ¿Seguro?')"
+                                    >
+                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">Ejecutar</span>
+                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
+                                    </x-button.secondary>
+                                    @if (! empty($resultados[$id]))
+                                        <div class="flex flex-col min-w-0 gap-y-1 pt-1">
+                                            @foreach ($resultados[$id] as $r)
+                                                <x-contabilidad.resultado-fichero :r="$r" />
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @elseif ($auto === 'cash-in-store')
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <x-button.secondary wire:click="buscarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore">
+                                        <span wire:loading.remove wire:target="buscarCashInStore">🔎 Buscar</span>
+                                        <span wire:loading wire:target="buscarCashInStore">⏳…</span>
+                                    </x-button.secondary>
+                                    @if ($this->cisFaltan)
+                                        <x-button.secondary wire:click="pedirCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
+                                            onclick="return confirm('¿Mandar YA el correo pidiendo el efectivo a {{ implode(', ', $this->cisFaltan) }}?')">
+                                            ✉ Pedir ({{ implode(', ', $this->cisFaltan) }})
+                                        </x-button.secondary>
+                                    @endif
+                                    @if ($cisFilas)
+                                        <x-button.primary wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
+                                            onclick="return confirm('¿Escribir estos importes en Cash End Month de Ctrol Dinamico? (cierra antes el Excel si lo tienes abierto)')">
+                                            💾 Grabar
+                                        </x-button.primary>
+                                    @endif
+                                    <span wire:loading wire:target="pedirCashInStore,grabarCashInStore" class="text-xs text-gray-500">⏳…</span>
+                                    @foreach ($resultados['cis'] ?? [] as $r)
+                                        <x-contabilidad.resultado-fichero :r="$r" />
+                                    @endforeach
+                                </div>
+                            @elseif ($auto === 'pendiente')
+                                <span class="text-xs text-gray-400">pendiente de montar</span>
+                            @elseif ($auto)
+                                <button type="button" x-on:click="$dispatch('abrir-panel', '{{ $auto }}')" class="text-xs text-indigo-700 hover:underline">abrir ↓</button>
+                            @endif
+                        </td>
+                        @foreach ($this->checklistMeses as $k => $n)
+                            @php $m = $marcas[$k][$id] ?? null; @endphp
+                            <td class="px-1 py-1 text-center {{ $k === $mesSel ? 'bg-indigo-50' : '' }}">
+                                <button type="button" wire:click="alternarChecklist('{{ $id }}', '{{ $k }}')"
+                                    title="{{ $m ? (($m['estado'] === 'ok' ? 'Hecho' : 'No toca') . ($m['cuando'] ? ' · ' . $m['cuando'] : '') . ' · ' . $m['como']) : 'Sin hacer' }}"
+                                    class="inline-flex items-center justify-center w-5 h-5 text-xs border rounded {{ ($m['estado'] ?? '') === 'ok' ? 'bg-green-500 border-green-600 text-white' : (($m['estado'] ?? '') === 'na' ? 'bg-gray-200 border-gray-300 text-gray-500' : 'bg-white border-gray-300') }}">
+                                    {{ ($m['estado'] ?? '') === 'ok' ? '✓' : (($m['estado'] ?? '') === 'na' ? '–' : '') }}
+                                </button>
+                            </td>
+                        @endforeach
                     </tr>
-                @endforeach
+                    @if ($id === 'cash_in_store' && $cisFilas)
+                        <tr wire:key="chk-cis-detalle">
+                            <td colspan="{{ 2 + count($this->checklistMeses) }}" class="px-2 pb-2">
+                                <table class="text-sm text-gray-800 border border-collapse border-gray-300">
+                                    <tr class="text-xs text-left text-gray-600 bg-gray-50">
+                                        <th class="px-2 py-0.5 border">Tienda</th>
+                                        <th class="px-2 py-0.5 border">Cash (Prosegur)</th>
+                                        <th class="px-2 py-0.5 border">Petty Cash</th>
+                                        <th class="px-2 py-0.5 border">Correo ({{ \Carbon\Carbon::create(2026, $mes, 1)->locale('es')->monthName }})</th>
+                                    </tr>
+                                    @foreach ($cisFilas as $t => $r)
+                                        <tr wire:key="cis-{{ $t }}" class="align-top {{ $r['encontrado'] ? '' : 'bg-red-50' }}">
+                                            <td class="px-2 py-0.5 font-semibold border">{{ $t }}</td>
+                                            <td class="px-2 py-0.5 border">
+                                                <input type="text" wire:model.blur="cisFilas.{{ $t }}.cash" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:100px">
+                                            </td>
+                                            <td class="px-2 py-0.5 border">
+                                                <input type="text" wire:model.blur="cisFilas.{{ $t }}.petty" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:90px">
+                                            </td>
+                                            <td class="px-2 py-0.5 text-xs border">
+                                                @if ($r['encontrado'])
+                                                    <div class="font-medium">«{{ $r['asunto'] }}» · {{ $r['recibido'] }}</div>
+                                                    <pre class="text-xs text-gray-600 whitespace-pre-wrap" style="max-height:6rem;overflow:auto">{{ $r['texto'] }}</pre>
+                                                @else
+                                                    <span class="text-red-700">Sin dato: no ha mandado el efectivo → «Pedir»</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </table>
+                            </td>
+                        </tr>
+                    @endif
+                @empty
+                    <tr><td colspan="16" class="px-3 py-2 text-sm text-gray-500">No encuentro monthlyFIQ/checklist.json en este equipo.</td></tr>
+                @endforelse
             </tbody>
         </table>
-    </div>
-
-
-
-    <div id="rentas-variables" class="p-4 bg-white border rounded-lg shadow">
+        </div>
+        <div id="rentas-variables" class="border-t border-gray-200" x-data="{ open: false }"
+             x-on:abrir-panel.window="if ($event.detail === 'rentas-variables') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
+            <button type="button" x-on:click="open = !open" class="flex items-center w-full px-3 py-2 text-sm font-semibold text-left text-gray-800 gap-x-2 hover:bg-gray-50">
+                <span x-text="open ? '▾' : '▸'">▸</span> Rentas Variables · cálculos del alquiler variable, turnover y envío a los arrendadores (BCN, MAL)
+            </button>
+            <div x-show="open" style="display:none">
+    <div class="p-3">
         <div class="flex flex-wrap gap-8">
             {{-- IZQUIERDA 35%: Cálculos + Turnover (usa el "Mes" del título) --}}
             <div style="flex:0 0 35%;min-width:280px">
@@ -192,76 +273,18 @@
             </div>
         </div>
     </div>
-
-    {{-- Cash in store (pedido 2026-10-01): efectivo de cada tienda al cierre del
-         último día del mes del título. monthlyFIQ/cashInStore.py --}}
-    <div id="cash-in-store" class="p-4 bg-white border rounded-lg shadow">
-        <h2 class="text-lg font-semibold text-gray-900">Cash in store · cierre de {{ \Carbon\Carbon::create(2026, $mes, 1)->locale('es')->monthName }}</h2>
-        <p class="mt-1 mb-3 text-xs text-gray-500">«Buscar» lee en Outlook los correos de las tiendas desde el último día del mes, propone Cash (lo que va a Prosegur) y Petty Cash (lo que se queda para cambio y fondo) y guarda el correo como .msg en Cash End month\{{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}. Los importes se pueden corregir a mano. A las que no lo han mandado, «Pedir» les manda el correo. «Grabar» lo escribe en la hoja «Cash End Month» de Ctrol Dinamico.</p>
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
-            <x-button.secondary wire:click="buscarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore">
-                <span wire:loading.remove wire:target="buscarCashInStore">🔎 Buscar en Outlook</span>
-                <span wire:loading wire:target="buscarCashInStore">⏳ Buscando…</span>
-            </x-button.secondary>
-            @if ($this->cisFaltan)
-                <x-button.secondary wire:click="pedirCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
-                    onclick="return confirm('¿Mandar YA el correo pidiendo el efectivo a {{ implode(', ', $this->cisFaltan) }}?')">
-                    ✉ Pedir a las que faltan ({{ implode(', ', $this->cisFaltan) }})
-                </x-button.secondary>
-            @endif
-            @if ($cisFilas)
-                <x-button.primary wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
-                    onclick="return confirm('¿Escribir estos importes en Cash End Month de Ctrol Dinamico? (cierra antes el Excel si lo tienes abierto)')">
-                    💾 Grabar en Ctrol Dinamico
-                </x-button.primary>
-            @endif
-            <span wire:loading wire:target="pedirCashInStore,grabarCashInStore" class="text-sm text-gray-500">⏳ …</span>
-        </div>
-        @if ($cisFilas)
-            <table class="w-full mt-3 text-sm text-gray-800 border border-collapse border-gray-300">
-                <tr class="text-xs text-left text-gray-600 bg-gray-50">
-                    <th class="px-2 py-1 border">Tienda</th>
-                    <th class="px-2 py-1 border">Cash (Prosegur)</th>
-                    <th class="px-2 py-1 border">Petty Cash</th>
-                    <th class="px-2 py-1 border">Correo</th>
-                </tr>
-                @foreach ($cisFilas as $t => $r)
-                    <tr wire:key="cis-{{ $t }}" class="align-top {{ $r['encontrado'] ? '' : 'bg-red-50' }}">
-                        <td class="px-2 py-1 font-semibold border">{{ $t }}</td>
-                        <td class="px-2 py-1 border">
-                            <input type="text" wire:model.blur="cisFilas.{{ $t }}.cash" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:100px">
-                        </td>
-                        <td class="px-2 py-1 border">
-                            <input type="text" wire:model.blur="cisFilas.{{ $t }}.petty" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:90px">
-                            @if ($r['anterior'] !== '' && $r['petty'] !== '' && $r['anterior'] !== $r['petty'])
-                                <div class="text-xs text-yellow-700">mes anterior {{ $r['anterior'] }}</div>
-                            @endif
-                        </td>
-                        <td class="px-2 py-1 text-xs border">
-                            @if ($r['encontrado'])
-                                <div class="font-medium">«{{ $r['asunto'] }}» · {{ $r['recibido'] }}</div>
-                                <pre class="mt-1 text-xs text-gray-600 whitespace-pre-wrap" style="max-height:8rem;overflow:auto">{{ $r['texto'] }}</pre>
-                            @else
-                                <span class="text-red-700">Sin dato: no ha mandado el efectivo → «Pedir»</span>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-            </table>
-        @endif
-        @if (! empty($resultados['cis']))
-            <div class="flex flex-col mt-2 gap-y-1">
-                @foreach ($resultados['cis'] as $r)
-                    <x-contabilidad.resultado-fichero :r="$r" />
-                @endforeach
             </div>
-        @endif
-    </div>
-
+        </div>
+        <div id="pagos-fin-mes" class="border-t border-gray-200" x-data="{ open: false }"
+             x-on:abrir-panel.window="if ($event.detail === 'pagos-fin-mes') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
+            <button type="button" x-on:click="open = !open" class="flex items-center w-full px-3 py-2 text-sm font-semibold text-left text-gray-800 gap-x-2 hover:bg-gray-50">
+                <span x-text="open ? '▾' : '▸'">▸</span> Pagos fin de mes · correo a Plein con el saldo de BBVA, lo que hay que subir y los cargos previstos
+            </button>
+            <div x-show="open" style="display:none">
     {{-- Correo mensual a Plein con los cargos de fin/principio de mes en BBVA
          (pedido 2026-09-25). Solo cambian estos datos; el resto sale de
          monthlyFIQ/pagosFinMes.json. --}}
-    <div id="pagos-fin-mes" class="p-4 bg-white border rounded-lg shadow">
+    <div class="p-3">
         <h2 class="flex flex-wrap items-center text-lg font-semibold text-gray-900 gap-x-3">
             <span>Pagos fin de mes · correo a Plein</span>
             <select wire:model.live="pfMes" class="text-sm font-normal border-gray-300 rounded-md shadow-sm">
@@ -444,6 +467,11 @@
             @endif
         </div>
     </div>
+            </div>
+        </div>
+    </div>
+
+
 
 
     @include('livewire.contabilidad._salida')

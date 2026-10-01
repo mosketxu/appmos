@@ -20,7 +20,6 @@ use Livewire\Component;
 class Procesos extends Component
 {
     public int $mes;
-    public array $marcados = [];
     public string $salida = '';
     // Ya no hay check "Modo real" (pedido del usuario 2026-09-09: "siempre va a
     // ser real"). Todos los procesos que soportan --real lo pasan siempre.
@@ -32,6 +31,9 @@ class Procesos extends Component
      * Los scripts los marcan con una línea "RESULT_FILE: <ruta absoluta>".
      */
     public array $resultados = [];
+
+    /** ¿Terminó bien el último ejecutarScript()? (para marcar el checklist) */
+    protected bool $ultimoOk = false;
 
     // RentasVariables (formularios aparte, no encajan en el check general).
     // Dos acciones (ver PROCESO_GENERAL.md en Contabilidad/monthlyFIQ):
@@ -324,15 +326,6 @@ class Procesos extends Component
         $this->ejecutarUno($id);
     }
 
-    public function ejecutarMarcados(): void
-    {
-        foreach (array_keys($this->procesos()) as $id) {
-            if (in_array($id, $this->marcados, true)) {
-                $this->ejecutarUno($id);
-            }
-        }
-    }
-
     public function limpiarSalida(): void
     {
         $this->salida = '';
@@ -370,6 +363,7 @@ class Procesos extends Component
         }
 
         $resultFiles = [];
+        $this->ultimoOk = false;
         try {
             $result = Process::path($cwd ?? $this->scriptDir())->env($env)->input('')->timeout($timeout)->run($args);
             $texto = trim($result->output() . "\n" . $result->errorOutput());
@@ -381,6 +375,7 @@ class Procesos extends Component
             }
             $this->salida .= $texto;
             if ($result->successful()) {
+                $this->ultimoOk = true;
                 $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
             } else {
                 $this->salida .= "\n\n⚠️ El proceso terminó con código de salida " . $result->exitCode() . '.';
@@ -428,6 +423,7 @@ class Procesos extends Component
         $scripts = $p['scripts'] ?? [$p['script']];
 
         $this->resultados[$id] = []; // se refresca en cada ejecución
+        $todoOk = true;
         foreach ($scripts as $script) {
             $windows = ! empty($p['windows']);
             $args = $windows ? $this->windowsCmd($script, [$mm]) : $this->nodeCmd($script, [$mm]);
@@ -454,6 +450,10 @@ class Procesos extends Component
                 $windows ? $this->scriptDir() . '/' . dirname($script) : null,
                 $windows ? $this->windowsEnv() : []
             ));
+            $todoOk = $todoOk && $this->ultimoOk;
+        }
+        if ($todoOk) {
+            $this->marcarChecklist($id, $this->mes);
         }
     }
 
@@ -490,6 +490,9 @@ class Procesos extends Component
         $etiqueta = "RentasVariables · Cálculos (mes {$mm}, REAL)";
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $this->anexarResultados('rv', $this->ejecutarScript($args, 180, $etiqueta));
+        if ($this->ultimoOk) {
+            $this->marcarChecklist('rv_calculos', $this->mes);
+        }
 
         $tiendas = array_values(array_intersect(
             array_keys($this->rvTiendasArrendador()),
@@ -505,6 +508,9 @@ class Procesos extends Component
             $etiqueta = "RentasVariables · Declaración {$tienda} (mes {$mm}, REAL)";
             $this->salida .= "\n\n===== {$etiqueta} =====\n";
             $this->anexarResultados('rv', $this->ejecutarScript($args, 180, $etiqueta));
+            if ($this->ultimoOk) {
+                $this->marcarChecklist('rv_certificacion', $this->mes);
+            }
         }
     }
 
@@ -537,6 +543,9 @@ class Procesos extends Component
         $etiqueta = "RentasVariables · Envío {$tienda} (REAL, a {$to})";
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $this->ejecutarScript($args, 120, $etiqueta);
+        if ($this->ultimoOk) {
+            $this->marcarChecklist('rv_envio', $this->mes);
+        }
     }
 
     /**
@@ -627,6 +636,9 @@ class Procesos extends Component
         // windowsEnv(): el script llama a powershell.exe (Outlook) y bajo Apache
         // el interop de WSL necesita WSL_INTEROP (igual que subirAnaplan.js).
         $this->anexarResultados('pf', $this->ejecutarScript($args, 240, $etiqueta, null, $this->windowsEnv()));
+        if ($modo === 'real' && $this->ultimoOk) {
+            $this->marcarChecklist('pagos_fin_mes', $this->pfMes);
+        }
         if ($modo === 'real') {
             $this->cargarBasePagosFinMes(); // ya es la base del mes que viene
         }
@@ -823,7 +835,7 @@ class Procesos extends Component
     // "Buscar" lo saca de los correos de las tiendas en Outlook y guarda el .msg
     // en Cash End month\MM; a las que no lo han mandado se les pide; "Grabar"
     // lo escribe en la hoja "Cash End Month" de Ctrol Dinamico. Script:
-    // monthlyFIQ/cashInStore.py.
+    // monthlyFIQ/CashInStore/cashInStore.py.
 
     /** tienda => ['cash','petty','asunto','recibido','texto','encontrado','anterior','msg'] */
     public array $cisFilas = [];
@@ -864,9 +876,9 @@ class Procesos extends Component
         $etiqueta = "Cash in store {$mm} · buscar en Outlook";
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         // windowsEnv(): el script llama a powershell.exe (Outlook) y bajo Apache necesita WSL_INTEROP.
-        $this->ejecutarScript(['python3', 'cashInStore.py', (string) $this->mes, '--buscar'], 300, $etiqueta, null, $this->windowsEnv());
+        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--buscar'], 300, $etiqueta, null, $this->windowsEnv());
         $this->salida = preg_replace('/^CASH_JSON:.*(\r?\n)?/m', '', $this->salida);
-        $fichero = $this->scriptDir() . "/_cashInStore_{$mm}.json";
+        $fichero = $this->scriptDir() . "/CashInStore/_cashInStore_{$mm}.json";
         $datos = is_file($fichero) ? json_decode((string) file_get_contents($fichero), true) : null;
         if (! is_array($datos)) {
             return;
@@ -901,7 +913,7 @@ class Procesos extends Component
             return;
         }
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->ejecutarScript(['python3', 'cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 240, $etiqueta);
+        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 240, $etiqueta);
     }
 
     /** Escribe la fila del mes en "Cash End Month" de Ctrol Dinamico. */
@@ -923,7 +935,107 @@ class Procesos extends Component
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $this->resultados['cis'] = [];
         $this->anexarResultados('cis', $this->ejecutarScript(
-            ['python3', 'cashInStore.py', (string) $this->mes, '--grabar', '--datos', json_encode($datos), '--real'], 120, $etiqueta));
+            ['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--grabar', '--datos', json_encode($datos), '--real'], 120, $etiqueta));
+        if ($this->ultimoOk) {
+            $this->marcarChecklist('cash_in_store', $this->mes);
+        }
+    }
+
+    // ---- Checklist de cierre (pedido 2026-10-01) -----------------------------
+    // "Guardar un registro de que se ha hecho cada mes para no volverme loco":
+    // un check por proceso y mes. La lista de procesos (con su detalle, el ⓘ)
+    // está en monthlyFIQ/checklist.json; las marcas, en OneDrive
+    // (Fashion 2026/checklist FIQ 2026.estado.json) para que los dos PCs vean
+    // lo mismo. Los procesos que se lanzan desde aquí se marcan solos al
+    // terminar bien (marcarChecklist); el resto, con un clic.
+
+    /** Columnas: dic-2025 (el checklist empezó ahí) y los 12 meses de 2026. */
+    public function getChecklistMesesProperty(): array
+    {
+        $meses = ['2025-12' => 'dic 25'];
+        foreach (['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'] as $i => $n) {
+            $meses[sprintf('2026-%02d', $i + 1)] = $n;
+        }
+        return $meses;
+    }
+
+    public function getChecklistProperty(): array
+    {
+        $f = $this->scriptDir() . '/checklist.json';
+        $d = is_file($f) ? json_decode((string) file_get_contents($f), true) : null;
+        return $d['procesos'] ?? [];
+    }
+
+    protected function checklistEstadoPath(): ?string
+    {
+        foreach (['e', 'f'] as $u) {
+            foreach (['_Clientes', 'Clientes'] as $c) {
+                $dir = "/mnt/{$u}/OneDrive/{$c}/2026/Fashion 2026";
+                if (is_dir($dir)) {
+                    return "{$dir}/checklist FIQ 2026.estado.json";
+                }
+            }
+        }
+        return null;
+    }
+
+    protected function leerChecklistEstado(): array
+    {
+        $f = $this->checklistEstadoPath();
+        $d = ($f && is_file($f)) ? json_decode((string) file_get_contents($f), true) : null;
+        return is_array($d) ? $d + ['marcas' => []] : ['marcas' => []];
+    }
+
+    /** mes => id => ['estado' => 'ok'|'na', 'cuando', 'como'] */
+    public function getChecklistMarcasProperty(): array
+    {
+        return $this->leerChecklistEstado()['marcas'] ?? [];
+    }
+
+    protected function guardarChecklist(string $id, string $mes, ?array $marca): void
+    {
+        $f = $this->checklistEstadoPath();
+        if (! $f) {
+            $this->salida .= "\n\n⚠️ Checklist: no encuentro la carpeta Fashion 2026 de OneDrive; no se ha guardado la marca.";
+            return;
+        }
+        $d = $this->leerChecklistEstado();
+        if ($marca) {
+            $d['marcas'][$mes][$id] = $marca;
+        } else {
+            unset($d['marcas'][$mes][$id]);
+        }
+        ksort($d['marcas']);
+        $tmp = $f . '.tmp-' . getmypid();
+        if (@file_put_contents($tmp, json_encode($d, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false || ! @rename($tmp, $f)) {
+            $this->salida .= "\n\n⚠️ Checklist: no he podido escribir {$f}.";
+        }
+    }
+
+    /** Lo llaman los procesos al terminar bien. $mes = número de mes de 2026. */
+    protected function marcarChecklist(string $id, int $mes): void
+    {
+        try {
+            $this->guardarChecklist($id, sprintf('2026-%02d', $mes),
+                ['estado' => 'ok', 'cuando' => date('Y-m-d H:i'), 'como' => 'auto']);
+        } catch (\Throwable $e) {
+            $this->salida .= "\n\n⚠️ Checklist: no he podido marcar {$id} ({$e->getMessage()}).";
+        }
+    }
+
+    /** Clic en un check: vacío → ✓ → «no toca» → vacío. */
+    public function alternarChecklist(string $id, string $mes): void
+    {
+        if (! array_key_exists($mes, $this->checklistMeses) || ! in_array($id, array_column($this->checklist, 'id'), true)) {
+            return;
+        }
+        $actual = $this->checklistMarcas[$mes][$id]['estado'] ?? null;
+        $nuevo = match ($actual) {
+            null => 'ok',
+            'ok' => 'na',
+            default => null,
+        };
+        $this->guardarChecklist($id, $mes, $nuevo ? ['estado' => $nuevo, 'cuando' => date('Y-m-d H:i'), 'como' => 'manual'] : null);
     }
 
     public function render()
