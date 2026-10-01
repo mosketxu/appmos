@@ -57,7 +57,55 @@
                 <span class="text-sm text-gray-700">🚀 Enviar ahora: <b>{{ $nAhora }}</b> (solo se envía a estas, aunque tengan el check)</span>
                 <button type="button" wire:click="marcarTodasAhora(true)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50">Marcar todas</button>
                 <button type="button" wire:click="marcarTodasAhora(false)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50">Desmarcar todas</button>
+                <button type="button" wire:click="prepararEnvio" @disabled(! $nAhora)
+                        class="px-3 py-1 ml-auto text-sm font-semibold text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
+                        title="Prepara los correos de las marcadas 🚀 y te los enseña antes de enviar">✉ Enviar todos ({{ $nAhora }})</button>
             </div>
+            @if ($resultadoEnvio)
+                <div class="p-3 text-sm border rounded-lg {{ $resultadoEnvio['fallos'] ? 'border-red-300 bg-red-50' : 'border-green-300 bg-green-50' }}">
+                    ✉ Enviados {{ $resultadoEnvio['ok'] }} desde {{ $resultadoEnvio['de'] }}.
+                    @foreach ($resultadoEnvio['fallos'] as $f) <div class="text-red-700">⚠ {{ $f }}</div> @endforeach
+                </div>
+            @endif
+            {{-- Confirmación: lista de lo que se va a enviar, con los datos ya puestos --}}
+            @if ($confirmarEnvio)
+                @php $validos = collect($envio)->whereNull('error')->count(); @endphp
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.4)">
+                    <div class="flex flex-col w-full max-w-3xl bg-white rounded-lg shadow-xl" style="max-height:90vh">
+                        <div class="p-4 border-b">
+                            <h3 class="text-lg font-semibold text-gray-900">Enviar {{ $validos }} correos · periodo {{ $periodo }}</h3>
+                            <p class="text-xs text-gray-500">Desde <b>{{ $remitente }}</b>. Revisa la lista: los que tienen ⚠ no se envían.
+                                @if (! $graphOk) <span class="font-semibold text-red-600">Faltan las credenciales de Microsoft en este servidor: no se podrá enviar.</span> @endif
+                                @if (config('contabilidad.graph.redirect')) <span class="font-semibold text-yellow-800">MODO PRUEBA: todo irá a {{ config('contabilidad.graph.redirect') }}.</span> @endif
+                            </p>
+                        </div>
+                        <div class="p-4 space-y-2 overflow-y-auto">
+                            @forelse ($envio as $c)
+                                <details class="p-2 text-sm border rounded {{ $c['error'] ? 'border-red-300 bg-red-50' : 'border-gray-200' }}">
+                                    <summary class="cursor-pointer">
+                                        <b>{{ $c['empresa'] }}</b> · {{ $c['idioma'] }} ·
+                                        @if ($c['error']) <span class="text-red-700">⚠ {{ $c['error'] }}</span>
+                                        @else <span class="text-gray-600">{{ implode('; ', $c['para']) }}{{ $c['cc'] ? ' · CC '.implode('; ', $c['cc']) : '' }}</span> @endif
+                                    </summary>
+                                    <div class="mt-2 text-xs"><b>Asunto:</b> {{ $c['asunto'] }}</div>
+                                    <pre class="p-2 mt-1 font-sans text-xs whitespace-pre-wrap rounded bg-gray-50">{{ $c['texto'] }}</pre>
+                                </details>
+                            @empty
+                                <p class="text-sm italic text-gray-400">No hay ninguna marcada para enviar ahora.</p>
+                            @endforelse
+                        </div>
+                        <div class="flex items-center justify-end gap-2 p-4 border-t">
+                            <button type="button" wire:click="cancelarEnvio" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50">Cancelar</button>
+                            <button type="button" wire:click="enviarTodos" wire:loading.attr="disabled" @disabled(! $validos || ! $graphOk)
+                                    onclick="return confirm('¿Enviar {{ $validos }} correos ahora?')"
+                                    class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50">
+                                <span wire:loading.remove wire:target="enviarTodos">✉ Enviar {{ $validos }}</span>
+                                <span wire:loading wire:target="enviarTodos">⏳ Enviando…</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <div class="flex flex-wrap items-center gap-3">
                 <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar empresa..." class="py-1 text-sm border-gray-300 rounded-md">

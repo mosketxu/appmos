@@ -69,6 +69,16 @@ return [
     'procesosmensuales_ejecucion' => env('PROCESOSMENSUALES_EJECUCION', false),
     'procesosmensuales_url' => env('PROCESOSMENSUALES_URL'),
 
+    // Microsoft Graph (Mail.Send) para los correos de Proc.Mensuales. GRAPH_SENDER = remitente si el
+    // usuario no tiene correo @sumaempresa.com; GRAPH_REDIRECT = mandar todo a esa dirección (pruebas).
+    'graph' => [
+        'tenant_id' => env('GRAPH_TENANT_ID'),
+        'client_id' => env('GRAPH_CLIENT_ID'),
+        'client_secret' => env('GRAPH_CLIENT_SECRET'),
+        'sender' => env('GRAPH_SENDER', 'alex.arregui@sumaempresa.com'),
+        'redirect' => env('GRAPH_REDIRECT'),
+    ],
+
 
     /*
     |--------------------------------------------------------------------------

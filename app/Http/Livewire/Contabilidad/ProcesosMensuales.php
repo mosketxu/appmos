@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Contabilidad;
 use App\Models\Entidad;
 use App\Models\MailEnviado;
 use App\Models\Suma;
+use App\Support\GraphMail;
 use App\Support\Accesos;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -350,6 +351,82 @@ class ProcesosMensuales extends Component
         $e->save();
     }
 
+    /** Lista de envío preparada (modal de confirmación) y resultado del último envío. */
+    public array $envio = [];
+    public bool $confirmarEnvio = false;
+    public array $resultadoEnvio = [];
+
+    /** Remitente: el usuario conectado si es de sumaempresa.com; si no, GRAPH_SENDER. */
+    protected function remitente(): string
+    {
+        $mail = (string) auth()->user()->email;
+        return str_ends_with(strtolower($mail), '@sumaempresa.com') ? $mail : config('contabilidad.graph.sender');
+    }
+
+    /** Correo final de una empresa: Para, CC, asunto y texto con {periodo} / {empresa} puestos. */
+    protected function correoDe(Entidad $e): array
+    {
+        $idioma = $this->idiomas[$e->id] ?? 'ES';
+        $pt = self::textoPeriodo($this->periodo, $this->ciclosEnt[$e->id] ?? $e->cicloimpuesto_id, $idioma);
+        $texto = trim($this->textos[$e->id] ?? '') !== '' ? $this->textos[$e->id] : ($this->plantillas[$idioma] ?? '');
+        $asunto = trim($this->asuntos[$e->id] ?? '') !== '' ? $this->asuntos[$e->id] : ($this->plantillasAsunto[$idioma] ?? '');
+        $poner = fn ($s) => str_replace(['{periodo}', '{empresa}'], [$pt, $e->entidad], $s);
+        $para = self::destinatarios($this->paras[$e->id] ?? $e->emailadm);
+        $cc = self::destinatarios($this->ccs[$e->id] ?? $e->mail_peticion_cc);
+        $malos = array_filter(array_merge($para, $cc), fn ($c) => ! filter_var($c, FILTER_VALIDATE_EMAIL));
+        $error = ! $para ? 'Sin Email Adm' : ($malos ? 'Correo no válido: '.implode(', ', $malos) : (trim($texto) === '' ? 'Sin texto' : (trim($asunto) === '' ? 'Sin asunto' : null)));
+        return ['id' => $e->id, 'empresa' => $e->entidad, 'idioma' => $idioma, 'para' => $para, 'cc' => $cc,
+            'asunto' => $poner($asunto), 'texto' => $poner($texto), 'error' => $error];
+    }
+
+    /** «Enviar todos»: prepara la lista de las marcadas 🚀 y abre la confirmación (no envía nada). */
+    public function prepararEnvio(): void
+    {
+        $this->resultadoEnvio = [];
+        $ids = array_keys(array_filter($this->ahora));
+        $this->envio = Entidad::withoutGlobalScopes()->whereIn('id', $ids ?: [0])->where('cliente', 1)->where('estado', 1)->orderBy('entidad')->get()
+            ->filter(fn ($e) => ($this->checks[$e->id] ?? false) && $this->mia($e->id))
+            ->map(fn ($e) => $this->correoDe($e))->values()->all();
+        $this->confirmarEnvio = true;
+    }
+
+    /** Envía los de la lista confirmada que no tienen error; cada uno queda en mails_enviados. */
+    public function enviarTodos(): void
+    {
+        $this->confirmarEnvio = false;
+        $de = $this->remitente();
+        $ok = 0;
+        $fallos = [];
+        foreach ($this->envio as $c) {
+            if ($c['error'] || ! $this->mia((int) $c['id'])) {
+                continue;
+            }
+            $fila = MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
+                ->where('entidad_id', $c['id'])->whereNull('enviado_at')->first()
+                ?? new MailEnviado(['proceso' => $this->proceso, 'periodo' => $this->periodo, 'entidad_id' => $c['id']]);
+            $fila->fill(['user_id' => auth()->id(), 'idioma' => $c['idioma'], 'destinatarios' => implode('; ', $c['para']),
+                'cc' => implode('; ', $c['cc']), 'asunto' => $c['asunto'], 'texto' => $c['texto']]);
+            try {
+                GraphMail::enviar($de, $c['para'], $c['cc'], $c['asunto'], $c['texto']);
+                $fila->fill(['enviado_at' => now(), 'enviar_ahora' => false, 'error' => null])->save();
+                $this->ahora[$c['id']] = false;
+                $ok++;
+            } catch (\Throwable $ex) {
+                $fila->fill(['error' => mb_substr($ex->getMessage(), 0, 1000), 'enviar_ahora' => true])->save();
+                $fallos[] = $c['empresa'].': '.$ex->getMessage();
+            }
+        }
+        $this->resultadoEnvio = ['ok' => $ok, 'fallos' => $fallos, 'de' => $de];
+        $this->envio = [];
+        $this->dispatch('proceso-terminado', mensaje: "✉ Enviados {$ok}".($fallos ? ' · ⚠ '.count($fallos).' con error' : ''));
+    }
+
+    public function cancelarEnvio(): void
+    {
+        $this->confirmarEnvio = false;
+        $this->envio = [];
+    }
+
     public function guardar(int $id, bool $avisar = true): void
     {
         if (! $this->mia($id)) {
@@ -387,6 +464,8 @@ class ProcesosMensuales extends Component
             'nombresCiclo' => DB::table('ciclos')->whereIn('id', self::ORDEN_CICLOS)->pluck('ciclo', 'id')->map(fn ($c, $id) => $id === 0 ? 'Sin definir' : $c)->all(),
             'puedeEditar' => auth()->user()->can('entidades.editar'),
             'nAhora' => count(array_filter($this->ahora)),
+            'graphOk' => GraphMail::configurado(),
+            'remitente' => $this->remitente(),
             // Último envío de cada empresa en el periodo
             'enviados' => MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
                 ->whereNotNull('enviado_at')->selectRaw('entidad_id, max(enviado_at) as ultimo')->groupBy('entidad_id')
