@@ -1072,6 +1072,8 @@ class Procesos extends Component
         if (@file_put_contents($tmp, json_encode($d, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false || ! @rename($tmp, $f)) {
             $this->salida .= "\n\n⚠️ Checklist: no he podido escribir {$f}.";
         }
+        // Las propiedades calculadas se guardan durante la petición: que se relean.
+        unset($this->checklist, $this->checklistMarcas);
     }
 
     /** Lo llaman los procesos al terminar bien. $mes = número de mes de 2026. */
