@@ -45,6 +45,13 @@ class Neteges extends Component
     /** neteges_base.py --estado: plan, cada cuenta, último mayor, otras cuentas de banco, ventas. */
     public array $estadoBase = [];
 
+    /** neteges_plugin.py --pendientes: emitidas que no están en SAGE ni en un plugin ya hecho. */
+    public array $estadoPlugin = [];
+
+    /** Periodo del plugin de emitidas (input date: AAAA-MM-DD; vacío = sin límite). */
+    public string $pluginDesde = '';
+    public string $pluginHasta = '';
+
     /** neteges_cobros.py --estado: listados de cobros y control de bancos que prepara Neteges. */
     public array $estadoNeteges = [];
 
@@ -89,6 +96,12 @@ class Neteges extends Component
             $this->estadoVentas = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
         } catch (\Throwable $e) {
             $this->estadoVentas = [];
+        }
+        try {
+            $r = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'neteges_plugin.py', '--pendientes']);
+            $this->estadoPlugin = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            $this->estadoPlugin = [];
         }
         try {
             $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_cobros.py', '--estado']);
@@ -328,6 +341,33 @@ class Neteges extends Component
         $this->cargarEstado();
     }
 
+    /** Plugin de SAGE con las emitidas pendientes del periodo (neteges_plugin.py). */
+    public function prepararPlugin(): void
+    {
+        $etiqueta = 'Neteges · plugin de facturas emitidas';
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado($etiqueta);
+            return;
+        }
+        $args = [];
+        foreach (['--desde' => $this->pluginDesde, '--hasta' => $this->pluginHasta] as $k => $v) {
+            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)) {
+                array_push($args, $k, "{$m[3]}/{$m[2]}/{$m[1]}");
+            }
+        }
+        $this->ejecutar($args, $etiqueta, 'neteges_plugin.py');
+    }
+
+    /** Vuelve a dejar pendientes las facturas de un plugin (p.ej. si no se llegó a importar). */
+    public function desmarcarPlugin(string $fichero): void
+    {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado('Neteges · plugin');
+            return;
+        }
+        $this->ejecutar(['--desmarcar', basename($fichero)], 'Neteges · quitar marcas de '.basename($fichero), 'neteges_plugin.py');
+    }
+
     /** Concilia los cobros de los extractos con Ventas (neteges_conciliar.py → Output/Conciliacion cobros Neteges.xlsx). */
     public function conciliar(): void
     {
@@ -422,6 +462,7 @@ class Neteges extends Component
             'hayBase' => is_file($this->basePath()),
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
             'remesas' => $this->ficheros('Base/Remesas'),
+            'plugins' => array_values(array_filter($this->ficheros('Output', true), fn ($f) => str_starts_with($f, 'PluginFacturas_Emitidas_'))),
             'hayConciliacion' => is_file($f = $this->baseDir().'/Output/Conciliacion cobros Neteges.xlsx') ? date('d/m H:i', filemtime($f)) : null,
             'extractosInput' => ($lista = $this->listaExtractos())['extractos'] ?? [],
             'nombresCuentas' => $lista['cuentas'] ?? [],

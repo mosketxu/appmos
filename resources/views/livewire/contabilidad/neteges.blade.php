@@ -165,6 +165,37 @@
                     </div>
                 @endforeach
 
+                @if ($bk === 'ventas')
+                    @php $ep = $estadoPlugin; @endphp
+                    <div class="flex flex-wrap items-center px-4 py-2 border-t-2 border-gray-200 gap-x-3 gap-y-1">
+                        <span class="text-sm font-semibold text-gray-700">📤 Plugin de emitidas para SAGE</span>
+                        <span class="text-gray-600">
+                            @if (($ep['pendientes'] ?? 0) > 0)
+                                <b>{{ $ep['pendientes'] }}</b> facturas pendientes de subir
+                                <span class="text-gray-400">({{ implode(' · ', array_map(fn ($m, $n) => \Illuminate\Support\Carbon::parse($m.'-01')->translatedFormat('M Y').": {$n}", array_keys($ep['por_mes'] ?? []), $ep['por_mes'] ?? [])) }})</span>
+                            @else
+                                <span class="text-gray-400">ninguna pendiente: todas están en SAGE o en un plugin ya hecho</span>
+                            @endif
+                        </span>
+                        <span class="text-gray-500">desde</span>
+                        <input type="date" wire:model="pluginDesde" class="py-0 text-xs border-gray-300 rounded-md shadow-sm">
+                        <span class="text-gray-500">hasta</span>
+                        <input type="date" wire:model="pluginHasta" class="py-0 text-xs border-gray-300 rounded-md shadow-sm">
+                        <button type="button" wire:click="prepararPlugin" wire:loading.attr="disabled" wire:target="prepararPlugin"
+                                class="px-3 py-1 font-semibold text-white bg-indigo-600 rounded hover:bg-indigo-700">
+                            <span wire:loading.remove wire:target="prepararPlugin">Preparar plugin</span><span wire:loading wire:target="prepararPlugin">⏳ Preparando…</span>
+                        </button>
+                        <span class="text-gray-400">(sin fechas: todas las pendientes)</span>
+                    </div>
+                    @foreach ($plugins as $pf)
+                        <div class="flex items-center px-4 py-1 gap-x-3 text-gray-600">
+                            <button type="button" wire:click="descargar(@js('Output/'.$pf))" class="text-blue-700 underline hover:text-blue-900">⬇ {{ $pf }}</button>
+                            <button type="button" wire:click="desmarcarPlugin(@js($pf))"
+                                    wire:confirm="¿Volver a dejar pendientes las facturas de {{ $pf }}? (Solo si NO se llegó a importar en SAGE.)"
+                                    class="text-gray-400 hover:text-red-600" title="Volver a dejarlas pendientes">↺ no se importó</button>
+                        </div>
+                    @endforeach
+                @endif
                 @if ($bk === 'bancos')
                     <div class="flex flex-wrap items-center px-4 py-1 text-gray-600 gap-x-2 gap-y-1">
                         <span class="font-medium text-gray-800 w-44">＋ Otras cuentas de banco</span>
