@@ -19,7 +19,9 @@ use Livewire\Component;
  * (de inicio todas marcadas; solo salen las marcadas salvo «ver también las no marcadas»),
  * el idioma (entidades.idioma: cambiarlo aquí lo cambia en la entidad) y el texto
  * entidades.mail_peticion, que parte de la plantilla de su idioma (tabla plantillas_mail,
- * ES / EN) y se personaliza. El check y el idioma se guardan al momento.
+ * ES / EN) y se personaliza. {periodo} se cambia al enviar por el mes o el
+ * trimestre según el ciclo de impuestos de la entidad (textoPeriodo).
+ * El check y el idioma se guardan al momento.
  *
  * Aunque tenga el check, solo se le enviará si está marcada «enviar ahora» para el
  * periodo: es una fila pendiente (enviado_at null) de mails_enviados, que al enviar
@@ -116,6 +118,28 @@ class ProcesosMensuales extends Component
         }
     }
 
+    public const MESES = [
+        'ES' => ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+        'EN' => ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    ];
+
+    /**
+     * Texto de {periodo} según el ciclo de impuestos de la entidad (ciclos: 1 Mensual,
+     * 3 Trimestral): «septiembre de 2026» / «3.er trimestre de 2026». Con otro ciclo o sin
+     * definir se usa el mes y $definido queda a false (se avisa en pantalla).
+     */
+    public static function textoPeriodo(string $periodo, $cicloId, string $idioma, ?bool &$definido = null): string
+    {
+        [$anio, $mes] = array_map('intval', explode('-', $periodo) + [1 => 1]);
+        $definido = in_array((int) $cicloId, [1, 3], true);
+        if ((int) $cicloId === 3) {
+            $t = intdiv($mes - 1, 3) + 1;
+            return $idioma === 'EN' ? "Q{$t} {$anio}" : ['1.er', '2.º', '3.er', '4.º'][$t - 1]." trimestre de {$anio}";
+        }
+        $nombre = self::MESES[$idioma === 'EN' ? 'EN' : 'ES'][$mes - 1] ?? '';
+        return $idioma === 'EN' ? "{$nombre} {$anio}" : "{$nombre} de {$anio}";
+    }
+
     /** Destinatarios: los correos de emailadm de la entidad (varios separados por ; o ,). */
     public static function destinatarios(?string $emailadm): array
     {
@@ -126,7 +150,7 @@ class ProcesosMensuales extends Component
     {
         return Entidad::withoutGlobalScopes()
             ->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'mail_peticion_check', 'mail_peticion']);
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion']);
     }
 
     /** Solo se toca una empresa que gestiona el usuario. */

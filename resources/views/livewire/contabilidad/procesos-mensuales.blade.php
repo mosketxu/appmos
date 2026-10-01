@@ -26,7 +26,7 @@
             <p class="text-sm text-gray-600">
                 Empresas que gestiona <b>{{ $usuario->name }}</b>: se le pide a {{ $marcadas }} de {{ $total }}. El check (enviar o no) y el idioma
                 se guardan al momento en la entidad. El texto parte de la plantilla de su idioma y se puede personalizar. <code>{empresa}</code> se cambia al aplicar la plantilla;
-                <code>{mes}</code> y <code>{año}</code>, al enviar.
+                <code>{periodo}</code>, al enviar, por el mes o el trimestre según el ciclo de impuestos de la entidad.
             </p>
 
             {{-- Plantillas ES / EN, comunes a todos --}}
@@ -83,6 +83,9 @@
                             @empty
                                 <span class="px-2 py-0.5 text-xs text-red-800 bg-red-100 rounded-full" title="Se pone en la ficha de la entidad, campo Email Adm">⚠ sin Email Adm</span>
                             @endforelse
+                            @php $pt = \App\Http\Livewire\Contabilidad\ProcesosMensuales::textoPeriodo($periodo, $e->cicloimpuesto_id, $idiomas[$e->id] ?? 'ES', $cicloOk); @endphp
+                            <span class="px-2 py-0.5 text-xs rounded-full {{ $cicloOk ? 'text-indigo-800 bg-indigo-50' : 'text-amber-800 bg-amber-100' }}"
+                                  title="{{ $cicloOk ? 'Ciclo de impuestos de la entidad' : 'Ciclo de impuestos sin definir (o anual/puntual) en la entidad: se pone el mes' }}">🗓 {{ $pt }}{{ $cicloOk ? '' : ' ⚠' }}</span>
                             @if (isset($enviados[$e->id]))
                                 <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}</span>
                             @endif
