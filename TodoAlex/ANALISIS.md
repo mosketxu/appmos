@@ -15,7 +15,7 @@ los nombres de clientes y el cruce con Appmos están en el CSV de al lado del Ex
 ## Columnas de `2026` (A..S = datos del cliente)
 | Col | Campo | En Appmos |
 |---|---|---|
-| A | Cod Cli (430xxx) | `entidades.cuentacontable` (ojo: 5 cuentas de Appmos son de otra entidad) |
+| A | Cod Cli (430xxx) | **Código de cliente, NO es la cuenta contable** (aunque muchas veces coincida con `cuentacontable`). Appmos aún no tiene campo para él. |
 | B | Cliente | `entidades.entidad` (nombres abreviados, cruce por cuenta y por nombre) |
 | C | Obs | — |
 | D/E/F | Mensual / Trimestral / Otros (importe cuota) | — (¿plan de facturación?) |
@@ -42,6 +42,16 @@ OT Olga Tarrega (nueva) · SS Sara Salom. Combinaciones (`AA MR`, `AA-OT`, `MC M
 `SS/DC`): el primero es el Responsable Suma y los demás se asignan a mano (panel de control,
 `entidad_user`), así la empresa sale a todos ellos en Proc.Mensuales.
 
-## Cruce con Appmos (VPS, 1-oct-2026)
-212 filas: 100 por cuenta contable, 53 por nombre exacto, 27 por nombre aproximado,
-12 revisadas a mano, 3 dudosas, 17 sin entidad en Appmos.
+## Cruce con Appmos y carga de responsables (hecho 1-oct-2026, VPS y copiado a local)
+- 212 filas de la hoja 2026 → 207 entidades. Cruce por nombre (el código 430xxx solo como ayuda,
+  comprobando siempre que el nombre cuadra), más revisiones a mano. Detalle fila a fila en
+  `ToDO Alex - responsables para Appmos.csv` (junto al Excel).
+- Decisiones de Alex: «Lola Mtnez (fisica)» = María Dolores Martínez Rodríguez; Caribe Salou = la
+  U.T.E, inactiva; Nicton es la antigua Sleep in (vale la fila de Sleep in, Nicton no existe en Appmos).
+- 13 creadas (no estaban en Appmos), con el nombre tal cual del Excel, cliente, IVA 21 %, España.
+- Aplicado: Responsable Suma = primer código (102 cambios); co-responsables (resto de códigos) en
+  `entidad_user` (9); Estado del Excel (vacío = activa; inactivo/baja/liquidada = baja; 78 cambios);
+  Idioma (46).
+- Responsables renombrados con nombre y apellido y correo nombre.apellido@sumaempresa.com; nuevos
+  Olga Tarrega y Montse Casas (usuario rol Usuario, contraseña aleatoria: la pone el Admin en el panel).
+- Copias: `~/backups_appmos/` en AlexMiniPC y en el VPS (antes y después).
