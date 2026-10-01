@@ -122,7 +122,7 @@
                 @endif
                 <!-- Settings Dropdown -->
                 <div class="relative ml-3">
-                    <x-jet-dropdown align="right" width="48">
+                    <x-jet-dropdown align="right" width="w-64">
                         <x-slot name="trigger">
                             <span class="inline-flex rounded-md">
                                 <button type="button" class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none">
@@ -143,6 +143,26 @@
                             <x-jet-dropdown-link href="{{ route('profile.show') }}">
                                 {{ __('Profile') }}
                             </x-jet-dropdown-link>
+
+                            {{-- Sus empresas según el panel de control (Responsable Suma + asignadas), aunque pueda ver todas --}}
+                            @php
+                                $misEmpresas = \App\Models\Entidad::withoutGlobalScopes()
+                                    ->whereIn('id', \App\Support\Accesos::entidadesPropias(Auth::user()) ?: [0])
+                                    ->orderBy('entidad')->get(['id', 'entidad']);
+                            @endphp
+                            <div class="border-t border-gray-100"></div>
+                            <div class="block px-4 py-2 text-xs text-gray-400">Mis empresas ({{ $misEmpresas->count() }})</div>
+                            <div class="overflow-y-auto max-h-64">
+                                @forelse ($misEmpresas as $emp)
+                                    @can('entidades.ver')
+                                        <a href="{{ route('entidad.edit', $emp->id) }}" class="block px-4 py-1 text-xs text-gray-700 truncate hover:bg-gray-100" title="{{ $emp->entidad }}">{{ $emp->entidad }}</a>
+                                    @else
+                                        <div class="px-4 py-1 text-xs text-gray-700 truncate" title="{{ $emp->entidad }}">{{ $emp->entidad }}</div>
+                                    @endcan
+                                @empty
+                                    <div class="px-4 py-1 text-xs italic text-gray-400">Ninguna asignada</div>
+                                @endforelse
+                            </div>
 
                             <div class="border-t border-gray-100"></div>
 

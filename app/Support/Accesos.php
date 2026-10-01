@@ -27,6 +27,15 @@ class Accesos
         if ($user->can('entidades.todas')) {
             return static::$cache[$user->id] = null;
         }
+        return static::$cache[$user->id] = static::entidadesPropias($user);
+    }
+
+    /**
+     * Entidades que son del usuario según el panel de control (las que lleva como
+     * Responsable Suma + las asignadas a mano), tenga o no entidades.todas.
+     */
+    public static function entidadesPropias(User $user): array
+    {
         // Sin pasar por el modelo Entidad (su scope global llamaría aquí otra vez)
         $porResponsable = DB::table('entidades')
             ->join('sumas', 'sumas.id', '=', 'entidades.suma_id')
@@ -34,7 +43,7 @@ class Accesos
             ->pluck('entidades.id');
         $asignadas = DB::table('entidad_user')->where('user_id', $user->id)->pluck('entidad_id');
 
-        return static::$cache[$user->id] = $porResponsable->merge($asignadas)->unique()->map(fn ($id) => (int) $id)->values()->all();
+        return $porResponsable->merge($asignadas)->unique()->map(fn ($id) => (int) $id)->values()->all();
     }
 
     public static function olvidar(): void
