@@ -66,6 +66,11 @@
                 <label class="inline-flex items-center gap-1 text-sm text-gray-700">
                     <input type="checkbox" wire:model.live="verBajas" class="border-gray-300 rounded"> Ver también las de baja
                 </label>
+                @if ($puedeEditar)
+                    <label class="inline-flex items-center gap-1 text-sm text-gray-700" title="Empresas sin Responsable Suma: elige el responsable en el panel derecho">
+                        <input type="checkbox" wire:model.live="verSinResponsable" class="border-gray-300 rounded"> Ver también las sin responsable
+                    </label>
+                @endif
                 <button type="button" wire:click="rellenarVacias" class="px-3 py-1 text-sm text-indigo-700 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50"
                         title="Las marcadas que aún no tienen texto, con la plantilla de su idioma">Rellenar con la plantilla las marcadas sin texto</button>
             </div>
@@ -87,6 +92,7 @@
                                        @disabled(! ($checks[$e->id] ?? false)) class="border-gray-300 rounded text-amber-600">
                                 <span class="flex-1 truncate {{ $seleccionada === $e->id ? 'font-semibold text-gray-900' : '' }} {{ ($activas[$e->id] ?? false) ? '' : 'line-through' }}" title="{{ $e->entidad }}">{{ $e->entidad }}</span>
                                 @if (! ($activas[$e->id] ?? false)) <span class="text-xs text-red-500">baja</span> @endif
+                                @if (($sumaIds[$e->id] ?? '') === '') <span class="text-xs text-purple-600" title="Sin Responsable Suma">sin resp.</span> @endif
                                 <span class="text-xs text-gray-400">{{ $idiomas[$e->id] ?? 'ES' }}</span>
                                 @if (isset($enviados[$e->id])) <span title="Enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}">✅</span> @endif
                                 @if (! $para) <span class="text-xs text-red-600" title="Sin Email Adm">✉⚠</span> @endif
@@ -117,6 +123,13 @@
                                     <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$sel->id])->format('d/m/Y H:i') }}</span>
                                 @endif
                                 <div class="flex items-center gap-3 ml-auto">
+                                    @if ($puedeEditar)
+                                        <select wire:model.live="sumaIds.{{ $sel->id }}" title="Responsable Suma (se guarda al momento en la entidad)"
+                                                class="py-0.5 text-xs border-gray-300 rounded-md {{ ($sumaIds[$sel->id] ?? '') === '' ? 'text-purple-700' : '' }}">
+                                            <option value="">— sin responsable —</option>
+                                            @foreach ($sumas as $s) <option value="{{ $s->id }}">{{ $s->nombre }}</option> @endforeach
+                                        </select>
+                                    @endif
                                     <label class="inline-flex items-center gap-1 text-xs font-semibold {{ ($activas[$sel->id] ?? false) ? 'text-green-700' : 'text-red-600' }}"
                                            title="Estado de la entidad (se guarda al momento). Solo salen las activas.">
                                         <input type="checkbox" wire:model.live="activas.{{ $sel->id }}" class="text-green-600 border-gray-300 rounded"> Activa

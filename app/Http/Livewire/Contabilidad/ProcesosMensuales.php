@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Contabilidad;
 
 use App\Models\Entidad;
 use App\Models\MailEnviado;
+use App\Models\Suma;
 use App\Support\Accesos;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -50,6 +51,11 @@ class ProcesosMensuales extends Component
     public array $ccs = [];
     /** id => activa (entidades.estado: 1 activo, 0 baja). Solo salen las activas. */
     public array $activas = [];
+    /** id => Responsable Suma (entidades.suma_id), editable aquí. */
+    public array $sumaIds = [];
+
+    /** Con permiso de editar entidades: enseñar también las que no tienen Responsable Suma, para asignarlas. */
+    public bool $verSinResponsable = false;
 
     /** Plantillas del proceso (idioma => texto). */
     public array $plantillas = [];
@@ -76,6 +82,7 @@ class ProcesosMensuales extends Component
             $this->textos[$e->id] = (string) $e->mail_peticion;
             $this->ccs[$e->id] = (string) $e->mail_peticion_cc;
             $this->activas[$e->id] = (int) $e->estado === 1;
+            $this->sumaIds[$e->id] = $e->suma_id ? (string) $e->suma_id : '';
             $this->checks[$e->id] = (bool) $e->mail_peticion_check;
             $this->idiomas[$e->id] = $e->idioma === 'EN' ? 'EN' : 'ES';
         }
@@ -123,7 +130,7 @@ class ProcesosMensuales extends Component
     public function marcarTodasAhora(bool $valor): void
     {
         foreach ($this->checks as $id => $check) {
-            if (($check && ($this->activas[$id] ?? false)) || ! $valor) {
+            if (($check && ($this->activas[$id] ?? false) && in_array((int) $id, Accesos::entidadesPropias(auth()->user()), true)) || ! $valor) {
                 $this->ponerAhora((int) $id, $valor);
             }
         }
@@ -157,17 +164,21 @@ class ProcesosMensuales extends Component
         return array_values(array_filter(array_map('trim', preg_split('/[;,\s]+/', (string) $emailadm))));
     }
 
+    /** Las que gestiona y, si puede editar entidades, también las que no tienen Responsable Suma. */
     protected function empresas()
     {
+        $editar = auth()->user()->can('entidades.editar');
         return Entidad::withoutGlobalScopes()
-            ->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc', 'estado']);
+            ->where(fn ($q) => $q->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
+                ->when($editar, fn ($q) => $q->orWhereNull('suma_id')))
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc', 'estado', 'suma_id']);
     }
 
-    /** Solo se toca una empresa que gestiona el usuario. */
+    /** Solo se toca una empresa que gestiona el usuario (o sin responsable, si puede editar entidades). */
     protected function mia(int $id): bool
     {
-        return in_array($id, Accesos::entidadesPropias(auth()->user()), true);
+        return in_array($id, Accesos::entidadesPropias(auth()->user()), true)
+            || (auth()->user()->can('entidades.editar') && Entidad::withoutGlobalScopes()->whereKey($id)->whereNull('suma_id')->exists());
     }
 
     protected function cargarPlantillas(): void
@@ -226,7 +237,7 @@ class ProcesosMensuales extends Component
     /** El check y el idioma se guardan en la entidad en cuanto se cambian. */
     public function updated(string $propiedad, $valor): void
     {
-        if (! preg_match('/^(checks|idiomas|ahora|activas)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
+        if (! preg_match('/^(checks|idiomas|ahora|activas|sumaIds)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
             return;
         }
         if ($m[1] === 'ahora') {
@@ -234,7 +245,14 @@ class ProcesosMensuales extends Component
             return;
         }
         $e = Entidad::withoutGlobalScopes()->find((int) $m[2]);
-        if ($m[1] === 'activas') {
+        if ($m[1] === 'sumaIds') {
+            if (! auth()->user()->can('entidades.editar')) {
+                $this->sumaIds[$e->id] = $e->suma_id ? (string) $e->suma_id : '';
+                return;
+            }
+            $e->suma_id = $valor !== '' && Suma::whereKey((int) $valor)->exists() ? (int) $valor : null;
+            Accesos::olvidar();
+        } elseif ($m[1] === 'activas') {
             $e->estado = $valor ? 1 : 0;
             if (! $valor) {
                 $this->ponerAhora($e->id, false);
@@ -268,7 +286,9 @@ class ProcesosMensuales extends Component
 
     public function render()
     {
+        $propias = Accesos::entidadesPropias(auth()->user());
         $empresas = $this->empresas()
+            ->filter(fn ($e) => in_array($e->id, $propias, true) || ($this->verSinResponsable && ($this->sumaIds[$e->id] ?? '') === ''))
             ->when(! $this->verBajas, fn ($c) => $c->filter(fn ($e) => $this->activas[$e->id] ?? false))
             ->when(! $this->verNoMarcadas, fn ($c) => $c->filter(fn ($e) => $this->checks[$e->id] ?? false))
             ->when($this->buscar !== '', fn ($c) => $c->filter(fn ($e) => stripos($e->entidad.' '.$e->alias, $this->buscar) !== false));
@@ -278,8 +298,10 @@ class ProcesosMensuales extends Component
             'idiomasDisponibles' => self::IDIOMAS,
             'usuario' => auth()->user(),
             'empresas' => $empresas,
-            'marcadas' => count(array_filter($this->checks, fn ($c, $id) => $c && ($this->activas[$id] ?? false), ARRAY_FILTER_USE_BOTH)),
-            'total' => count(array_filter($this->activas)),
+            'marcadas' => count(array_filter($this->checks, fn ($c, $id) => $c && ($this->activas[$id] ?? false) && in_array($id, $propias), ARRAY_FILTER_USE_BOTH)),
+            'total' => count(array_filter($this->activas, fn ($a, $id) => $a && in_array($id, $propias), ARRAY_FILTER_USE_BOTH)),
+            'sumas' => Suma::orderBy('nombre')->get(['id', 'nombre']),
+            'puedeEditar' => auth()->user()->can('entidades.editar'),
             'nAhora' => count(array_filter($this->ahora)),
             // Último envío de cada empresa en el periodo
             'enviados' => MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
