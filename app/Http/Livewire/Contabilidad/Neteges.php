@@ -18,9 +18,11 @@ use Livewire\WithFileUploads;
  *   - plan de cuentas y mayor de SAGE (uno solo con todas las cuentas): neteges_base.py los
  *     acumula en Base/Base Neteges.xlsx, como Bancos. Del mayor solo se guardan las cuentas
  *     de banco: 572... y las "otras cuentas de banco" marcadas en pantalla.
- *   - ficheros de Ventas (varios, de una vez o en varias): neteges_ventas.py los acumula sin
- *     duplicados en Base/Ventas Neteges.xlsx (con el que se trabaja) y avisa si una factura
- *     que ya estaba llega distinta.
+ *   - ficheros de Ventas (varios, de una vez o en varias; una fila por factura o por línea):
+ *     neteges_ventas.py los junta sin duplicados en Base/Ventas Neteges.xlsx (Facturas, Líneas,
+ *     Clientes con su cuenta SAGE, Cambios) y avisa si una factura que ya estaba llega distinta.
+ *   - listado de clientes o de proveedores de SAGE (el último de cada tipo; se reconoce cuál es):
+ *     sirve para la cuenta SAGE de cada cliente (plugin de facturas).
  * Extracto del banco con su cuenta: de momento solo se guarda en Input (el proceso, después).
  *
  * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
@@ -127,17 +129,17 @@ class Neteges extends Component
         if (! $ficheros) {
             return;
         }
-        if (! in_array($fila, ['plan', 'mayor', 'ventas'], true)) {
+        if (! in_array($fila, ['plan', 'mayor', 'ventas', 'listado'], true)) {
             $this->addError('subidas', 'Fila desconocida.');
             return;
         }
-        $etiqueta = 'Neteges · '.['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas'][$fila];
+        $etiqueta = 'Neteges · '.['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas', 'listado' => 'listado de clientes/proveedores'][$fila];
         if (! config('contabilidad.ejecucion_local')) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
 
-        $extensiones = $fila === 'ventas' ? ['xlsx', 'xls', 'csv'] : ['xlsx', 'xls'];
+        $extensiones = in_array($fila, ['ventas', 'listado'], true) ? ['xlsx', 'xls', 'csv'] : ['xlsx', 'xls'];
         $malos = array_map(fn ($f) => $f->getClientOriginalName(),
             array_filter($ficheros, fn ($f) => ! in_array(strtolower($f->getClientOriginalExtension()), $extensiones, true)));
         if ($malos) {
@@ -165,7 +167,19 @@ class Neteges extends Component
             $this->ejecutar($rutas, $etiqueta, 'neteges_ventas.py');
             return;
         }
-        $this->ejecutar(array_merge(['--espera', $fila], $rutas), $etiqueta);
+        if ($fila === 'listado') {
+            $this->ejecutar(['--listado', end($rutas)], $etiqueta, 'neteges_ventas.py');
+            return;
+        }
+        $ok = $this->ejecutar(array_merge(['--espera', $fila], $rutas), $etiqueta);
+        if ($ok && $fila === 'plan') {
+            // El plan da las cuentas 430 y sus CIF: se rehace la cuenta SAGE de los clientes de Ventas
+            $previa = $this->salida;
+            $this->ejecutar(['--identificar'], 'Neteges · cuentas SAGE de los clientes', 'neteges_ventas.py');
+            $this->salida = $previa."
+
+".$this->salida;
+        }
     }
 
     public function anadirOtraCuenta(): void
