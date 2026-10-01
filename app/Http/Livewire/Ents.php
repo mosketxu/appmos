@@ -3,6 +3,7 @@
 namespace App\Http\Livewire;
 
 use App\Models\Entidad;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -10,12 +11,25 @@ class Ents extends Component
 {
     use WithPagination;
 
+    // En la URL: al entrar a editar y volver atrás se siguen aplicando (pedido 1-oct-2026)
+    #[Url(except: '')]
     public $search='';
+    #[Url(except: '')]
     public $filtrocliente='';
+    #[Url(except: '')]
     public $filtroactivo='';
+    #[Url(except: '')]
     public $filtrofacturar='';
     public Entidad $entidad;
     public $ruta;
+
+    /** Al cambiar la búsqueda o un filtro, a la primera página. */
+    public function updated($propiedad)
+    {
+        if (in_array($propiedad, ['search', 'filtrocliente', 'filtroactivo', 'filtrofacturar'])) {
+            $this->resetPage();
+        }
+    }
 
     public function render()
     {
@@ -34,8 +48,8 @@ class Ents extends Component
             ->when($this->filtrofacturar!='', function ($query){
                 $query->where('facturar',$this->filtrofacturar);
                 })
-            ->search('entidad',$this->search)
-            ->orSearch('nif',$this->search)
+            // Entre paréntesis, para que el OR del NIF no se salte los filtros
+            ->where(fn ($q) => $q->search('entidad',$this->search)->orSearch('nif',$this->search))
             ->orderBy('favorito','desc')
             ->orderBy('entidad','asc')
             ->paginate(15);
