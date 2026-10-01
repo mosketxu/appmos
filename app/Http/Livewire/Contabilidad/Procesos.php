@@ -66,8 +66,8 @@ class Procesos extends Component
     // Correo mensual "End and begining of month payments <Month>." a Plein
     // (pedido del usuario 2026-09-25: "este proceso lo repetiremos todos los
     // meses"). Solo cambian estos datos, en K; el resto de filas (alquileres,
-    // suministros...) sale de monthlyFIQ/pagosFinMes.json. Mes propio: es el
-    // mes de los cargos (el actual), no el mes cerrado del desplegable.
+    // suministros...) sale de monthlyFIQ/pagosFinMes.json. Mes = el del título
+    // (desde 2026-10-01; antes tenía desplegable propio).
     public int $pfMes;
     public string $pfSaldo = '';
     public string $pfIva = '';
@@ -83,6 +83,8 @@ class Procesos extends Component
     public bool $pfIncluirDestacado = false;
     public string $pfTo = '';
     public string $pfCc = '';
+    /** Fecha en que se mandó a Plein el de este mes ('' = aún no). */
+    public string $pfEnviado = '';
     // Recordatorio "Kindly reminder and update" (pedido 2026-09-28): parte del
     // correo ya enviado ese mes (Enviados de Outlook), cada fila con su importe
     // retocable y Paid/Pending, y se prepara como "Responder a todos" en
@@ -126,8 +128,8 @@ class Procesos extends Component
         $m = (int) date('n') - 1;
         $this->mes = $m < 1 ? 12 : $m;
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
-        $this->pfMes = (int) date('n');
         $this->cargarBasePagosFinMes();
+        $this->updatedPfMes();
         $this->cargarCashInStore();
     }
 
@@ -642,6 +644,7 @@ class Procesos extends Component
         }
         if ($modo === 'real') {
             $this->cargarBasePagosFinMes(); // ya es la base del mes que viene
+            $this->pfEnviado = (string) ($this->confPagosFinMes()['meses'][sprintf('%02d', $this->pfMes)]['enviado'] ?? '');
         }
     }
 
@@ -745,9 +748,17 @@ class Procesos extends Component
     /** Otro mes: el recordatorio cargado era del anterior. */
     public function updatedPfMes(): void
     {
-        // Lo de un mes no vale para otro: importes, recordatorio y enlaces fuera
-        // (el saldo de BBVA y el texto/destinatarios no son del mes: se quedan).
-        $this->pfIva = $this->pfSs = $this->pfNominas = $this->pfCargo = '';
+        // Pagos fin de mes usa el mismo mes que el título (pedido 2026-10-01: antes
+        // tenía su propio desplegable, el mes de los cargos = el actual). Al cambiar
+        // de mes: lo que salió ese mes (pagosFinMes.json → meses) o vacío.
+        $this->pfMes = $this->mes;
+        $m = $this->confPagosFinMes()['meses'][sprintf('%02d', $this->mes)] ?? [];
+        $this->pfSaldo = (string) ($m['saldo'] ?? '');
+        $this->pfIva = (string) ($m['iva'] ?? '');
+        $this->pfSs = (string) ($m['ss'] ?? '');
+        $this->pfNominas = (string) ($m['nominas'] ?? '');
+        $this->pfCargo = (string) ($m['cargo'] ?? '');
+        $this->pfEnviado = (string) ($m['enviado'] ?? '');
         $this->pfRecFilas = [];
         $this->pfRecOriginal = '';
         $this->pfRecSaldo = '';
@@ -857,7 +868,8 @@ class Procesos extends Component
      */
     public function updatedMes(): void
     {
-        $this->resultados = array_intersect_key($this->resultados, ['pf' => 1, 'pfRec' => 1]); // Pagos fin de mes tiene su propio mes
+        $this->resultados = [];
+        $this->updatedPfMes();
         $this->cargarCashInStore();
     }
 

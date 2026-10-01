@@ -306,11 +306,11 @@
     <div class="p-3">
         <h2 class="flex flex-wrap items-center text-lg font-semibold text-gray-900 gap-x-3">
             <span>Pagos fin de mes · correo a Plein</span>
-            <select wire:model.live="pfMes" class="text-sm font-normal border-gray-300 rounded-md shadow-sm">
-                @foreach (range(1, 12) as $m)
-                    <option value="{{ $m }}">{{ \Carbon\Carbon::create(2026, $m, 1)->locale('en')->monthName }}</option>
-                @endforeach
-            </select>
+            {{-- mismo mes que el del título (pedido 2026-10-01) --}}
+            <span class="text-base font-normal text-gray-600">{{ \Carbon\Carbon::create(2026, $pfMes, 1)->locale('en')->monthName }}</span>
+            @if ($pfEnviado)
+                <span class="text-xs font-normal text-green-700">✓ enviado a Plein el {{ $pfEnviado }}</span>
+            @endif
         </h2>
         <div class="flex flex-wrap gap-6">
         {{-- IZQUIERDA: datos, texto, destinatarios y botones --}}
