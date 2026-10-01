@@ -59,15 +59,16 @@
             {{-- tabla entidades: en móvil, nombre + acciones y debajo los controles; en pantalla grande, columnas --}}
             <div class="flex w-full mt-1 text-sm bg-blue-100 rounded-t-md">
                 <div class="hidden pl-2 lg:w-10 lg:flex">{{ __('Fav') }} </div>
-                <div class="w-7/12 pl-2 md:w-5/12 lg:w-3/12">{{ __('Entidad') }}</div>
-                <div class="hidden lg:block lg:w-1/12">{{ __('Nif') }} </div>
+                <div class="w-7/12 pl-2 md:w-4/12 lg:w-3/12 xl:w-2/12">{{ __('Entidad') }}</div>
+                <div class="hidden xl:block xl:w-1/12">{{ __('Nif') }} </div>
                 <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Responsable') }}</div>
+                <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Otro Resp.') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex" title="Cliente / Proveedor / Contacto (clic para cambiar)">{{ __('Relación') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('Facturar') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Impuestos') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Fact.') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('Estado') }}</div>
-                <div class="w-5/12 md:w-5/12 lg:w-2/12"></div>
+                <div class="w-5/12 md:w-4/12 lg:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
             <div class="w-full py-0 text-sm font-thin text-gray-500 border-b border-gray-100 lg:border-0" wire:key="ent-{{ $entidad->id }}" wire:loading.class.delay="opacity-50">
@@ -79,14 +80,20 @@
                         <x-icon.star class="text-gray-500 "></x-icon.star>
                     @endif
                 </div>
-                <div class="w-7/12 md:w-5/12 lg:w-3/12">
+                <div class="w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12">
                     <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
-                <div class="hidden p-1 m-1 lg:block lg:w-1/12">
+                <div class="hidden p-1 m-1 xl:block xl:w-1/12">
                     <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
                 {{-- Responsable: solo en pantalla media o grande --}}
-                <div class="items-center hidden md:flex md:w-2/12 lg:w-1/12">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'responsable'])</div>
+                <div class="items-center hidden gap-1 md:flex md:w-2/12 lg:w-1/12">
+                    @include('livewire.ents._control', ['e' => $entidad, 'c' => 'responsable'])
+                    @can('entidades.editar')
+                        <button type="button" wire:click="abrirCoResp({{ $entidad->id }})" title="Añadir o quitar otros responsables" class="px-1.5 text-sm font-bold text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50">+</button>
+                    @endcan
+                </div>
+                <div class="items-center hidden md:flex md:w-2/12 lg:w-1/12">@include('livewire.ents._coresp', ['e' => $entidad, 'modo' => 'etiquetas'])</div>
                 <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])</div>
                 <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])</div>
                 <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])</div>
@@ -94,7 +101,7 @@
                     <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
                 </div>
                 <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
-                <div class="w-5/12 md:w-5/12 lg:w-2/12">
+                <div class="w-5/12 md:w-4/12 lg:w-2/12">
                     <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:flex-nowrap lg:space-x-3">
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
@@ -126,6 +133,7 @@
             <div>
                 {{ $entidades->links() }}
             </div>
+            @include('livewire.ents._coresp', ['modo' => 'modal'])
         </div>
     </div>
 </div>

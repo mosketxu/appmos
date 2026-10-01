@@ -11,6 +11,7 @@ use Livewire\WithPagination;
 class Ents extends Component
 {
     use WithPagination;
+    use Concerns\CoResponsables;
 
     // En la URL: al entrar a editar y volver atrás se siguen aplicando (pedido 1-oct-2026)
     #[Url(except: '')]
@@ -87,8 +88,15 @@ class Ents extends Component
             ->when($this->filtrofacturar!='', function ($query){
                 $query->where('facturar',$this->filtrofacturar);
                 })
+            // Por responsable principal o co-responsable (entidad_user del usuario de ese responsable)
             ->when((string) $this->filtroresponsable!=='', function ($query){
-                (string) $this->filtroresponsable==='0' ? $query->whereNull('suma_id') : $query->where('suma_id',$this->filtroresponsable);
+                if ((string) $this->filtroresponsable==='0') {
+                    $query->whereNull('suma_id');
+                } else {
+                    $uid = Suma::whereKey($this->filtroresponsable)->value('user_id');
+                    $query->where(fn ($q) => $q->where('suma_id',$this->filtroresponsable)
+                        ->when($uid, fn ($q) => $q->orWhereIn('id', \Illuminate\Support\Facades\DB::table('entidad_user')->where('user_id',$uid)->select('entidad_id'))));
+                }
                 })
             // Entre paréntesis, para que el OR del NIF no se salte los filtros
             ->where(fn ($q) => $q->search('entidad',$this->search)->orSearch('nif',$this->search))
@@ -98,9 +106,10 @@ class Ents extends Component
 
         $nombresCiclo = \Illuminate\Support\Facades\DB::table('ciclos')->pluck('ciclo', 'id')->map(fn ($c, $id) => $id === 0 ? 'Sin definir' : $c)->all();
 
-        $sumas = Suma::orderBy('nombre')->get(['id', 'nombre']);
+        $sumas = Suma::orderBy('nombre')->get(['id', 'nombre', 'user_id']);
+        $coResp = self::coResponsablesDe(array_merge($entidades->pluck('id')->all(), array_filter([$this->coRespDe])));
 
-        return view('livewire.ents',compact('entidades', 'nombresCiclo', 'sumas'));
+        return view('livewire.ents',compact('entidades', 'nombresCiclo', 'sumas', 'coResp'));
     }
 
     public function delete($entidadId)

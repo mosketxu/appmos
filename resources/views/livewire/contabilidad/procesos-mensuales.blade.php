@@ -118,6 +118,8 @@
                                                     <option value="">— sin resp. —</option>
                                                     @foreach ($sumas as $s) <option value="{{ $s->id }}">{{ $s->nombre }}</option> @endforeach
                                                 </select>
+                                                <button type="button" wire:click="abrirCoResp({{ $e->id }})" title="Añadir o quitar otros responsables" class="px-1.5 text-sm font-bold text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50">+</button>
+                                                <div class="mt-0.5">@include('livewire.ents._coresp', ['e' => $e, 'modo' => 'etiquetas'])</div>
                                             </td>
                                         @endif
                                         <td class="px-2 py-1 text-center whitespace-nowrap" x-on:click.stop>
@@ -228,4 +230,5 @@
             </div>
         @endif
     </div>
+    @include('livewire.ents._coresp', ['modo' => 'modal'])
 </div>

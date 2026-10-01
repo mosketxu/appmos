@@ -32,6 +32,8 @@ use Livewire\Component;
  */
 class ProcesosMensuales extends Component
 {
+    use \App\Http\Livewire\Concerns\CoResponsables;
+
     /** [clave => ['icono', 'titulo', 'descripcion']]: una pestaña por proceso. */
     public const PROCESOS = [
         'petdocimpuestos' => ['icono' => '📨', 'titulo' => 'Pet. Documentación Impuestos',
@@ -380,7 +382,8 @@ class ProcesosMensuales extends Component
             'empresas' => $empresas,
             'marcadas' => count(array_filter($this->checks, fn ($c, $id) => $c && ($this->activas[$id] ?? false) && in_array($id, $propias), ARRAY_FILTER_USE_BOTH)),
             'total' => count(array_filter($this->activas, fn ($a, $id) => $a && in_array($id, $propias), ARRAY_FILTER_USE_BOTH)),
-            'sumas' => Suma::orderBy('nombre')->get(['id', 'nombre']),
+            'sumas' => Suma::orderBy('nombre')->get(['id', 'nombre', 'user_id']),
+            'coResp' => self::coResponsablesDe($empresas->pluck('id')->all()),
             'nombresCiclo' => DB::table('ciclos')->whereIn('id', self::ORDEN_CICLOS)->pluck('ciclo', 'id')->map(fn ($c, $id) => $id === 0 ? 'Sin definir' : $c)->all(),
             'puedeEditar' => auth()->user()->can('entidades.editar'),
             'nAhora' => count(array_filter($this->ahora)),
