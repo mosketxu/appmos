@@ -463,6 +463,7 @@ class Neteges extends Component
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
             'remesas' => $this->ficheros('Base/Remesas'),
             'plugins' => array_values(array_filter($this->ficheros('Output', true), fn ($f) => str_starts_with($f, 'PluginFacturas_Emitidas_'))),
+            'hayReclasificacion' => is_file($f = $this->baseDir().'/Output/Reclasificacion cobros Neteges.xlsx') ? date('d/m H:i', filemtime($f)) : null,
             'hayConciliacion' => is_file($f = $this->baseDir().'/Output/Conciliacion cobros Neteges.xlsx') ? date('d/m H:i', filemtime($f)) : null,
             'extractosInput' => ($lista = $this->listaExtractos())['extractos'] ?? [],
             'nombresCuentas' => $lista['cuentas'] ?? [],

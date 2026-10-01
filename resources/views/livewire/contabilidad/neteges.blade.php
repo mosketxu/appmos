@@ -228,6 +228,10 @@
                         @if ($hayConciliacion)
                             <button type="button" wire:click="descargar('Output/Conciliacion cobros Neteges.xlsx')" class="text-blue-700 underline hover:text-blue-900">⬇ Resultado ({{ $hayConciliacion }})</button>
                         @endif
+                        @if ($hayReclasificacion)
+                            <button type="button" wire:click="descargar('Output/Reclasificacion cobros Neteges.xlsx')" class="text-blue-700 underline hover:text-blue-900"
+                                    title="Asientos para importar en SAGE (formato Bancos): pasan los cobros seguros de la 430000000 / 555 a la 430 de su cliente, sin tocar el banco">⬇ Reclasificación para SAGE ({{ $hayReclasificacion }})</button>
+                        @endif
                     </div>
                     @if ($recibidos)
                         <div class="px-4 py-1 text-gray-400 bg-gray-50">
