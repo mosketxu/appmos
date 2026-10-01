@@ -33,6 +33,7 @@
             ]],
             'bancos' => ['titulo' => '🏦 Bancos', 'filas' => [
                 ['clave' => 'mayor', 'titulo' => '📒 Mayor', 'accept' => '.xlsx,.xls'],
+                ['clave' => 'netcobros', 'titulo' => '📥 Ficheros de Neteges', 'accept' => '.xlsx,.xls'],
             ]],
             'ventas' => ['titulo' => '🧾 Ventas', 'filas' => [
                 ['clave' => 'ventas', 'titulo' => '🧾 Ficheros de ventas', 'accept' => $xls],
@@ -103,6 +104,22 @@
                                     @if ($hayBase)
                                         <button type="button" wire:click="descargar('Base/Base Neteges.xlsx')" class="ml-1 text-blue-700 underline hover:text-blue-900">⬇ Base</button>
                                     @endif
+                                    @break
+                                @case('netcobros')
+                                    @php $en = $estadoNeteges; @endphp
+                                    @if ($en['cobros'] ?? null)
+                                        cobros: <b>{{ $en['cobros']['facturas'] }}</b> facturas cobradas del {{ $en['cobros']['desde'] }} al {{ $en['cobros']['hasta'] }}
+                                    @else
+                                        <span class="text-gray-400">sin listado de cobros</span>
+                                    @endif
+                                    @foreach ($en['control'] ?? [] as $banco => $d)
+                                        · control {{ $banco }} hasta el <b>{{ $d['hasta'] }}</b>
+                                    @endforeach
+                                    <span class="text-gray-400">— los Excel de su programa (cobrosMM-AA, BBBVA26NET, SABADELL26NET): dicen qué facturas paga cada cobro y cada remesa</span>
+                                    <button type="button" wire:click="buscarEnCorreo" wire:loading.attr="disabled" wire:target="buscarEnCorreo"
+                                            class="ml-1 text-blue-700 underline hover:text-blue-900">
+                                        <span wire:loading.remove wire:target="buscarEnCorreo">📧 Buscar en el correo</span><span wire:loading wire:target="buscarEnCorreo">⏳ Buscando en Outlook…</span>
+                                    </button>
                                     @break
                                 @case('proveedoressage')
                                     @if ($ev['listados_info']['proveedores'] ?? null) <b>{{ $ev['listados_info']['proveedores'] }}</b> @else <span class="text-gray-400">(todavía nada)</span> @endif

@@ -45,6 +45,9 @@ class Neteges extends Component
     /** neteges_base.py --estado: plan, cada cuenta, último mayor, otras cuentas de banco, ventas. */
     public array $estadoBase = [];
 
+    /** neteges_cobros.py --estado: listados de cobros y control de bancos que prepara Neteges. */
+    public array $estadoNeteges = [];
+
     /** neteges_ventas.py --estado: líneas, facturas, desde/hasta, ficheros, cambios. */
     public array $estadoVentas = [];
 
@@ -86,6 +89,12 @@ class Neteges extends Component
             $this->estadoVentas = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
         } catch (\Throwable $e) {
             $this->estadoVentas = [];
+        }
+        try {
+            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_cobros.py', '--estado']);
+            $this->estadoNeteges = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            $this->estadoNeteges = [];
         }
     }
 
@@ -131,6 +140,7 @@ class Neteges extends Component
             return;
         }
         $filas = ['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas', 'clientessage' => 'clientes SAGE',
+            'netcobros' => 'ficheros de Neteges (cobros y control de bancos)',
             'proveedoressage' => 'proveedores SAGE', 'misclientes' => 'mis clientes', 'remesas' => 'ficheros de remesas'];
         if (! isset($filas[$fila])) {
             $this->addError('subidas', 'Fila desconocida.');
@@ -178,6 +188,10 @@ class Neteges extends Component
             $this->salida = "===== {$etiqueta} =====\n".implode("\n", array_map(fn ($r) => '• '.basename($r), $rutas))
                 ."\nGuardados en Base/Remesas: se procesarán más adelante (segundo proceso).";
             $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nGuardados.");
+            return;
+        }
+        if ($fila === 'netcobros') {
+            $this->ejecutar(array_merge(['--subir'], $rutas), $etiqueta, 'neteges_cobros.py');
             return;
         }
         if ($fila === 'misclientes') {
@@ -278,6 +292,40 @@ class Neteges extends Component
         } catch (\Throwable $e) {
             $this->dispatch('proceso-terminado', mensaje: '⚠️ '.$e->getMessage());
         }
+    }
+
+    /**
+     * Busca en el Outlook de este PC los listados que manda Neteges (cobros*.xlsx, BBBVA26NET,
+     * SABADELL26NET) y los guarda en Base/Recibidos (bajarAdjuntosNeteges.ps1). Bajo Apache hace
+     * falta WSL_INTEROP para llamar a powershell.exe, como en FacturasOcr.
+     */
+    public function buscarEnCorreo(): void
+    {
+        $etiqueta = 'Neteges · buscar en el correo los ficheros de Neteges';
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->avisarNoAutorizado($etiqueta);
+            return;
+        }
+        $ps = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
+        try {
+            $r = Process::path($this->baseDir())->timeout(600)
+                ->env(getenv('WSL_INTEROP') ? [] : ['WSL_INTEROP' => '/run/WSL/1_interop'])
+                ->run([is_file($ps) ? $ps : 'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+                    $this->rutaWindows($this->baseDir().'/bajarAdjuntosNeteges.ps1'),
+                    '-Destino', $this->rutaWindows($this->baseDir().'/Base/Recibidos')]);
+            $lineas = array_filter(array_map('trim', explode("\n", $r->output())));
+            $nuevos = array_map(fn ($l) => '• '.basename(str_replace('\\', '/', substr($l, 9))), array_filter($lineas, fn ($l) => str_starts_with($l, 'GUARDADO|')));
+            $texto = $r->successful()
+                ? ($nuevos ? "Nuevos:\n".implode("\n", $nuevos) : 'No hay ficheros nuevos de Neteges en el correo.')
+                : '⚠️ No se ha podido leer el Outlook: '.trim($r->output()."\n".$r->errorOutput());
+            $res = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'neteges_cobros.py']);
+            $texto .= "\n\n".trim($res->output());
+        } catch (\Throwable $e) {
+            $texto = '⚠️ '.$e->getMessage();
+        }
+        $this->salida = "===== {$etiqueta} =====\n{$texto}";
+        $this->dispatch('proceso-terminado', mensaje: (str_contains($texto, '⚠️') ? '⚠️ ' : '✅ ').$etiqueta);
+        $this->cargarEstado();
     }
 
     /** Concilia los cobros de los extractos con Ventas (neteges_conciliar.py → Output/Conciliacion cobros Neteges.xlsx). */
