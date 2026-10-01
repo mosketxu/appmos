@@ -105,7 +105,7 @@
                                     @endif
                                     @break
                                 @case('proveedoressage')
-                                    @if ($lis['proveedores'] ?? null) subido el {{ $lis['proveedores'] }} @else <span class="text-gray-400">(todavía nada)</span> @endif
+                                    @if ($ev['listados_info']['proveedores'] ?? null) <b>{{ $ev['listados_info']['proveedores'] }}</b> @else <span class="text-gray-400">(todavía nada)</span> @endif
                                     <span class="text-gray-400">— el listado de proveedores tal como sale de SAGE (vale el último)</span>
                                     @break
                                 @case('ventas')
@@ -124,12 +124,14 @@
                                     @endif
                                     @break
                                 @case('clientessage')
-                                    @if ($lis['clientes'] ?? null) subido el {{ $lis['clientes'] }} @else <span class="text-gray-400">(todavía nada)</span> @endif
+                                    @if ($ev['listados_info']['clientes'] ?? null) <b>{{ $ev['listados_info']['clientes'] }}</b> @else <span class="text-gray-400">(todavía nada)</span> @endif
                                     <span class="text-gray-400">— el listado de clientes tal como sale de SAGE (vale el último)</span>
                                     @break
                                 @case('misclientes')
-                                    @if ($lis['mis clientes'] ?? null) subido el {{ $lis['mis clientes'] }} @else <span class="text-gray-400">(todavía nada)</span> @endif
-                                    <span class="text-gray-400">— el tuyo: vale el último y manda sobre Clientes SAGE (solo «Cuenta a mano» del Excel de Ventas manda más)</span>
+                                    @if ($ev['listados_info']['mis clientes'] ?? null) <b>{{ $ev['listados_info']['mis clientes'] }}</b>
+                                        @if ($ev['avisos_mis_clientes'] ?? 0) <span class="font-semibold text-red-700" title="Pestaña Clientes del Excel de Ventas: «⚠️ Mis clientes dice…»">· ⚠️ {{ $ev['avisos_mis_clientes'] }} cuentas distintas de las del fichero de ventas</span> @endif
+                                    @else <span class="text-gray-400">(todavía nada)</span> @endif
+                                    <span class="text-gray-400">— el tuyo: vale el último; manda sobre Clientes SAGE (por encima solo «Cuenta a mano» y la cuenta que trae el fichero de ventas)</span>
                                     @break
                                 @case('remesas')
                                     @if ($remesas)
