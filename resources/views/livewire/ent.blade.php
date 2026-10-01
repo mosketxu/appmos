@@ -223,6 +223,11 @@
                     <x-jet-input-error for="cuentacontable" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
+                    <x-jet-label for="codigo_cliente" >{{ __('Cód. Cliente') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.codigo_cliente" type="text" id="codigo_cliente" maxlength="20" class="w-full" title="Código de cliente (no es la cuenta contable)"/>
+                    <x-jet-input-error for="codigo_cliente" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="referenciacliente" >{{ __('Ref.Cli') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.referenciacliente" type="text" id="referenciacliente" name="referenciacliente" :value="old('referenciacliente')" class="w-full"/>
                     <x-jet-input-error for="referenciacliente" class="mt-2" />

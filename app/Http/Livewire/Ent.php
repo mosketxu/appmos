@@ -72,6 +72,7 @@ class Ent extends Component
             'entidad.mail_peticion'=>'nullable',
             'entidad.mail_peticion_cc'=>'nullable|max:500',
             'entidad.cuentacontable'=>'numeric|nullable',
+            'entidad.codigo_cliente'=>'nullable|max:20',
         ];
     }
 
@@ -174,6 +175,7 @@ class Ent extends Component
             'mail_peticion'=>$this->entidad['mail_peticion'],
             'mail_peticion_cc'=>$this->entidad['mail_peticion_cc'],
             'cuentacontable'=>$this->entidad['cuentacontable'],
+            'codigo_cliente'=>$this->entidad['codigo_cliente'] ?? null,
             ]
         );
         if(!($this->entidad['id'] ?? null)){

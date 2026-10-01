@@ -36,6 +36,10 @@ Route::get('/', function () {
 Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     Route::get('/dashboard', function () {return redirect()->route('entidades');})->name('dashboard');
 
+    // Contraseña nueva obligatoria (users.debe_cambiar_password, lo comprueba el middleware activo)
+    Route::get('/cambiar-password', [\App\Http\Controllers\CambiarPasswordController::class, 'show'])->name('password.cambiar.form');
+    Route::post('/cambiar-password', [\App\Http\Controllers\CambiarPasswordController::class, 'update'])->name('password.cambiar');
+
     // Panel de control: solo Admin
     Route::middleware('role:Admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/usuarios', function () {return view('admin.usuarios');})->name('usuarios');

@@ -100,6 +100,8 @@ class Usuarios extends Component
             $u->activo = $this->activo;
             if ($this->password !== '') {
                 $u->password = Hash::make($this->password);
+                // La que pone el Admin es provisional: al entrar tendrá que cambiarla (salvo que sea él mismo)
+                $u->debe_cambiar_password = $u->id !== auth()->id();
             } elseif (! $u->exists) {
                 $u->password = Hash::make(Str::random(40));
             }
