@@ -292,6 +292,15 @@ class Procesos extends Component
                 'soportaReal' => true,
                 'ayuda' => 'Prepara asiento nóminas y personal de Anaplan.',
             ],
+            // 2026-10-01: facturas semanales de las tiendas para el plugin de SAGE
+            // (pestaña Emitidas), desde las hojas FIS de Ctrol Dinamico. Python.
+            'facturas_emitidas' => [
+                'label' => 'Facturas emitidas',
+                'script' => 'FacturasEmitidas/facturasEmitidas.py',
+                'python' => true,
+                'soportaReal' => true,
+                'ayuda' => 'Facturas semanales de cada tienda para el plugin de SAGE.',
+            ],
             'adyen' => [
                 'label' => 'Adyen',
                 'script' => 'adyenReparto.js',
@@ -429,7 +438,11 @@ class Procesos extends Component
         $todoOk = true;
         foreach ($scripts as $script) {
             $windows = ! empty($p['windows']);
-            $args = $windows ? $this->windowsCmd($script, [$mm]) : $this->nodeCmd($script, [$mm]);
+            $args = match (true) {
+                $windows => $this->windowsCmd($script, [$mm]),
+                ! empty($p['python']) => ['python3', $script, $mm],
+                default => $this->nodeCmd($script, [$mm]),
+            };
             if ($p['soportaReal']) {
                 $args[] = '--real'; // siempre real (ya no hay check "Modo real")
             }
