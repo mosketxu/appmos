@@ -116,11 +116,17 @@ class ProcesosMensuales extends Component
         }
     }
 
+    /** Destinatarios: los correos de emailadm de la entidad (varios separados por ; o ,). */
+    public static function destinatarios(?string $emailadm): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/[;,\s]+/', (string) $emailadm))));
+    }
+
     protected function empresas()
     {
         return Entidad::withoutGlobalScopes()
             ->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'emailgral', 'mail_peticion_check', 'mail_peticion']);
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'mail_peticion_check', 'mail_peticion']);
     }
 
     /** Solo se toca una empresa que gestiona el usuario. */

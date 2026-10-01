@@ -76,7 +76,13 @@
                                 {{ $e->entidad }}
                             </label>
                             @if ($e->alias && $e->alias !== $e->entidad) <span class="text-xs text-gray-400">({{ $e->alias }})</span> @endif
-                            <span class="text-xs text-gray-500">✉ {{ $e->emailadm ?: ($e->emailgral ?: 'sin correo') }}</span>
+                            @php $para = \App\Http\Livewire\Contabilidad\ProcesosMensuales::destinatarios($e->emailadm); @endphp
+                            @forelse ($para as $correo)
+                                <span class="px-2 py-0.5 text-xs rounded-full {{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'text-gray-700 bg-gray-100' : 'text-red-800 bg-red-100' }}"
+                                      title="{{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'Email Adm de la entidad' : 'No parece un correo válido' }}">✉ {{ $correo }}</span>
+                            @empty
+                                <span class="px-2 py-0.5 text-xs text-red-800 bg-red-100 rounded-full" title="Se pone en la ficha de la entidad, campo Email Adm">⚠ sin Email Adm</span>
+                            @endforelse
                             @if (isset($enviados[$e->id]))
                                 <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}</span>
                             @endif

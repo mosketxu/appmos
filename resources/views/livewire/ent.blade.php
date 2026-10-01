@@ -47,7 +47,7 @@
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="emailadm">{{ __('Email Adm') }}</x-jet-label>
-                    <x-jet-input  wire:model.defer="entidad.emailadm" type="text" id="emailadm" name="emailadm" :value="old('emailadm')" class="w-full"/>
+                    <x-jet-input  wire:model.defer="entidad.emailadm" type="text" id="emailadm" name="emailadm" :value="old('emailadm')" class="w-full" maxlength="500" placeholder="uno@x.com; otro@x.com" title="Varios separados por ; (a ellos va la petición de documentación)"/>
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="web">{{ __('Web') }}</x-jet-label>
