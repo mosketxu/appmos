@@ -102,6 +102,10 @@ class ProcesosMensuales extends Component
             $this->checks[$e->id] = (bool) $e->mail_peticion_check;
             $this->idiomas[$e->id] = $e->idioma === 'EN' ? 'EN' : 'ES';
             $this->asuntos[$e->id] = (string) ($e->mail_peticion_asunto ?? $this->plantillasAsunto[$this->idiomas[$e->id]] ?? '');
+            // Sin texto propio guardado: por defecto la plantilla de su idioma (no hace falta cargarla)
+            if (trim($this->textos[$e->id]) === '') {
+                $this->textos[$e->id] = str_replace('{empresa}', $e->entidad, $this->plantillas[$this->idiomas[$e->id]] ?? '');
+            }
         }
         $this->periodo = now()->subMonthNoOverflow()->format('Y-m');
         $this->cargarAhora();
@@ -347,6 +351,10 @@ class ProcesosMensuales extends Component
             if ($e->mail_peticion_asunto === null) {
                 $this->asuntos[$e->id] = $this->plantillasAsunto[$valor] ?? '';
             }
+            // Si no tiene texto propio guardado, el texto pasa a la plantilla del nuevo idioma
+            if (blank($e->mail_peticion)) {
+                $this->textos[$e->id] = str_replace('{empresa}', $e->entidad, $this->plantillas[$valor] ?? '');
+            }
         }
         $e->save();
     }
@@ -408,7 +416,7 @@ class ProcesosMensuales extends Component
                 'cc' => implode('; ', $c['cc']), 'asunto' => $c['asunto'], 'texto' => $c['texto']]);
             try {
                 GraphMail::enviar($de, $c['para'], $c['cc'], $c['asunto'], $c['texto']);
-                $fila->fill(['enviado_at' => now(), 'enviar_ahora' => false, 'error' => null])->save();
+                $fila->fill(['enviado_at' => now(), 'enviar_ahora' => false, 'error' => null, 'html' => GraphMail::html($c['texto'])])->save();
                 $this->ahora[$c['id']] = false;
                 $ok++;
             } catch (\Throwable $ex) {
@@ -434,7 +442,10 @@ class ProcesosMensuales extends Component
         }
         $e = Entidad::withoutGlobalScopes()->find($id);
         $e->mail_peticion_check = (bool) ($this->checks[$id] ?? false);
-        $e->mail_peticion = trim($this->textos[$id] ?? '') === '' ? null : $this->textos[$id];
+        $plantilla = str_replace('{empresa}', $e->entidad, $this->plantillas[$this->idiomas[$id] ?? 'ES'] ?? '');
+        $t = (string) ($this->textos[$id] ?? '');
+        // Vacío o igual a la plantilla = sin texto propio (sigue a la plantilla)
+        $e->mail_peticion = (trim($t) === '' || trim($t) === trim($plantilla)) ? null : $t;
         $e->mail_peticion_cc = implode('; ', self::destinatarios($this->ccs[$id] ?? '')) ?: null;
         $this->ccs[$id] = (string) $e->mail_peticion_cc;
         $e->save();
@@ -465,6 +476,9 @@ class ProcesosMensuales extends Component
             'puedeEditar' => auth()->user()->can('entidades.editar'),
             'nAhora' => count(array_filter($this->ahora)),
             'graphOk' => GraphMail::configurado(),
+            // Correos ya enviados de la empresa seleccionada (todos los periodos), para verlos
+            'historial' => $this->seleccionada ? MailEnviado::with('user:id,name,email')->where('proceso', $this->proceso)
+                ->where('entidad_id', $this->seleccionada)->whereNotNull('enviado_at')->orderByDesc('enviado_at')->get() : collect(),
             'remitente' => $this->remitente(),
             // Último envío de cada empresa en el periodo
             'enviados' => MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)

@@ -34,7 +34,24 @@ class GraphMail
         });
     }
 
-    /** Envía un correo de texto desde $de. Si GRAPH_REDIRECT está puesto, todo va a esa dirección (pruebas). */
+    /**
+     * Pasa el texto a HTML con la firma de Suma: {logo} (o, si no está, justo debajo de la línea
+     * «Suma Apoyo Empresarial SL») se cambia por el logo incrustado (cid:logo_suma), como en Outlook.
+     */
+    public static function html(string $texto): string
+    {
+        if (! str_contains($texto, '{logo}')) {
+            $texto = preg_match('/^Suma Apoyo Empresarial S\.?L\.?\s*$/mi', $texto)
+                ? preg_replace('/^(Suma Apoyo Empresarial S\.?L\.?)\s*$/mi', "$1\n{logo}", $texto, 1)
+                : $texto."\n\n{logo}";
+        }
+        $h = nl2br(e($texto), false);
+        $h = preg_replace('/www\.sumaempresa\.com/', '<a href="https://www.sumaempresa.com">www.sumaempresa.com</a>', $h, 1);
+        $logo = '<img src="cid:logo_suma" alt="Suma Apoyo Empresarial S.L." width="118" height="71" style="display:block;margin-top:6px;border:0;">';
+        return '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'.str_replace('{logo}', $logo, $h).'</div>';
+    }
+
+    /** Envía un correo desde $de (HTML con el logo de Suma). Si GRAPH_REDIRECT está puesto, todo va a esa dirección (pruebas). */
     public static function enviar(string $de, array $para, array $cc, string $asunto, string $texto): void
     {
         if (! self::configurado()) {
@@ -48,9 +65,17 @@ class GraphMail
         $r = Http::withToken(self::token())->timeout(60)->post('https://graph.microsoft.com/v1.0/users/'.rawurlencode($de).'/sendMail', [
             'message' => [
                 'subject' => $asunto,
-                'body' => ['contentType' => 'Text', 'content' => $texto],
+                'body' => ['contentType' => 'HTML', 'content' => self::html($texto)],
                 'toRecipients' => $dir($para),
                 'ccRecipients' => $dir($cc),
+                'attachments' => [[
+                    '@odata.type' => '#microsoft.graph.fileAttachment',
+                    'name' => 'logo_suma.gif',
+                    'contentType' => 'image/gif',
+                    'contentBytes' => base64_encode(file_get_contents(resource_path('mail/logo_suma.gif'))),
+                    'isInline' => true,
+                    'contentId' => 'logo_suma',
+                ]],
             ],
             'saveToSentItems' => true,
         ]);

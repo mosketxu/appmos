@@ -88,7 +88,7 @@
                                         @else <span class="text-gray-600">{{ implode('; ', $c['para']) }}{{ $c['cc'] ? ' · CC '.implode('; ', $c['cc']) : '' }}</span> @endif
                                     </summary>
                                     <div class="mt-2 text-xs"><b>Asunto:</b> {{ $c['asunto'] }}</div>
-                                    <pre class="p-2 mt-1 font-sans text-xs whitespace-pre-wrap rounded bg-gray-50">{{ $c['texto'] }}</pre>
+                                    <div class="p-2 mt-1 text-xs rounded bg-gray-50">{!! str_replace('cid:logo_suma', asset('img/logo_suma.gif'), \App\Support\GraphMail::html($c['texto'])) !!}</div>
                                 </details>
                             @empty
                                 <p class="text-sm italic text-gray-400">No hay ninguna marcada para enviar ahora.</p>
@@ -258,7 +258,7 @@
                                 {{-- Cómo saldrá: {periodo} (y {empresa} si quedara) ya sustituidos --}}
                                 <details class="text-xs">
                                     <summary class="text-gray-500 cursor-pointer">👁 Ver cómo saldrá ({{ $pt }})</summary>
-                                    <pre class="p-3 mt-1 font-sans whitespace-pre-wrap border border-gray-200 rounded-md bg-gray-50">{{ str_replace(['{periodo}', '{empresa}'], [$pt, $sel->entidad], $textos[$sel->id] ?? '') }}</pre>
+                                    <div class="p-3 mt-1 border border-gray-200 rounded-md bg-gray-50">{!! str_replace('cid:logo_suma', asset('img/logo_suma.gif'), \App\Support\GraphMail::html(str_replace(['{periodo}', '{empresa}'], [$pt, $sel->entidad], $textos[$sel->id] ?? ''))) !!}</div>
                                 </details>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <button type="button" wire:click="aplicarPlantilla({{ $sel->id }})" class="px-3 py-1 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>
@@ -271,6 +271,28 @@
                                 <p class="p-4 text-sm italic text-center text-gray-400 border border-dashed rounded-md">No se le envía el correo (check desmarcado).</p>
                             @endif
                         </div>
+                        {{-- Correos ya enviados a esta empresa --}}
+                        @if ($historial->isNotEmpty())
+                            <div class="px-4 pb-4">
+                                <h3 class="mb-1 text-sm font-semibold text-gray-700">✅ Enviados ({{ $historial->count() }})</h3>
+                                @foreach ($historial as $m)
+                                    <details wire:key="env-{{ $m->id }}" class="p-2 mb-1 text-xs border border-green-200 rounded bg-green-50">
+                                        <summary class="cursor-pointer">
+                                            {{ $m->enviado_at->format('d/m/Y H:i') }} · {{ $m->periodo }} · {{ $m->asunto }}
+                                        </summary>
+                                        <div class="mt-1 text-gray-600">
+                                            De: {{ $m->user->email ?? '—' }} · Para: {{ $m->destinatarios }}{{ $m->cc ? ' · CC: '.$m->cc : '' }}
+                                        </div>
+                                        @if ($m->html)
+                                            <div class="p-2 mt-1 bg-white rounded">{!! str_replace('cid:logo_suma', asset('img/logo_suma.gif'), $m->html) !!}</div>
+                                        @else
+                                            {{-- Enviado en texto, sin logo (los primeros, 1-oct-2026) --}}
+                                            <pre class="p-2 mt-1 font-sans whitespace-pre-wrap bg-white rounded">{{ $m->texto }}</pre>
+                                        @endif
+                                    </details>
+                                @endforeach
+                            </div>
+                        @endif
                     @else
                         <div class="p-10 text-sm italic text-center text-gray-400">Selecciona una empresa de la lista para ver su correo.</div>
                     @endif

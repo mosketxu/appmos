@@ -10,7 +10,7 @@ class MailEnviado extends Model
     protected $table = 'mails_enviados';
 
     protected $fillable = ['proceso', 'entidad_id', 'periodo', 'user_id', 'enviar_ahora', 'idioma',
-        'destinatarios', 'cc', 'asunto', 'texto', 'enviado_at', 'error'];
+        'destinatarios', 'cc', 'asunto', 'texto', 'html', 'enviado_at', 'error'];
 
     protected $casts = [
         'enviar_ahora' => 'boolean',
