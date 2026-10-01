@@ -33,7 +33,7 @@
         </select>
         {{-- Saltos a cada zona de la pantalla (pedido 2026-09-25) --}}
         <span class="flex flex-wrap items-center text-sm font-normal gap-x-2 gap-y-1">
-            @foreach (['procesos-mes' => 'Procesos', 'rentas-variables' => 'Rentas Variables', 'pagos-fin-mes' => 'Pagos fin de mes'] as $ancla => $txt)
+            @foreach (['procesos-mes' => 'Procesos', 'rentas-variables' => 'Rentas Variables', 'cash-in-store' => 'Cash in store', 'pagos-fin-mes' => 'Pagos fin de mes'] as $ancla => $txt)
                 <a href="#{{ $ancla }}"
                    onclick="event.preventDefault(); document.getElementById('{{ $ancla }}').scrollIntoView({behavior: 'smooth', block: 'start'})"
                    class="px-2 py-1 text-indigo-700 border border-indigo-200 rounded-md bg-indigo-50 hover:bg-indigo-100">{{ $txt }}</a>
@@ -191,6 +191,71 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    {{-- Cash in store (pedido 2026-10-01): efectivo de cada tienda al cierre del
+         último día del mes del título. monthlyFIQ/cashInStore.py --}}
+    <div id="cash-in-store" class="p-4 bg-white border rounded-lg shadow">
+        <h2 class="text-lg font-semibold text-gray-900">Cash in store · cierre de {{ \Carbon\Carbon::create(2026, $mes, 1)->locale('es')->monthName }}</h2>
+        <p class="mt-1 mb-3 text-xs text-gray-500">«Buscar» lee en Outlook los correos de las tiendas desde el último día del mes, propone Cash (lo que va a Prosegur) y Petty Cash (lo que se queda para cambio y fondo) y guarda el correo como .msg en Cash End month\{{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}. Los importes se pueden corregir a mano. A las que no lo han mandado, «Pedir» les manda el correo. «Grabar» lo escribe en la hoja «Cash End Month» de Ctrol Dinamico.</p>
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+            <x-button.secondary wire:click="buscarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore">
+                <span wire:loading.remove wire:target="buscarCashInStore">🔎 Buscar en Outlook</span>
+                <span wire:loading wire:target="buscarCashInStore">⏳ Buscando…</span>
+            </x-button.secondary>
+            @if ($this->cisFaltan)
+                <x-button.secondary wire:click="pedirCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
+                    onclick="return confirm('¿Mandar YA el correo pidiendo el efectivo a {{ implode(', ', $this->cisFaltan) }}?')">
+                    ✉ Pedir a las que faltan ({{ implode(', ', $this->cisFaltan) }})
+                </x-button.secondary>
+            @endif
+            @if ($cisFilas)
+                <x-button.primary wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
+                    onclick="return confirm('¿Escribir estos importes en Cash End Month de Ctrol Dinamico? (cierra antes el Excel si lo tienes abierto)')">
+                    💾 Grabar en Ctrol Dinamico
+                </x-button.primary>
+            @endif
+            <span wire:loading wire:target="pedirCashInStore,grabarCashInStore" class="text-sm text-gray-500">⏳ …</span>
+        </div>
+        @if ($cisFilas)
+            <table class="w-full mt-3 text-sm text-gray-800 border border-collapse border-gray-300">
+                <tr class="text-xs text-left text-gray-600 bg-gray-50">
+                    <th class="px-2 py-1 border">Tienda</th>
+                    <th class="px-2 py-1 border">Cash (Prosegur)</th>
+                    <th class="px-2 py-1 border">Petty Cash</th>
+                    <th class="px-2 py-1 border">Correo</th>
+                </tr>
+                @foreach ($cisFilas as $t => $r)
+                    <tr wire:key="cis-{{ $t }}" class="align-top {{ $r['encontrado'] ? '' : 'bg-red-50' }}">
+                        <td class="px-2 py-1 font-semibold border">{{ $t }}</td>
+                        <td class="px-2 py-1 border">
+                            <input type="text" wire:model.blur="cisFilas.{{ $t }}.cash" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:100px">
+                        </td>
+                        <td class="px-2 py-1 border">
+                            <input type="text" wire:model.blur="cisFilas.{{ $t }}.petty" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:90px">
+                            @if ($r['anterior'] !== '' && $r['petty'] !== '' && $r['anterior'] !== $r['petty'])
+                                <div class="text-xs text-yellow-700">mes anterior {{ $r['anterior'] }}</div>
+                            @endif
+                        </td>
+                        <td class="px-2 py-1 text-xs border">
+                            @if ($r['encontrado'])
+                                <div class="font-medium">«{{ $r['asunto'] }}» · {{ $r['recibido'] }}</div>
+                                <pre class="mt-1 text-xs text-gray-600 whitespace-pre-wrap" style="max-height:8rem;overflow:auto">{{ $r['texto'] }}</pre>
+                            @else
+                                <span class="text-red-700">Sin dato: no ha mandado el efectivo → «Pedir»</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+        @if (! empty($resultados['cis']))
+            <div class="flex flex-col mt-2 gap-y-1">
+                @foreach ($resultados['cis'] as $r)
+                    <x-contabilidad.resultado-fichero :r="$r" />
+                @endforeach
+            </div>
+        @endif
     </div>
 
     {{-- Correo mensual a Plein con los cargos de fin/principio de mes en BBVA

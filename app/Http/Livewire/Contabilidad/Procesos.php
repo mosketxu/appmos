@@ -817,6 +817,115 @@ class Procesos extends Component
         ];
     }
 
+    // ---- Cash in store (pedido 2026-10-01) ----------------------------------
+    // Efectivo de cada tienda al cierre del último día del mes ($mes), separado
+    // en Cash (lo que va a Prosegur) y Petty Cash (se queda para cambio y fondo).
+    // "Buscar" lo saca de los correos de las tiendas en Outlook y guarda el .msg
+    // en Cash End month\MM; a las que no lo han mandado se les pide; "Grabar"
+    // lo escribe en la hoja "Cash End Month" de Ctrol Dinamico. Script:
+    // monthlyFIQ/cashInStore.py.
+
+    /** tienda => ['cash','petty','asunto','recibido','texto','encontrado','anterior','msg'] */
+    public array $cisFilas = [];
+
+    public function updatedMes(): void
+    {
+        $this->cisFilas = [];
+    }
+
+    protected function cisMm(): string
+    {
+        return str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+    }
+
+    protected function cisEur(?float $v): string
+    {
+        return $v === null ? '' : number_format($v, 2, ',', '.');
+    }
+
+    /** "2219,80", "2.219,80", "2219.80", "1.080" → float; vacío → null. */
+    protected function cisNum(string $raw): ?float
+    {
+        $t = str_replace([' ', '€'], '', trim($raw));
+        if ($t === '') {
+            return null;
+        }
+        if (str_contains($t, ',')) {
+            $t = str_replace(',', '.', str_replace('.', '', $t));
+        } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $t)) {
+            $t = str_replace('.', '', $t);
+        }
+        return is_numeric($t) ? round((float) $t, 2) : null;
+    }
+
+    public function buscarCashInStore(): void
+    {
+        $mm = $this->cisMm();
+        $etiqueta = "Cash in store {$mm} · buscar en Outlook";
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        // windowsEnv(): el script llama a powershell.exe (Outlook) y bajo Apache necesita WSL_INTEROP.
+        $this->ejecutarScript(['python3', 'cashInStore.py', (string) $this->mes, '--buscar'], 300, $etiqueta, null, $this->windowsEnv());
+        $this->salida = preg_replace('/^CASH_JSON:.*(\r?\n)?/m', '', $this->salida);
+        $fichero = $this->scriptDir() . "/_cashInStore_{$mm}.json";
+        $datos = is_file($fichero) ? json_decode((string) file_get_contents($fichero), true) : null;
+        if (! is_array($datos)) {
+            return;
+        }
+        $this->cisFilas = [];
+        foreach ($datos as $tienda => $r) {
+            $this->cisFilas[$tienda] = [
+                'cash' => $this->cisEur($r['cash'] ?? null),
+                'petty' => $this->cisEur($r['petty'] ?? null),
+                'asunto' => (string) ($r['asunto'] ?? ''),
+                'recibido' => (string) ($r['recibido'] ?? ''),
+                'texto' => (string) ($r['texto'] ?? ''),
+                'encontrado' => ! empty($r['lineas']),
+                'anterior' => $this->cisEur($r['anterior'][1] ?? null),
+                'msg' => (string) ($r['msg'] ?? ''),
+            ];
+        }
+    }
+
+    public function getCisFaltanProperty(): array
+    {
+        return array_keys(array_filter($this->cisFilas, fn ($r) => ! $r['encontrado']));
+    }
+
+    /** Correo de petición (Graph, envío directo) a las tiendas sin dato. */
+    public function pedirCashInStore(): void
+    {
+        $faltan = $this->cisFaltan;
+        $etiqueta = "Cash in store {$this->cisMm()} · pedir a " . implode(', ', $faltan);
+        if (! $faltan) {
+            $this->salida .= "\n\n⚠️ {$etiqueta}: no falta ninguna tienda (pulsa antes «Buscar»).";
+            return;
+        }
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->ejecutarScript(['python3', 'cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 240, $etiqueta);
+    }
+
+    /** Escribe la fila del mes en "Cash End Month" de Ctrol Dinamico. */
+    public function grabarCashInStore(): void
+    {
+        $datos = [];
+        foreach ($this->cisFilas as $tienda => $r) {
+            $cash = $this->cisNum((string) $r['cash']);
+            $petty = $this->cisNum((string) $r['petty']);
+            if ($cash !== null || $petty !== null) {
+                $datos[$tienda] = [$cash, $petty];
+            }
+        }
+        $etiqueta = "Cash in store {$this->cisMm()} · grabar en Ctrol Dinamico";
+        if (! $datos) {
+            $this->salida .= "\n\n⚠️ {$etiqueta}: no hay importes que grabar.";
+            return;
+        }
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->resultados['cis'] = [];
+        $this->anexarResultados('cis', $this->ejecutarScript(
+            ['python3', 'cashInStore.py', (string) $this->mes, '--grabar', '--datos', json_encode($datos), '--real'], 120, $etiqueta));
+    }
+
     public function render()
     {
         return view('livewire.contabilidad.procesos');
