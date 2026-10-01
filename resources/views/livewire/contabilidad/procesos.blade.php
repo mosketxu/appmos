@@ -114,6 +114,9 @@
                                             💾 Grabar
                                         </button>
                                     @endif
+                                    @if ($cisFilas)
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="$toggle('cisAbierto')">{{ $cisAbierto ? '▴ Plegar' : '▾ Ver importes' }}</button>
+                                    @endif
                                     <span wire:loading wire:target="pedirCashInStore,grabarCashInStore" class="text-xs text-gray-500">⏳…</span>
                                     @foreach ($resultados['cis'] ?? [] as $r)
                                         <x-contabilidad.resultado-fichero :r="$r" />
@@ -141,7 +144,7 @@
                             </td>
                         @endforeach
                     </tr>
-                    @if ($id === 'cash_in_store' && $cisFilas)
+                    @if ($id === 'cash_in_store' && $cisFilas && $cisAbierto)
                         <tr wire:key="chk-cis-detalle">
                             <td colspan="{{ 2 + count($this->checklistMeses) }}" class="px-2 pb-2">
                                 <table class="text-sm text-gray-800 border border-collapse border-gray-300">

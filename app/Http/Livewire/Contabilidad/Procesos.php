@@ -840,6 +840,9 @@ class Procesos extends Component
     /** tienda => ['cash','petty','asunto','recibido','texto','encontrado','anterior','msg'] */
     public array $cisFilas = [];
 
+    /** ¿Se ve la tabla de importes debajo de su fila? (botón Plegar / Ver importes) */
+    public bool $cisAbierto = true;
+
     public function updatedMes(): void
     {
         $this->cisFilas = [];
@@ -884,6 +887,7 @@ class Procesos extends Component
             return;
         }
         $this->cisFilas = [];
+        $this->cisAbierto = true;
         foreach ($datos as $tienda => $r) {
             $this->cisFilas[$tienda] = [
                 'cash' => $this->cisEur($r['cash'] ?? null),
