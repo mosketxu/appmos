@@ -49,7 +49,7 @@
                 @endif
             </div>
 
-            <div class="flex flex-wrap items-center gap-3 p-3 border border-amber-200 rounded-lg bg-amber-50">
+            <div class="flex flex-wrap items-center gap-3 p-3 border border-yellow-200 rounded-lg bg-yellow-50">
                 <label class="text-sm font-semibold text-gray-800">Periodo
                     <input type="month" wire:model.live="periodo" class="py-1 ml-1 text-sm border-gray-300 rounded-md">
                 </label>
@@ -104,7 +104,7 @@
                                         </td>
                                         <td class="px-2 py-1 text-center" x-on:click.stop>
                                             <input type="checkbox" wire:model.live="ahora.{{ $e->id }}" title="🚀 Enviar ahora ({{ $periodo }})"
-                                                   @disabled(! ($checks[$e->id] ?? false)) class="border-gray-300 rounded text-amber-600">
+                                                   @disabled(! ($checks[$e->id] ?? false)) class="border-gray-300 rounded text-yellow-600">
                                         </td>
                                         <td class="px-2 py-1">
                                             <span class="{{ $seleccionada === $e->id ? 'font-semibold text-gray-900' : '' }} {{ ($activas[$e->id] ?? false) ? '' : 'line-through' }}" title="{{ $e->entidad }}">{{ $e->entidad }}</span>
@@ -127,7 +127,7 @@
                                         </td>
                                         <td class="px-2 py-1 text-center" x-on:click.stop>
                                             <button type="button" wire:click="siguienteCiclo({{ $e->id }})" title="Clic: pasa al siguiente ciclo"
-                                                    class="w-24 px-2 py-0.5 text-xs border rounded-md {{ $cicloOk ? 'border-gray-300 hover:bg-gray-100' : 'border-amber-300 bg-amber-50 text-amber-800' }}">{{ $nombresCiclo[(int) $cicloId] ?? 'Sin definir' }}</button>
+                                                    class="w-24 px-2 py-0.5 text-xs border rounded-md {{ $cicloOk ? 'border-gray-300 hover:bg-gray-100' : 'text-yellow-800 border-yellow-400 bg-yellow-50' }}">{{ $nombresCiclo[(int) $cicloId] ?? 'Sin definir' }}</button>
                                         </td>
                                         <td class="px-2 py-1 whitespace-nowrap">
                                             @if (isset($enviados[$e->id])) <span title="Enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}">✅</span> @endif
@@ -169,7 +169,7 @@
                                 @empty
                                     <span class="px-2 py-0.5 text-red-800 bg-red-100 rounded-full" title="Se pone en la ficha de la entidad, campo Email Adm">⚠ sin Email Adm</span>
                                 @endforelse
-                                <span class="px-2 py-0.5 rounded-full {{ $cicloOk ? 'text-indigo-800 bg-indigo-50' : 'text-amber-800 bg-amber-100' }}"
+                                <span class="px-2 py-0.5 rounded-full {{ $cicloOk ? 'text-indigo-800 bg-indigo-50' : 'text-yellow-800 bg-yellow-100' }}"
                                       title="{{ $cicloOk ? 'Ciclo de impuestos de la entidad' : 'Ciclo de impuestos sin definir (o anual/puntual) en la entidad: se pone el mes' }}">🗓 {{ $pt }}{{ $cicloOk ? '' : ' ⚠' }}</span>
                             </div>
                             @if ($checks[$sel->id] ?? false)
@@ -182,8 +182,8 @@
                                 <div class="flex flex-wrap items-center gap-2">
                                     <button type="button" wire:click="aplicarPlantilla({{ $sel->id }})" class="px-3 py-1 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>
                                     <button type="button" wire:click="guardar({{ $sel->id }})" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">Guardar</button>
-                                    <label class="inline-flex items-center gap-1 px-2 py-1 ml-auto text-sm font-semibold rounded {{ ($ahora[$sel->id] ?? false) ? 'bg-amber-200 text-amber-900' : 'text-gray-500' }}">
-                                        <input type="checkbox" wire:model.live="ahora.{{ $sel->id }}" class="border-gray-300 rounded text-amber-600"> 🚀 Enviar ahora
+                                    <label class="inline-flex items-center gap-1 px-2 py-1 ml-auto text-sm font-semibold rounded {{ ($ahora[$sel->id] ?? false) ? 'bg-yellow-200 text-yellow-900' : 'text-gray-500' }}">
+                                        <input type="checkbox" wire:model.live="ahora.{{ $sel->id }}" class="border-gray-300 rounded text-yellow-600"> 🚀 Enviar ahora
                                     </label>
                                 </div>
                             @else
