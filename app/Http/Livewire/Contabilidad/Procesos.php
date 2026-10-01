@@ -1053,6 +1053,9 @@ class Procesos extends Component
                 $d['marcas'][$mes][$id] = $marca;
             } else {
                 unset($d['marcas'][$mes][$id]);
+                if (empty($d['marcas'][$mes])) {
+                    unset($d['marcas'][$mes]);
+                }
             }
             ksort($d['marcas']);
             return $d;

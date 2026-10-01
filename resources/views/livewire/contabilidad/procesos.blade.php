@@ -131,15 +131,17 @@
                                         <x-contabilidad.resultado-fichero :r="$r" />
                                     @endforeach
                                 </div>
-                            @elseif ($auto === 'pendiente')
-                                <span class="text-xs text-gray-400">pendiente de montar</span>
-                            @elseif ($auto)
+                            @elseif ($auto && $auto !== 'pendiente')
                                 <button type="button" x-on:click="$dispatch('abrir-panel', '{{ $auto }}')" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50">abrir ↓</button>
                             @else
+                                {{-- manuales y los «pendiente de montar»: mientras tanto, se marcan a mano --}}
                                 @php $hecho = ($marcas[$mesSel][$id]['estado'] ?? '') === 'ok'; @endphp
                                 <button type="button" wire:click="marcarMesActual('{{ $id }}')" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" title="Marca (o desmarca) el check del mes {{ $this->checklistMeses[$mesSel] }}">
                                     {{ $hecho ? '↺ Desmarcar' : '✓ Marcar' }}
                                 </button>
+                                @if ($auto === 'pendiente')
+                                    <span class="ml-1 text-xs text-gray-400">pendiente de montar</span>
+                                @endif
                             @endif
                         </td>
                         @foreach ($this->checklistMeses as $k => $n)
