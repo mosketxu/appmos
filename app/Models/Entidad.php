@@ -52,6 +52,7 @@ class Entidad extends Model
     public function cicloimp(){return $this->belongsTo(Ciclo::class, 'cicloimpuesto_id','id');}
     public function ciclofac(){return $this->belongsTo(Ciclo::class, 'ciclofacturacion_id','id');}
     public function conceptos(){return $this->hasMany(FacturacionConcepto::class);}
+    public function mailsEnviados(){return $this->hasMany(MailEnviado::class);}
 
     public function getStatusColorAttribute(){return ['0'=>['red','Baja'],'1'=>['green','Activo']][$this->estado] ?? ['gray',''];}
     public function getFacColorAttribute(){return ['0'=>['red','Baja'],'1'=>['green','Activo']][$this->facturar] ?? ['gray',''];}

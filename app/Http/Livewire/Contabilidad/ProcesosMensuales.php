@@ -3,6 +3,7 @@
 namespace App\Http\Livewire\Contabilidad;
 
 use App\Models\Entidad;
+use App\Models\MailEnviado;
 use App\Support\Accesos;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -19,6 +20,10 @@ use Livewire\Component;
  * el idioma (entidades.idioma: cambiarlo aquí lo cambia en la entidad) y el texto
  * entidades.mail_peticion, que parte de la plantilla de su idioma (tabla plantillas_mail,
  * ES / EN) y se personaliza. El check y el idioma se guardan al momento.
+ *
+ * Aunque tenga el check, solo se le enviará si está marcada «enviar ahora» para el
+ * periodo: es una fila pendiente (enviado_at null) de mails_enviados, que al enviar
+ * se queda como registro de lo enviado.
  *
  * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
  */
@@ -45,6 +50,12 @@ class ProcesosMensuales extends Component
     public array $plantillas = [];
     public bool $verPlantillas = false;
 
+    /** Mes al que se refiere la petición (AAAA-MM); por defecto, el anterior. */
+    public string $periodo = '';
+
+    /** id => enviar ahora (fila pendiente en mails_enviados para el periodo). */
+    public array $ahora = [];
+
     /** Por defecto solo las marcadas. */
     public bool $verNoMarcadas = false;
 
@@ -55,7 +66,54 @@ class ProcesosMensuales extends Component
             $this->checks[$e->id] = (bool) $e->mail_peticion_check;
             $this->idiomas[$e->id] = $e->idioma === 'EN' ? 'EN' : 'ES';
         }
+        $this->periodo = now()->subMonthNoOverflow()->format('Y-m');
         $this->cargarPlantillas();
+        $this->cargarAhora();
+    }
+
+    protected function cargarAhora(): void
+    {
+        $pendientes = MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
+            ->whereNull('enviado_at')->where('enviar_ahora', true)->pluck('entidad_id')->all();
+        $this->ahora = [];
+        foreach (array_keys($this->checks) as $id) {
+            $this->ahora[$id] = in_array($id, $pendientes);
+        }
+    }
+
+    public function updatedPeriodo(): void
+    {
+        if (! preg_match('/^\d{4}-\d{2}$/', $this->periodo)) {
+            $this->periodo = now()->subMonthNoOverflow()->format('Y-m');
+        }
+        $this->cargarAhora();
+    }
+
+    /** Marca o desmarca «enviar ahora» (crea o quita la fila pendiente del periodo). */
+    protected function ponerAhora(int $id, bool $valor): void
+    {
+        if (! $this->mia($id)) {
+            return;
+        }
+        $pendiente = MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
+            ->where('entidad_id', $id)->whereNull('enviado_at');
+        if ($valor) {
+            ($pendiente->first() ?? new MailEnviado(['proceso' => $this->proceso, 'periodo' => $this->periodo, 'entidad_id' => $id]))
+                ->fill(['enviar_ahora' => true, 'user_id' => auth()->id()])->save();
+        } else {
+            $pendiente->delete();
+        }
+        $this->ahora[$id] = $valor;
+    }
+
+    /** «Enviar ahora» en todas las que tienen el check (o quitarlo de todas). */
+    public function marcarTodasAhora(bool $valor): void
+    {
+        foreach ($this->checks as $id => $check) {
+            if ($check || ! $valor) {
+                $this->ponerAhora((int) $id, $valor);
+            }
+        }
     }
 
     protected function empresas()
@@ -122,12 +180,19 @@ class ProcesosMensuales extends Component
     /** El check y el idioma se guardan en la entidad en cuanto se cambian. */
     public function updated(string $propiedad, $valor): void
     {
-        if (! preg_match('/^(checks|idiomas)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
+        if (! preg_match('/^(checks|idiomas|ahora)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
+            return;
+        }
+        if ($m[1] === 'ahora') {
+            $this->ponerAhora((int) $m[2], (bool) $valor);
             return;
         }
         $e = Entidad::withoutGlobalScopes()->find((int) $m[2]);
         if ($m[1] === 'checks') {
             $e->mail_peticion_check = (bool) $valor;
+            if (! $valor) {
+                $this->ponerAhora($e->id, false);
+            }
         } elseif (isset(self::IDIOMAS[$valor])) {
             $e->idioma = $valor;
         }
@@ -161,6 +226,11 @@ class ProcesosMensuales extends Component
             'empresas' => $empresas,
             'marcadas' => count(array_filter($this->checks)),
             'total' => count($this->checks),
+            'nAhora' => count(array_filter($this->ahora)),
+            // Último envío de cada empresa en el periodo
+            'enviados' => MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
+                ->whereNotNull('enviado_at')->selectRaw('entidad_id, max(enviado_at) as ultimo')->groupBy('entidad_id')
+                ->pluck('ultimo', 'entidad_id')->all(),
         ]);
     }
 }

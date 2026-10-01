@@ -49,6 +49,15 @@
                 @endif
             </div>
 
+            <div class="flex flex-wrap items-center gap-3 p-3 border border-amber-200 rounded-lg bg-amber-50">
+                <label class="text-sm font-semibold text-gray-800">Periodo
+                    <input type="month" wire:model.live="periodo" class="py-1 ml-1 text-sm border-gray-300 rounded-md">
+                </label>
+                <span class="text-sm text-gray-700">🚀 Enviar ahora: <b>{{ $nAhora }}</b> (solo se envía a estas, aunque tengan el check)</span>
+                <button type="button" wire:click="marcarTodasAhora(true)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50">Marcar todas</button>
+                <button type="button" wire:click="marcarTodasAhora(false)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50">Desmarcar todas</button>
+            </div>
+
             <div class="flex flex-wrap items-center gap-3">
                 <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar empresa..." class="py-1 text-sm border-gray-300 rounded-md">
                 <label class="inline-flex items-center gap-1 text-sm text-gray-700">
@@ -68,6 +77,14 @@
                             </label>
                             @if ($e->alias && $e->alias !== $e->entidad) <span class="text-xs text-gray-400">({{ $e->alias }})</span> @endif
                             <span class="text-xs text-gray-500">✉ {{ $e->emailadm ?: ($e->emailgral ?: 'sin correo') }}</span>
+                            @if (isset($enviados[$e->id]))
+                                <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}</span>
+                            @endif
+                            @if ($checks[$e->id] ?? false)
+                                <label class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded {{ ($ahora[$e->id] ?? false) ? 'bg-amber-200 text-amber-900' : 'text-gray-500' }}">
+                                    <input type="checkbox" wire:model.live="ahora.{{ $e->id }}" class="border-gray-300 rounded text-amber-600"> 🚀 Enviar ahora
+                                </label>
+                            @endif
                             <div class="flex items-center gap-2 ml-auto">
                                 <select wire:model.live="idiomas.{{ $e->id }}" title="Idioma (se guarda en la entidad)" class="py-0.5 text-xs border-gray-300 rounded-md">
                                     @foreach ($idiomasDisponibles as $i => $nombre) <option value="{{ $i }}">{{ $i }}</option> @endforeach
