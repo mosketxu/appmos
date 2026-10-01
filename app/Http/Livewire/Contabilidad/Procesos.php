@@ -745,8 +745,13 @@ class Procesos extends Component
     /** Otro mes: el recordatorio cargado era del anterior. */
     public function updatedPfMes(): void
     {
+        // Lo de un mes no vale para otro: importes, recordatorio y enlaces fuera
+        // (el saldo de BBVA y el texto/destinatarios no son del mes: se quedan).
+        $this->pfIva = $this->pfSs = $this->pfNominas = $this->pfCargo = '';
         $this->pfRecFilas = [];
         $this->pfRecOriginal = '';
+        $this->pfRecSaldo = '';
+        unset($this->resultados['pf'], $this->resultados['pfRec']);
     }
 
     /** Lee de Outlook el correo de pagos de ese mes (y el último de su hilo) y carga sus filas. */
@@ -844,8 +849,15 @@ class Procesos extends Component
     /** ¿Se ve la tabla de importes debajo de su fila? (botón Plegar / Ver importes) */
     public bool $cisAbierto = true;
 
+    /**
+     * Otro mes: fuera todo lo que era del anterior (enlaces a ficheros resultado,
+     * importes de Cash in store...) y se carga lo que haya de este (pedido 2026-10-01:
+     * "al cambiar el mes no debería ver los importes, corrige esto en cualquier
+     * sitio que tenga memoria").
+     */
     public function updatedMes(): void
     {
+        $this->resultados = array_intersect_key($this->resultados, ['pf' => 1, 'pfRec' => 1]); // Pagos fin de mes tiene su propio mes
         $this->cargarCashInStore();
     }
 
@@ -973,11 +985,39 @@ class Procesos extends Component
         return $meses;
     }
 
+    /**
+     * Procesos en el orden de Alex: el que haya dejado arrastrando (⠿), guardado
+     * en el estado de OneDrive ('orden', compartido por los dos PCs); los que no
+     * estén ahí (procesos nuevos) van al final, en el orden de checklist.json.
+     */
     public function getChecklistProperty(): array
     {
         $f = $this->scriptDir() . '/checklist.json';
         $d = is_file($f) ? json_decode((string) file_get_contents($f), true) : null;
-        return $d['procesos'] ?? [];
+        $procesos = $d['procesos'] ?? [];
+        $orden = array_flip($this->leerChecklistEstado()['orden'] ?? []);
+        $pos = fn ($p, $i) => $orden[$p['id']] ?? (count($orden) + $i);
+        $conPos = [];
+        foreach ($procesos as $i => $p) {
+            $conPos[] = [$pos($p, $i), $p];
+        }
+        usort($conPos, fn ($a, $b) => $a[0] <=> $b[0]);
+        return array_column($conPos, 1);
+    }
+
+    /** Arrastrar ⠿: deja $id encima (o debajo) de $destino y guarda el orden. */
+    public function moverChecklist(string $id, string $destino, bool $debajo = false): void
+    {
+        $ids = array_column($this->checklist, 'id');
+        if ($id === $destino || ! in_array($id, $ids, true) || ! in_array($destino, $ids, true)) {
+            return;
+        }
+        $ids = array_values(array_diff($ids, [$id]));
+        array_splice($ids, array_search($destino, $ids, true) + ($debajo ? 1 : 0), 0, [$id]);
+        $this->escribirChecklistEstado(function (array $d) use ($ids) {
+            $d['orden'] = $ids;
+            return $d;
+        });
     }
 
     protected function checklistEstadoPath(): ?string
@@ -1008,18 +1048,26 @@ class Procesos extends Component
 
     protected function guardarChecklist(string $id, string $mes, ?array $marca): void
     {
+        $this->escribirChecklistEstado(function (array $d) use ($id, $mes, $marca) {
+            if ($marca) {
+                $d['marcas'][$mes][$id] = $marca;
+            } else {
+                unset($d['marcas'][$mes][$id]);
+            }
+            ksort($d['marcas']);
+            return $d;
+        });
+    }
+
+    /** Lee el estado de OneDrive, le aplica $cambio y lo escribe (atómico). */
+    protected function escribirChecklistEstado(callable $cambio): void
+    {
         $f = $this->checklistEstadoPath();
         if (! $f) {
-            $this->salida .= "\n\n⚠️ Checklist: no encuentro la carpeta Fashion 2026 de OneDrive; no se ha guardado la marca.";
+            $this->salida .= "\n\n⚠️ Checklist: no encuentro la carpeta Fashion 2026 de OneDrive; no se ha guardado.";
             return;
         }
-        $d = $this->leerChecklistEstado();
-        if ($marca) {
-            $d['marcas'][$mes][$id] = $marca;
-        } else {
-            unset($d['marcas'][$mes][$id]);
-        }
-        ksort($d['marcas']);
+        $d = $cambio($this->leerChecklistEstado());
         $tmp = $f . '.tmp-' . getmypid();
         if (@file_put_contents($tmp, json_encode($d, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false || ! @rename($tmp, $f)) {
             $this->salida .= "\n\n⚠️ Checklist: no he podido escribir {$f}.";

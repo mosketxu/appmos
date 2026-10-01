@@ -26,7 +26,7 @@
 
     <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3">
         <span>Procesos de Fashion IQ del mes:</span>
-        <select wire:model="mes" class="text-base font-normal border-gray-300 rounded-md shadow-sm">
+        <select wire:model.live="mes" class="text-base font-normal border-gray-300 rounded-md shadow-sm">
             @foreach (range(1, 12) as $m)
                 <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
             @endforeach
@@ -47,7 +47,7 @@
          clic = ✓ → «no toca» → vacío). Las marcas viven en OneDrive. --}}
     <div id="procesos-mes" class="bg-white border rounded-lg shadow">
         <div class="flex flex-wrap items-center px-3 py-2 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
-            <span class="text-xs text-gray-500">Los que se ejecutan desde aquí se marcan solos al terminar bien; el resto, con «Marcar» (mes del título, resaltado). Clic en un check de cualquier mes: ✓ → «no toca» → vacío.</span>
+            <span class="text-xs text-gray-500">Los que se ejecutan desde aquí se marcan solos al terminar bien; el resto, con «Marcar» (mes del título, resaltado). Clic en un check de cualquier mes: ✓ → «no toca» → vacío. ⠿ = arrastrar para cambiar el orden.</span>
         </div>
         @php
             $marcas = $this->checklistMarcas;
@@ -58,6 +58,7 @@
         <table class="text-sm">
             <thead class="bg-gray-50">
                 <tr class="text-xs font-medium text-left text-gray-500">
+                    <th class="px-1 py-1"></th>
                     <th class="px-2 py-1">Proceso</th>
                     <th class="px-2 py-1">Acción</th>
                     @foreach ($this->checklistMeses as $k => $n)
@@ -65,10 +66,18 @@
                     @endforeach
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody class="divide-y divide-gray-100"
+                x-data="{ arrastrando: null, sobre: null, debajo: false }"
+                x-on:dragend.window="arrastrando = null; sobre = null">
                 @forelse ($this->checklist as $p)
                     @php $id = $p['id']; $auto = $p['auto'] ?? null; @endphp
-                    <tr wire:key="chk-{{ $id }}" @if ($id === 'cash_in_store') id="cash-in-store" @endif class="align-top hover:bg-gray-50">
+                    <tr wire:key="chk-{{ $id }}" @if ($id === 'cash_in_store') id="cash-in-store" @endif class="align-top hover:bg-gray-50"
+                        x-on:dragover.prevent="if (arrastrando && arrastrando !== '{{ $id }}') { sobre = '{{ $id }}'; debajo = $event.clientY > $el.getBoundingClientRect().top + $el.offsetHeight / 2 }"
+                        x-on:drop.prevent="if (arrastrando && arrastrando !== '{{ $id }}') $wire.moverChecklist(arrastrando, '{{ $id }}', debajo); arrastrando = null; sobre = null"
+                        x-bind:style="(sobre === '{{ $id }}' ? (debajo ? 'box-shadow: inset 0 -2px 0 #6366f1;' : 'box-shadow: inset 0 2px 0 #6366f1;') : '') + (arrastrando === '{{ $id }}' ? 'opacity:.4' : '')">
+                        <td class="px-1 py-1 text-gray-400 cursor-move select-none hover:text-gray-700" title="Arrastra para cambiar el orden"
+                            draggable="true"
+                            x-on:dragstart="arrastrando = '{{ $id }}'; $event.dataTransfer.effectAllowed = 'move'; $event.dataTransfer.setData('text/plain', '{{ $id }}'); $event.dataTransfer.setDragImage($el.parentElement, 10, 10)">⠿</td>
                         <td class="px-2 py-1" x-data="{ info: false }" style="width:340px;max-width:340px">
                             <div class="flex items-start gap-x-1">
                                 <button type="button" x-on:click="info = !info" class="text-indigo-500 shrink-0 hover:text-indigo-700" title="Detalle">ⓘ</button>
@@ -146,7 +155,7 @@
                     </tr>
                     @if ($id === 'cash_in_store' && $cisFilas && $cisAbierto)
                         <tr wire:key="chk-cis-detalle">
-                            <td colspan="{{ 2 + count($this->checklistMeses) }}" class="px-2 pb-2">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-2">
                                 <table class="text-sm text-gray-800 border border-collapse border-gray-300">
                                     <tr class="text-xs text-left text-gray-600 bg-gray-50">
                                         <th class="px-2 py-0.5 border">Tienda</th>
@@ -178,7 +187,7 @@
                         </tr>
                     @endif
                 @empty
-                    <tr><td colspan="16" class="px-3 py-2 text-sm text-gray-500">No encuentro monthlyFIQ/checklist.json en este equipo.</td></tr>
+                    <tr><td colspan="17" class="px-3 py-2 text-sm text-gray-500">No encuentro monthlyFIQ/checklist.json en este equipo.</td></tr>
                 @endforelse
             </tbody>
         </table>
