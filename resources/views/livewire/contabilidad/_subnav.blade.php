@@ -15,7 +15,7 @@
         ['contabilidad.facturasocr', 'contabilidad.facturas-ocr', 'Facturas OCR', null],
         ['contabilidad.is', 'contabilidad.is', 'IS', config('contabilidad.is_url')],
         ['contabilidad.neteges', 'contabilidad.neteges', 'Neteges', null],
-        ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', null],
+        ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', config('contabilidad.procesosmensuales_url')],
     ];
 @endphp
 <style>
@@ -39,7 +39,7 @@
 <nav class="hojas">
     @foreach ($pestanas as [$permiso, $ruta, $texto, $url])
         @can($permiso)
-            {{-- Las que se usan desde la web (Bancos, IS) se abren en otra pestaña, con aviso (pedido 2026-09-29) --}}
+            {{-- Las que se usan desde la web (Bancos, IS, Proc.Mensuales) se abren en otra pestaña, con aviso (pedido 2026-09-29) --}}
             <a href="{{ $url ?: route($ruta) }}"
                @if ($url) target="_blank" rel="noopener" onclick="avisoOtraPestana('{{ $texto }}')" @endif
                class="{{ (($activa ?? null) === $ruta || request()->routeIs($ruta)) ? 'activa' : '' }}">{{ $texto }}{{ $url ? ' ↗' : '' }}</a>
@@ -52,8 +52,9 @@
 @php
     $enBancos = ($activa ?? null) === 'contabilidad.bancos' || request()->routeIs('contabilidad.bancos');
     $enIs = ($activa ?? null) === 'contabilidad.is' || request()->routeIs('contabilidad.is');
-    // Bancos e IS van por su cuenta: operativos en la web aunque el resto esté bloqueado
-    $web = $enBancos ? ['Bancos', 'bancos'] : ($enIs ? ['IS', 'is'] : null);
+    $enPm = ($activa ?? null) === 'contabilidad.procesos-mensuales' || request()->routeIs('contabilidad.procesos-mensuales');
+    // Bancos, IS y Proc.Mensuales van por su cuenta: operativos en la web aunque el resto esté bloqueado
+    $web = $enBancos ? ['Bancos', 'bancos'] : ($enIs ? ['IS', 'is'] : ($enPm ? ['Proc.Mensuales', 'procesosmensuales'] : null));
     $bloqueado = $web ? ! config("contabilidad.{$web[1]}_ejecucion") : ! config('contabilidad.ejecucion_local');
 @endphp
 @if ($web && ! config("contabilidad.{$web[1]}_ejecucion") && config("contabilidad.{$web[1]}_url"))

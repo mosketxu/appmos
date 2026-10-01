@@ -61,6 +61,14 @@ return [
     'is_url' => env('IS_URL'),
     'is_python' => env('IS_PYTHON'),
 
+    /*
+    | Proc.Mensuales: sus datos son los de la base de datos de Appmos (no toca OneDrive),
+    | así que se usa en la web (VPS: PROCESOSMENSUALES_EJECUCION=true). En los PCs,
+    | PROCESOSMENSUALES_URL hace que la pestaña redirija a la web (como Bancos e IS).
+    */
+    'procesosmensuales_ejecucion' => env('PROCESOSMENSUALES_EJECUCION', false),
+    'procesosmensuales_url' => env('PROCESOSMENSUALES_URL'),
+
 
     /*
     |--------------------------------------------------------------------------
