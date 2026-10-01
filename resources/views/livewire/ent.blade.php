@@ -263,6 +263,8 @@
                     <x-jet-label for="mail_peticion">{{ __('Mensaje de petición de documentación') }}</x-jet-label>
                     <textarea wire:model.defer="entidad.mail_peticion" id="mail_peticion" class="w-full text-xs border-gray-300 rounded-md" rows="5" placeholder="Texto del correo para pedir la documentación de impuestos a esta entidad"></textarea>
                     <x-jet-input-error for="mail_peticion" class="mt-2" />
+                    <x-jet-label for="mail_peticion_cc" class="mt-2">{{ __('CC de la petición (varios separados por ;)') }}</x-jet-label>
+                    <x-jet-input wire:model.defer="entidad.mail_peticion_cc" type="text" id="mail_peticion_cc" maxlength="500" class="w-full"/>
                 </div>
             </div>
 

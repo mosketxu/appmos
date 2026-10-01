@@ -47,6 +47,7 @@ class ProcesosMensuales extends Component
     public array $textos = [];
     public array $checks = [];
     public array $idiomas = [];
+    public array $ccs = [];
 
     /** Plantillas del proceso (idioma => texto). */
     public array $plantillas = [];
@@ -58,6 +59,9 @@ class ProcesosMensuales extends Component
     /** id => enviar ahora (fila pendiente en mails_enviados para el periodo). */
     public array $ahora = [];
 
+    /** Empresa cuyo correo se ve a la derecha (ninguna = no se ve texto). */
+    public ?int $seleccionada = null;
+
     /** Por defecto solo las marcadas. */
     public bool $verNoMarcadas = false;
 
@@ -65,6 +69,7 @@ class ProcesosMensuales extends Component
     {
         foreach ($this->empresas() as $e) {
             $this->textos[$e->id] = (string) $e->mail_peticion;
+            $this->ccs[$e->id] = (string) $e->mail_peticion_cc;
             $this->checks[$e->id] = (bool) $e->mail_peticion_check;
             $this->idiomas[$e->id] = $e->idioma === 'EN' ? 'EN' : 'ES';
         }
@@ -150,7 +155,7 @@ class ProcesosMensuales extends Component
     {
         return Entidad::withoutGlobalScopes()
             ->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion']);
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc']);
     }
 
     /** Solo se toca una empresa que gestiona el usuario. */
@@ -183,6 +188,11 @@ class ProcesosMensuales extends Component
     {
         $nombre = Entidad::withoutGlobalScopes()->whereKey($id)->value('entidad');
         return str_replace('{empresa}', (string) $nombre, $this->plantillas[$idioma] ?? '');
+    }
+
+    public function seleccionar(int $id): void
+    {
+        $this->seleccionada = $this->mia($id) && $this->seleccionada !== $id ? $id : null;
     }
 
     /** Pone en el cuadro de la empresa la plantilla del idioma elegido (no guarda). */
@@ -237,6 +247,8 @@ class ProcesosMensuales extends Component
         $e = Entidad::withoutGlobalScopes()->find($id);
         $e->mail_peticion_check = (bool) ($this->checks[$id] ?? false);
         $e->mail_peticion = trim($this->textos[$id] ?? '') === '' ? null : $this->textos[$id];
+        $e->mail_peticion_cc = implode('; ', self::destinatarios($this->ccs[$id] ?? '')) ?: null;
+        $this->ccs[$id] = (string) $e->mail_peticion_cc;
         $e->save();
         if ($avisar) {
             $this->dispatch('proceso-terminado', mensaje: '✅ Guardado: '.$e->entidad);

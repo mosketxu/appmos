@@ -67,54 +67,90 @@
                         title="Las marcadas que aún no tienen texto, con la plantilla de su idioma">Rellenar con la plantilla las marcadas sin texto</button>
             </div>
 
-            <div class="space-y-2">
-                @forelse ($empresas as $e)
-                    <div wire:key="pet-{{ $e->id }}" class="p-3 bg-white border rounded-lg shadow-sm {{ ($checks[$e->id] ?? false) ? 'border-indigo-300' : 'border-gray-200' }}">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <label class="inline-flex items-center gap-2 font-semibold text-gray-900">
-                                <input type="checkbox" wire:model.live="checks.{{ $e->id }}" title="Enviarle el correo" class="text-indigo-600 border-gray-300 rounded">
-                                {{ $e->entidad }}
-                            </label>
-                            @if ($e->alias && $e->alias !== $e->entidad) <span class="text-xs text-gray-400">({{ $e->alias }})</span> @endif
-                            @php $para = \App\Http\Livewire\Contabilidad\ProcesosMensuales::destinatarios($e->emailadm); @endphp
-                            @forelse ($para as $correo)
-                                <span class="px-2 py-0.5 text-xs rounded-full {{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'text-gray-700 bg-gray-100' : 'text-red-800 bg-red-100' }}"
-                                      title="{{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'Email Adm de la entidad' : 'No parece un correo válido' }}">✉ {{ $correo }}</span>
-                            @empty
-                                <span class="px-2 py-0.5 text-xs text-red-800 bg-red-100 rounded-full" title="Se pone en la ficha de la entidad, campo Email Adm">⚠ sin Email Adm</span>
-                            @endforelse
-                            @php $pt = \App\Http\Livewire\Contabilidad\ProcesosMensuales::textoPeriodo($periodo, $e->cicloimpuesto_id, $idiomas[$e->id] ?? 'ES', $cicloOk); @endphp
-                            <span class="px-2 py-0.5 text-xs rounded-full {{ $cicloOk ? 'text-indigo-800 bg-indigo-50' : 'text-amber-800 bg-amber-100' }}"
-                                  title="{{ $cicloOk ? 'Ciclo de impuestos de la entidad' : 'Ciclo de impuestos sin definir (o anual/puntual) en la entidad: se pone el mes' }}">🗓 {{ $pt }}{{ $cicloOk ? '' : ' ⚠' }}</span>
-                            @if (isset($enviados[$e->id]))
-                                <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}</span>
-                            @endif
-                            @if ($checks[$e->id] ?? false)
-                                <label class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded {{ ($ahora[$e->id] ?? false) ? 'bg-amber-200 text-amber-900' : 'text-gray-500' }}">
-                                    <input type="checkbox" wire:model.live="ahora.{{ $e->id }}" class="border-gray-300 rounded text-amber-600"> 🚀 Enviar ahora
-                                </label>
-                            @endif
-                            <div class="flex items-center gap-2 ml-auto">
-                                <select wire:model.live="idiomas.{{ $e->id }}" title="Idioma (se guarda en la entidad)" class="py-0.5 text-xs border-gray-300 rounded-md">
-                                    @foreach ($idiomasDisponibles as $i => $nombre) <option value="{{ $i }}">{{ $i }}</option> @endforeach
-                                </select>
-                                <button type="button" wire:click="aplicarPlantilla({{ $e->id }})" class="px-2 py-0.5 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>
-                                <button type="button" wire:click="guardar({{ $e->id }})" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Guardar</button>
+            @php $Pm = \App\Http\Livewire\Contabilidad\ProcesosMensuales::class; $sel = $empresas->firstWhere('id', $seleccionada); @endphp
+            {{-- Izquierda la lista de empresas; derecha el correo de la seleccionada (ninguna = sin texto) --}}
+            <div style="display:grid; grid-template-columns:minmax(260px, 2fr) 3fr; gap:1rem; align-items:start">
+                <div class="overflow-hidden bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <div class="px-3 py-2 text-xs font-semibold text-gray-600 bg-gray-100 border-b">
+                        Empresas ({{ $empresas->count() }}) · ☑ enviar mail · 🚀 enviar ahora
+                    </div>
+                    <div class="overflow-y-auto divide-y divide-gray-100" style="max-height:70vh">
+                        @forelse ($empresas as $e)
+                            @php $para = $Pm::destinatarios($e->emailadm); $Pm::textoPeriodo($periodo, $e->cicloimpuesto_id, 'ES', $cicloOk); @endphp
+                            <div wire:key="pet-{{ $e->id }}" wire:click="seleccionar({{ $e->id }})"
+                                 class="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer {{ $seleccionada === $e->id ? 'bg-indigo-100' : 'hover:bg-gray-50' }} {{ ($checks[$e->id] ?? false) ? '' : 'text-gray-400' }}">
+                                <input type="checkbox" wire:model.live="checks.{{ $e->id }}" x-on:click.stop title="Enviarle el correo" class="text-indigo-600 border-gray-300 rounded">
+                                <input type="checkbox" wire:model.live="ahora.{{ $e->id }}" x-on:click.stop title="🚀 Enviar ahora ({{ $periodo }})"
+                                       @disabled(! ($checks[$e->id] ?? false)) class="border-gray-300 rounded text-amber-600">
+                                <span class="flex-1 truncate {{ $seleccionada === $e->id ? 'font-semibold text-gray-900' : '' }}" title="{{ $e->entidad }}">{{ $e->entidad }}</span>
+                                <span class="text-xs text-gray-400">{{ $idiomas[$e->id] ?? 'ES' }}</span>
+                                @if (isset($enviados[$e->id])) <span title="Enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}">✅</span> @endif
+                                @if (! $para) <span class="text-xs text-red-600" title="Sin Email Adm">✉⚠</span> @endif
+                                @if (! $cicloOk) <span class="text-xs text-amber-600" title="Ciclo de impuestos sin definir">🗓⚠</span> @endif
                             </div>
+                        @empty
+                            <div class="p-6 text-sm italic text-center text-gray-400">
+                                @if ($total)
+                                    Ninguna empresa que mostrar (marca «Ver también las no marcadas» o cambia la búsqueda).
+                                @else
+                                    Sin empresas: el Admin las asigna en el panel de control (Responsable Suma o marcadas a mano).
+                                @endif
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm" style="position:sticky; top:1rem">
+                    @if ($sel)
+                        @php
+                            $para = $Pm::destinatarios($sel->emailadm);
+                            $pt = $Pm::textoPeriodo($periodo, $sel->cicloimpuesto_id, $idiomas[$sel->id] ?? 'ES', $cicloOk);
+                        @endphp
+                        <div wire:key="correo-{{ $sel->id }}" class="p-4 space-y-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h2 class="text-lg font-semibold text-gray-900">{{ $sel->entidad }}</h2>
+                                @if (isset($enviados[$sel->id]))
+                                    <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$sel->id])->format('d/m/Y H:i') }}</span>
+                                @endif
+                                <div class="flex items-center gap-2 ml-auto">
+                                    <select wire:model.live="idiomas.{{ $sel->id }}" title="Idioma (se guarda en la entidad)" class="py-0.5 text-xs border-gray-300 rounded-md">
+                                        @foreach ($idiomasDisponibles as $i => $nombre) <option value="{{ $i }}">{{ $nombre }}</option> @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="text-gray-500">Para:</span>
+                                @forelse ($para as $correo)
+                                    <span class="px-2 py-0.5 rounded-full {{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'text-gray-700 bg-gray-100' : 'text-red-800 bg-red-100' }}"
+                                          title="{{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'Email Adm de la entidad' : 'No parece un correo válido' }}">{{ $correo }}</span>
+                                @empty
+                                    <span class="px-2 py-0.5 text-red-800 bg-red-100 rounded-full" title="Se pone en la ficha de la entidad, campo Email Adm">⚠ sin Email Adm</span>
+                                @endforelse
+                                <span class="px-2 py-0.5 rounded-full {{ $cicloOk ? 'text-indigo-800 bg-indigo-50' : 'text-amber-800 bg-amber-100' }}"
+                                      title="{{ $cicloOk ? 'Ciclo de impuestos de la entidad' : 'Ciclo de impuestos sin definir (o anual/puntual) en la entidad: se pone el mes' }}">🗓 {{ $pt }}{{ $cicloOk ? '' : ' ⚠' }}</span>
+                            </div>
+                            @if ($checks[$sel->id] ?? false)
+                                <label class="flex items-center gap-2 text-xs">
+                                    <span class="text-gray-500">CC:</span>
+                                    <input type="text" wire:model="ccs.{{ $sel->id }}" placeholder="(nadie en copia)" title="Varios separados por ; — se guarda con «Guardar»"
+                                           class="flex-1 py-1 text-xs border-gray-300 rounded-md">
+                                </label>
+                                <textarea wire:model="textos.{{ $sel->id }}" rows="16" class="w-full text-sm border-gray-300 rounded-md" placeholder="Texto a enviar (pulsa «Usar plantilla» para partir de la de su idioma)"></textarea>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" wire:click="aplicarPlantilla({{ $sel->id }})" class="px-3 py-1 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Usar plantilla</button>
+                                    <button type="button" wire:click="guardar({{ $sel->id }})" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">Guardar</button>
+                                    <label class="inline-flex items-center gap-1 px-2 py-1 ml-auto text-sm font-semibold rounded {{ ($ahora[$sel->id] ?? false) ? 'bg-amber-200 text-amber-900' : 'text-gray-500' }}">
+                                        <input type="checkbox" wire:model.live="ahora.{{ $sel->id }}" class="border-gray-300 rounded text-amber-600"> 🚀 Enviar ahora
+                                    </label>
+                                </div>
+                            @else
+                                <p class="p-4 text-sm italic text-center text-gray-400 border border-dashed rounded-md">No se le envía el correo (check desmarcado).</p>
+                            @endif
                         </div>
-                        @if ($checks[$e->id] ?? false)
-                            <textarea wire:model="textos.{{ $e->id }}" rows="6" class="w-full mt-2 text-xs border-gray-300 rounded-md" placeholder="Texto a enviar (pulsa «Usar plantilla» para partir de la de su idioma)"></textarea>
-                        @endif
-                    </div>
-                @empty
-                    <div class="p-6 text-sm italic text-center text-gray-400 bg-white border border-gray-200 border-dashed rounded-lg">
-                        @if ($total)
-                            Ninguna empresa que mostrar (marca «Ver también las no marcadas» o cambia la búsqueda).
-                        @else
-                            Sin empresas: el Admin las asigna en el panel de control (Responsable Suma o marcadas a mano).
-                        @endif
-                    </div>
-                @endforelse
+                    @else
+                        <div class="p-10 text-sm italic text-center text-gray-400">Selecciona una empresa de la lista para ver su correo.</div>
+                    @endif
+                </div>
             </div>
         @endif
     </div>
