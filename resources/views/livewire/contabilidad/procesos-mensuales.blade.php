@@ -27,7 +27,13 @@
                         <tr wire:key="emp-{{ $e->id }}" class="hover:bg-gray-50">
                             <td class="px-3 py-1">{{ $e->entidad }}@if ($e->alias && $e->alias !== $e->entidad) <span class="text-xs text-gray-400">({{ $e->alias }})</span>@endif</td>
                             @foreach ($procesos as $clave => $p)
-                                <td class="px-3 py-1 text-center">
+                                <td class="px-3 py-1 text-center whitespace-nowrap">
+                                    @if ($clave === 'petdocimpuestos')
+                                        <span class="mr-1 text-xs {{ $e->mail_peticion_check ? 'text-green-700' : 'text-gray-400' }}"
+                                              title="{{ $e->mail_peticion_check ? 'Se le pide por correo' : 'No marcado en la entidad' }}{{ $e->mail_peticion_check && blank($e->mail_peticion) ? ' (sin mensaje escrito)' : '' }}">
+                                            {{ $e->mail_peticion_check ? (blank($e->mail_peticion) ? '✉ sin mensaje' : '✉ sí') : '—' }}
+                                        </span>
+                                    @endif
                                     <button type="button" disabled title="{{ $p['listo'] ? 'Ejecutar' : 'En preparación' }}"
                                             class="px-2 py-1 text-xs text-gray-400 bg-gray-100 border border-gray-200 rounded cursor-not-allowed">▶ Ejecutar</button>
                                 </td>

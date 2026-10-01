@@ -23,7 +23,7 @@ class Entidad extends Model
                         'periodoimpuesto_id','metodopago_id','ciclofacturacion_id','cicloimpuesto_id','contabilidad_analitica',
                         'diafactura','diavencimiento','referenciacliente',
                         'tipoiva','porcentajemarta','porcentajesusana',
-                        'cuentacontable','observaciones',
+                        'cuentacontable','observaciones','mail_peticion_check','mail_peticion',
                         'suma_id','suma_id','cliente',
                         'estado','facturar','enviar','created_at'];
 

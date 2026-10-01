@@ -32,7 +32,7 @@ class ProcesosMensuales extends Component
         $empresas = Entidad::withoutGlobalScopes()
             ->whereIn('id', Accesos::entidadesPropias($usuario) ?: [0])
             ->when($this->buscar !== '', fn ($q) => $q->where(fn ($q) => $q->where('entidad', 'like', '%'.$this->buscar.'%')->orWhere('alias', 'like', '%'.$this->buscar.'%')))
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias']);
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'mail_peticion_check', 'mail_peticion']);
 
         return view('livewire.contabilidad.procesos-mensuales', [
             'procesos' => self::PROCESOS,
