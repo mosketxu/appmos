@@ -63,6 +63,9 @@
                 <label class="inline-flex items-center gap-1 text-sm text-gray-700">
                     <input type="checkbox" wire:model.live="verNoMarcadas" class="border-gray-300 rounded"> Ver también las no marcadas
                 </label>
+                <label class="inline-flex items-center gap-1 text-sm text-gray-700">
+                    <input type="checkbox" wire:model.live="verBajas" class="border-gray-300 rounded"> Ver también las de baja
+                </label>
                 <button type="button" wire:click="rellenarVacias" class="px-3 py-1 text-sm text-indigo-700 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50"
                         title="Las marcadas que aún no tienen texto, con la plantilla de su idioma">Rellenar con la plantilla las marcadas sin texto</button>
             </div>
@@ -82,7 +85,8 @@
                                 <input type="checkbox" wire:model.live="checks.{{ $e->id }}" x-on:click.stop title="Enviarle el correo" class="text-indigo-600 border-gray-300 rounded">
                                 <input type="checkbox" wire:model.live="ahora.{{ $e->id }}" x-on:click.stop title="🚀 Enviar ahora ({{ $periodo }})"
                                        @disabled(! ($checks[$e->id] ?? false)) class="border-gray-300 rounded text-amber-600">
-                                <span class="flex-1 truncate {{ $seleccionada === $e->id ? 'font-semibold text-gray-900' : '' }}" title="{{ $e->entidad }}">{{ $e->entidad }}</span>
+                                <span class="flex-1 truncate {{ $seleccionada === $e->id ? 'font-semibold text-gray-900' : '' }} {{ ($activas[$e->id] ?? false) ? '' : 'line-through' }}" title="{{ $e->entidad }}">{{ $e->entidad }}</span>
+                                @if (! ($activas[$e->id] ?? false)) <span class="text-xs text-red-500">baja</span> @endif
                                 <span class="text-xs text-gray-400">{{ $idiomas[$e->id] ?? 'ES' }}</span>
                                 @if (isset($enviados[$e->id])) <span title="Enviado {{ \Carbon\Carbon::parse($enviados[$e->id])->format('d/m/Y H:i') }}">✅</span> @endif
                                 @if (! $para) <span class="text-xs text-red-600" title="Sin Email Adm">✉⚠</span> @endif
@@ -112,7 +116,14 @@
                                 @if (isset($enviados[$sel->id]))
                                     <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$sel->id])->format('d/m/Y H:i') }}</span>
                                 @endif
-                                <div class="flex items-center gap-2 ml-auto">
+                                <div class="flex items-center gap-3 ml-auto">
+                                    <label class="inline-flex items-center gap-1 text-xs font-semibold {{ ($activas[$sel->id] ?? false) ? 'text-green-700' : 'text-red-600' }}"
+                                           title="Estado de la entidad (se guarda al momento). Solo salen las activas.">
+                                        <input type="checkbox" wire:model.live="activas.{{ $sel->id }}" class="text-green-600 border-gray-300 rounded"> Activa
+                                    </label>
+                                    <label class="inline-flex items-center gap-1 text-xs text-gray-700" title="Enviarle el correo (se guarda al momento)">
+                                        <input type="checkbox" wire:model.live="checks.{{ $sel->id }}" class="text-indigo-600 border-gray-300 rounded"> Enviar mail
+                                    </label>
                                     <select wire:model.live="idiomas.{{ $sel->id }}" title="Idioma (se guarda en la entidad)" class="py-0.5 text-xs border-gray-300 rounded-md">
                                         @foreach ($idiomasDisponibles as $i => $nombre) <option value="{{ $i }}">{{ $nombre }}</option> @endforeach
                                     </select>
