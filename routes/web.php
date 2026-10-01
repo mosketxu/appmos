@@ -86,6 +86,9 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     // Contabilidad (Neteges): como Bancos pero con más ficheros de consulta (Ventas...). Se ejecuta en local (ejecucion_local)
     Route::get('/contabilidad/neteges', function () {return view('contabilidad.neteges');})->name('contabilidad.neteges')->middleware('can:contabilidad.neteges');
 
+    // Contabilidad (Proc.Mensuales): agrupa varios procesos mensuales. Se ejecuta en local (ejecucion_local)
+    Route::get('/contabilidad/procesos-mensuales', function () {return view('contabilidad.procesos-mensuales');})->name('contabilidad.procesos-mensuales')->middleware('can:contabilidad.procesosmensuales');
+
     // Entidades: consulta
     Route::middleware('can:entidades.ver')->group(function () {
         Route::get('/entidades', function () {return view('entidades');})->name('entidades');

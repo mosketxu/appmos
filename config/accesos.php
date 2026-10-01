@@ -37,6 +37,7 @@ return [
             'contabilidad.facturasocr' => 'Facturas OCR',
             'contabilidad.is' => 'Impuesto sobre Sociedades (modelo 200)',
             'contabilidad.neteges' => 'Neteges',
+            'contabilidad.procesosmensuales' => 'Procesos mensuales',
         ],
     ],
 

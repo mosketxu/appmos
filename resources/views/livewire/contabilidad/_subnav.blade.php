@@ -1,5 +1,5 @@
 {{-- Sub-navegación de la pestaña Contabilidad, con aspecto de pestañas de hoja de Excel:
-     Procesos FIQ / Facturación PDF / Durcal / Bancos / Facturas OCR / IS / Neteges.
+     Procesos FIQ / Facturación PDF / Durcal / Bancos / Facturas OCR / IS / Neteges / Proc.Mensuales.
      Son pantallas independientes (rutas y componentes Livewire distintos).
      $activa (opcional): ruta de la pestaña activa, para que siga marcada cuando
      Livewire re-renderiza (en esas peticiones request()->routeIs() ya no vale).
@@ -15,6 +15,7 @@
         ['contabilidad.facturasocr', 'contabilidad.facturas-ocr', 'Facturas OCR', null],
         ['contabilidad.is', 'contabilidad.is', 'IS', config('contabilidad.is_url')],
         ['contabilidad.neteges', 'contabilidad.neteges', 'Neteges', null],
+        ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', null],
     ];
 @endphp
 <style>
