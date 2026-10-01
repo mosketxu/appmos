@@ -49,6 +49,8 @@ class ProcesosMensuales extends Component
     public array $checks = [];
     public array $idiomas = [];
     public array $ccs = [];
+    /** id => Email Adm (entidades.emailadm): destinatarios, editable aquí. */
+    public array $paras = [];
     /** id => activa (entidades.estado: 1 activo, 0 baja). Solo salen las activas. */
     public array $activas = [];
     /** id => Responsable Suma (entidades.suma_id), editable aquí. */
@@ -86,6 +88,7 @@ class ProcesosMensuales extends Component
         foreach ($this->empresas() as $e) {
             $this->textos[$e->id] = (string) $e->mail_peticion;
             $this->ccs[$e->id] = (string) $e->mail_peticion_cc;
+            $this->paras[$e->id] = (string) $e->emailadm;
             $this->activas[$e->id] = (int) $e->estado === 1;
             $this->sumaIds[$e->id] = $e->suma_id ? (string) $e->suma_id : '';
             $this->ciclosEnt[$e->id] = $e->cicloimpuesto_id;
@@ -271,7 +274,7 @@ class ProcesosMensuales extends Component
     /** El check y el idioma se guardan en la entidad en cuanto se cambian. */
     public function updated(string $propiedad, $valor): void
     {
-        if (! preg_match('/^(checks|idiomas|ahora|activas|sumaIds)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
+        if (! preg_match('/^(checks|idiomas|ahora|activas|sumaIds|paras)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
             return;
         }
         if ($m[1] === 'ahora') {
@@ -279,7 +282,10 @@ class ProcesosMensuales extends Component
             return;
         }
         $e = Entidad::withoutGlobalScopes()->find((int) $m[2]);
-        if ($m[1] === 'sumaIds') {
+        if ($m[1] === 'paras') {
+            $e->emailadm = mb_substr(implode('; ', self::destinatarios((string) $valor)), 0, 500) ?: null;
+            $this->paras[$e->id] = (string) $e->emailadm;
+        } elseif ($m[1] === 'sumaIds') {
             if (! auth()->user()->can('entidades.editar')) {
                 $this->sumaIds[$e->id] = $e->suma_id ? (string) $e->suma_id : '';
                 return;

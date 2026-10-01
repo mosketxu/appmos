@@ -162,15 +162,20 @@
                                 @endif
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-xs">
-                                <span class="text-gray-500">{{ $idiomasDisponibles[$idiomas[$sel->id] ?? 'ES'] }} · Para:</span>
-                                @forelse ($para as $correo)
-                                    <span class="px-2 py-0.5 rounded-full {{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'text-gray-700 bg-gray-100' : 'text-red-800 bg-red-100' }}"
-                                          title="{{ filter_var($correo, FILTER_VALIDATE_EMAIL) ? 'Email Adm de la entidad' : 'No parece un correo válido' }}">{{ $correo }}</span>
-                                @empty
-                                    <span class="px-2 py-0.5 text-red-800 bg-red-100 rounded-full" title="Se pone en la ficha de la entidad, campo Email Adm">⚠ sin Email Adm</span>
-                                @endforelse
+                                <span class="px-2 py-0.5 text-gray-700 bg-gray-100 rounded-full">{{ $idiomasDisponibles[$idiomas[$sel->id] ?? 'ES'] }}</span>
                                 <span class="px-2 py-0.5 rounded-full {{ $cicloOk ? 'text-indigo-800 bg-indigo-50' : 'text-yellow-800 bg-yellow-100' }}"
                                       title="{{ $cicloOk ? 'Ciclo de impuestos de la entidad' : 'Ciclo de impuestos sin definir (o anual/puntual) en la entidad: se pone el mes' }}">🗓 {{ $pt }}{{ $cicloOk ? '' : ' ⚠' }}</span>
+                            </div>
+                            {{-- Para = Email Adm de la entidad: se guarda en la entidad al salir del campo --}}
+                            @php $malos = array_filter($para, fn ($c) => ! filter_var($c, FILTER_VALIDATE_EMAIL)); @endphp
+                            <div>
+                                <label class="flex items-center gap-2 text-xs">
+                                    <span class="text-gray-500">Para:</span>
+                                    <input type="text" wire:model.blur="paras.{{ $sel->id }}" maxlength="500" placeholder="⚠ sin Email Adm: escríbelo aquí (varios separados por ;)"
+                                           title="Email Adm de la entidad (se guarda en Entidades al salir del campo)"
+                                           class="flex-1 py-1 text-xs rounded-md {{ ! $para || $malos ? 'border-red-400 bg-red-50' : 'border-gray-300' }}">
+                                </label>
+                                @if ($malos) <p class="mt-1 text-xs text-red-600" style="margin-left:2.6rem">No parece un correo válido: {{ implode(', ', $malos) }}</p> @endif
                             </div>
                             @if ($checks[$sel->id] ?? false)
                                 <label class="flex items-center gap-2 text-xs">
