@@ -42,6 +42,8 @@ class Certificados extends Component
     public ?int $verEnvio = null;
     /** true mientras la pantalla enseña un envío ya hecho (lista, destinatarios y texto tal como salieron). */
     public bool $viendoEnvio = false;
+    /** Mes que se está mirando («septiembre 2026»), con o sin envío. */
+    public string $mesVisto = '';
 
     // Fila nueva a mano
     public string $aNombre = '';
@@ -291,6 +293,36 @@ class Certificados extends Component
         $this->verEnvio = null;
     }
 
+    protected function etiquetaMes(string $periodo): string
+    {
+        try {
+            return \Carbon\Carbon::createFromFormat('Y-m-d', $periodo.'-01')->locale('es')->translatedFormat('F Y');
+        } catch (\Throwable $e) {
+            return $periodo;
+        }
+    }
+
+    /** Clic en un mes del cuadro de envíos: el envío de ese mes, o todo vacío si no se envió nada. */
+    public function verMes(string $periodo): void
+    {
+        $e = DB::table('certificados_envios')->where('periodo', $periodo)->orderByDesc('enviado_at')->first();
+        if ($e) {
+            $this->ver($e->id);
+            return;
+        }
+        $etiqueta = $this->etiquetaMes($periodo);
+        if ($this->viendoEnvio && ! $this->verEnvio && $this->mesVisto === $etiqueta) {
+            $this->volverALista();
+            return;
+        }
+        $this->verEnvio = null;
+        $this->viendoEnvio = true;
+        $this->mesVisto = $etiqueta;
+        $this->confirmar = false;
+        $this->filas = $this->contradicciones = $this->renovados = [];
+        $this->para = $this->cc = $this->asunto = $this->intro = $this->enviado = $this->salida = '';
+    }
+
     /** Clic en un mes con envío: la lista, el destinatario y el correo de arriba pasan a ser los de aquel envío. */
     public function ver(int $id): void
     {
@@ -304,6 +336,7 @@ class Certificados extends Component
         }
         $this->verEnvio = $id;
         $this->viendoEnvio = true;
+        $this->mesVisto = $this->etiquetaMes((string) $e->periodo);
         $this->confirmar = false;
         $this->filas = $this->filasDelEnvio($e);
         $this->contradicciones = $this->renovados = [];
@@ -322,6 +355,7 @@ class Certificados extends Component
     {
         $this->verEnvio = null;
         $this->viendoEnvio = false;
+        $this->mesVisto = '';
         $this->para = 'marta.ruiz@sumaempresa.com';
         $this->cc = '';
         $this->asunto = 'Certificados digitales que caducan - '.now()->locale('es')->translatedFormat('F Y');
@@ -351,7 +385,7 @@ class Certificados extends Component
     {
         $cola = Schema::hasTable('trabajadores') && Schema::hasTable('tareas');   // hasta que se haga la migración
         return view('livewire.contabilidad.certificados', [
-            'vistaPrevia' => $this->viendoEnvio && $this->verEnvio ? (string) DB::table('certificados_envios')->where('id', $this->verEnvio)->value('texto') : $this->texto(),
+            'vistaPrevia' => $this->viendoEnvio ? ($this->verEnvio ? (string) DB::table('certificados_envios')->where('id', $this->verEnvio)->value('texto') : '') : $this->texto(),
             'envios' => DB::table('certificados_envios')->where('periodo', 'like', $this->anio.'-%')->orderBy('enviado_at')->get()->groupBy('periodo'),
             'envioAbierto' => $this->verEnvio ? DB::table('certificados_envios')->find($this->verEnvio) : null,
             'graphOk' => GraphMail::configurado(),

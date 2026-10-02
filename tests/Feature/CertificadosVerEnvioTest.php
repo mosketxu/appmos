@@ -46,4 +46,18 @@ class CertificadosVerEnvioTest extends TestCase
             'para' => null, 'asunto' => null, 'texto' => null, 'filas' => null, 'created_at' => now(), 'updated_at' => now()]);
         Livewire::test(Certificados::class, ['embebido' => true])->call('ver', $id)->assertSet('viendoEnvio', true)->assertSee('Estás viendo un');
     }
+
+    public function test_mes_sin_envio_sale_vacio_y_se_puede_volver(): void
+    {
+        DB::table('certificados_envios')->insert(['periodo' => '2026-10', 'enviado_at' => '2026-10-02 12:00:00', 'origen' => 'app',
+            'para' => 'marta.ruiz@sumaempresa.com', 'asunto' => 'Octubre', 'texto' => "Marta,\n\n• 01/12/2026 — Cert A\n\nUn saludo",
+            'filas' => json_encode([['nombre' => 'Cert A', 'caduca' => '2026-12-01']]), 'created_at' => now(), 'updated_at' => now()]);
+
+        Livewire::test(Certificados::class, ['embebido' => true])
+            ->call('verMes', '2026-10')->assertSet('asunto', 'Octubre')->assertSet('filas.0.nombre', 'Cert A')
+            ->call('verMes', '2026-09')
+            ->assertSet('viendoEnvio', true)->assertSet('filas', [])->assertSet('asunto', '')->assertSet('para', '')
+            ->assertSee('no se envió nada ese mes')
+            ->call('verMes', '2026-09')->assertSet('viendoEnvio', false);
+    }
 }
