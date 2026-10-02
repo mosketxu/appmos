@@ -107,18 +107,22 @@
                                 </div>
                             @elseif ($auto === 'cash-in-store')
                                 <div class="flex flex-wrap items-center gap-1">
-                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="buscarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore">
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="buscarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore">
                                         <span wire:loading.remove wire:target="buscarCashInStore">🔎 Buscar</span>
                                         <span wire:loading wire:target="buscarCashInStore">⏳…</span>
                                     </button>
                                     @if ($this->cisFaltan)
-                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="pedirCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="pedirCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
                                             onclick="return confirm('¿Mandar YA el correo pidiendo el efectivo a {{ implode(', ', $this->cisFaltan) }}?')">
                                             ✉ Pedir ({{ implode(', ', $this->cisFaltan) }})
                                         </button>
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="recordarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
+                                            title="Responder a la petición ya enviada: deja el borrador en Outlook para revisarlo y enviarlo">
+                                            🔔 Recordatorio (borrador)
+                                        </button>
                                     @endif
                                     @if ($cisFilas)
-                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50" wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,grabarCashInStore"
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50" wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
                                             onclick="return confirm('¿Escribir estos importes en Cash End Month de Ctrol Dinamico? (cierra antes el Excel si lo tienes abierto)')">
                                             💾 Grabar
                                         </button>
@@ -126,7 +130,7 @@
                                     @if ($cisFilas)
                                         <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="$toggle('cisAbierto')">{{ $cisAbierto ? '▴ Plegar' : '▾ Ver importes' }}</button>
                                     @endif
-                                    <span wire:loading wire:target="pedirCashInStore,grabarCashInStore" class="text-xs text-gray-500">⏳…</span>
+                                    <span wire:loading wire:target="pedirCashInStore,recordarCashInStore,grabarCashInStore" class="text-xs text-gray-500">⏳…</span>
                                     @foreach ($resultados['cis'] ?? [] as $r)
                                         <x-contabilidad.resultado-fichero :r="$r" />
                                     @endforeach

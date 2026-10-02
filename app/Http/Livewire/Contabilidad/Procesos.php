@@ -976,6 +976,20 @@ class Procesos extends Component
         $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 240, $etiqueta);
     }
 
+    /** Recordatorio a las que faltan: «Responder a todos» a la petición ya enviada, en Borradores de Outlook. */
+    public function recordarCashInStore(): void
+    {
+        $faltan = $this->cisFaltan;
+        $etiqueta = "Cash in store {$this->cisMm()} · recordatorio a " . implode(', ', $faltan);
+        if (! $faltan) {
+            $this->salida .= "\n\n⚠️ {$etiqueta}: no falta ninguna tienda (pulsa antes «Buscar»).";
+            return;
+        }
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--recordatorio', implode(',', $faltan)],
+            240, $etiqueta, null, $this->windowsEnv());
+    }
+
     /** Escribe la fila del mes en "Cash End Month" de Ctrol Dinamico. */
     public function grabarCashInStore(): void
     {
