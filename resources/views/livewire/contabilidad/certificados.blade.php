@@ -13,16 +13,16 @@
 
         @if ($enLocal)
             <div class="px-4 py-2 text-sm border rounded-md text-emerald-900 border-emerald-200 bg-emerald-50">
-                💻 Estás en <b>{{ $pcLocal }}</b> (local): «Escanear este PC» lee los certificados de este PC y los sube a la web. Para escanear <b>los dos PCs a la vez</b>, entra en
-                <a href="https://appmos.sumaempresa.com/contabilidad/certificados" class="underline" target="_blank">appmos.sumaempresa.com</a> y pulsa «Pedir escaneo a los PCs».
+                💻 Estás en <b>{{ $pcLocal }}</b> (local): «Escanear y preparar la lista» lee los certificados de este PC y los sube a la web. Para escanear <b>los dos PCs a la vez</b>, entra en
+                <a href="https://appmos.sumaempresa.com/contabilidad/certificados" class="underline" target="_blank">appmos.sumaempresa.com</a> y pulsa el mismo botón.
             </div>
         @else
             <div class="px-4 py-2 text-sm text-indigo-900 border border-indigo-200 rounded-md bg-indigo-50">
                 🌐 Estás en la web: ves la última lista escaneada, puedes editarla y enviarla.
                 @if (count($trabajadores))
-                    Con «Pedir escaneo a los PCs» cada PC encendido escanea sus certificados solo; no hace falta abrir nada en ellos.
+                    Con «Escanear y preparar la lista» cada PC encendido escanea sus certificados solo y la lista se calcula al terminar.
                 @else
-                    Para refrescar los certificados, pulsa «Escanear este PC» en el Appmos de AlexMiniPC y de PortalExomen (se suben aquí solos).
+                    Para refrescar los certificados, pulsa el botón de escanear en el Appmos de AlexMiniPC y de PortalExomen (se suben aquí solos).
                 @endif
             </div>
         @endif
@@ -37,46 +37,48 @@
         <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm">
             <div x-data="{ info: false }">
                 <div class="flex items-center gap-x-1">
-                    <h2 class="font-semibold text-gray-900">Paso 1 · Preparar la lista</h2>
+                    <h2 class="font-semibold text-gray-900">Paso 1 · Escanear y preparar la lista</h2>
                     <button type="button" x-on:click="info = !info" class="text-indigo-500 hover:text-indigo-700" title="Detalle">ⓘ</button>
                 </div>
                 <p x-show="info" style="display:none" x-on:click.outside="info = false" class="p-2 mt-1 text-xs text-gray-500 border border-gray-200 rounded bg-gray-50">
-                    Cada PC guarda sus certificados con «Escanear este PC» (hazlo en AlexMiniPC <b>y</b> en PortalExomen), o los dos a la vez con «Pedir escaneo a los PCs» desde la web.
-                    Después se cruzan: los ya renovados en cualquiera de los dos salen de la lista, y si el nuevo está solo en uno de los PCs se avisa abajo (instálalo en el otro).
+                    «Escanear y preparar la lista» hace todo de una vez: cada PC lee sus certificados (desde la web, los dos solos; en local, solo este PC) y la lista se calcula sola al terminar.
+                    Se cruzan los dos PCs: los ya renovados en cualquiera de los dos salen de la lista, y si el nuevo está solo en uno de los PCs se avisa abajo (instálalo en el otro).
                 </p>
             </div>
-            @if (! $enLocal && count($trabajadores))
-                <div class="flex flex-wrap items-center gap-2 p-2 text-sm border border-indigo-200 rounded-md bg-indigo-50" @if ($hayActivas || $habiaActivas) wire:poll.3s="actualizarCola" @endif>
-                    <button type="button" wire:click="pedirEscaneoPCs" wire:loading.attr="disabled" wire:target="pedirEscaneoPCs"
-                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">🛰 Pedir escaneo a los PCs</button>
+            @php $porCola = ! $enLocal && count($trabajadores); @endphp
+            <div class="flex flex-wrap items-center gap-2" @if ($porCola && ($hayActivas || $habiaActivas)) wire:poll.3s="actualizarCola" @endif>
+                @if ($porCola)
+                    <button type="button" wire:click="pedirEscaneoPCs" wire:loading.attr="disabled" wire:target="pedirEscaneoPCs" @disabled($hayActivas)
+                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="pedirEscaneoPCs">{{ $hayActivas ? '⏳ escaneando…' : '🔎 Escanear y preparar la lista' }}</span><span wire:loading wire:target="pedirEscaneoPCs">⏳ pidiendo…</span>
+                    </button>
+                @elseif ($enLocal)
+                    <button type="button" wire:click="escanear" wire:loading.attr="disabled" wire:target="escanear"
+                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="escanear">🔎 Escanear y preparar la lista</span><span wire:loading wire:target="escanear">⏳ escaneando…</span>
+                    </button>
+                @else
+                    <span class="text-xs text-gray-600">Sin PCs trabajadores dados de alta: escanea desde el Appmos de cada PC.</span>
+                @endif
+                <label class="text-sm">Caducan en los próximos
+                    <input type="number" min="1" max="24" wire:model.live.debounce.500ms="meses" class="py-1 text-sm border-gray-300 rounded-md" style="width:60px"> meses</label>
+                @if ($porCola)
                     <span class="text-xs text-gray-700">
                         @foreach ($trabajadores as $t) <b>{{ $t['nombre'] }}</b> {{ $t['conectado'] ? '🟢' : '⚪ sin conexión' }}@if (! $loop->last) · @endif @endforeach
                     </span>
-                    @if (count($tareasCert))
-                        <span x-data="{ info: false }" class="relative">
-                            <button type="button" x-on:click="info = !info" class="text-indigo-500 hover:text-indigo-700" title="Últimas tareas">ⓘ</button>
-                            <div x-show="info" style="display:none" x-on:click.outside="info = false" class="absolute left-0 z-10 p-2 mt-1 text-xs text-gray-600 bg-white border border-gray-200 rounded shadow whitespace-nowrap">
-                                <b>Últimas tareas</b>
-                                @foreach ($tareasCert as $tt)
-                                    <div>#{{ $tt->id }} {{ $tt->destino }}: {{ ['pendiente' => '⏳ en cola', 'en_curso' => '⚙ en curso', 'ok' => '✅ ok', 'error' => '⚠ error', 'cancelada' => '✖ cancelada'][$tt->estado] ?? $tt->estado }}</div>
-                                @endforeach
-                            </div>
-                        </span>
-                    @endif
-                </div>
-            @endif
-            <div class="flex flex-wrap items-center gap-2">
-                <button type="button" wire:click="escanear" wire:loading.attr="disabled" wire:target="escanear" @disabled(! $enLocal) title="{{ $enLocal ? '' : 'Solo desde un PC' }}"
-                    class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
-                    <span wire:loading.remove wire:target="escanear">🔎 Escanear este PC</span><span wire:loading wire:target="escanear">⏳ escaneando…</span>
-                </button>
-                <label class="text-sm">Caducan en los próximos
-                    <input type="number" min="1" max="24" wire:model="meses" class="py-1 text-sm border-gray-300 rounded-md" style="width:60px"> meses</label>
-                <button type="button" wire:click="calcular" wire:loading.attr="disabled" wire:target="calcular"
-                    class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">↻ Calcular lista</button>
-                <span class="text-xs text-gray-500">
-                    Escaneos:
-                    @forelse ($escaneos as $pc => $cuando) {{ $pc }} ({{ str_replace('T', ' ', $cuando) }}) · @empty ninguno @endforelse
+                @endif
+                <span x-data="{ info: false }" class="relative">
+                    <button type="button" x-on:click="info = !info" class="text-indigo-500 hover:text-indigo-700" title="Escaneos y últimas tareas">ⓘ</button>
+                    <div x-show="info" style="display:none" x-on:click.outside="info = false" class="absolute left-0 z-10 p-2 mt-1 text-xs text-gray-600 bg-white border border-gray-200 rounded shadow whitespace-nowrap">
+                        <b>Último escaneo</b>
+                        @forelse ($escaneos as $pc => $cuando) <div>{{ $pc }}: {{ str_replace('T', ' ', $cuando) }}</div> @empty <div>ninguno</div> @endforelse
+                        @if (count($tareasCert))
+                            <div class="mt-1"><b>Últimas tareas</b></div>
+                            @foreach ($tareasCert as $tt)
+                                <div>#{{ $tt->id }} {{ $tt->destino }}: {{ ['pendiente' => '⏳ en cola', 'en_curso' => '⚙ en curso', 'ok' => '✅ ok', 'error' => '⚠ error', 'cancelada' => '✖ cancelada'][$tt->estado] ?? $tt->estado }}</div>
+                            @endforeach
+                        @endif
+                    </div>
                 </span>
             </div>
 

@@ -117,7 +117,7 @@ class Certificados extends Component
     public function pedirEscaneoPCs(): void
     {
         if (config('contabilidad.ejecucion_local')) {
-            $this->salida = '⚠ La cola de tareas vive en la web: pide el escaneo desde appmos.sumaempresa.com (aquí usa «Escanear este PC»).';
+            $this->salida = '⚠ La cola de tareas vive en la web: pide el escaneo desde appmos.sumaempresa.com (aquí escanea solo este PC con el botón).';
             return;
         }
         if (! Schema::hasTable('trabajadores') || ! Schema::hasTable('tareas')) {
@@ -153,6 +153,11 @@ class Certificados extends Component
             $this->salida = $err ? "⚠ El escaneo ha terminado con {$err} error(es); mira el estado de los PCs abajo." : '✅ Escaneo terminado en todos los PCs.';
             $this->calcular();
         }
+    }
+
+    public function updatedMeses(): void
+    {
+        $this->calcular();
     }
 
     public function calcular(): void
