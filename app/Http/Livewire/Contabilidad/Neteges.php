@@ -153,7 +153,8 @@ class Neteges extends Component
             return;
         }
         $filas = ['plan' => 'plan de cuentas', 'mayor' => 'mayor', 'ventas' => 'fichero Ventas', 'clientessage' => 'clientes SAGE',
-            'netcobros' => 'ficheros de Neteges (cobros y control de bancos)',
+            'netcobros' => 'listado de cobros de Neteges', 'netbbva' => 'control de bancos BBVA de Neteges',
+            'netsabadell' => 'control de bancos Sabadell de Neteges',
             'proveedoressage' => 'proveedores SAGE', 'misclientes' => 'mis clientes', 'remesas' => 'ficheros de remesas'];
         if (! isset($filas[$fila])) {
             $this->addError('subidas', 'Fila desconocida.');
@@ -201,8 +202,10 @@ class Neteges extends Component
             $this->ejecutar([], $etiqueta, 'neteges_cobros.py');
             return;
         }
-        if ($fila === 'netcobros') {
-            $this->ejecutar(array_merge(['--subir'], $rutas), $etiqueta, 'neteges_cobros.py');
+        if (in_array($fila, ['netcobros', 'netbbva', 'netsabadell'], true)) {
+            // El script reconoce el tipo por dentro; --esperado avisa si se ha subido el fichero en otra fila
+            $esperado = ['netcobros' => 'cobros', 'netbbva' => 'BBVA_NET', 'netsabadell' => 'SABADELL_NET'][$fila];
+            $this->ejecutar(array_merge(['--subir', "--esperado={$esperado}"], $rutas), $etiqueta, 'neteges_cobros.py');
             return;
         }
         if ($fila === 'misclientes') {
