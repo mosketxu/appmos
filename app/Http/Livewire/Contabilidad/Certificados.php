@@ -40,6 +40,8 @@ class Certificados extends Component
     /** Año del detalle de envíos y envío abierto para revisar. */
     public int $anio = 0;
     public ?int $verEnvio = null;
+    /** true mientras la pantalla enseña un envío ya hecho (lista, destinatarios y texto tal como salieron). */
+    public bool $viendoEnvio = false;
 
     // Fila nueva a mano
     public string $aNombre = '';
@@ -76,6 +78,9 @@ class Certificados extends Component
 
     public function escanear(): void
     {
+        if ($this->viendoEnvio) {
+            $this->volverALista();
+        }
         if (! config('contabilidad.ejecucion_local')) {
             $this->salida = '⚠ El escaneo solo se hace desde AlexMiniPC o PortalExomen (los certificados están en el PC).';
             return;
@@ -116,6 +121,9 @@ class Certificados extends Component
     /** Pide a cada PC trabajador que escanee sus certificados (los PCs lo recogen solos, sin abrir nada en ellos). */
     public function pedirEscaneoPCs(): void
     {
+        if ($this->viendoEnvio) {
+            $this->volverALista();
+        }
         if (config('contabilidad.ejecucion_local')) {
             $this->salida = '⚠ La cola de tareas vive en la web: pide el escaneo desde appmos.sumaempresa.com (aquí escanea solo este PC con el botón).';
             return;
@@ -277,19 +285,73 @@ class Certificados extends Component
     public function cambiarAnio(int $d): void
     {
         $this->anio += $d;
+        if ($this->viendoEnvio) {
+            $this->volverALista();
+        }
         $this->verEnvio = null;
     }
 
+    /** Clic en un mes con envío: la lista, el destinatario y el correo de arriba pasan a ser los de aquel envío. */
     public function ver(int $id): void
     {
-        $this->verEnvio = $this->verEnvio === $id ? null : $id;
+        if ($this->verEnvio === $id) {
+            $this->volverALista();
+            return;
+        }
+        $e = DB::table('certificados_envios')->find($id);
+        if (! $e) {
+            return;
+        }
+        $this->verEnvio = $id;
+        $this->viendoEnvio = true;
+        $this->confirmar = false;
+        $this->filas = $this->filasDelEnvio($e);
+        $this->contradicciones = $this->renovados = [];
+        $this->para = (string) $e->para;
+        $this->cc = (string) $e->cc;
+        $this->asunto = (string) $e->asunto;
+        $texto = (string) $e->texto;
+        $i = strpos($texto, "\n\n•");
+        $this->intro = $i === false ? $texto : substr($texto, 0, $i);
+        $this->enviado = \Carbon\Carbon::parse($e->enviado_at)->format('d/m/Y H:i').' a '.$e->para.($e->origen === 'manual' ? ' (a mano, fuera de Appmos)' : '');
+        $this->salida = '';
+    }
+
+    /** Vuelve a la lista actual (lo escaneado) y a los datos de correo por defecto. */
+    public function volverALista(): void
+    {
+        $this->verEnvio = null;
+        $this->viendoEnvio = false;
+        $this->para = 'marta.ruiz@sumaempresa.com';
+        $this->cc = '';
+        $this->asunto = 'Certificados digitales que caducan - '.now()->locale('es')->translatedFormat('F Y');
+        $this->intro = "Marta,\n\nEstos son los certificados digitales que tengo yo instalados y que caducan en los próximos meses.";
+        $this->calcular();
+    }
+
+    /** La lista de un envío: la guardada (JSON) o, si no hay (envíos a mano), la sacada de las viñetas del texto. */
+    protected function filasDelEnvio(object $e): array
+    {
+        $f = json_decode((string) $e->filas, true);
+        if (is_array($f) && $f) {
+            return array_values(array_map(fn ($x) => ['nombre' => $x['nombre'] ?? '', 'caduca' => $x['caduca'] ?? '', 'pcs' => $x['pcs'] ?? '',
+                'incluir' => true, 'nota' => $x['nota'] ?? ''], $f));
+        }
+        $filas = [];
+        foreach (preg_split('/\R/', (string) $e->texto) as $l) {
+            if (preg_match('/^•\s*(?:(\d\d)\/(\d\d)\/(\d{4})|s\/f)\s*—\s*(.+?)(?:\s*\[(.*)\])?\s*$/u', $l, $m)) {
+                $fecha = ($m[3] ?? '') !== '' ? "{$m[3]}-{$m[2]}-{$m[1]}" : '';
+                $filas[] = ['nombre' => $m[4], 'caduca' => $fecha, 'pcs' => '', 'incluir' => true, 'nota' => $m[5] ?? ''];
+            }
+        }
+        return $filas;
     }
 
     public function render()
     {
         $cola = Schema::hasTable('trabajadores') && Schema::hasTable('tareas');   // hasta que se haga la migración
         return view('livewire.contabilidad.certificados', [
-            'vistaPrevia' => $this->texto(),
+            'vistaPrevia' => $this->viendoEnvio && $this->verEnvio ? (string) DB::table('certificados_envios')->where('id', $this->verEnvio)->value('texto') : $this->texto(),
             'envios' => DB::table('certificados_envios')->where('periodo', 'like', $this->anio.'-%')->orderBy('enviado_at')->get()->groupBy('periodo'),
             'envioAbierto' => $this->verEnvio ? DB::table('certificados_envios')->find($this->verEnvio) : null,
             'graphOk' => GraphMail::configurado(),

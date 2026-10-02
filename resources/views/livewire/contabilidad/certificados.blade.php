@@ -31,6 +31,13 @@
             <div class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md whitespace-pre-line">{{ $salida }}</div>
         @endif
 
+        @if ($viendoEnvio)
+            <div class="flex flex-wrap items-center gap-3 px-4 py-2 text-sm text-amber-900 border border-amber-300 rounded-md bg-amber-50">
+                👁 Estás viendo un <b>envío ya hecho</b> ({{ $enviado }}): la lista y el correo son los que salieron.
+                <button type="button" wire:click="volverALista" class="px-2 py-0.5 bg-white border border-amber-300 rounded hover:bg-amber-100">↩ Volver a la lista actual</button>
+            </div>
+        @endif
+
         {{-- PASOS 1 y 2, lado a lado --}}
         <div class="grid items-start gap-4 xl:grid-cols-2">
         {{-- PASO 1 --}}
@@ -137,13 +144,13 @@
             <h2 class="font-semibold text-gray-900">Paso 2 · Enviar el correo</h2>
             <div class="grid gap-2 md:grid-cols-3">
                 <label class="text-xs font-semibold text-gray-600">Para
-                    <input type="text" wire:model.blur="para" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                    <input type="text" wire:model.blur="para" @disabled($viendoEnvio) class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600">CC
-                    <input type="text" wire:model.blur="cc" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                    <input type="text" wire:model.blur="cc" @disabled($viendoEnvio) class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600">Asunto
-                    <input type="text" wire:model.live.debounce.300ms="asunto" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                    <input type="text" wire:model.live.debounce.300ms="asunto" @disabled($viendoEnvio) class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600 md:col-span-3">Texto de arriba (la lista se añade sola)
-                    <textarea wire:model.live.debounce.300ms="intro" rows="2" class="w-full py-1 text-sm font-normal leading-snug border-gray-300 rounded-md"></textarea></label>
+                    <textarea wire:model.live.debounce.300ms="intro" @disabled($viendoEnvio) rows="2" class="w-full py-1 text-sm font-normal leading-snug border-gray-300 rounded-md"></textarea></label>
             </div>
             <div>
                 <div class="text-xs font-semibold text-gray-600">Así saldrá</div>
@@ -185,14 +192,6 @@
                     </div>
                 @endforeach
             </div>
-            @if ($envioAbierto)
-                <div class="p-3 space-y-1 text-sm border border-gray-200 rounded-md bg-gray-50">
-                    <div><b>{{ \Carbon\Carbon::parse($envioAbierto->enviado_at)->format('d/m/Y H:i') }}</b> · {{ $envioAbierto->origen === 'manual' ? 'enviado a mano (fuera de Appmos)' : 'enviado desde Appmos' }}</div>
-                    @if ($envioAbierto->para)<div>Para: {{ $envioAbierto->para }}{{ $envioAbierto->cc ? ' · CC '.$envioAbierto->cc : '' }}</div>@endif
-                    @if ($envioAbierto->asunto)<div>Asunto: {{ $envioAbierto->asunto }}</div>@endif
-                    @if ($envioAbierto->texto)<pre class="p-2 whitespace-pre-wrap bg-white border border-gray-200 rounded" style="font-family:inherit">{{ str_replace('{logo}', '[logo de Suma]', $envioAbierto->texto) }}</pre>@endif
-                </div>
-            @endif
         </div>
         </div>
 
