@@ -1,5 +1,5 @@
 {{-- Sub-navegación de la pestaña Contabilidad, con aspecto de pestañas de hoja de Excel:
-     Procesos FIQ / Facturación PDF / Durcal / Bancos / Facturas OCR / IS / Neteges / Proc.Mensuales.
+     Procesos FIQ / Facturación PDF / Durcal / Bancos / Facturas OCR / IS / Neteges / Proc.Mensuales / Seguimiento.
      Son pantallas independientes (rutas y componentes Livewire distintos).
      $activa (opcional): ruta de la pestaña activa, para que siga marcada cuando
      Livewire re-renderiza (en esas peticiones request()->routeIs() ya no vale).
@@ -16,6 +16,7 @@
         ['contabilidad.is', 'contabilidad.is', 'IS', config('contabilidad.is_url')],
         ['contabilidad.neteges', 'contabilidad.neteges', 'Neteges', null],
         ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', config('contabilidad.procesosmensuales_url')],
+        ['contabilidad.procesosmensuales', 'contabilidad.seguimiento-mensual', 'Seguimiento', config('contabilidad.procesosmensuales_url') ? str_replace('procesos-mensuales', 'seguimiento-mensual', config('contabilidad.procesosmensuales_url')) : null],
     ];
 @endphp
 <style>
@@ -52,7 +53,7 @@
 @php
     $enBancos = ($activa ?? null) === 'contabilidad.bancos' || request()->routeIs('contabilidad.bancos');
     $enIs = ($activa ?? null) === 'contabilidad.is' || request()->routeIs('contabilidad.is');
-    $enPm = ($activa ?? null) === 'contabilidad.procesos-mensuales' || request()->routeIs('contabilidad.procesos-mensuales');
+    $enPm = in_array($activa ?? null, ['contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual'], true) || request()->routeIs('contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual');
     // Bancos, IS y Proc.Mensuales van por su cuenta: operativos en la web aunque el resto esté bloqueado
     $web = $enBancos ? ['Bancos', 'bancos'] : ($enIs ? ['IS', 'is'] : ($enPm ? ['Proc.Mensuales', 'procesosmensuales'] : null));
     $bloqueado = $web ? ! config("contabilidad.{$web[1]}_ejecucion") : ! config('contabilidad.ejecucion_local');

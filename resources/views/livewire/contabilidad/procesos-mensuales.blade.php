@@ -22,6 +22,21 @@
             @endforeach
         </div>
 
+        @if ($proceso === 'certificados')
+            <div class="p-4 space-y-3 bg-white border border-indigo-200 rounded-lg">
+                <div class="inline-block px-2 py-0.5 text-xs font-semibold text-indigo-900 bg-indigo-100 rounded">💻 Este proceso se ejecuta en LOCAL</div>
+                <p class="text-sm text-gray-700">
+                    Los certificados digitales están instalados en los PCs (AlexMiniPC y PortalExomen), así que no se puede lanzar desde la web.
+                    Se hace en dos pasos desde el Appmos de uno de los PCs: <b>1)</b> escanear los certificados de los dos PCs y preparar la lista
+                    (los que caducan en 3 meses, sin los ya renovados, avisando de contradicciones entre PCs) y editarla;
+                    <b>2)</b> enviarla por correo (por defecto a Marta Ruiz, destinatario editable).
+                </p>
+                <a href="{{ config('contabilidad.certificados_local_url') }}" target="_blank" rel="noopener"
+                   class="inline-block px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Abrir en local ↗</a>
+                <span class="text-xs text-gray-500">{{ config('contabilidad.certificados_local_url') }} · después márcalo en el <a class="underline" href="{{ route('contabilidad.seguimiento-mensual') }}">Seguimiento</a>.</span>
+            </div>
+        @endif
+
         @if ($proceso === 'petdocimpuestos')
             <p class="text-sm text-gray-600">
                 Empresas que gestiona <b>{{ $usuario->name }}</b>: se le pide a {{ $marcadas }} de {{ $total }}. El check (enviar o no) y el idioma

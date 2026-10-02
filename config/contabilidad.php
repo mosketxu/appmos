@@ -1,5 +1,17 @@
 <?php
 
+// Credenciales de Graph de los PCs: si no están en el .env, las de Contabilidad/FacturacionPDFyMail/config.json
+// (que ya hay en los dos PCs y no va por git). En el VPS van en el .env.
+$graphPc = (function () {
+    foreach (['e', 'f', 'd'] as $u) {
+        $f = "/mnt/{$u}/Claude/Contabilidad/FacturacionPDFyMail/config.json";
+        if (is_file($f)) {
+            return json_decode((string) @file_get_contents($f), true)['email']['graph'] ?? [];
+        }
+    }
+    return [];
+})();
+
 return [
 
     /*
@@ -68,13 +80,15 @@ return [
     */
     'procesosmensuales_ejecucion' => env('PROCESOSMENSUALES_EJECUCION', false),
     'procesosmensuales_url' => env('PROCESOSMENSUALES_URL'),
+    // Certificados por caducar: se ejecuta en LOCAL (los certificados están en los PCs); el Seguimiento de la web enlaza aquí.
+    'certificados_local_url' => env('CERTIFICADOS_LOCAL_URL', 'http://localhost:8000/contabilidad/certificados'),
 
     // Microsoft Graph (Mail.Send) para los correos de Proc.Mensuales. GRAPH_SENDER = remitente si el
     // usuario no tiene correo @sumaempresa.com; GRAPH_REDIRECT = mandar todo a esa dirección (pruebas).
     'graph' => [
-        'tenant_id' => env('GRAPH_TENANT_ID'),
-        'client_id' => env('GRAPH_CLIENT_ID'),
-        'client_secret' => env('GRAPH_CLIENT_SECRET'),
+        'tenant_id' => env('GRAPH_TENANT_ID') ?: ($graphPc['tenant_id'] ?? null),
+        'client_id' => env('GRAPH_CLIENT_ID') ?: ($graphPc['client_id'] ?? null),
+        'client_secret' => env('GRAPH_CLIENT_SECRET') ?: ($graphPc['client_secret'] ?? null),
         'sender' => env('GRAPH_SENDER', 'alex.arregui@sumaempresa.com'),
         'redirect' => env('GRAPH_REDIRECT'),
     ],
