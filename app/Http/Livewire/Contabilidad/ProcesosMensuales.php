@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Contabilidad;
 
 use App\Models\Entidad;
 use App\Models\MailEnviado;
+use App\Models\ProcesoEstado;
 use App\Models\Suma;
 use App\Support\GraphMail;
 use App\Support\Accesos;
@@ -418,6 +419,7 @@ class ProcesosMensuales extends Component
                 GraphMail::enviar($de, $c['para'], $c['cc'], $c['asunto'], $c['texto']);
                 $fila->fill(['enviado_at' => now(), 'enviar_ahora' => false, 'error' => null, 'html' => GraphMail::html($c['texto'])])->save();
                 $this->ahora[$c['id']] = false;
+                $this->ponerEstado((int) $c['id'], 'solicitado', false);
                 $ok++;
             } catch (\Throwable $ex) {
                 $fila->fill(['error' => mb_substr($ex->getMessage(), 0, 1000), 'enviar_ahora' => true])->save();
@@ -427,6 +429,42 @@ class ProcesosMensuales extends Component
         $this->resultadoEnvio = ['ok' => $ok, 'fallos' => $fallos, 'de' => $de];
         $this->envio = [];
         $this->dispatch('proceso-terminado', mensaje: "✉ Enviados {$ok}".($fallos ? ' · ⚠ '.count($fallos).' con error' : ''));
+    }
+
+    /**
+     * Estado de la empresa en el periodo (pedido 2026-10-02): sin fila = no solicitado;
+     * «solicitado» se pone solo al enviar (sin bajar un «recibido»); «recibido» a mano.
+     */
+    protected function ponerEstado(int $id, ?string $estado, bool $forzar = true): void
+    {
+        $q = ProcesoEstado::where('proceso', $this->proceso)->where('entidad_id', $id)->where('periodo', $this->periodo);
+        if ($estado === null) {
+            $q->delete();
+            return;
+        }
+        $fila = $q->first() ?? new ProcesoEstado(['proceso' => $this->proceso, 'entidad_id' => $id, 'periodo' => $this->periodo]);
+        if (! $forzar && $fila->estado === 'recibido') {
+            return;
+        }
+        $fila->estado = $estado;
+        $fila->user_id = auth()->id();
+        if ($estado === 'solicitado') {
+            $fila->solicitado_at ??= now();
+            $fila->recibido_at = null;
+        } else {
+            $fila->recibido_at = now();
+        }
+        $fila->save();
+    }
+
+    /** Clic en el estado: no solicitado → solicitado → recibido → no solicitado. */
+    public function siguienteEstado(int $id): void
+    {
+        if (! $this->mia($id)) {
+            return;
+        }
+        $actual = ProcesoEstado::where('proceso', $this->proceso)->where('entidad_id', $id)->where('periodo', $this->periodo)->value('estado');
+        $this->ponerEstado($id, match ($actual) { null => 'solicitado', 'solicitado' => 'recibido', default => null });
     }
 
     public function cancelarEnvio(): void
@@ -481,6 +519,9 @@ class ProcesosMensuales extends Component
                 ->where('entidad_id', $this->seleccionada)->whereNotNull('enviado_at')->orderByDesc('enviado_at')->get() : collect(),
             'remitente' => $this->remitente(),
             // Último envío de cada empresa en el periodo
+            // Estado de cada empresa en el periodo: no solicitado / solicitado / recibido
+            'estados' => ProcesoEstado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
+                ->get()->keyBy('entidad_id')->all(),
             'enviados' => MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
                 ->whereNotNull('enviado_at')->selectRaw('entidad_id, max(enviado_at) as ultimo')->groupBy('entidad_id')
                 ->pluck('ultimo', 'entidad_id')->all(),

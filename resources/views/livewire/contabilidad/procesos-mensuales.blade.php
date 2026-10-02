@@ -135,6 +135,7 @@
                                 <tr>
                                     <th class="px-2 py-2 text-center" title="Enviarle el correo de petición">Mail</th>
                                     <th class="px-2 py-2 text-center" title="🚀 Enviar ahora ({{ $periodo }}): solo se envía a estas">Enviar</th>
+                                    <th class="px-2 py-2 text-center" title="Documentación del periodo {{ $periodo }}. Clic: No solicitado → Solicitado → Recibido">Estado</th>
                                     <th class="px-2 py-2 text-left">Empresa ({{ $empresas->count() }})</th>
                                     @if ($puedeEditar) <th class="px-2 py-2 text-left">Responsable</th> @endif
                                     <th class="px-2 py-2 text-center" title="Cliente / Proveedor / Contacto (clic para cambiar; si deja de ser cliente sale de la lista)">Relación</th>
@@ -155,6 +156,14 @@
                                         <td class="px-2 py-1 text-center" x-on:click.stop>
                                             <input type="checkbox" wire:model.live="ahora.{{ $e->id }}" title="🚀 Enviar ahora ({{ $periodo }})"
                                                    @disabled(! ($checks[$e->id] ?? false)) class="border-gray-300 rounded text-yellow-600">
+                                        </td>
+                                        <td class="px-2 py-1 text-center" x-on:click.stop>
+                                            @php $est = $estados[$e->id] ?? null; @endphp
+                                            <button type="button" wire:click="siguienteEstado({{ $e->id }})"
+                                                    title="{{ $est ? ($est->estado === 'recibido' ? 'Recibido '.optional($est->recibido_at)->format('d/m/Y H:i') : 'Solicitado '.optional($est->solicitado_at)->format('d/m/Y H:i')) : 'No solicitado' }} · clic: cambiar"
+                                                    class="w-24 px-2 py-0.5 text-xs border rounded-md {{ ! $est ? 'text-gray-500 border-gray-300 hover:bg-gray-100' : ($est->estado === 'recibido' ? 'text-green-800 bg-green-100 border-green-300' : 'text-yellow-800 bg-yellow-100 border-yellow-300') }}">
+                                                {{ ! $est ? 'No solicitado' : ($est->estado === 'recibido' ? '✓ Recibido' : 'Solicitado') }}
+                                            </button>
                                         </td>
                                         <td class="px-2 py-1">
                                             <span class="{{ $seleccionada === $e->id ? 'font-semibold text-gray-900' : '' }} {{ ($activas[$e->id] ?? false) ? '' : 'line-through' }}" title="{{ $e->entidad }}">{{ $e->entidad }}</span>
@@ -197,7 +206,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="9" class="p-6 text-sm italic text-center text-gray-400">
+                                    <tr><td colspan="10" class="p-6 text-sm italic text-center text-gray-400">
                                         @if ($total)
                                             Ninguna empresa que mostrar (marca «Ver también las no marcadas» o cambia la búsqueda).
                                         @else
@@ -222,6 +231,11 @@
                                 @if (isset($enviados[$sel->id]))
                                     <span class="px-2 py-0.5 text-xs text-green-800 bg-green-100 rounded-full">✅ enviado {{ \Carbon\Carbon::parse($enviados[$sel->id])->format('d/m/Y H:i') }}</span>
                                 @endif
+                                @php $estSel = $estados[$sel->id] ?? null; @endphp
+                                <button type="button" wire:click="siguienteEstado({{ $sel->id }})" title="Clic: No solicitado → Solicitado → Recibido"
+                                        class="px-2 py-0.5 text-xs border rounded-full {{ ! $estSel ? 'text-gray-500 border-gray-300' : ($estSel->estado === 'recibido' ? 'text-green-800 bg-green-100 border-green-300' : 'text-yellow-800 bg-yellow-100 border-yellow-300') }}">
+                                    {{ ! $estSel ? 'No solicitado' : ($estSel->estado === 'recibido' ? '✓ Recibido '.optional($estSel->recibido_at)->format('d/m') : 'Solicitado '.optional($estSel->solicitado_at)->format('d/m')) }}
+                                </button>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <span class="px-2 py-0.5 text-gray-700 bg-gray-100 rounded-full">{{ $idiomasDisponibles[$idiomas[$sel->id] ?? 'ES'] }}</span>
