@@ -25,3 +25,4 @@ Route::post('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCue
 Route::get('/bancos-configuracion', [\App\Http\Controllers\BancosCuentasController::class, 'configuracion']);
 
 Route::post('/certificados/escaneo', [\App\Http\Controllers\CertificadosEscaneoController::class, 'guardar']);
+Route::post('/certificados/envio', [\App\Http\Controllers\CertificadosEscaneoController::class, 'envio']);

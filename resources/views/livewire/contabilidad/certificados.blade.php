@@ -120,5 +120,35 @@
                 <button type="button" wire:click="pedirEnvio" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">✉ Enviar…</button>
             @endif
         </div>
+        {{-- ENVÍOS: detalle por meses, como el checklist de Fashion --}}
+        <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div class="flex items-center gap-3">
+                <h2 class="font-semibold text-gray-900">Envíos de {{ $anio }}</h2>
+                <button type="button" wire:click="cambiarAnio(-1)" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">◀</button>
+                <button type="button" wire:click="cambiarAnio(1)" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">▶</button>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                @foreach (['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'] as $n => $mes)
+                    @php $k = sprintf('%d-%02d', $anio, $n + 1); $e = $envios[$k] ?? collect(); @endphp
+                    <div class="text-center" style="min-width:52px">
+                        <div class="text-xs text-gray-500">{{ $mes }}</div>
+                        @if ($e->isNotEmpty())
+                            <button type="button" wire:click="ver({{ $e->last()->id }})" title="{{ $e->count() }} envío(s): clic para ver lo que se mandó"
+                                class="inline-flex items-center justify-center w-6 h-6 text-xs text-white bg-green-500 border border-green-600 rounded">✓</button>
+                        @else
+                            <span class="inline-flex items-center justify-center w-6 h-6 bg-white border border-gray-300 rounded"></span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+            @if ($envioAbierto)
+                <div class="p-3 space-y-1 text-sm border border-gray-200 rounded-md bg-gray-50">
+                    <div><b>{{ \Carbon\Carbon::parse($envioAbierto->enviado_at)->format('d/m/Y H:i') }}</b> · {{ $envioAbierto->origen === 'manual' ? 'enviado a mano (fuera de Appmos)' : 'enviado desde Appmos' }}</div>
+                    @if ($envioAbierto->para)<div>Para: {{ $envioAbierto->para }}{{ $envioAbierto->cc ? ' · CC '.$envioAbierto->cc : '' }}</div>@endif
+                    @if ($envioAbierto->asunto)<div>Asunto: {{ $envioAbierto->asunto }}</div>@endif
+                    @if ($envioAbierto->texto)<pre class="p-2 whitespace-pre-wrap bg-white border border-gray-200 rounded" style="font-family:inherit">{{ str_replace('{logo}', '[logo de Suma]', $envioAbierto->texto) }}</pre>@endif
+                </div>
+            @endif
+        </div>
     </div>
 </div>
