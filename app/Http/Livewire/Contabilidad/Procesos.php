@@ -1007,7 +1007,8 @@ class Procesos extends Component
         $etiqueta = "Cash flow {$mm} · envío a Plein";
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         $desde = strlen($this->salida);
-        $this->ejecutarScript(['python3', 'CashFlow/cashflow.py', (string) $this->mes, '--enviar', '--real'], 120, $etiqueta);
+        // windowsEnv(): tras enviar, mueve el correo en Outlook (powershell.exe) a su carpeta
+        $this->ejecutarScript(['python3', 'CashFlow/cashflow.py', (string) $this->mes, '--enviar', '--real'], 300, $etiqueta, null, $this->windowsEnv());
         if ($this->ultimoOk && str_contains(substr($this->salida, $desde), 'ENVIADO_REAL')) {
             $this->marcarChecklist('cashflow', $this->mes, 'ok');
         }
