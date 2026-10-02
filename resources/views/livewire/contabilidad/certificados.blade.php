@@ -31,6 +31,8 @@
             <div class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md whitespace-pre-line">{{ $salida }}</div>
         @endif
 
+        {{-- PASOS 1 y 2, lado a lado --}}
+        <div class="grid items-start gap-4 xl:grid-cols-2">
         {{-- PASO 1 --}}
         <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm">
             <div x-data="{ info: false }">
@@ -129,21 +131,21 @@
         </div>
 
         {{-- PASO 2 --}}
-        <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <div class="p-3 space-y-2 bg-white border border-gray-200 rounded-lg shadow-sm">
             <h2 class="font-semibold text-gray-900">Paso 2 · Enviar el correo</h2>
-            <div class="grid gap-2 md:grid-cols-2">
+            <div class="grid gap-2 md:grid-cols-3">
                 <label class="text-xs font-semibold text-gray-600">Para
-                    <input type="text" wire:model.blur="para" class="w-full text-sm font-normal border-gray-300 rounded-md"></label>
+                    <input type="text" wire:model.blur="para" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600">CC
-                    <input type="text" wire:model.blur="cc" class="w-full text-sm font-normal border-gray-300 rounded-md"></label>
-                <label class="text-xs font-semibold text-gray-600 md:col-span-2">Asunto
-                    <input type="text" wire:model.live.debounce.300ms="asunto" class="w-full text-sm font-normal border-gray-300 rounded-md"></label>
-                <label class="text-xs font-semibold text-gray-600 md:col-span-2">Texto de arriba (la lista se añade sola; abajo se ve cómo queda)
-                    <textarea wire:model.live.debounce.300ms="intro" rows="4" class="w-full text-sm font-normal border-gray-300 rounded-md"></textarea></label>
+                    <input type="text" wire:model.blur="cc" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                <label class="text-xs font-semibold text-gray-600">Asunto
+                    <input type="text" wire:model.live.debounce.300ms="asunto" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                <label class="text-xs font-semibold text-gray-600 md:col-span-3">Texto de arriba (la lista se añade sola)
+                    <textarea wire:model.live.debounce.300ms="intro" rows="2" class="w-full py-1 text-sm font-normal leading-snug border-gray-300 rounded-md"></textarea></label>
             </div>
             <div>
-                <div class="mb-1 text-xs font-semibold text-gray-600">Así saldrá</div>
-                <pre class="p-3 text-sm text-gray-800 whitespace-pre-wrap border border-gray-200 rounded-md bg-gray-50" style="font-family:inherit">{{ str_replace('{logo}', '[logo de Suma]', $vistaPrevia) }}</pre>
+                <div class="text-xs font-semibold text-gray-600">Así saldrá</div>
+                <pre class="p-2 overflow-y-auto text-xs leading-snug text-gray-800 whitespace-pre-wrap border border-gray-200 rounded-md bg-gray-50" style="font-family:inherit;max-height:14rem">{{ str_replace('{logo}', '[logo de Suma]', $vistaPrevia) }}</pre>
             </div>
             @if ($enviado)
                 <div class="text-sm font-semibold text-green-700">✅ Enviado el {{ $enviado }}</div>
@@ -158,6 +160,7 @@
             @else
                 <button type="button" wire:click="pedirEnvio" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">✉ Enviar…</button>
             @endif
+        </div>
         </div>
 
         {{-- ENVÍOS: detalle por meses, como el checklist de Fashion --}}
