@@ -34,7 +34,13 @@
         $ep = $estadoPlugin;
     @endphp
 
-    <div wire:loading.flex wire:target="procesarSubidas, anadirOtraCuenta, quitarOtraCuenta, vaciarVentas, buscarEnCorreo" class="items-center gap-2 text-xs font-semibold text-amber-800">⏳ Actualizando…</div>
+    {{-- Aviso bien visible mientras Neteges trabaja (subir el mayor tarda unos segundos): fijo arriba y centrado --}}
+    <div wire:loading.flex
+         wire:target="procesarSubidas, procesarExtractos, conciliar, prepararPlugin, buscarEnCorreo, vaciarVentas, borrarExtracto, anadirOtraCuenta, quitarOtraCuenta, desmarcarPlugin, asignarCuenta"
+         style="position:fixed; top:1rem; left:50%; transform:translateX(-50%); z-index:70; align-items:center; gap:.75rem; padding:.75rem 1.5rem; background:#f59e0b; color:#fff; font-weight:700; font-size:1.05rem; border-radius:.5rem; box-shadow:0 6px 20px rgba(0,0,0,.35)">
+        <span class="animate-pulse" style="font-size:1.6rem">⏳</span>
+        <span>Trabajando… puede tardar unos segundos. No cierres la página.</span>
+    </div>
     @error('subidas')
         <p class="text-xs text-red-600">{{ $message }}</p>
     @enderror

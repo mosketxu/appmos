@@ -8,12 +8,12 @@
 @endphp
 <div wire:key="fila-{{ $c }}"
      x-data="{
-         encima: false, subiendo: false, progreso: 0,
+         encima: false, subiendo: false, procesando: false, progreso: 0,
          subir(files) {
              if (! files || ! files.length) return;
              this.subiendo = true; this.progreso = 0;
              $wire.uploadMultiple('subidas', files,
-                 () => { this.subiendo = false; $wire.procesarSubidas(@js($c)); },
+                 () => { this.subiendo = false; this.procesando = true; $wire.procesarSubidas(@js($c)).finally(() => this.procesando = false); },
                  () => { this.subiendo = false; },
                  (e) => { this.progreso = e.detail.progress; });
          },
@@ -113,5 +113,6 @@
             <span class="text-red-600" title="{{ $ev['sin_cuenta'] ?? 0 }} clientes sin cuenta SAGE · {{ $ev['cambios'] ?? 0 }} facturas llegadas distintas">⚠️</span>
         @endif
     @endif
-    <span x-show="subiendo" x-cloak class="text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
+    <span x-show="subiendo" x-cloak class="text-xs text-gray-500">⬆ Subiendo… <span x-text="progreso"></span>%</span>
+    <span x-show="procesando" x-cloak class="text-xs font-bold text-amber-600 animate-pulse">⏳ Procesando el fichero…</span>
 </div>

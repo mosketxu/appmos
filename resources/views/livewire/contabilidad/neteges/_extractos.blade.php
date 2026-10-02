@@ -1,11 +1,11 @@
 {{-- Extractos del banco a conciliar (dentro del proceso «Conciliar bancos y remesas»; 2-oct-2026) --}}
 <div x-data="{
-         encima: false, subiendo: false, progreso: 0,
+         encima: false, subiendo: false, procesando: false, progreso: 0,
          subir(files) {
              if (! files || ! files.length) return;
              this.subiendo = true; this.progreso = 0;
              $wire.uploadMultiple('extractos', files,
-                 () => { this.subiendo = false; $wire.procesarExtractos(); },
+                 () => { this.subiendo = false; this.procesando = true; $wire.procesarExtractos().finally(() => this.procesando = false); },
                  () => { this.subiendo = false; },
                  (e) => { this.progreso = e.detail.progress; });
          },
@@ -28,7 +28,8 @@
             <input type="file" multiple accept=".xlsx,.xls,.xml,.txt,.n43,.csv" class="hidden"
                    x-on:change="subir($event.target.files); $event.target.value = ''">
             <span class="text-gray-600">Arrastra aquí los extractos o haz clic para elegirlos</span>
-            <span x-show="subiendo" x-cloak class="ml-auto text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
+            <span x-show="subiendo" x-cloak class="ml-auto text-gray-500">⬆ Subiendo… <span x-text="progreso"></span>%</span>
+            <span x-show="procesando" x-cloak class="ml-auto font-bold text-amber-600 animate-pulse">⏳ Reconociendo las cuentas…</span>
         </label>
         <div wire:loading.flex wire:target="procesarExtractos" class="items-center gap-2 mt-1 text-xs font-semibold text-amber-800">⏳ Reconociendo las cuentas…</div>
         @error('extractos')
