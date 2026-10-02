@@ -10,11 +10,12 @@ class MailEnviado extends Model
     protected $table = 'mails_enviados';
 
     protected $fillable = ['proceso', 'entidad_id', 'periodo', 'user_id', 'enviar_ahora', 'idioma',
-        'destinatarios', 'cc', 'asunto', 'texto', 'html', 'enviado_at', 'error'];
+        'destinatarios', 'cc', 'asunto', 'texto', 'html', 'enviado_at', 'archivado_at', 'archivo_error', 'error'];
 
     protected $casts = [
         'enviar_ahora' => 'boolean',
         'enviado_at' => 'datetime',
+        'archivado_at' => 'datetime',
     ];
 
     public function entidad()
