@@ -23,3 +23,5 @@ Route::get('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCuen
 Route::post('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCuentasController::class, 'alta']);
 // Configuracion.xlsx de Bancos (Textos a quitar...), para Neteges en los PCs (misma lista que la web)
 Route::get('/bancos-configuracion', [\App\Http\Controllers\BancosCuentasController::class, 'configuracion']);
+
+Route::post('/certificados/escaneo', [\App\Http\Controllers\CertificadosEscaneoController::class, 'guardar']);

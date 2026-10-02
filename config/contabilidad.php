@@ -82,6 +82,9 @@ return [
     'procesosmensuales_url' => env('PROCESOSMENSUALES_URL'),
     // Certificados por caducar: se ejecuta en LOCAL (los certificados están en los PCs); el Seguimiento de la web enlaza aquí.
     'certificados_local_url' => env('CERTIFICADOS_LOCAL_URL', 'http://localhost:8000/contabilidad/certificados'),
+    // El escaneo de cada PC se sube a la web (POST con X-Token): URL de la API y token (el mismo valor en el VPS y en los PCs)
+    'certificados_sync_url' => env('CERTIFICADOS_SYNC_URL', 'https://appmos.sumaempresa.com/api/certificados/escaneo'),
+    'certificados_sync_token' => env('CERTIFICADOS_SYNC_TOKEN'),
 
     // Microsoft Graph (Mail.Send) para los correos de Proc.Mensuales. GRAPH_SENDER = remitente si el
     // usuario no tiene correo @sumaempresa.com; GRAPH_REDIRECT = mandar todo a esa dirección (pruebas).
