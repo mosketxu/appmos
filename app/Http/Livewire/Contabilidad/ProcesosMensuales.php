@@ -53,6 +53,8 @@ class ProcesosMensuales extends Component
     public array $checks = [];
     public array $idiomas = [];
     public array $ccs = [];
+    /** id => carpeta de Outlook del cliente, sin año (los enviados van a «<año>\___Suma <año>\<carpeta> <año>»). */
+    public array $carpetas = [];
     /** id => Email Adm (entidades.emailadm): destinatarios, editable aquí. */
     public array $paras = [];
     /** id => asunto (entidades.mail_peticion_asunto; vacío en la entidad = el de la plantilla de su idioma). */
@@ -96,6 +98,7 @@ class ProcesosMensuales extends Component
         foreach ($this->empresas() as $e) {
             $this->textos[$e->id] = (string) $e->mail_peticion;
             $this->ccs[$e->id] = (string) $e->mail_peticion_cc;
+            $this->carpetas[$e->id] = (string) $e->carpeta_outlook;
             $this->paras[$e->id] = (string) $e->emailadm;
             $this->activas[$e->id] = (int) $e->estado === 1;
             $this->sumaIds[$e->id] = $e->suma_id ? (string) $e->suma_id : '';
@@ -196,7 +199,7 @@ class ProcesosMensuales extends Component
             ->where('cliente', 1)
             ->where(fn ($q) => $q->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])
                 ->when($editar, fn ($q) => $q->orWhereNull('suma_id')))
-            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc', 'estado', 'suma_id', 'cliente', 'proveedor', 'contacto']);
+            ->orderBy('entidad')->get(['id', 'entidad', 'alias', 'idioma', 'emailadm', 'cicloimpuesto_id', 'mail_peticion_check', 'mail_peticion', 'mail_peticion_cc', 'carpeta_outlook', 'estado', 'suma_id', 'cliente', 'proveedor', 'contacto']);
     }
 
     /** Solo se toca una empresa que gestiona el usuario (o sin responsable, si puede editar entidades). */
@@ -313,7 +316,7 @@ class ProcesosMensuales extends Component
     /** El check y el idioma se guardan en la entidad en cuanto se cambian. */
     public function updated(string $propiedad, $valor): void
     {
-        if (! preg_match('/^(checks|idiomas|ahora|activas|sumaIds|paras|asuntos)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
+        if (! preg_match('/^(checks|idiomas|ahora|activas|sumaIds|paras|asuntos|carpetas)\.(\d+)$/', $propiedad, $m) || ! $this->mia((int) $m[2])) {
             return;
         }
         if ($m[1] === 'ahora') {
@@ -327,6 +330,11 @@ class ProcesosMensuales extends Component
             $a = trim((string) $valor);
             $e->mail_peticion_asunto = ($a === '' || $a === $porDefecto) ? null : mb_substr($a, 0, 255);
             $this->asuntos[$e->id] = $e->mail_peticion_asunto ?? $porDefecto;
+        } elseif ($m[1] === 'carpetas') {
+            // sin el año del final («Eric 2026» → «Eric»)
+            $c = trim(preg_replace('/\s+20\d\d$/', '', trim((string) $valor)));
+            $e->carpeta_outlook = $c === '' ? null : mb_substr($c, 0, 150);
+            $this->carpetas[$e->id] = (string) $e->carpeta_outlook;
         } elseif ($m[1] === 'paras') {
             $e->emailadm = mb_substr(implode('; ', self::destinatarios((string) $valor)), 0, 500) ?: null;
             $this->paras[$e->id] = (string) $e->emailadm;
@@ -420,6 +428,10 @@ class ProcesosMensuales extends Component
                 $fila->fill(['enviado_at' => now(), 'enviar_ahora' => false, 'error' => null, 'html' => GraphMail::html($c['texto'])])->save();
                 $this->ahora[$c['id']] = false;
                 $this->ponerEstado((int) $c['id'], 'solicitado', false);
+                $this->archivar($fila, $de);
+                if ($fila->archivo_error) {
+                    $fallos[] = $c['empresa'].': enviado, pero no movido a su carpeta ('.$fila->archivo_error.')';
+                }
                 $ok++;
             } catch (\Throwable $ex) {
                 $fila->fill(['error' => mb_substr($ex->getMessage(), 0, 1000), 'enviar_ahora' => true])->save();
@@ -429,6 +441,68 @@ class ProcesosMensuales extends Component
         $this->resultadoEnvio = ['ok' => $ok, 'fallos' => $fallos, 'de' => $de];
         $this->envio = [];
         $this->dispatch('proceso-terminado', mensaje: "✉ Enviados {$ok}".($fallos ? ' · ⚠ '.count($fallos).' con error' : ''));
+    }
+
+    /**
+     * Mueve el correo enviado de Enviados a la carpeta de Outlook del cliente (pedido
+     * 2026-10-02). Deja archivado_at o el motivo en archivo_error; nunca rompe el envío.
+     */
+    protected function archivar(MailEnviado $fila, string $buzon): void
+    {
+        $carpeta = trim((string) Entidad::withoutGlobalScopes()->whereKey($fila->entidad_id)->value('carpeta_outlook'));
+        if ($carpeta === '') {
+            $fila->fill(['archivo_error' => 'la empresa no tiene carpeta de Outlook'])->save();
+            return;
+        }
+        try {
+            GraphMail::moverEnviado($buzon, (string) $fila->asunto, $fila->enviado_at, $carpeta, (int) $fila->enviado_at->format('Y'));
+            $fila->fill(['archivado_at' => now(), 'archivo_error' => null])->save();
+        } catch (\Throwable $ex) {
+            $fila->fill(['archivo_error' => mb_substr($ex->getMessage(), 0, 500)])->save();
+        }
+    }
+
+    /** «📁 Archivar enviados»: los ya enviados del periodo que aún no están en su carpeta. */
+    public function archivarPendientes(): void
+    {
+        $ok = 0;
+        $fallos = [];
+        $filas = MailEnviado::with('user:id,email')->where('proceso', $this->proceso)->where('periodo', $this->periodo)
+            ->whereNotNull('enviado_at')->whereNull('error')->whereNull('archivado_at')->get();
+        foreach ($filas as $f) {
+            if (! $this->mia((int) $f->entidad_id)) {
+                continue;
+            }
+            $this->archivar($f, $f->user?->email ?: $this->remitente());
+            $f->archivado_at ? $ok++ : $fallos[] = ($f->entidad?->entidad ?? $f->entidad_id).': '.$f->archivo_error;
+        }
+        $this->resultadoEnvio = ['ok' => 0, 'archivados' => $ok, 'fallos' => $fallos, 'de' => $this->remitente()];
+        $this->dispatch('proceso-terminado', mensaje: "📁 Archivados {$ok}".($fallos ? ' · ⚠ '.count($fallos).' sin mover' : ''));
+    }
+
+    /** Carpetas de cliente que hay en Outlook (para elegir), o [] si no se pueden leer. */
+    public function getCarpetasDisponiblesProperty(): array
+    {
+        try {
+            return GraphMail::configurado() ? GraphMail::carpetasCliente($this->remitente(), (int) now()->format('Y')) : [];
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /** La carpeta que más se parece al nombre de la empresa (primera palabra significativa). */
+    public static function propuestaCarpeta(string $entidad, ?string $alias, array $lista): ?string
+    {
+        $norm = fn ($t) => mb_strtolower(\Illuminate\Support\Str::ascii((string) $t));
+        $palabras = array_filter(preg_split('/[^a-z0-9]+/', $norm($alias.' '.$entidad)), fn ($w) => strlen($w) >= 3
+            && ! in_array($w, ['sl', 'slu', 'sa', 'grupo', 'the', 'del', 'las', 'los', 'consulting', 'investments'], true));
+        foreach ($lista as $c) {
+            $pc = array_values(array_filter(preg_split('/[^a-z0-9]+/', $norm($c)), fn ($w) => strlen($w) >= 3));
+            if ($pc && array_intersect($pc, $palabras)) {
+                return $c;
+            }
+        }
+        return null;
     }
 
     /**
@@ -519,6 +593,8 @@ class ProcesosMensuales extends Component
                 ->where('entidad_id', $this->seleccionada)->whereNotNull('enviado_at')->orderByDesc('enviado_at')->get() : collect(),
             'remitente' => $this->remitente(),
             // Último envío de cada empresa en el periodo
+            'pendientesArchivo' => MailEnviado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
+                ->whereNotNull('enviado_at')->whereNull('error')->whereNull('archivado_at')->count(),
             // Estado de cada empresa en el periodo: no solicitado / solicitado / recibido
             'estados' => ProcesoEstado::where('proceso', $this->proceso)->where('periodo', $this->periodo)
                 ->get()->keyBy('entidad_id')->all(),

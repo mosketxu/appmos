@@ -60,10 +60,22 @@
                 <button type="button" wire:click="prepararEnvio" @disabled(! $nAhora)
                         class="px-3 py-1 ml-auto text-sm font-semibold text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
                         title="Prepara los correos de las marcadas 🚀 y te los enseña antes de enviar">✉ Enviar todos ({{ $nAhora }})</button>
+                @if ($pendientesArchivo)
+                    <button type="button" wire:click="archivarPendientes" wire:loading.attr="disabled" wire:target="archivarPendientes"
+                            class="px-3 py-1 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                            title="Mueve en Outlook los correos ya enviados de este periodo a la carpeta de cada cliente">
+                        <span wire:loading.remove wire:target="archivarPendientes">📁 Archivar enviados ({{ $pendientesArchivo }})</span>
+                        <span wire:loading wire:target="archivarPendientes">⏳ archivando…</span>
+                    </button>
+                @endif
             </div>
             @if ($resultadoEnvio)
                 <div class="p-3 text-sm border rounded-lg {{ $resultadoEnvio['fallos'] ? 'border-red-300 bg-red-50' : 'border-green-300 bg-green-50' }}">
-                    ✉ Enviados {{ $resultadoEnvio['ok'] }} desde {{ $resultadoEnvio['de'] }}.
+                    @if (isset($resultadoEnvio['archivados']))
+                        📁 Movidos a su carpeta de Outlook: {{ $resultadoEnvio['archivados'] }}.
+                    @else
+                        ✉ Enviados {{ $resultadoEnvio['ok'] }} desde {{ $resultadoEnvio['de'] }} (y movidos a la carpeta de cada cliente).
+                    @endif
                     @foreach ($resultadoEnvio['fallos'] as $f) <div class="text-red-700">⚠ {{ $f }}</div> @endforeach
                 </div>
             @endif
@@ -252,6 +264,23 @@
                                            class="flex-1 py-1 text-xs rounded-md {{ ! $para || $malos ? 'border-red-400 bg-red-50' : 'border-gray-300' }}">
                                 </label>
                                 @if ($malos) <p class="mt-1 text-xs text-red-600" style="margin-left:2.6rem">No parece un correo válido: {{ implode(', ', $malos) }}</p> @endif
+                            </div>
+                            {{-- Carpeta de Outlook del cliente: los enviados se mueven a «<año>\___Suma <año>\<carpeta> <año>» --}}
+                            @php
+                                $lista = $this->carpetasDisponibles;
+                                $propuesta = ($carpetas[$sel->id] ?? '') === '' ? $Pm::propuestaCarpeta($sel->entidad, $sel->alias, $lista) : null;
+                            @endphp
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="text-gray-500">Carpeta Outlook:</span>
+                                <input type="text" list="carpetas-outlook" wire:model.blur="carpetas.{{ $sel->id }}" maxlength="150"
+                                       placeholder="{{ $propuesta ? 'propuesta: '.$propuesta : '⚠ sin carpeta: se queda en Enviados' }}"
+                                       title="Carpeta del cliente en «{{ now()->year }}\___Suma {{ now()->year }}» (sin el año). Se guarda al salir del campo."
+                                       class="py-1 text-xs rounded-md {{ ($carpetas[$sel->id] ?? '') === '' ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300' }}" style="width:220px">
+                                @if ($propuesta)
+                                    <button type="button" wire:click="$set('carpetas.{{ $sel->id }}', @js($propuesta))"
+                                            class="px-2 py-0.5 text-xs text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50">usar «{{ $propuesta }}»</button>
+                                @endif
+                                <datalist id="carpetas-outlook">@foreach ($lista as $c)<option value="{{ $c }}">@endforeach</datalist>
                             </div>
                             @if ($checks[$sel->id] ?? false)
                                 <label class="flex items-center gap-2 text-xs">

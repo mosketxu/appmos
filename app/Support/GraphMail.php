@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * Envío de correo con Microsoft Graph (app con permiso Mail.Send, credenciales en el
+ * Envío de correo con Microsoft Graph (app con permisos Mail.Send y, desde 2026-10-02,
+ * Mail.ReadWrite para mover los enviados a su carpeta; credenciales en el
  * .env: GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET; no van por git).
  * Mismo sistema que Contabilidad/FacturacionPDFyMail/envio_mail.py.
  */
@@ -49,6 +50,76 @@ class GraphMail
         $h = preg_replace('/www\.sumaempresa\.com/', '<a href="https://www.sumaempresa.com">www.sumaempresa.com</a>', $h, 1);
         $logo = '<img src="cid:logo_suma" alt="Suma Apoyo Empresarial S.L." width="118" height="71" style="display:block;margin-top:6px;border:0;">';
         return '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'.str_replace('{logo}', $logo, $h).'</div>';
+    }
+
+    protected static function api(string $metodo, string $url, array $datos = [])
+    {
+        $r = Http::withToken(self::token())->timeout(60)->{$metodo}('https://graph.microsoft.com/v1.0/'.$url, $datos);
+        if (! $r->successful()) {
+            throw new RuntimeException('Microsoft Graph (HTTP '.$r->status().'): '.mb_substr($r->body(), 0, 200));
+        }
+        return $r->json();
+    }
+
+    /** Id de la carpeta $ruta (['2026', '___Suma 2026', 'Eric 2026']) del buzón, o null. */
+    public static function carpetaId(string $buzon, array $ruta): ?string
+    {
+        $base = 'users/'.rawurlencode($buzon).'/mailFolders';
+        $id = null;
+        foreach ($ruta as $nombre) {
+            $url = ($id ? $base.'/'.$id.'/childFolders' : $base).'?$top=250&$select=id,displayName';
+            $hijos = self::api('get', $url)['value'] ?? [];
+            $hit = collect($hijos)->first(fn ($f) => mb_strtolower(trim($f['displayName'])) === mb_strtolower(trim($nombre)));
+            if (! $hit) {
+                return null;
+            }
+            $id = $hit['id'];
+        }
+        return $id;
+    }
+
+    /** Nombres (sin el año) de las carpetas de cliente de «<año>\___Suma <año>» del buzón. */
+    public static function carpetasCliente(string $buzon, int $anio): array
+    {
+        return Cache::remember("graph_carpetas_{$buzon}_{$anio}", 600, function () use ($buzon, $anio) {
+            $id = self::carpetaId($buzon, [(string) $anio, "___Suma {$anio}"]);
+            if (! $id) {
+                return [];
+            }
+            $hijos = self::api('get', 'users/'.rawurlencode($buzon)."/mailFolders/{$id}/childFolders?\$top=250&\$select=displayName")['value'] ?? [];
+            return collect($hijos)->pluck('displayName')
+                ->map(fn ($n) => trim(preg_replace('/\s+'.$anio.'$/', '', $n)))->sort()->values()->all();
+        });
+    }
+
+    /**
+     * Mueve de Enviados a «<año>\___Suma <año>\<carpeta> <año>» (o «<carpeta>» si no lleva año)
+     * el correo con ese asunto enviado desde $desde (pedido 2026-10-02). Reintenta unos segundos
+     * porque tras sendMail tarda un poco en aparecer en Enviados. Devuelve la ruta o lanza error.
+     */
+    public static function moverEnviado(string $buzon, string $asunto, \DateTimeInterface $desde, string $carpeta, int $anio): string
+    {
+        $ruta = [(string) $anio, "___Suma {$anio}", "{$carpeta} {$anio}"];
+        $destino = self::carpetaId($buzon, $ruta);
+        if (! $destino) {
+            $ruta[2] = $carpeta;
+            $destino = self::carpetaId($buzon, $ruta);
+        }
+        if (! $destino) {
+            throw new RuntimeException("no existe la carpeta «{$anio}\\___Suma {$anio}\\{$carpeta} {$anio}» en Outlook");
+        }
+        $desdeUtc = \Carbon\Carbon::instance(\DateTime::createFromInterface($desde))->utc()->subMinutes(2)->format('Y-m-d\TH:i:s\Z');
+        for ($i = 0; $i < 6; $i++) {
+            $msgs = self::api('get', 'users/'.rawurlencode($buzon)."/mailFolders/sentitems/messages?\$top=50&\$select=id,subject,sentDateTime"
+                ."&\$filter=sentDateTime ge {$desdeUtc}&\$orderby=sentDateTime asc")['value'] ?? [];
+            $m = collect($msgs)->first(fn ($x) => trim($x['subject'] ?? '') === trim($asunto));
+            if ($m) {
+                self::api('post', 'users/'.rawurlencode($buzon)."/messages/{$m['id']}/move", ['destinationId' => $destino]);
+                return implode('\\', $ruta);
+            }
+            sleep(3);
+        }
+        throw new RuntimeException("no encuentro en Enviados «{$asunto}»");
     }
 
     /** Envía un correo desde $de (HTML con el logo de Suma). Si GRAPH_REDIRECT está puesto, todo va a esa dirección (pruebas). */
