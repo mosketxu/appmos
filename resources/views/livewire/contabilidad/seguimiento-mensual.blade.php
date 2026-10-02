@@ -98,8 +98,8 @@
                                 @else
                                     @php $m = $estado[$p->id][0][$k] ?? null; @endphp
                                     <button type="button" @if ($puede) wire:click="marcar({{ $p->id }}, '{{ $k }}')" @endif
-                                        title="{{ ['ok' => 'Hecho', 'na' => 'No toca', 'proc' => 'En curso'][$m] ?? 'Sin hacer' }}"
-                                        class="inline-flex items-center justify-center w-5 h-5 text-xs border rounded {{ $colores[$m] ?? 'bg-white border-gray-300' }}">{{ $simbolo[$m] ?? '' }}</button>
+                                        title="{{ ['ok' => 'Hecho', 'na' => 'No toca', 'proc' => 'En curso'][$m ?? ""] ?? 'Sin hacer' }}"
+                                        class="inline-flex items-center justify-center w-5 h-5 text-xs border rounded {{ $colores[$m ?? ""] ?? 'bg-white border-gray-300' }}">{{ $simbolo[$m ?? ""] ?? '' }}</button>
                                 @endif
                             </td>
                         @endforeach
@@ -119,8 +119,8 @@
                                     @php $m = $estado[$p->id][$e->id][$k] ?? null; @endphp
                                     <td class="px-1 py-0.5 text-center {{ $k === $mesActual ? 'bg-indigo-50' : '' }}">
                                         <button type="button" @if ($puede) wire:click="marcar({{ $p->id }}, '{{ $k }}', {{ $e->id }})" @endif
-                                            title="{{ ['ok' => $p->auto ? 'Recibido' : 'Hecho', 'na' => 'No toca', 'proc' => 'Solicitado'][$m] ?? 'Sin hacer' }}"
-                                            class="inline-flex items-center justify-center w-4 h-4 text-xs border rounded {{ $colores[$m] ?? 'bg-white border-gray-300' }}">{{ $simbolo[$m] ?? '' }}</button>
+                                            title="{{ ['ok' => $p->auto ? 'Recibido' : 'Hecho', 'na' => 'No toca', 'proc' => 'Solicitado'][$m ?? ""] ?? 'Sin hacer' }}"
+                                            class="inline-flex items-center justify-center w-4 h-4 text-xs border rounded {{ $colores[$m ?? ""] ?? 'bg-white border-gray-300' }}">{{ $simbolo[$m ?? ""] ?? '' }}</button>
                                     </td>
                                 @endforeach
                                 <td></td>
