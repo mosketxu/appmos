@@ -129,7 +129,7 @@ class SeguimientoMensual extends Component
         DB::table('seguimiento_procesos')->insert([
             'clave' => $clave, 'nombre' => trim($this->nNombre), 'detalle' => trim($this->nDetalle) ?: null,
             'ambito' => $this->nAmbito === 'cliente' ? 'cliente' : 'general',
-            'ejecucion' => $this->nEjecucion === 'local' ? 'local' : 'web',
+            'ejecucion' => in_array($this->nEjecucion, ['local', 'ambos'], true) ? $this->nEjecucion : 'web',
             'orden' => (int) DB::table('seguimiento_procesos')->max('orden') + 10,
             'created_at' => now(), 'updated_at' => now(),
         ]);

@@ -3,13 +3,13 @@
     <div class="p-4 space-y-4">
         <div class="flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-semibold text-gray-900">🔐 Certificados por caducar</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold text-indigo-900 bg-indigo-100 rounded">💻 Proceso mensual · se ejecuta en LOCAL</span>
+            <span class="px-2 py-0.5 text-xs font-semibold text-indigo-900 bg-indigo-100 rounded">🌐 web + 💻 local · el escaneo lo hace cada PC</span>
             <a href="{{ route('contabilidad.seguimiento-mensual') }}" class="text-sm text-indigo-600 underline">← Seguimiento mensual</a>
         </div>
 
         @unless ($enLocal)
-            <div class="px-4 py-3 text-sm font-semibold text-red-800 border border-red-300 rounded-md bg-red-50">
-                🔒 Los certificados están instalados en los PCs: este proceso solo funciona desde AlexMiniPC o PortalExomen (http://localhost:8000/contabilidad/certificados).
+            <div class="px-4 py-2 text-sm text-indigo-900 border border-indigo-200 rounded-md bg-indigo-50">
+                🌐 Estás en la web: ves la última lista escaneada y puedes editarla y enviarla. Para refrescar los certificados, pulsa «Escanear este PC» en el Appmos de AlexMiniPC y de PortalExomen (se suben aquí solos).
             </div>
         @endunless
 
@@ -25,13 +25,13 @@
                 en cualquiera de los dos salen de la lista, y si el nuevo está solo en uno de los PCs se avisa abajo (instálalo en el otro).
             </p>
             <div class="flex flex-wrap items-center gap-2">
-                <button type="button" wire:click="escanear" wire:loading.attr="disabled" wire:target="escanear" @disabled(! $enLocal)
+                <button type="button" wire:click="escanear" wire:loading.attr="disabled" wire:target="escanear" @disabled(! $enLocal) title="{{ $enLocal ? '' : 'Solo desde un PC' }}"
                     class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
                     <span wire:loading.remove wire:target="escanear">🔎 Escanear este PC</span><span wire:loading wire:target="escanear">⏳ escaneando…</span>
                 </button>
                 <label class="text-sm">Caducan en los próximos
                     <input type="number" min="1" max="24" wire:model="meses" class="py-1 text-sm border-gray-300 rounded-md" style="width:60px"> meses</label>
-                <button type="button" wire:click="calcular" wire:loading.attr="disabled" wire:target="calcular" @disabled(! $enLocal)
+                <button type="button" wire:click="calcular" wire:loading.attr="disabled" wire:target="calcular"
                     class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">↻ Calcular lista</button>
                 <span class="text-xs text-gray-500">
                     Escaneos:
@@ -117,7 +117,7 @@
                     <button type="button" wire:click="$set('confirmar', false)" class="px-3 py-1 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                 </div>
             @else
-                <button type="button" wire:click="pedirEnvio" @disabled(! $enLocal) class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">✉ Enviar…</button>
+                <button type="button" wire:click="pedirEnvio" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">✉ Enviar…</button>
             @endif
         </div>
     </div>

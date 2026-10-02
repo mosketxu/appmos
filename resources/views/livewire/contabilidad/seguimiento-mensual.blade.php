@@ -22,7 +22,7 @@
         </div>
         <p class="text-xs text-gray-500">
             Un check por proceso y mes (clic: ✓ hecho → – no toca → vacío). En los procesos <b>por empresa</b> la celda resume cuántas van (hechas/total);
-            con ▸ se despliegan las empresas que gestionas. 💻 = se ejecuta en <b>local</b> (desde un PC); aquí solo se anota.
+            con ▸ se despliegan las empresas que gestionas. 💻 = se ejecuta en <b>local</b> (desde un PC); 🌐💻 = se puede lanzar en la web o en local. Aquí se anota.
             Los meses siguen hacia la derecha.
         </p>
 
@@ -36,6 +36,7 @@
                 <select wire:model="nEjecucion" class="text-sm border-gray-300 rounded-md">
                     <option value="web">Se hace en la web</option>
                     <option value="local">Se ejecuta en local (PC)</option>
+                    <option value="ambos">Web o local</option>
                 </select>
                 <input type="text" wire:model="nDetalle" placeholder="Detalle (opcional)" class="text-sm border-gray-300 rounded-md md:col-span-3">
                 <button type="button" wire:click="crear" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir</button>
@@ -66,14 +67,14 @@
                                 @endif
                                 <button type="button" x-on:click="info = !info" class="text-indigo-500 shrink-0 hover:text-indigo-700" title="Detalle">ⓘ</button>
                                 <span class="font-medium text-gray-900">{{ $p->nombre }}</span>
-                                @if ($p->ejecucion === 'local')
-                                    <span title="Se ejecuta en local (desde un PC)" class="shrink-0">💻</span>
+                                @if ($p->ejecucion !== 'web')
+                                    <span title="{{ $p->ejecucion === 'ambos' ? 'Se puede lanzar en la web y en local' : 'Se ejecuta en local (desde un PC)' }}" class="shrink-0">{{ $p->ejecucion === 'ambos' ? '🌐💻' : '💻' }}</span>
                                 @endif
                                 @if ($p->enlace)
                                     @php $href = str_starts_with($p->enlace, 'http') ? $p->enlace
-                                        : ($p->enlace === 'certificados' ? config('contabilidad.certificados_local_url') : (\Illuminate\Support\Facades\Route::has($p->enlace) ? route($p->enlace) : null)); @endphp
+                                        : (\Illuminate\Support\Facades\Route::has($p->enlace) ? route($p->enlace) : null); @endphp
                                     @if ($href)
-                                        <a href="{{ $href }}" target="_blank" rel="noopener" class="ml-1 text-xs text-indigo-600 underline shrink-0">abrir{{ $p->ejecucion === 'local' ? ' (local)' : '' }} ↗</a>
+                                        <a href="{{ $href }}" target="_blank" rel="noopener" class="ml-1 text-xs text-indigo-600 underline shrink-0">abrir ↗</a>
                                     @endif
                                 @endif
                             </div>

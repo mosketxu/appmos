@@ -2,13 +2,15 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Support\CertificadosLista;
 use App\Support\GraphMail;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Livewire\Component;
 
 /**
- * Certificados por caducar (2-oct-2026), proceso mensual que se ejecuta en LOCAL (los certificados están
- * instalados en los PCs). Paso 1: «Escanear este PC» (cada PC deja su fichero en OneDrive/_Clientes/_Certificados)
+ * Certificados por caducar (2-oct-2026): se puede lanzar en la web y en local. Los certificados están instalados
+ * en los PCs, así que solo el escaneo es local; cada escaneo se sube a la web (tabla certificados_escaneos). Paso 1: «Escanear este PC» (cada PC deja su fichero en OneDrive/_Clientes/_Certificados)
  * y «Calcular lista»: los que caducan en N meses, sin los ya renovados, avisando de las contradicciones
  * (renovado en un PC y no en el otro). La lista se edita (quitar / añadir filas). Paso 2: correo con la lista,
  * destinatario editable (por defecto Marta Ruiz), con confirmación. Código en Contabilidad/ProcesosMensuales/Certificados.
@@ -61,21 +63,48 @@ class Certificados extends Component
 
     public function escanear(): void
     {
+        if (! config('contabilidad.ejecucion_local')) {
+            $this->salida = '⚠ El escaneo solo se hace desde AlexMiniPC o PortalExomen (los certificados están en el PC).';
+            return;
+        }
         [$ok, $out] = $this->py(['--escanear']);
         $this->salida = ($ok ? '✅ ' : '⚠ ').$out;
+        if ($ok) {
+            $this->salida .= $this->subirEscaneo();
+        }
         $this->calcular();
+    }
+
+    /** Sube a la web el escaneo de este PC (el fichero que acaba de dejar certificados.py). */
+    protected function subirEscaneo(): string
+    {
+        $url = config('contabilidad.certificados_sync_url');
+        $token = (string) config('contabilidad.certificados_sync_token');
+        if (! $url || $token === '') {
+            return "\n⚠ No se ha subido a la web: falta CERTIFICADOS_SYNC_TOKEN en el .env de este PC.";
+        }
+        $mio = null;
+        foreach (CertificadosLista::escaneos() as $pc => $e) {
+            if ($mio === null || $e['escaneado'] > $mio[1]['escaneado']) {
+                $mio = [$pc, $e];
+            }
+        }
+        if (! $mio) {
+            return '';
+        }
+        try {
+            $r = Http::withHeaders(['X-Token' => $token])->timeout(30)->post($url, ['pc' => $mio[0], 'escaneado' => $mio[1]['escaneado'], 'certs' => $mio[1]['certs']]);
+            return $r->successful() ? "\n🌐 Subido a la web ({$mio[0]})." : "\n⚠ La web no ha aceptado el escaneo (HTTP {$r->status()}).";
+        } catch (\Throwable $e) {
+            return "\n⚠ No se ha podido subir a la web: ".$e->getMessage();
+        }
     }
 
     public function calcular(): void
     {
         $this->enviado = '';
         $this->confirmar = false;
-        [$ok, $out] = $this->py(['--lista', (string) max(1, $this->meses)]);
-        $d = $ok ? json_decode($out, true) : null;
-        if (! $d) {
-            $this->salida = '⚠ No he podido calcular la lista: '.$out;
-            return;
-        }
+        $d = CertificadosLista::calcular(CertificadosLista::escaneos(), max(1, $this->meses));
         $this->calculada = true;
         $this->escaneos = $d['pcs'];
         $this->contradicciones = $d['contradicciones'];
