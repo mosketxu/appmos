@@ -23,14 +23,7 @@
         </div>
 
         @if ($proceso === 'certificados')
-            <div class="p-4 space-y-3 bg-white border border-indigo-200 rounded-lg">
-                <p class="text-sm text-gray-700">
-                    Certificados digitales que caducan en los próximos 3 meses (AlexMiniPC + PortalExomen), sin los ya renovados y avisando de
-                    contradicciones entre PCs. Lista editable y envío por correo (por defecto a Marta Ruiz, destinatario editable).
-                    Se puede lanzar <b>en la web o en local</b>; solo el escaneo de certificados lo hace cada PC (botón «Escanear este PC»), y se sube a la web.
-                </p>
-                <a href="{{ route('contabilidad.certificados') }}" class="inline-block px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Abrir Certificados →</a>
-            </div>
+            @livewire('contabilidad.certificados', ['embebido' => true], key('certificados-embebido'))
         @endif
 
         @if ($proceso === 'petdocimpuestos')

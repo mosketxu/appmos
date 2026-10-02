@@ -1,11 +1,15 @@
 <div>
+    @unless ($embebido)
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.certificados'])
+    @endunless
     <div class="p-4 space-y-4">
+        @unless ($embebido)
         <div class="flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-semibold text-gray-900">🔐 Certificados por caducar</h1>
             <span class="px-2 py-0.5 text-xs font-semibold text-indigo-900 bg-indigo-100 rounded">🌐 web + 💻 local · el escaneo lo hace cada PC</span>
             <a href="{{ route('contabilidad.seguimiento-mensual') }}" class="text-sm text-indigo-600 underline">← Seguimiento mensual</a>
         </div>
+        @endunless
 
         @unless ($enLocal)
             <div class="px-4 py-2 text-sm text-indigo-900 border border-indigo-200 rounded-md bg-indigo-50">

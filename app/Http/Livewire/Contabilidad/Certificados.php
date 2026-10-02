@@ -42,8 +42,12 @@ class Certificados extends Component
     public string $aNombre = '';
     public string $aCaduca = '';
 
-    public function mount(): void
+    /** Dentro de Proc.Mensuales (sin menú ni título propios). */
+    public bool $embebido = false;
+
+    public function mount(bool $embebido = false): void
     {
+        $this->embebido = $embebido;
         $this->anio = (int) now()->format('Y');
         $this->asunto = 'Certificados digitales que caducan - '.now()->locale('es')->translatedFormat('F Y');
         $this->calcular();
