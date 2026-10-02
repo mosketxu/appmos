@@ -57,6 +57,9 @@ class GraphMail
         // en GET no se pasa $datos: un array vacío como «query» borraría el ?$top=… de la URL
         $http = Http::withToken(self::token())->timeout(60);
         $r = $metodo === 'get' ? $http->get('https://graph.microsoft.com/v1.0/'.$url) : $http->{$metodo}('https://graph.microsoft.com/v1.0/'.$url, $datos);
+        if ($r->status() === 403 && preg_match('#^users/([^/]+)#', $url, $m)) {
+            throw GraphSinPermiso::para(rawurldecode($m[1]), 'leer o mover correo');
+        }
         if (! $r->successful()) {
             throw new RuntimeException('Microsoft Graph (HTTP '.$r->status().'): '.mb_substr($r->body(), 0, 200));
         }
@@ -152,6 +155,9 @@ class GraphMail
             ],
             'saveToSentItems' => true,
         ]);
+        if ($r->status() === 403) {
+            throw GraphSinPermiso::para($de, 'enviar un correo');
+        }
         if (! in_array($r->status(), [200, 202], true)) {
             throw new RuntimeException('Microsoft no ha aceptado el correo (HTTP '.$r->status().'): '.mb_substr($r->body(), 0, 200));
         }
