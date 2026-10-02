@@ -482,6 +482,28 @@ class Procesos extends Component
         }
     }
 
+    /**
+     * «⬇ Descargar» de un fichero resultado (pedido 2026-10-02: "al hacer clic que lo
+     * pueda descargar"). Solo ficheros que hayan salido como resultado en esta pantalla.
+     */
+    public function descargarResultado(string $clave)
+    {
+        $ruta = base64_decode($clave, true);
+        $validas = [];
+        foreach ($this->resultados as $lista) {
+            foreach ((array) $lista as $r) {
+                if (! empty($r['local'])) {
+                    $validas[] = $r['local'];
+                }
+            }
+        }
+        if (! $ruta || ! in_array($ruta, $validas, true) || ! is_file($ruta)) {
+            $this->salida .= "\n\n⚠️ No puedo descargar ese fichero (ya no está o no es un resultado de esta pantalla).";
+            return null;
+        }
+        return response()->download($ruta, basename($ruta));
+    }
+
     /** Añade rutas RESULT_FILE a $resultados[$key] (ruta Windows + file:// url), sin duplicar. */
     protected function anexarResultados(string $key, array $rutas): void
     {
@@ -492,7 +514,7 @@ class Procesos extends Component
                 continue;
             }
             $yaEstan[] = $win;
-            $this->resultados[$key][] = ['ruta' => $win, 'url' => $this->fileUrl($ruta)];
+            $this->resultados[$key][] = ['ruta' => $win, 'url' => $this->fileUrl($ruta), 'local' => $ruta];
         }
     }
 

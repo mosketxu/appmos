@@ -122,7 +122,7 @@
                                         </button>
                                     @endif
                                     @if ($cisFilas)
-                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50" wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50" wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
                                             onclick="return confirm('¿Escribir estos importes en Cash End Month de Ctrol Dinamico? (cierra antes el Excel si lo tienes abierto)')">
                                             💾 Grabar
                                         </button>
