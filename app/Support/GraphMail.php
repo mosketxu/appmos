@@ -54,7 +54,9 @@ class GraphMail
 
     protected static function api(string $metodo, string $url, array $datos = [])
     {
-        $r = Http::withToken(self::token())->timeout(60)->{$metodo}('https://graph.microsoft.com/v1.0/'.$url, $datos);
+        // en GET no se pasa $datos: un array vacío como «query» borraría el ?$top=… de la URL
+        $http = Http::withToken(self::token())->timeout(60);
+        $r = $metodo === 'get' ? $http->get('https://graph.microsoft.com/v1.0/'.$url) : $http->{$metodo}('https://graph.microsoft.com/v1.0/'.$url, $datos);
         if (! $r->successful()) {
             throw new RuntimeException('Microsoft Graph (HTTP '.$r->status().'): '.mb_substr($r->body(), 0, 200));
         }
