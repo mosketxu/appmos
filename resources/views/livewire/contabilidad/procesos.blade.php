@@ -47,7 +47,7 @@
          clic = ✓ → «no toca» → vacío). Las marcas viven en OneDrive. --}}
     <div id="procesos-mes" class="bg-white border rounded-lg shadow">
         <div class="flex flex-wrap items-center px-3 py-2 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
-            <span class="text-xs text-gray-500">Los que se ejecutan desde aquí se marcan solos al terminar bien; el resto, con «Marcar» (mes del título, resaltado). Clic en un check de cualquier mes: ✓ → «no toca» → vacío. ⠿ = arrastrar para cambiar el orden.</span>
+            <span class="text-xs text-gray-500">Los que se ejecutan desde aquí se marcan solos al terminar bien; el resto, con «Marcar» (mes del título, resaltado). Clic en un check de cualquier mes: ✓ → «no toca» → vacío (con envío: P procesado sin enviar → ✓ enviado). ⠿ = arrastrar para cambiar el orden.</span>
         </div>
         @php
             $marcas = $this->checklistMarcas;
@@ -97,6 +97,15 @@
                                         <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">▶ Ejecutar</span>
                                         <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
                                     </button>
+                                    @if ($id === 'cashflow')
+                                        @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
+                                        <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"
+                                            onclick="return confirm('¿Mandar YA a Plein el «Cashflow 2026 {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)')"
+                                            class="inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded shadow-sm disabled:opacity-50 {{ $estCf === 'ok' ? 'text-gray-500 bg-white border-gray-300' : 'text-white bg-indigo-600 border-indigo-600 hover:bg-indigo-700' }}">
+                                            <span wire:loading.remove wire:target="enviarCashflow">{{ $estCf === 'ok' ? '✉ Reenviar' : '✉ Enviar a Plein' }}</span>
+                                            <span wire:loading wire:target="enviarCashflow">⏳…</span>
+                                        </button>
+                                    @endif
                                     @if (! empty($resultados[$id]))
                                         <div class="flex flex-col min-w-0 gap-y-1 pt-1">
                                             @foreach ($resultados[$id] as $r)
@@ -152,9 +161,9 @@
                             @php $m = $marcas[$k][$id] ?? null; @endphp
                             <td class="px-1 py-1 text-center {{ $k === $mesSel ? 'bg-indigo-50' : '' }}">
                                 <button type="button" wire:click="alternarChecklist('{{ $id }}', '{{ $k }}')"
-                                    title="{{ $m ? (($m['estado'] === 'ok' ? 'Hecho' : 'No toca') . ($m['cuando'] ? ' · ' . $m['cuando'] : '') . ' · ' . $m['como']) : 'Sin hacer' }}"
-                                    class="inline-flex items-center justify-center w-5 h-5 text-xs border rounded {{ ($m['estado'] ?? '') === 'ok' ? 'bg-green-500 border-green-600 text-white' : (($m['estado'] ?? '') === 'na' ? 'bg-gray-200 border-gray-300 text-gray-500' : 'bg-white border-gray-300') }}">
-                                    {{ ($m['estado'] ?? '') === 'ok' ? '✓' : (($m['estado'] ?? '') === 'na' ? '–' : '') }}
+                                    title="{{ $m ? ((['ok' => 'Hecho', 'na' => 'No toca', 'proc' => 'Procesado, sin enviar'][$m['estado']] ?? $m['estado']) . ($m['cuando'] ? ' · ' . $m['cuando'] : '') . ' · ' . $m['como']) : 'Sin hacer' }}"
+                                    class="inline-flex items-center justify-center w-5 h-5 text-xs border rounded {{ ['ok' => 'bg-green-500 border-green-600 text-white', 'na' => 'bg-gray-200 border-gray-300 text-gray-500', 'proc' => 'bg-yellow-300 border-yellow-500 text-yellow-900'][$m['estado'] ?? ''] ?? 'bg-white border-gray-300' }}">
+                                    {{ ['ok' => '✓', 'na' => '–', 'proc' => 'P'][$m['estado'] ?? ''] ?? '' }}
                                 </button>
                             </td>
                         @endforeach

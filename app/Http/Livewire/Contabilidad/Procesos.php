@@ -307,6 +307,7 @@ class Procesos extends Component
                 'label' => 'Cash flow',
                 'script' => 'CashFlow/cashflow.py',
                 'python' => true,
+                'envio' => true, // al procesar queda «procesado, sin enviar»; «Enviar» lo cierra
                 'soportaReal' => true,
                 'ayuda' => 'Cashflow del mes a partir del mayor de los bancos.',
             ],
@@ -478,7 +479,8 @@ class Procesos extends Component
             $todoOk = $todoOk && $this->ultimoOk;
         }
         if ($todoOk) {
-            $this->marcarChecklist($id, $this->mes);
+            // con envío aparte (Cash flow): procesado ≠ hecho; se cierra al enviar
+            $this->marcarChecklist($id, $this->mes, ! empty($p['envio']) ? 'proc' : 'ok');
         }
     }
 
@@ -998,6 +1000,20 @@ class Procesos extends Component
         $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 240, $etiqueta);
     }
 
+    /** Cash flow: manda el Cashflow del mes a Plein (Graph) y lo marca como hecho (enviado). */
+    public function enviarCashflow(): void
+    {
+        $mm = $this->cisMm();
+        $etiqueta = "Cash flow {$mm} · envío a Plein";
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $desde = strlen($this->salida);
+        $this->ejecutarScript(['python3', 'CashFlow/cashflow.py', (string) $this->mes, '--enviar', '--real'], 120, $etiqueta);
+        if ($this->ultimoOk && str_contains(substr($this->salida, $desde), 'ENVIADO_REAL')) {
+            $this->marcarChecklist('cashflow', $this->mes, 'ok');
+        }
+        $this->salida = preg_replace('/^ENVIADO_REAL\s*$/m', '', $this->salida);
+    }
+
     /** Recordatorio a las que faltan: «Responder a todos» a la petición ya enviada, en Borradores de Outlook. */
     public function recordarCashInStore(): void
     {
@@ -1150,11 +1166,15 @@ class Procesos extends Component
     }
 
     /** Lo llaman los procesos al terminar bien. $mes = número de mes de 2026. */
-    protected function marcarChecklist(string $id, int $mes): void
+    protected function marcarChecklist(string $id, int $mes, string $estado = 'ok'): void
     {
         try {
-            $this->guardarChecklist($id, sprintf('2026-%02d', $mes),
-                ['estado' => 'ok', 'cuando' => date('Y-m-d H:i'), 'como' => 'auto']);
+            $clave = sprintf('2026-%02d', $mes);
+            if ($estado === 'proc' && ($this->checklistMarcas[$clave][$id]['estado'] ?? '') === 'ok') {
+                return; // ya estaba enviado: reprocesar no lo devuelve a «sin enviar»
+            }
+            $this->guardarChecklist($id, $clave,
+                ['estado' => $estado, 'cuando' => date('Y-m-d H:i'), 'como' => 'auto']);
         } catch (\Throwable $e) {
             $this->salida .= "\n\n⚠️ Checklist: no he podido marcar {$id} ({$e->getMessage()}).";
         }
@@ -1178,11 +1198,10 @@ class Procesos extends Component
             return;
         }
         $actual = $this->checklistMarcas[$mes][$id]['estado'] ?? null;
-        $nuevo = match ($actual) {
-            null => 'ok',
-            'ok' => 'na',
-            default => null,
-        };
+        $conEnvio = collect($this->checklist)->firstWhere('id', $id)['envio'] ?? false;
+        $nuevo = $conEnvio
+            ? match ($actual) { null => 'proc', 'proc' => 'ok', 'ok' => 'na', default => null }
+            : match ($actual) { null => 'ok', 'ok' => 'na', default => null };
         $this->guardarChecklist($id, $mes, $nuevo ? ['estado' => $nuevo, 'cuando' => date('Y-m-d H:i'), 'como' => 'manual'] : null);
     }
 
