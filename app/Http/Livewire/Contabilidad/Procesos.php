@@ -997,7 +997,8 @@ class Procesos extends Component
             return;
         }
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 240, $etiqueta);
+        // windowsEnv(): tras enviar, mueve cada correo en Outlook (powershell.exe) a Cash end Month
+        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 600, $etiqueta, null, $this->windowsEnv());
     }
 
     /** Cash flow: manda el Cashflow del mes a Plein (Graph) y lo marca como hecho (enviado). */
