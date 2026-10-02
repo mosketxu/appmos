@@ -34,7 +34,7 @@ class CertificadosVerEnvioTest extends TestCase
             ->assertSet('viendoEnvio', true)
             ->assertSet('asunto', 'Asunto viejo')
             ->assertSet('filas.0.nombre', 'Cert A')
-            ->assertSee('Estás viendo un')
+            ->assertSee('envío ya hecho', false)
             ->call('volverALista')
             ->assertSet('viendoEnvio', false)
             ->assertSet('filas', []);
@@ -44,7 +44,7 @@ class CertificadosVerEnvioTest extends TestCase
     {
         $id = DB::table('certificados_envios')->insertGetId(['periodo' => '2026-10', 'enviado_at' => '2026-10-02 12:00:00', 'origen' => 'manual',
             'para' => null, 'asunto' => null, 'texto' => null, 'filas' => null, 'created_at' => now(), 'updated_at' => now()]);
-        Livewire::test(Certificados::class, ['embebido' => true])->call('ver', $id)->assertSet('viendoEnvio', true)->assertSee('Estás viendo un');
+        Livewire::test(Certificados::class, ['embebido' => true])->call('ver', $id)->assertSet('viendoEnvio', true)->assertSee('envío ya hecho', false);
     }
 
     public function test_mes_sin_envio_sale_vacio_y_se_puede_volver(): void
