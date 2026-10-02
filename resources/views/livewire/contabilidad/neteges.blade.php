@@ -184,8 +184,8 @@
                         </button>
                         <x-neteges-info>
                             <b>Plugin de emitidas</b>: el Excel con la plantilla del plugin de SAGE (pestaña Emitidas) para las facturas pendientes del periodo
-                            (sin fechas: todas). Una fila por factura; si una factura tiene varias contrapartidas 705, va con la de mayor base y el reparto
-                            queda en un Excel aparte («repartir 705»). Las facturas que entran quedan marcadas para no repetirlas.
+                            (sin fechas: todas). Una fila por contrapartida: si una factura lleva dos cuentas 705, salen dos filas con el mismo número
+                            (y en SAGE dos asientos). Las facturas que entran quedan marcadas para no repetirlas.
                         </x-neteges-info>
                     </div>
                     @foreach ($plugins as $pf)
