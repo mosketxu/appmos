@@ -29,7 +29,7 @@ class Certificados extends Component
     public string $para = 'marta.ruiz@sumaempresa.com';
     public string $cc = '';
     public string $asunto = '';
-    public string $intro = "Hola Marta,\n\nEstos son los certificados digitales que caducan en los próximos meses. Ya está comprobado que no hay una versión más reciente instalada en AlexMiniPC o PortalExomen.";
+    public string $intro = 'Estos son los certificados digitales que tengo yo instalados y que caducan en los próximos meses.';
     public bool $confirmar = false;
     public string $enviado = '';
 

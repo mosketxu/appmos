@@ -59,10 +59,10 @@
                         @forelse ($filas as $i => $f)
                             <tr wire:key="fila-{{ $i }}">
                                 <td class="px-2 py-1 text-center"><input type="checkbox" wire:model.live="filas.{{ $i }}.incluir" class="rounded"></td>
-                                <td class="px-2 py-1"><input type="date" wire:model.blur="filas.{{ $i }}.caduca" class="py-0 text-sm border-gray-300 rounded"></td>
-                                <td class="px-2 py-1"><input type="text" wire:model.blur="filas.{{ $i }}.nombre" class="w-full py-0 text-sm border-gray-300 rounded" style="min-width:420px"></td>
+                                <td class="px-2 py-1"><input type="date" wire:model.live.debounce.400ms="filas.{{ $i }}.caduca" class="py-0 text-sm border-gray-300 rounded"></td>
+                                <td class="px-2 py-1"><input type="text" wire:model.live.debounce.400ms="filas.{{ $i }}.nombre" class="w-full py-0 text-sm border-gray-300 rounded" style="min-width:420px"></td>
                                 <td class="px-2 py-1 text-xs text-gray-600">{{ $f['pcs'] }}</td>
-                                <td class="px-2 py-1"><input type="text" wire:model.blur="filas.{{ $i }}.nota" class="py-0 text-sm border-gray-300 rounded" style="width:150px"></td>
+                                <td class="px-2 py-1"><input type="text" wire:model.live.debounce.400ms="filas.{{ $i }}.nota" class="py-0 text-sm border-gray-300 rounded" style="width:150px"></td>
                                 <td class="px-2 py-1"><button type="button" wire:click="quitar({{ $i }})" class="text-gray-400 hover:text-red-600" title="Quitar de la lista">✕</button></td>
                             </tr>
                         @empty
@@ -98,9 +98,9 @@
                 <label class="text-xs font-semibold text-gray-600">CC
                     <input type="text" wire:model.blur="cc" class="w-full text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600 md:col-span-2">Asunto
-                    <input type="text" wire:model.blur="asunto" class="w-full text-sm font-normal border-gray-300 rounded-md"></label>
-                <label class="text-xs font-semibold text-gray-600 md:col-span-2">Texto de arriba (la lista se añade sola)
-                    <textarea wire:model.blur="intro" rows="4" class="w-full text-sm font-normal border-gray-300 rounded-md"></textarea></label>
+                    <input type="text" wire:model.live.debounce.300ms="asunto" class="w-full text-sm font-normal border-gray-300 rounded-md"></label>
+                <label class="text-xs font-semibold text-gray-600 md:col-span-2">Texto de arriba (la lista se añade sola; abajo se ve cómo queda)
+                    <textarea wire:model.live.debounce.300ms="intro" rows="4" class="w-full text-sm font-normal border-gray-300 rounded-md"></textarea></label>
             </div>
             <div>
                 <div class="mb-1 text-xs font-semibold text-gray-600">Así saldrá</div>
