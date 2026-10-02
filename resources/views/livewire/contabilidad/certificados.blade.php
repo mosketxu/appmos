@@ -11,11 +11,21 @@
         </div>
         @endunless
 
-        @unless ($enLocal)
-            <div class="px-4 py-2 text-sm text-indigo-900 border border-indigo-200 rounded-md bg-indigo-50">
-                🌐 Estás en la web: ves la última lista escaneada y puedes editarla y enviarla. Para refrescar los certificados, pulsa «Escanear este PC» en el Appmos de AlexMiniPC y de PortalExomen (se suben aquí solos).
+        @if ($enLocal)
+            <div class="px-4 py-2 text-sm border rounded-md text-emerald-900 border-emerald-200 bg-emerald-50">
+                💻 Estás en <b>{{ $pcLocal }}</b> (local): «Escanear este PC» lee los certificados de este PC y los sube a la web. Para escanear <b>los dos PCs a la vez</b>, entra en
+                <a href="https://appmos.sumaempresa.com/contabilidad/certificados" class="underline" target="_blank">appmos.sumaempresa.com</a> y pulsa «Pedir escaneo a los PCs».
             </div>
-        @endunless
+        @else
+            <div class="px-4 py-2 text-sm text-indigo-900 border border-indigo-200 rounded-md bg-indigo-50">
+                🌐 Estás en la web: ves la última lista escaneada, puedes editarla y enviarla.
+                @if (count($trabajadores))
+                    Con «Pedir escaneo a los PCs» cada PC encendido escanea sus certificados solo; no hace falta abrir nada en ellos.
+                @else
+                    Para refrescar los certificados, pulsa «Escanear este PC» en el Appmos de AlexMiniPC y de PortalExomen (se suben aquí solos).
+                @endif
+            </div>
+        @endif
 
         @if ($salida)
             <div class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md whitespace-pre-line">{{ $salida }}</div>
@@ -28,6 +38,24 @@
                 Cada PC guarda sus certificados con «Escanear este PC» (hazlo en AlexMiniPC <b>y</b> en PortalExomen). Después se cruzan: los ya renovados
                 en cualquiera de los dos salen de la lista, y si el nuevo está solo en uno de los PCs se avisa abajo (instálalo en el otro).
             </p>
+            @if (! $enLocal && count($trabajadores))
+                <div class="flex flex-wrap items-center gap-2 p-2 text-sm border border-indigo-200 rounded-md bg-indigo-50" @if ($hayActivas || $habiaActivas) wire:poll.3s="actualizarCola" @endif>
+                    <button type="button" wire:click="pedirEscaneoPCs" wire:loading.attr="disabled" wire:target="pedirEscaneoPCs"
+                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">🛰 Pedir escaneo a los PCs</button>
+                    <span class="text-xs text-gray-700">
+                        PCs:
+                        @foreach ($trabajadores as $t) <b>{{ $t['nombre'] }}</b> {{ $t['conectado'] ? '🟢 conectado' : '⚪ sin conexión' }} · @endforeach
+                    </span>
+                    @if (count($tareasCert))
+                        <span class="text-xs text-gray-600">
+                            Últimas tareas:
+                            @foreach ($tareasCert as $tt)
+                                #{{ $tt->id }} {{ $tt->destino }}: {{ ['pendiente' => '⏳ en cola', 'en_curso' => '⚙ en curso', 'ok' => '✅ ok', 'error' => '⚠ error', 'cancelada' => '✖ cancelada'][$tt->estado] ?? $tt->estado }}@if (! $loop->last) · @endif
+                            @endforeach
+                        </span>
+                    @endif
+                </div>
+            @endif
             <div class="flex flex-wrap items-center gap-2">
                 <button type="button" wire:click="escanear" wire:loading.attr="disabled" wire:target="escanear" @disabled(! $enLocal) title="{{ $enLocal ? '' : 'Solo desde un PC' }}"
                     class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
@@ -124,6 +152,7 @@
                 <button type="button" wire:click="pedirEnvio" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">✉ Enviar…</button>
             @endif
         </div>
+
         {{-- ENVÍOS: detalle por meses, como el checklist de Fashion --}}
         <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm">
             <div class="flex items-center gap-3">

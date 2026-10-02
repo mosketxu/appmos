@@ -148,4 +148,16 @@ return [
     'generico_dir' => env('FACTURACION_GENERICO_DIR'),
     'generico_python' => env('FACTURACION_GENERICO_PYTHON'),
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cola de tareas para los PCs trabajadores (2-oct-2026)
+    |--------------------------------------------------------------------------
+    | Lista CERRADA de procesos que la web puede pedir y los PCs ejecutar (clave => descripción).
+    | El trabajador solo ejecuta lo que conoce; nunca comandos ni rutas que vengan de la web.
+    */
+    'tareas_procesos' => [
+        'certificados.escanear' => 'Escanear los certificados digitales de este PC',
+    ],
+
 ];

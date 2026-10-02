@@ -3,10 +3,12 @@
 namespace App\Http\Livewire\Contabilidad;
 
 use App\Support\CertificadosLista;
+use App\Support\ColaTareas;
 use App\Support\GraphMail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 /**
@@ -26,6 +28,7 @@ class Certificados extends Component
     public array $escaneos = [];
     public string $salida = '';
     public bool $calculada = false;
+    public bool $habiaActivas = false;
 
     public string $para = 'marta.ruiz@sumaempresa.com';
     public string $cc = '';
@@ -107,6 +110,48 @@ class Certificados extends Component
             return $r->successful() ? "\n🌐 Subido a la web ({$mio[0]})." : "\n⚠ La web no ha aceptado el escaneo (HTTP {$r->status()}).";
         } catch (\Throwable $e) {
             return "\n⚠ No se ha podido subir a la web: ".$e->getMessage();
+        }
+    }
+
+    /** Pide a cada PC trabajador que escanee sus certificados (los PCs lo recogen solos, sin abrir nada en ellos). */
+    public function pedirEscaneoPCs(): void
+    {
+        if (config('contabilidad.ejecucion_local')) {
+            $this->salida = '⚠ La cola de tareas vive en la web: pide el escaneo desde appmos.sumaempresa.com (aquí usa «Escanear este PC»).';
+            return;
+        }
+        if (! Schema::hasTable('trabajadores') || ! Schema::hasTable('tareas')) {
+            $this->salida = '⚠ Falta hacer la migración de la cola de tareas.';
+            return;
+        }
+        $pcs = DB::table('trabajadores')->where('activo', true)->pluck('nombre');
+        if ($pcs->isEmpty()) {
+            $this->salida = '⚠ No hay ningún PC trabajador dado de alta (php artisan trabajador:crear NombrePC).';
+            return;
+        }
+        foreach ($pcs as $pc) {
+            // si ya hay una pendiente o en curso para ese PC no se duplica
+            $hay = DB::table('tareas')->where('proceso', 'certificados.escanear')->where('destino', $pc)->whereIn('estado', ['pendiente', 'en_curso'])->exists();
+            if (! $hay) {
+                ColaTareas::crear('certificados.escanear', [], $pc, auth()->id());
+            }
+        }
+        $this->habiaActivas = true;
+        $this->salida = '🛰 Escaneo pedido a: '.$pcs->implode(', ').'. Se hará en cuanto cada PC lo recoja; si alguno está apagado, esperará.';
+    }
+
+    /** Se llama cada pocos segundos mientras hay tareas activas; al terminar, recalcula la lista. */
+    public function actualizarCola(): void
+    {
+        if (! Schema::hasTable('tareas')) {
+            return;
+        }
+        $activas = DB::table('tareas')->where('proceso', 'certificados.escanear')->whereIn('estado', ['pendiente', 'en_curso'])->exists();
+        if ($this->habiaActivas && ! $activas) {
+            $this->habiaActivas = false;
+            $err = DB::table('tareas')->where('proceso', 'certificados.escanear')->where('estado', 'error')->where('terminada_at', '>=', now()->subMinutes(5))->count();
+            $this->salida = $err ? "⚠ El escaneo ha terminado con {$err} error(es); mira el estado de los PCs abajo." : '✅ Escaneo terminado en todos los PCs.';
+            $this->calcular();
         }
     }
 
@@ -237,12 +282,18 @@ class Certificados extends Component
 
     public function render()
     {
+        $cola = Schema::hasTable('trabajadores') && Schema::hasTable('tareas');   // hasta que se haga la migración
         return view('livewire.contabilidad.certificados', [
             'vistaPrevia' => $this->texto(),
             'envios' => DB::table('certificados_envios')->where('periodo', 'like', $this->anio.'-%')->orderBy('enviado_at')->get()->groupBy('periodo'),
             'envioAbierto' => $this->verEnvio ? DB::table('certificados_envios')->find($this->verEnvio) : null,
             'graphOk' => GraphMail::configurado(),
             'enLocal' => (bool) config('contabilidad.ejecucion_local'),
+            'pcLocal' => gethostname(),
+            'trabajadores' => $cola ? DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()
+                ->map(fn ($t) => ['nombre' => $t->nombre, 'conectado' => $t->ultimo_latido && now()->diffInSeconds($t->ultimo_latido, true) < 60])->all() : [],
+            'tareasCert' => $cola ? DB::table('tareas')->where('proceso', 'certificados.escanear')->orderByDesc('id')->limit(6)->get() : collect(),
+            'hayActivas' => $cola && DB::table('tareas')->where('proceso', 'certificados.escanear')->whereIn('estado', ['pendiente', 'en_curso'])->exists(),
         ]);
     }
 }
