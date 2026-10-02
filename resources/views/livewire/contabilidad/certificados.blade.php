@@ -34,7 +34,7 @@
         {{-- PASOS 1 y 2, lado a lado --}}
         <div class="grid items-start gap-4 xl:grid-cols-2">
         {{-- PASO 1 --}}
-        <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm xl:col-start-1 xl:row-start-1">
             <div x-data="{ info: false }">
                 <div class="flex items-center gap-x-1">
                     <h2 class="font-semibold text-gray-900">Paso 1 · Escanear y preparar la lista</h2>
@@ -133,7 +133,7 @@
         </div>
 
         {{-- PASO 2 --}}
-        <div class="p-3 space-y-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <div class="p-3 space-y-2 bg-white border border-gray-200 rounded-lg shadow-sm xl:col-start-2 xl:row-start-1 xl:row-span-2">
             <h2 class="font-semibold text-gray-900">Paso 2 · Enviar el correo</h2>
             <div class="grid gap-2 md:grid-cols-3">
                 <label class="text-xs font-semibold text-gray-600">Para
@@ -163,10 +163,9 @@
                 <button type="button" wire:click="pedirEnvio" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">✉ Enviar…</button>
             @endif
         </div>
-        </div>
 
         {{-- ENVÍOS: detalle por meses, como el checklist de Fashion --}}
-        <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm xl:col-start-1 xl:row-start-2">
             <div class="flex items-center gap-3">
                 <h2 class="font-semibold text-gray-900">Envíos de {{ $anio }}</h2>
                 <button type="button" wire:click="cambiarAnio(-1)" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">◀</button>
@@ -195,5 +194,7 @@
                 </div>
             @endif
         </div>
+        </div>
+
     </div>
 </div>
