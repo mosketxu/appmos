@@ -10,7 +10,6 @@
     $pestanas = [
         ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', config('contabilidad.procesosmensuales_url')],
         ['contabilidad.procesosmensuales', 'contabilidad.seguimiento-mensual', 'Seguimiento', config('contabilidad.procesosmensuales_url') ? str_replace('procesos-mensuales', 'seguimiento-mensual', config('contabilidad.procesosmensuales_url')) : null],
-    $web = $enBancos ? ['Bancos', 'bancos'] : ($enIs ? ['IS', 'is'] : ($enPm ? ['Proc.Mensuales', 'procesosmensuales'] : null));
         ['contabilidad.procesos', 'contabilidad.procesos', 'Procesos FIQ', null],
         ['contabilidad.facturacionpdf', 'contabilidad.facturacion-pdf', 'Facturación PDF', null],
         ['contabilidad.durcal', 'contabilidad.durcal', 'Durcal', null],
@@ -56,6 +55,7 @@
     $enIs = ($activa ?? null) === 'contabilidad.is' || request()->routeIs('contabilidad.is');
     $enPm = in_array($activa ?? null, ['contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual'], true) || request()->routeIs('contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual');
     // Bancos, IS y Proc.Mensuales van por su cuenta: operativos en la web aunque el resto esté bloqueado
+    $web = $enBancos ? ['Bancos', 'bancos'] : ($enIs ? ['IS', 'is'] : ($enPm ? ['Proc.Mensuales', 'procesosmensuales'] : null));
     $bloqueado = $web ? ! config("contabilidad.{$web[1]}_ejecucion") : ! config('contabilidad.ejecucion_local');
 @endphp
 @if ($web && ! config("contabilidad.{$web[1]}_ejecucion") && config("contabilidad.{$web[1]}_url"))
