@@ -83,32 +83,27 @@ class Neteges extends Component
         return is_file($venv) ? $venv : 'python3';
     }
 
+    /** Lista de extractos de Input con su cuenta (de neteges_estado.py). */
+    public array $estadoExtractos = [];
+
+    /**
+     * Todo el estado de la pantalla en una sola llamada (neteges_estado.py, 2-oct-2026): antes eran 5
+     * scripts seguidos (~15 s por carga). Guarda el resultado mientras no cambie ningún fichero, así
+     * que lo normal es que conteste al momento.
+     */
     public function cargarEstado(): void
     {
         try {
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_base.py', '--estado']);
-            $this->estadoBase = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
-        } catch (\Throwable $e) {
-            $this->estadoBase = [];
+            $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'neteges_estado.py']);
+            $e = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $ex) {
+            $e = [];
         }
-        try {
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_ventas.py', '--estado']);
-            $this->estadoVentas = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
-        } catch (\Throwable $e) {
-            $this->estadoVentas = [];
-        }
-        try {
-            $r = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'neteges_plugin.py', '--pendientes']);
-            $this->estadoPlugin = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
-        } catch (\Throwable $e) {
-            $this->estadoPlugin = [];
-        }
-        try {
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'neteges_cobros.py', '--estado']);
-            $this->estadoNeteges = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
-        } catch (\Throwable $e) {
-            $this->estadoNeteges = [];
-        }
+        $this->estadoBase = $e['base'] ?? [];
+        $this->estadoVentas = $e['ventas'] ?? [];
+        $this->estadoPlugin = $e['plugin'] ?? [];
+        $this->estadoNeteges = $e['neteges'] ?? [];
+        $this->estadoExtractos = $e['extractos'] ?? [];
     }
 
     /** Cuentas de banco cargadas en la base (pestañas con código de cuenta). */
@@ -116,6 +111,11 @@ class Neteges extends Component
     {
         if (! is_file($this->basePath())) {
             return [];
+        }
+        if (! empty($this->estadoBase['cuentas'])) {
+            $c = array_map('strval', array_keys($this->estadoBase['cuentas']));
+            sort($c);
+            return $c;
         }
         try {
             $hojas = IOFactory::createReader('Xlsx')->listWorksheetNames($this->basePath());
@@ -303,6 +303,7 @@ class Neteges extends Component
         } catch (\Throwable $e) {
             $this->dispatch('proceso-terminado', mensaje: '⚠️ '.$e->getMessage());
         }
+        $this->cargarEstado();
     }
 
     /**
@@ -397,15 +398,10 @@ class Neteges extends Component
         $this->ejecutar(['--vaciar'], 'Neteges · vaciar ventas', 'neteges_ventas.py');
     }
 
-    /** Extractos de Input con su cuenta y nombres de las cuentas de banco (neteges_extractos.py listar). */
+    /** Extractos de Input con su cuenta y nombres de las cuentas de banco (de neteges_estado.py). */
     protected function listaExtractos(): array
     {
-        try {
-            $r = Process::path($this->baseDir())->timeout(90)->run([$this->pythonBin(), 'neteges_extractos.py', 'listar']);
-            return $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
-        } catch (\Throwable $e) {
-            return [];
-        }
+        return $this->estadoExtractos;
     }
 
     public function limpiarSalida(): void
