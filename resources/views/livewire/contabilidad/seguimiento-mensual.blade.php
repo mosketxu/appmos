@@ -7,7 +7,7 @@
         $simbolo = ['ok' => '✓', 'na' => '–', 'proc' => 'P'];
     @endphp
 
-    <div class="p-4 space-y-3">
+    <div class="p-3 space-y-2">
         <div class="flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-semibold text-gray-900">Seguimiento mensual</h1>
             <div class="flex items-center gap-1">
@@ -44,12 +44,12 @@
         @endif
 
         <div class="overflow-x-auto bg-white border rounded-lg shadow">
-            <table class="text-sm">
+            <table class="text-xs">
                 <thead class="bg-gray-50">
                     <tr class="text-xs font-medium text-left text-gray-500">
-                        <th class="px-2 py-1" style="min-width:330px">Proceso</th>
+                        <th class="px-2 py-1" style="min-width:230px;max-width:300px">Proceso</th>
                         @foreach ($this->meses as $k => $n)
-                            <th class="px-1 py-1 text-center {{ $k === $mesActual ? 'bg-indigo-100 text-indigo-800' : '' }}" style="min-width:46px">{{ $n }} {{ substr($k, 2, 2) }}</th>
+                            <th class="px-0 py-1 text-center {{ $k === $mesActual ? 'bg-indigo-100 text-indigo-800' : '' }}" style="min-width:34px">{{ $n }}</th>
                         @endforeach
                         <th class="px-2 py-1"></th>
                     </tr>
@@ -95,7 +95,7 @@
                                         $color = $tot && $hechas === $tot ? 'bg-green-500 border-green-600 text-white' : (($hechas + $pr) ? 'bg-yellow-300 border-yellow-500 text-yellow-900' : 'bg-white border-gray-300 text-gray-400');
                                     @endphp
                                     <button type="button" wire:click="alternar({{ $p->id }})" title="{{ $ok }} hechas · {{ $pr }} en curso · {{ $na }} no tocan · de {{ $tot }}"
-                                        class="inline-flex items-center justify-center px-1 text-xs border rounded {{ $color }}" style="min-width:38px;height:20px">{{ $hechas }}/{{ $tot }}</button>
+                                        class="inline-flex items-center justify-center px-1 text-xs border rounded {{ $color }}" style="min-width:32px;height:18px">{{ $hechas }}/{{ $tot }}</button>
                                 @else
                                     @php $m = $estado[$p->id][0][$k] ?? null; @endphp
                                     <button type="button" @if ($puede) wire:click="marcar({{ $p->id }}, '{{ $k }}')" @endif
