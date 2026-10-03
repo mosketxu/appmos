@@ -78,7 +78,7 @@ trait EjecutaEnPcs
             return null;
         }
         $this->podarFicherosViejos();
-        $tid = ColaTareas::crear('pc.script', $params, $this->destinoPc(), auth()->id(), ColaTareas::preferido($this->grupoPc), $entradas ? 'preparando' : 'pendiente');
+        $tid = ColaTareas::crear('pc.script', $params, $this->destinoPc(), auth()->id(), null, ColaTareas::preferido($this->grupoPc), $entradas ? 'preparando' : 'pendiente');
         if ($entradas) {
             $dir = ColaTareas::carpetaEntradas($tid);
             @mkdir($dir, 0775, true);
@@ -113,7 +113,7 @@ trait EjecutaEnPcs
             $this->salida .= "\n\n⚠️ No puedo pedir {$relativa} al PC.";
             return;
         }
-        $tid = ColaTareas::crear('pc.fichero', ['grupo' => $this->grupoPc, 'relativa' => $relativa], $this->destinoPc(), auth()->id(), ColaTareas::preferido($this->grupoPc));
+        $tid = ColaTareas::crear('pc.fichero', ['grupo' => $this->grupoPc, 'relativa' => $relativa], $this->destinoPc(), auth()->id(), null, ColaTareas::preferido($this->grupoPc));
         $this->pendientes[$tid] = ['tipo' => 'fichero', 'etiquetas' => ['Descargar '.basename($relativa)], 'post' => null, 'ctx' => [], 'resultados' => null];
         $this->salida .= "\n\n⏳ Pidiendo ".basename($relativa).' al PC (tarea #'.$tid.'); en cuanto llegue se descargará.';
     }
@@ -316,7 +316,7 @@ trait EjecutaEnPcs
             ->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
             return;
         }
-        $tid = ColaTareas::crear('pc.estado', ['grupo' => $this->grupoPc], $this->destinoPc(), auth()->id(), ColaTareas::preferido($this->grupoPc));
+        $tid = ColaTareas::crear('pc.estado', ['grupo' => $this->grupoPc], $this->destinoPc(), auth()->id(), null, ColaTareas::preferido($this->grupoPc));
         $this->pendientes[$tid] = ['tipo' => 'estado', 'etiquetas' => ['Estado de los procesos'], 'post' => null, 'ctx' => [], 'resultados' => null];
     }
 }

@@ -11,7 +11,7 @@
         'contabilidad.procesosmensuales' => 'contabilidad.procesos-mensuales',
     ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
 @endphp
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+<nav x-data="{ open: false }" class="relative bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
     <div class="max-w-full px-4 mx-auto">
         <div class="flex justify-between h-14">
@@ -24,7 +24,7 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
+                <div class="hidden space-x-8 whitespace-nowrap sm:-my-px sm:ml-10 sm:flex">
                     @can('entidades.ver')
                         <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                             {{ __('Entidades') }}
@@ -70,6 +70,11 @@
                     </div>
                     --}}
                 </div>
+            </div>
+
+            {{-- Campana del TO-DO: centrada en la barra --}}
+            <div class="hidden sm:flex sm:items-center">
+                @livewire('todo-campana')
             </div>
 
             <div class="hidden sm:flex sm:items-center sm:ml-6">
@@ -122,6 +127,9 @@
                         </x-jet-nav-link>
                         @endcan
                     </div>
+                @endif
+                @if (\App\Support\TodoClaude::esGestor(auth()->user()))
+                    <div class="mr-3">@livewire('todo-claude-estado')</div>
                 @endif
                 <!-- Settings Dropdown -->
                 <div class="relative ml-3">

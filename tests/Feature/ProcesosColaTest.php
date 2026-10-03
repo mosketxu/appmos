@@ -19,9 +19,7 @@ class ProcesosColaTest extends TestCase
         parent::setUp();
         config(['contabilidad.ejecucion_local' => false,   // el .env de este PC lo tiene a true
             'app.key' => 'base64:'.base64_encode(str_repeat('k', 32)), 'app.cipher' => 'AES-256-CBC']);
-        Schema::create('users', fn ($t) => $t->id());
-        (require base_path('database/migrations/2026_10_02_140000_create_trabajadores_tareas_tables.php'))->up();
-        (require base_path('database/migrations/2026_10_03_210000_create_estado_procesos_table.php'))->up();
+        \Tests\Support\TablasCola::crear();
     }
 
     protected function borrar(string $dir): void
@@ -182,7 +180,7 @@ class ProcesosColaTest extends TestCase
         $this->trabajar($ha, $cap, ['ok' => true, 'pasos' => []]);
         $this->assertSame('AlexMiniPC', ColaTareas::preferido());
 
-        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'sysSplit.js', 'args' => ['09']]]], null, null, ColaTareas::preferido());
+        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'sysSplit.js', 'args' => ['09']]]], null, null, null, ColaTareas::preferido());
         // B no la coge mientras A esté conectado...
         $this->assertNull($this->postJson('/api/trabajador/siguiente', $cap, $hb)->json('tarea'));
         // ...pero si A se apaga (sin latido), sí
@@ -262,7 +260,7 @@ class ProcesosColaTest extends TestCase
 
     public function test_una_tarea_preparando_abandonada_se_descarta(): void
     {
-        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => []], null, null, null, 'preparando');
+        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => []], null, null, null, null, 'preparando');
         $this->assertSame(0, ColaTareas::recuperarPerdidas());
         $this->assertSame('preparando', DB::table('tareas')->find($id)->estado);
         DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(11)]);

@@ -161,6 +161,7 @@ return [
         // Procesos desde la web (3-oct-2026): el PC ejecuta uno o varios scripts de la lista cerrada de un grupo
         // ('pc_grupos'; nunca rutas ni comandos libres), con ficheros de entrada que sube la web, y devuelve salida,
         // ficheros y una copia del estado. Ver Contabilidad/TrabajadorWeb/DIAGNOSTICO.md.
+        'claude.todo' => 'Claude hace una tarea del TO-DO que se le ha asignado',
         'pc.script' => 'Ejecutar scripts de Contabilidad',
         'pc.estado' => 'Subir el estado de un grupo de procesos (la web no ve OneDrive)',
         'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
@@ -185,5 +186,15 @@ return [
             'neteges_plugin.py', 'neteges_ventas.py', 'bajarAdjuntosNeteges.ps1',
         ]],
     ],
+
+
+    // Tareas del TO-DO para Claude: el PC principal las coge enseguida; el secundario solo si el principal no da señales
+    // o la tarea lleva esperando más de 10 minutos. Pasadas cada hora (minutos) salvo «Ejecutar ya».
+    'claude_todo_primario' => env('CLAUDE_TODO_PRIMARIO', 'AlexMiniPC'),
+    // Solo ellos pausan a Claude y dan el visto bueno a lo que le asignan otros usuarios (correos separados por comas)
+    'claude_todo_gestores' => array_filter(array_map('trim', explode(',', env('CLAUDE_TODO_GESTORES', 'alex.arregui@sumaempresa.com')))),
+    'claude_todo_max_uso' => (int) env('CLAUDE_TODO_MAX_USO', 80),   // % del plan (sesión o semana) a partir del cual Claude no empieza tareas solo
+    'claude_todo_max_dia' => (int) env('CLAUDE_TODO_MAX_DIA', 30),   // red de seguridad: ejecuciones de Claude al día (el freno de verdad es el % del plan, claude_todo_max_uso)
+    'claude_todo_cada_minutos' => (int) env('CLAUDE_TODO_CADA_MINUTOS', 60),
 
 ];

@@ -19,7 +19,7 @@ class ColaTareas
     /**
      * $estado 'preparando': la tarea aún no la coge nadie (la web está dejando los ficheros de entrada); se libera con liberar().
      */
-    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null, ?string $preferido = null, string $estado = 'pendiente'): int
+    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null, $noAntesDe = null, ?string $preferido = null, string $estado = 'pendiente'): int
     {
         abort_unless(array_key_exists($proceso, config('contabilidad.tareas_procesos', [])), 422, 'Proceso no permitido');
         if (in_array($proceso, ['pc.script', 'pc.estado', 'pc.fichero'], true)) {
@@ -38,7 +38,7 @@ class ColaTareas
         }
 
         return DB::table('tareas')->insertGetId([
-            'proceso' => $proceso, 'parametros' => json_encode($parametros, JSON_UNESCAPED_UNICODE), 'destino' => $destino,
+            'proceso' => $proceso, 'parametros' => json_encode($parametros, JSON_UNESCAPED_UNICODE), 'destino' => $destino, 'no_antes_de' => $noAntesDe,
             'preferido' => $preferido, 'estado' => $estado, 'user_id' => $userId, 'created_at' => now(), 'updated_at' => now(),
         ]);
     }
@@ -128,7 +128,6 @@ class ColaTareas
         // «preparando» (la web iba a dejar ficheros de entrada y no llegó a liberarla): se descarta a los 10 min
         DB::table('tareas')->where('estado', 'preparando')->where('created_at', '<', now()->subMinutes(10))
             ->update(['estado' => 'cancelada', 'updated_at' => now()]);
-
         $limite = now()->subSeconds(self::LATIDO_MAX);
         $ids = DB::table('tareas')->join('trabajadores', 'trabajadores.id', '=', 'tareas.trabajador_id')
             ->where('tareas.estado', 'en_curso')
@@ -154,7 +153,27 @@ class ColaTareas
                 ->where(fn ($q) => $q->whereNull('destino')->orWhere('destino', $t->nombre))
                 ->where(fn ($q) => $q->whereNull('preferido')->orWhere('preferido', $t->nombre)
                     ->orWhereNotIn('preferido', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')))
+                ->where(fn ($q) => $q->whereNull('no_antes_de')->orWhere('no_antes_de', '<=', now()))
+                // las de Claude, por la prioridad que Alex les ha dado en su lista del TO-DO (después de los procesos normales)
+                ->orderByRaw("case when proceso = 'claude.todo' then 1 else 0 end")
+                ->orderByRaw("coalesce((select p.orden from todo_tarea_user p join users u on u.id = p.user_id and u.name = 'Claude' and u.email is null where p.tarea_id = json_extract(tareas.parametros, '$.tarea_id')), 999999)")
                 ->orderBy('id')->lockForUpdate();
+            // Tareas de Claude: nada si está en pausa general o se ha llegado al tope del día; y las pausadas una a una no salen
+            if (! TodoClaude::permitido()) {
+                $q->where('proceso', '!=', 'claude.todo');
+            } else {
+                $q->where(fn ($w) => $w->where('proceso', '!=', 'claude.todo')->orWhereRaw(
+                    "not exists (select 1 from todo_tareas tt where tt.id = json_extract(tareas.parametros, '$.tarea_id') and tt.claude_pausada = 1)"));
+            }
+            // Tareas de Claude: el PC principal primero; el secundario si el principal no da señales o la tarea espera >10 min
+            $principal = config('contabilidad.claude_todo_primario');
+            if ($principal && $t->nombre !== $principal) {
+                $latido = DB::table('trabajadores')->where('nombre', $principal)->where('activo', true)->value('ultimo_latido');
+                $vivo = $latido && \Illuminate\Support\Carbon::parse($latido)->gt(now()->subSeconds(self::LATIDO_MAX));
+                if ($vivo) {
+                    $q->where(fn ($w) => $w->where('proceso', '!=', 'claude.todo')->orWhere('created_at', '<=', now()->subMinutes(10)));
+                }
+            }
             $tarea = $q->first();
             if (! $tarea) {
                 return null;

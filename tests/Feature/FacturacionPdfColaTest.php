@@ -17,9 +17,7 @@ class FacturacionPdfColaTest extends TestCase
     {
         parent::setUp();
         config(['contabilidad.ejecucion_local' => false, 'app.key' => 'base64:'.base64_encode(str_repeat('k', 32)), 'app.cipher' => 'AES-256-CBC']);
-        Schema::create('users', fn ($t) => $t->id());
-        (require base_path('database/migrations/2026_10_02_140000_create_trabajadores_tareas_tables.php'))->up();
-        (require base_path('database/migrations/2026_10_03_210000_create_estado_procesos_table.php'))->up();
+        \Tests\Support\TablasCola::crear();
         DB::table('users')->insert(['id' => 1]);
         $u = new \App\Models\User();
         $u->id = 1;

@@ -1251,7 +1251,7 @@ class Procesos extends Component
                 return;
             }
             ColaTareas::guardarEstado('fiq.checklist_estado', $cambio($this->leerChecklistEstado()), 'web');
-            ColaTareas::crear('fiq.checklist', $op, null, auth()->id(), ColaTareas::preferido());
+            ColaTareas::crear('fiq.checklist', $op, null, auth()->id(), null, ColaTareas::preferido());
             unset($this->checklist, $this->checklistMarcas);
             return;
         }
