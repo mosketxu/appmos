@@ -151,6 +151,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Facturas OCR en la web (VPS, 3-oct-2026)
+    |--------------------------------------------------------------------------
+    | Con FACTURASOCR_WEB=true el propio servidor ejecuta facturas_ocr.py sobre su copia de trabajo de OneDrive
+    | (FACTURASOCR_ONEDRIVE: carpeta que hace de «{OneDrive}», con _Clientes/_FacturasOCR y _Clientes/2026/...).
+    | Las facturas se SUBEN a la web (huella SHA-1, solo lo que no se conoce); el OCR es Tesseract. Un trabajador
+    | deja después lo validado en el OneDrive de un PC (sincronización con comprobación de huellas).
+    */
+    'facturasocr_web' => env('FACTURASOCR_WEB', false),
+    'facturasocr_onedrive' => env('FACTURASOCR_ONEDRIVE'),
+    'facturasocr_pc' => env('FACTURASOCR_PC'),   // PC (nombre del trabajador) cuyo OneDrive recibe lo validado; vacío = cualquiera
+
+    /*
+    |--------------------------------------------------------------------------
     | Cola de tareas para los PCs trabajadores (2-oct-2026)
     |--------------------------------------------------------------------------
     | Lista CERRADA de procesos que la web puede pedir y los PCs ejecutar (clave => descripción).
@@ -165,6 +178,7 @@ return [
         'pc.script' => 'Ejecutar scripts de Contabilidad',
         'pc.estado' => 'Subir el estado de un grupo de procesos (la web no ve OneDrive)',
         'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
+        'pc.facturasocr' => 'Llevar al OneDrive de este PC lo validado en Facturas OCR (con comprobación de huellas)',
         'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',
     ],
 

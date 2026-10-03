@@ -35,6 +35,8 @@ Route::prefix('trabajador')->group(function () {
     Route::post('/tareas/{id}/todo-resultado', [\App\Http\Controllers\TrabajadorApiController::class, 'todoResultado']);
     Route::post('/claude-uso', [\App\Http\Controllers\TrabajadorApiController::class, 'claudeUso']);
     Route::get('/tareas/{id}/entrada/{nombre}', [\App\Http\Controllers\TrabajadorApiController::class, 'entrada']);
+    Route::get('/facturasocr/{cliente}/manifest', [\App\Http\Controllers\FacturasOcrSyncController::class, 'manifest']);
+    Route::get('/facturasocr/{cliente}/archivo', [\App\Http\Controllers\FacturasOcrSyncController::class, 'archivo']);
     Route::post('/tareas/{id}/fichero', [\App\Http\Controllers\TrabajadorApiController::class, 'fichero']);
     Route::post('/tareas/{id}/fin', [\App\Http\Controllers\TrabajadorApiController::class, 'fin']);
 });

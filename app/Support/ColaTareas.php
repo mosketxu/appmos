@@ -22,6 +22,9 @@ class ColaTareas
     public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null, $noAntesDe = null, ?string $preferido = null, string $estado = 'pendiente'): int
     {
         abort_unless(array_key_exists($proceso, config('contabilidad.tareas_procesos', [])), 422, 'Proceso no permitido');
+        if ($proceso === 'pc.facturasocr') {
+            abort_unless(preg_match('/^[A-Za-z0-9 _.-]+$/', (string) ($parametros['cliente'] ?? '')), 422, 'Cliente no válido');
+        }
         if (in_array($proceso, ['pc.script', 'pc.estado', 'pc.fichero'], true)) {
             $grupo = config('contabilidad.pc_grupos.'.($parametros['grupo'] ?? ''));
             abort_unless(is_array($grupo), 422, 'Grupo no permitido');

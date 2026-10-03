@@ -294,6 +294,60 @@
             <div class="p-4 focr-card">
                 <div class="focr-grid">
                     <div style="grid-column:1/-1">
+                    @if ($web)
+                        {{-- Web (VPS): las facturas se suben SIEMPRE aquí (no dependen de OneDrive). El navegador calcula la
+                             huella SHA-1 de cada PDF y solo sube las que el servidor no conoce; al llegar se leen solas. --}}
+                        <label class="focr-lbl">Facturas (PDF): arrástralas aquí o haz clic. Se suben al servidor y se leen solas.</label>
+                        <div x-data="focrSubida()" wire:key="subida">
+                            <input type="file" multiple accept="application/pdf,.pdf" x-ref="f" style="display:none" x-on:change="elegir($event.target.files); $event.target.value = ''">
+                            <div x-on:click="$refs.f.click()" x-on:dragover.prevent="encima = true" x-on:dragleave.prevent="encima = false" x-on:drop.prevent="encima = false; elegir($event.dataTransfer.files)"
+                                 :style="encima ? 'background:#eef2ff;border-color:#6366f1' : ''"
+                                 style="border:2px dashed #cbd5e1; border-radius:.5rem; padding:1.1rem; text-align:center; cursor:pointer; color:#475569">
+                                📥 Arrastra aquí los PDF de las facturas o haz clic para elegirlos
+                            </div>
+                            <template x-if="archivos.length">
+                                <div class="mt-2 text-xs" style="max-height:11rem; overflow:auto">
+                                    <template x-for="a in archivos" :key="a.clave">
+                                        <div style="display:flex; gap:.5rem; align-items:center; padding:.1rem 0">
+                                            <span style="min-width:7.5rem" x-text="a.estado === 'huella' ? '🔎 comprobando…' : a.estado === 'ya' ? '✔ ya la tengo' : a.estado === 'subiendo' ? '⏫ subiendo ' + a.pct + ' %' : a.estado === 'subida' ? '✅ en el servidor' : '⚠️ error'"></span>
+                                            <span x-text="a.nombre" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap"></span>
+                                            <span style="color:#64748b" x-text="a.texto || ''"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                        @php
+                            $nLeidas = collect($entrada)->filter(fn ($e) => ! in_array($e[1], ['en el servidor', 'leyendo'], true))->count();
+                        @endphp
+                        <div class="mt-2 text-xs text-gray-600" x-data="{ t0: {{ (int) $lecturaDesde }}, ahora: Math.floor(Date.now() / 1000) }" x-init="setInterval(() => ahora = Math.floor(Date.now() / 1000), 1000)">
+                            {{ count($entrada) }} PDF en la carpeta de entrada · {{ $nLeidas }} leídos
+                            @if ($lecturaDesde)
+                                · <b style="color:#b45309">⏳ leyendo… <span x-text="Math.max(0, ahora - t0) + ' s'"></span></b> (no hace falta esperar: puedes seguir con otras)
+                            @endif
+                        </div>
+                        @if ($leyendo)
+                            <div wire:poll.3s="revisarLectura"></div>
+                        @endif
+                        {{-- Archivo: lo contabilizado se lleva al OneDrive de un PC, comprobando huellas --}}
+                        <div class="mt-2 text-xs text-gray-600" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+                            <span>📦 Archivo en OneDrive del PC:
+                                @if ($sync)
+                                    último envío {{ $sync['fecha'] }} ({{ $sync['pc'] }}) · {{ $sync['total'] }} ficheros comprobados, {{ $sync['nuevos'] }} nuevos
+                                    @if (! empty($sync['conflictos'])) · <b style="color:#b45309">⚠ {{ count($sync['conflictos']) }} cambiados en el PC (el del servidor queda como «.vps»)</b>@endif
+                                    @if (! empty($sync['fallidos'])) · <b style="color:#b91c1c">❌ {{ count($sync['fallidos']) }} sin llegar bien: {{ implode(', ', array_slice($sync['fallidos'], 0, 3)) }}</b>@endif
+                                @else
+                                    todavía no se ha enviado
+                                @endif
+                            </span>
+                            <button type="button" wire:click="enviarAlPc" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.75rem" @disabled($sincronizando)>
+                                {{ $sincronizando ? '⏳ enviando al PC…' : '↻ Enviar ahora al PC' }}
+                            </button>
+                            @if ($sincronizando)
+                                <span wire:poll.3s="revisarSync"></span>
+                            @endif
+                        </div>
+                    @else
                         <label class="focr-lbl">Carpeta con las facturas (solo los PDF de esa carpeta, sin subcarpetas)</label>
                         <div class="flex gap-2" style="align-items:center">
                             <input type="text" wire:model.live.debounce.500ms="carpeta" class="focr-in" style="font-family:monospace">
@@ -304,6 +358,7 @@
                         </div>
                         @error('carpeta') <div class="mt-1 text-xs text-red-600">{{ $message }}</div> @enderror
                         <div class="mt-1 text-xs text-gray-500">{{ $pdfs }} PDF en la carpeta.</div>
+                    @endif
                     </div>
                     <div>
                         <label class="focr-lbl">IVA del cliente</label>
@@ -354,7 +409,7 @@
 
                 <div class="flex flex-wrap items-center gap-3 mt-4">
                     <button type="button" wire:click="analizar" wire:loading.attr="disabled" class="focr-btn b-indigo" @disabled($ciclo === '')>
-                        <span wire:loading.remove wire:target="analizar">📄 Leer las facturas de la carpeta</span>
+                        <span wire:loading.remove wire:target="analizar">📄 {{ $web ? 'Leer las facturas de entrada' : 'Leer las facturas de la carpeta' }}</span>
                         <span wire:loading wire:target="analizar">Leyendo… (las que son imagen pasan por OCR)</span>
                     </button>
                     @if ($primeraAbierta)
@@ -901,4 +956,43 @@
             </div>
         </div>
     @endif
+
+<script>
+    // Subida de facturas en la web: huella SHA-1 en el navegador (los 12 primeros hex = id de la factura, como id_fichero() de Python)
+    window.focrSubida = window.focrSubida || function () {
+        const sha1 = async (file) => {
+            const buf = await crypto.subtle.digest('SHA-1', await file.arrayBuffer());
+            return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+        };
+        return {
+            archivos: [], encima: false,
+            async elegir(lista) {
+                const fs = [...lista].filter(f => /\.pdf$/i.test(f.name));
+                if (!fs.length) return;
+                const vistos = new Set();
+                this.archivos = [];
+                for (const f of fs) {
+                    const a = { clave: Math.random().toString(36).slice(2), nombre: f.name, file: f, estado: 'huella', pct: 0, texto: '', id: '' };
+                    this.archivos.push(a);
+                }
+                for (const a of this.archivos) {
+                    try { a.id = await sha1(a.file); } catch (e) { a.estado = 'error'; a.texto = 'no puedo calcular la huella (¿https?)'; }
+                }
+                const ok = this.archivos.filter(a => a.estado === 'huella');
+                const r = await this.$wire.huellasNuevas(ok.map(a => [a.id, a.nombre]));
+                const subir = [];
+                for (const a of ok) {
+                    if (r.conocidas && r.conocidas[a.id]) { a.estado = 'ya'; a.texto = r.conocidas[a.id]; }
+                    else if (vistos.has(a.id)) { a.estado = 'ya'; a.texto = 'repetida en esta subida'; }
+                    else { vistos.add(a.id); a.estado = 'subiendo'; subir.push(a); }
+                }
+                if (!subir.length) return;
+                await new Promise((fin, fallo) => this.$wire.uploadMultiple('pdfsSubidos', subir.map(a => a.file), fin, fallo,
+                    (e) => subir.forEach(a => a.pct = e.detail.progress)));
+                subir.forEach(a => { a.estado = 'subida'; });
+                await this.$wire.recibirPdfs();
+            },
+        };
+    };
+</script>
 </div>

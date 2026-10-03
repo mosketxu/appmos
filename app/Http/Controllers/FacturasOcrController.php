@@ -50,9 +50,25 @@ class FacturasOcrController extends Controller
         if (! is_file($jpg)) {
             $rapido = storage_path('app/venv-facturasocr/bin/python');
             $python = config('contabilidad.facturasocr_python') ?: (is_executable($rapido) ? $rapido : dirname($dir).'/.venv/bin/python');
-            Process::path(dirname($dir))->timeout(30)->run([$python, 'facturas_ocr.py', basename($dir), 'miniatura', $id]);
+            $env = config('contabilidad.facturasocr_web')
+                ? ['ONEDRIVE_ROOT' => rtrim((string) config('contabilidad.facturasocr_onedrive'), '/'), 'FACTURAS_OCR_MOTOR' => 'tesseract'] : [];
+            Process::path(dirname($dir))->env($env)->timeout(30)->run([$python, 'facturas_ocr.py', basename($dir), 'miniatura', $id]);
         }
         abort_unless(is_file($jpg), 404);
         return response()->file($jpg, ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, max-age=3600']);
+    }
+
+    /** Excel para SAGE entregado en la web (Output/Entregados): enlace firmado que crea la pantalla al guardarlo. */
+    public function excel(string $cliente, string $archivo)
+    {
+        $dir = rtrim(config('contabilidad.facturasocr_dir'), '/').'/'.basename($cliente);
+        $cfg = json_decode((string) @file_get_contents($dir.'/cliente.json'), true);
+        abort_unless(is_array($cfg), 404);
+        $permitidas = \App\Support\Accesos::entidadesPermitidas();
+        abort_if($permitidas !== null && ! in_array((int) ($cfg['entidad_id'] ?? 0), $permitidas, true), 403);
+        $ruta = \App\Http\Livewire\Contabilidad\FacturasOcr::rutaDatos($dir).'/Output/Entregados/'.basename($archivo);
+        abort_unless(is_file($ruta), 404);
+
+        return response()->download($ruta, basename($archivo));
     }
 }

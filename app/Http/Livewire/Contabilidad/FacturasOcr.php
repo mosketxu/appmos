@@ -54,6 +54,12 @@ class FacturasOcr extends Component
     /** Hay cambios en el formulario de la factura abierta: se guardan al final de la petición. */
     protected bool $sucio = false;
 
+    /** Web (VPS): PDF que acaba de subir el navegador (ver recibirPdfs) y lectura en segundo plano en curso. */
+    public $pdfsSubidos = [];
+    public bool $leyendo = false;
+    /** Web: hay una tarea pidiendo a un PC que lleve lo validado a su OneDrive. */
+    public bool $sincronizando = false;
+
     /** Ficheros base subidos (listado de proveedores / mayor). */
     /** Un fichero nuevo por tipo de fichero base (ver TIPOS_BASE) */
     public $subidaProv = null;
@@ -64,6 +70,38 @@ class FacturasOcr extends Component
     {
         $this->cliente = $this->clientes()[0] ?? '';
         $this->cargarCliente();
+    }
+
+    // ------------------------------------------------------------ modo web (VPS)
+
+    /** VPS: lo ejecuta el propio servidor sobre su copia de trabajo (las facturas se suben a la web). */
+    protected function web(): bool
+    {
+        return (bool) config('contabilidad.facturasocr_web');
+    }
+
+    /** Se ejecutan los scripts en esta máquina: un PC autorizado o el VPS en modo web. */
+    protected function ejecutaAqui(): bool
+    {
+        return config('contabilidad.ejecucion_local') || $this->web();
+    }
+
+    /** Entorno de los procesos de Python: OCR de Windows (PCs) o copia de OneDrive y Tesseract (VPS). */
+    protected function entornoPython(): array
+    {
+        $env = $this->entornoWindows();
+        if ($this->web()) {
+            $env['ONEDRIVE_ROOT'] = rtrim((string) config('contabilidad.facturasocr_onedrive'), '/');
+            $env['FACTURAS_OCR_MOTOR'] = 'tesseract';
+        }
+
+        return $env;
+    }
+
+    /** Carpeta de entrada de las facturas subidas a la web. */
+    protected function dirEntrada(): string
+    {
+        return $this->dirDatos().'/Entrada';
     }
 
     // ------------------------------------------------------------ cliente
@@ -122,6 +160,10 @@ class FacturasOcr extends Component
     {
         $cfg = json_decode((string) @file_get_contents($dirCliente.'/cliente.json'), true) ?: [];
         $d = (string) ($cfg['datos'] ?? '');
+        if (str_starts_with($d, '{OneDrive}') && config('contabilidad.facturasocr_onedrive')) {
+            // VPS: copia de trabajo de la carpeta 2026 de OneDrive (las facturas se suben a la web, no por OneDrive)
+            return rtrim(config('contabilidad.facturasocr_onedrive'), '/').substr($d, strlen('{OneDrive}'));
+        }
         if (str_starts_with($d, '{OneDrive}')) {
             foreach (['e', 'f', 'd', 'c', 'g'] as $u) {
                 if (is_dir("/mnt/{$u}/OneDrive")) {
@@ -173,7 +215,7 @@ class FacturasOcr extends Component
         if (! $this->clienteValido()) {
             return;
         }
-        if (realpath($this->dirDatos()) !== realpath($this->dirCliente()) && config('contabilidad.ejecucion_local')
+        if (realpath($this->dirDatos()) !== realpath($this->dirCliente()) && config('contabilidad.ejecucion_local') && ! $this->web()
             && (is_file($this->dirCliente().'/facturas.json') || ! is_dir($this->dirDatos()))) {
             // Queda estado en la carpeta local (de antes de usar OneDrive): facturas_base.py lo pasa allí
             Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
@@ -186,7 +228,8 @@ class FacturasOcr extends Component
         };
         $this->analitica = $e && $this->hayColumnaAnalitica() ? (bool) $e->contabilidad_analitica : (bool) ($this->cfg()['analitica'] ?? false);
         $ult = $this->estado()['ultimo_analisis'] ?? [];
-        $this->carpeta = $ult['carpeta'] ?? ($this->cfg()['carpeta_entrada'] ?? '');
+        $this->carpeta = $this->web() ? $this->dirEntrada() : ($ult['carpeta'] ?? ($this->cfg()['carpeta_entrada'] ?? ''));
+        $this->leyendo = $this->web() && $this->lecturaEnCurso() !== null;
         $this->periodo = (string) ($ult['periodo'] ?? '');
         if (! array_key_exists($this->periodo, $this->periodos())) {
             $this->periodo = $this->periodoActual();
@@ -406,8 +449,20 @@ class FacturasOcr extends Component
             return;
         }
         $ult = $this->estado()['ultimo_guardado'] ?? '';
-        $nombre = 'PluginFacturas_Recibidas_'.$this->cliente.'_'.date('Y-m-d').'.xlsx';
+        $nombre = 'PluginFacturas_Recibidas_'.$this->cliente.'_'.date('Y-m-d_Hi').'.xlsx';
         $this->salida = '';
+        if ($this->web()) {
+            // Sin ventana de Windows: se entrega en Output/Entregados y el navegador lo descarga
+            $dir = $this->dirDatos().'/Output/Entregados';
+            @mkdir($dir, 0775, true);
+            if ($this->ejecutar(['guardar_excel', '--destino', $dir.'/'.$nombre], 60, 'Guardar el Excel', false)) {
+                $url = \Illuminate\Support\Facades\URL::temporarySignedRoute('contabilidad.facturas-ocr.excel', now()->addMinutes(10), ['cliente' => $this->cliente, 'archivo' => $nombre]);
+                $this->js('window.location.href = '.json_encode($url));
+                $this->dispatch('proceso-terminado', mensaje: "✅ Excel listo: se descarga ahora.\n{$nombre}");
+                $this->enviarAlPc();   // y se deja también en el OneDrive del PC, con todo lo contabilizado
+            }
+            return;
+        }
         $win = $this->dialogo(['-Modo', 'guardar', '-Inicial', $ult ? $this->aWindows($ult) : '', '-Nombre', $nombre]);
         if ($win === '') {
             if (trim($this->salida) !== '') {
@@ -488,6 +543,210 @@ class FacturasOcr extends Component
         });
     }
 
+    // ------------------------------------------------------------ entrada por la web (VPS)
+    // Las facturas se suben SIEMPRE a la web (no dependen de que el OneDrive de nadie esté al día). El navegador calcula
+    // la huella de cada PDF (SHA-1; los 12 primeros caracteres son el id de la factura, igual que id_fichero() de
+    // facturas_ocr.py) y solo sube las que el servidor no conoce. Al llegar se leen solas en segundo plano.
+
+    /** SHA-1 (12 primeros caracteres) de un fichero. */
+    protected function idPdf(string $ruta): string
+    {
+        return substr(sha1_file($ruta), 0, 12);
+    }
+
+    /** [id => nombre] de los PDF que hay ahora en la carpeta de entrada. */
+    protected function pdfsDeEntrada(): array
+    {
+        $out = [];
+        foreach (glob($this->dirEntrada().'/*') ?: [] as $f) {
+            if (is_file($f) && preg_match('/\.pdf$/i', $f)) {
+                $out[$this->idPdf($f)] = basename($f);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * El navegador pregunta, antes de subir: de estas [id, nombre], ¿cuáles conoce ya el servidor?
+     * Devuelve ['conocidas' => [id => texto]]; lo que no esté ahí hay que subirlo.
+     */
+    public function huellasNuevas(array $items): array
+    {
+        if (! $this->web() || ! $this->clienteValido()) {
+            return ['conocidas' => []];
+        }
+        $estados = [];
+        foreach ($this->estado()['facturas'] as $f) {
+            $estados[$f['id']] = ['validada' => 'ya validada', 'validando' => 'validándose', 'duplicada' => 'ya marcada como duplicada',
+                'rechazada' => 'ya rechazada'][$f['estado']] ?? 'ya está en la lista';
+        }
+        $enEntrada = $this->pdfsDeEntrada();
+        $conocidas = [];
+        foreach ($items as $it) {
+            $id = (string) ($it[0] ?? '');
+            if (isset($enEntrada[$id])) {
+                $conocidas[$id] = 'ya está en el servidor';
+            } elseif (isset($estados[$id])) {
+                $conocidas[$id] = $estados[$id];
+            }
+        }
+
+        return ['conocidas' => $conocidas];
+    }
+
+    /** Termina una subida: guarda en la carpeta de entrada los PDF nuevos y lanza su lectura. */
+    public function recibirPdfs(): array
+    {
+        $res = ['guardadas' => [], 'repetidas' => [], 'rechazadas' => []];
+        if (! $this->web() || ! $this->clienteValido()) {
+            return $res;
+        }
+        $subidos = array_values(array_filter((array) $this->pdfsSubidos, fn ($f) => $f instanceof \Illuminate\Http\UploadedFile));
+        $this->pdfsSubidos = [];
+        @mkdir($this->dirEntrada(), 0775, true);
+        $conocidas = $this->huellasNuevas(array_map(fn ($f) => [$this->idPdf($f->getRealPath()), $f->getClientOriginalName()], $subidos))['conocidas'];
+        $enEntrada = $this->pdfsDeEntrada();
+        foreach ($subidos as $f) {
+            $nombre = preg_replace('/[\\\\\/:*?"<>|]+/', '_', $f->getClientOriginalName());
+            $id = $this->idPdf($f->getRealPath());
+            if (! preg_match('/\.pdf$/i', $nombre) || ! str_starts_with((string) @file_get_contents($f->getRealPath(), false, null, 0, 5), '%PDF')) {
+                $res['rechazadas'][] = $nombre;
+            } elseif (isset($conocidas[$id]) || isset($enEntrada[$id])) {
+                $res['repetidas'][] = $nombre;
+            } else {
+                $destino = $this->dirEntrada().'/'.$nombre;
+                if (file_exists($destino)) {
+                    $destino = $this->dirEntrada().'/'.pathinfo($nombre, PATHINFO_FILENAME).'_'.$id.'.pdf';
+                }
+                copy($f->getRealPath(), $destino);
+                $enEntrada[$id] = basename($destino);
+                $res['guardadas'][] = basename($destino);
+            }
+        }
+        $this->salida = count($res['guardadas']).' factura(s) recibida(s) en el servidor'
+            .($res['repetidas'] ? ', '.count($res['repetidas']).' ya estaban (no se han vuelto a subir)' : '')
+            .($res['rechazadas'] ? ', '.count($res['rechazadas']).' no son PDF: '.implode(', ', $res['rechazadas']) : '').'.';
+        if ($res['guardadas']) {
+            $this->leerEnSegundoPlano();
+        }
+
+        return $res;
+    }
+
+    /** Marcas de la lectura en segundo plano: [inicio (epoch), fin (epoch|null)] o null si no se ha lanzado nunca. */
+    protected function lecturaEnCurso(): ?array
+    {
+        $dir = $this->dirDatos().'/_cola';
+        $ini = (int) @file_get_contents($dir.'/lectura.inicio');
+        if (! $ini) {
+            return null;
+        }
+        $fin = (int) @file_get_contents($dir.'/lectura.fin');
+        // sin «fin» tras 40 min se da por muerta (el servidor se reinició, etc.)
+        return ($fin >= $ini || time() - $ini > 2400) ? null : [$ini, null];
+    }
+
+    /** Lee en segundo plano las facturas de la carpeta de entrada (OCR incluido); no bloquea la página. */
+    public function leerEnSegundoPlano(): void
+    {
+        if (! $this->web() || ! $this->clienteValido()) {
+            return;
+        }
+        if (! in_array($this->ciclo, ['M', 'T'], true)) {
+            $this->salida .= "\nElige si el IVA es mensual o trimestral y pulsa «Leer las facturas»: ya están en el servidor.";
+            return;
+        }
+        if ($this->lecturaEnCurso() !== null) {
+            return;   // ya se está leyendo: la siguiente pasada recogerá lo nuevo
+        }
+        $dir = $this->dirDatos().'/_cola';
+        @mkdir($dir, 0775, true);
+        file_put_contents($dir.'/lectura.inicio', (string) time());
+        @unlink($dir.'/lectura.fin');
+        $env = '';
+        foreach ($this->entornoPython() as $k => $v) {
+            $env .= $k.'='.escapeshellarg($v).' ';
+        }
+        $args = array_merge(['analizar', '--carpeta', $this->dirEntrada()], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']);
+        $cmd = 'cd '.escapeshellarg($this->baseDir()).' && ('.$env.escapeshellarg($this->pythonBin()).' facturas_ocr.py '.escapeshellarg($this->cliente)
+            .' '.implode(' ', array_map('escapeshellarg', $args)).' > '.escapeshellarg($dir.'/lectura.log').' 2>&1; date +%s > '.escapeshellarg($dir.'/lectura.fin')
+            .') < /dev/null > /dev/null 2>&1 &';
+        Process::run(['bash', '-c', 'nohup setsid bash -c '.escapeshellarg($cmd).' &']);
+        $this->leyendo = true;
+    }
+
+    /** wire:poll mientras se lee: al terminar enseña el resumen y deja la lista al día. */
+    public function revisarLectura(): void
+    {
+        if (! $this->leyendo) {
+            return;
+        }
+        if ($this->lecturaEnCurso() === null) {
+            $this->leyendo = false;
+            $log = trim((string) @file_get_contents($this->dirDatos().'/_cola/lectura.log'));
+            $this->salida = $log !== '' ? $log : 'Lectura terminada.';
+            $this->dispatch('proceso-terminado', mensaje: '✅ Lectura de facturas terminada'."\n".$this->salida);
+        }
+    }
+
+    /**
+     * Pide a un PC trabajador (FACTURASOCR_PC o cualquiera) que lleve a su OneDrive lo contabilizado: PDF de las carpetas
+     * del mes, Excel entregados y estado, comprobando la huella de cada fichero (trabajador.py, h_facturasocr_sync).
+     */
+    public function enviarAlPc(): void
+    {
+        if (! $this->web() || ! $this->clienteValido() || ! \Illuminate\Support\Facades\Schema::hasTable('tareas')) {
+            return;
+        }
+        if (! \Illuminate\Support\Facades\DB::table('tareas')->where('proceso', 'pc.facturasocr')->where('parametros', 'like', '%"cliente":"'.$this->cliente.'"%')
+            ->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            \App\Support\ColaTareas::crear('pc.facturasocr', ['cliente' => $this->cliente], config('contabilidad.facturasocr_pc') ?: null, auth()->id());
+        }
+        $this->sincronizando = true;
+    }
+
+    /** wire:poll mientras un PC lleva los ficheros a su OneDrive. */
+    public function revisarSync(): void
+    {
+        if ($this->sincronizando && ! \Illuminate\Support\Facades\DB::table('tareas')->where('proceso', 'pc.facturasocr')
+            ->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            $this->sincronizando = false;
+        }
+    }
+
+    /** Resultado del último envío al PC (lo sube el trabajador): fecha, PC, ficheros nuevos/ya estaban, conflictos y fallos. */
+    protected function estadoSync(): ?array
+    {
+        try {
+            return $this->web() && $this->clienteValido() && \Illuminate\Support\Facades\Schema::hasTable('estado_procesos')
+                ? \App\Support\ColaTareas::estado('facturasocr.sync.'.$this->cliente) : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /** Estado de cada PDF de la carpeta de entrada para la tabla de la pantalla: [nombre, estado]. */
+    protected function estadoEntrada(): array
+    {
+        if (! $this->web() || ! $this->clienteValido()) {
+            return [];
+        }
+        $porRuta = [];
+        foreach ($this->estado()['facturas'] as $f) {
+            $porRuta[basename($f['ruta'])] = $f['estado'];
+        }
+        $out = [];
+        foreach (glob($this->dirEntrada().'/*.{pdf,PDF}', GLOB_BRACE) ?: [] as $f) {
+            $n = basename($f);
+            $e = $porRuta[$n] ?? null;
+            $out[] = [$n, $e === null ? ($this->leyendo ? 'leyendo' : 'en el servidor') : $e];
+        }
+        usort($out, fn ($a, $b) => strnatcasecmp($a[0], $b[0]));
+
+        return $out;
+    }
+
     // ------------------------------------------------------------ procesos
 
     public function analizar(): void
@@ -498,6 +757,10 @@ class FacturasOcr extends Component
         }
         if (! in_array($this->ciclo, ['M', 'T'], true)) {
             $this->addError('ciclo', 'Elige si el IVA es mensual o trimestral antes de leer las facturas.');
+            return;
+        }
+        if ($this->web()) {
+            $this->leerEnSegundoPlano();
             return;
         }
         if (! is_dir($this->carpeta)) {
@@ -537,19 +800,19 @@ class FacturasOcr extends Component
      */
     protected function entornoWindows(): array
     {
-        return getenv('WSL_INTEROP') ? [] : ['WSL_INTEROP' => '/run/WSL/1_interop'];
+        return getenv('WSL_INTEROP') || ! is_dir('/run/WSL') ? [] : ['WSL_INTEROP' => '/run/WSL/1_interop'];
     }
 
     /** Lanza facturas_ocr.py <cliente> ...; devuelve si terminó bien. */
     protected function ejecutar(array $args, int $timeout, string $etiqueta, bool $avisar = true): bool
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! $this->ejecutaAqui()) {
             $this->salida .= '⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.';
             return false;
         }
         $cmd = array_merge([$this->pythonBin(), 'facturas_ocr.py', $this->cliente], $args);
         try {
-            $r = Process::path($this->baseDir())->env($this->entornoWindows())->timeout($timeout)->run($cmd);
+            $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout($timeout)->run($cmd);
             $texto = trim($r->output()."\n".$r->errorOutput());
             $this->salida .= $texto."\n";
             if (! $r->successful()) {
@@ -604,7 +867,7 @@ class FacturasOcr extends Component
         $cta = (string) ($f['datos']['cuenta'] ?? '');
         $mismoEnCola = $cta !== '' && collect($this->estado()['facturas'])
             ->contains(fn ($o) => $o['estado'] === 'validando' && (string) ($o['datos']['cuenta'] ?? '') === $cta);
-        if ($f['estado'] === 'pendiente' && empty($f['editada']) && config('contabilidad.ejecucion_local')
+        if ($f['estado'] === 'pendiente' && empty($f['editada']) && $this->ejecutaAqui()
             && (($f['confianza']['proveedor'] ?? '') !== 'ok' || ! empty($f['datos']['proveedor_nuevo']) || $mismoEnCola)) {
             $salida = $this->salida;
             if ($this->ejecutar(array_merge(['reproponer', $id], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 120, 'Volver a proponer', false)) {
@@ -793,12 +1056,12 @@ class FacturasOcr extends Component
             $this->propuestaCif = ['error' => 'Pon primero el nombre del proveedor.'];
             return;
         }
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! $this->ejecutaAqui()) {
             return;
         }
         $cmd = [$this->pythonBin(), 'facturas_ocr.py', $this->cliente, 'buscar_cif', $this->sel, '--nombre', trim($this->form['proveedor'])];
         try {
-            $r = Process::path($this->baseDir())->env($this->entornoWindows())->timeout(200)->run($cmd);
+            $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(200)->run($cmd);
             $datos = json_decode($r->output(), true);
             $this->propuestaCif = is_array($datos) ? $datos : ['error' => trim($r->output()."\n".$r->errorOutput())];
         } catch (\Throwable $e) {
@@ -890,9 +1153,9 @@ class FacturasOcr extends Component
         $f = $this->dirCliente().'/Base/proveedores.json';
         $d = json_decode((string) @file_get_contents($f), true) ?: [];
         $error = '';
-        if (config('contabilidad.ejecucion_local')) {
+        if ($this->ejecutaAqui()) {
             // Al día con el listado y el mayor de este PC (proveedores.json no va por git); si ya lo está, no hace nada
-            $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
+            $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente]);
             if (! $r->successful()) {
                 $error = trim($r->errorOutput()."\n".$r->output());
                 Log::warning('FacturasOcr: no se pudo rehacer proveedores.json', ['salida' => $error]);
@@ -1169,7 +1432,7 @@ class FacturasOcr extends Component
             $this->addError('validar', 'Faltan datos: '.implode(', ', $faltan));
             return;
         }
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! $this->ejecutaAqui()) {
             $this->addError('validar', 'Opción no válida. Solo ejecutable desde un terminal autorizado.');
             return;
         }
@@ -1198,7 +1461,7 @@ class FacturasOcr extends Component
     protected function lanzarCola(): void
     {
         $env = '';
-        foreach ($this->entornoWindows() as $k => $v) {
+        foreach ($this->entornoPython() as $k => $v) {
             $env .= $k.'='.escapeshellarg($v).' ';
         }
         $log = $this->dirDatos().'/_cola/cola.log';
@@ -1364,8 +1627,8 @@ class FacturasOcr extends Component
     {
         $this->dispatch('focr-listas');   // que los combos vuelvan a pedir las listas
         $texto = $hecho;
-        if (config('contabilidad.ejecucion_local')) {
-            $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente, '--forzar']);
+        if ($this->ejecutaAqui()) {
+            $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(300)->run([$this->pythonBin(), 'facturas_base.py', $this->cliente, '--forzar']);
             $texto .= "\n".trim($r->output()."\n".$r->errorOutput());
             // Con otra base cambian cuentas, CIF, contrapartidas y duplicadas: las pendientes que no se han
             // tocado a mano se vuelven a proponer (lo tocado a mano se respeta).
@@ -1501,7 +1764,7 @@ class FacturasOcr extends Component
         // Otro PC ha tocado estas facturas hace poco (OneDrive puede no haberlo traído aún) o hay copias en conflicto
         $otroPc = null;
         $uc = $estado['ultimo_cambio'] ?? null;
-        if ($uc && ($uc['pc'] ?? '') !== gethostname() && strtotime($uc['fecha'] ?? '') > time() - 900) {
+        if (! $this->web() && $uc && ($uc['pc'] ?? '') !== gethostname() && strtotime($uc['fecha'] ?? '') > time() - 900) {
             $otroPc = $uc;
         }
         $conflictos = $valido ? array_map('basename', array_filter(glob($this->dirDatos().'/{facturas,patrones}*.json', GLOB_BRACE) ?: [],
@@ -1532,6 +1795,10 @@ class FacturasOcr extends Component
             'periodos' => $this->periodos(),
             'mesesCierre' => $this->mesesCierre(),
             'pdfs' => $valido ? $this->pdfsEnCarpeta() : 0,
+            'web' => $this->web(),
+            'sync' => $this->estadoSync(),
+            'entrada' => $this->estadoEntrada(),
+            'lecturaDesde' => $this->web() && $valido ? ($this->lecturaEnCurso()[0] ?? null) : null,
             'procesos' => $procesos,
             'enExcel' => count(array_filter($todas, fn ($f) => ($f['excel'] ?? '') === self::EXCEL && in_array($f['estado'], ['validada', 'validando'], true))),
             'ultimoExcel' => $estado['ultimo_excel'] ?? null,
