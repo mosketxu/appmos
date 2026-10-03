@@ -73,4 +73,22 @@ class TodoTest extends TestCase
     {
         $this->actingAs($this->usuario('Ana'))->get(route('todo'))->assertOk()->assertSee('TO-DO');
     }
+
+    public function test_mover_cambia_el_orden_de_prioridad(): void
+    {
+        $ana = $this->usuario('Ana');
+        $this->actingAs($ana);
+        $c = Livewire::test(Todo::class);
+        foreach (['Uno', 'Dos', 'Tres'] as $titulo) {
+            $c->set('titulo', $titulo)->set('asignadoId', $ana->id)->call('crear');
+        }
+        $ids = TodoTarea::orderBy('orden')->pluck('titulo', 'id')->all();
+        $this->assertSame(['Uno', 'Dos', 'Tres'], array_values($ids));
+        $tres = array_search('Tres', $ids);
+
+        $c->call('mover', $tres, -1);
+        $this->assertSame(['Uno', 'Tres', 'Dos'], TodoTarea::orderBy('orden')->pluck('titulo')->all());
+        $c->call('mover', $tres, -1)->call('mover', $tres, -1);   // ya es la primera: no pasa nada
+        $this->assertSame(['Tres', 'Uno', 'Dos'], TodoTarea::orderBy('orden')->pluck('titulo')->all());
+    }
 }

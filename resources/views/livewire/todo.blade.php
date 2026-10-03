@@ -81,6 +81,7 @@
             <table class="min-w-full text-sm">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
                     <tr>
+                        @if ($vista === 'mias' && $filtroEstado !== 'cerradas') <th class="px-3 py-2 text-center">Prioridad<br>(orden)</th> @endif
                         <th class="px-3 py-2">Tarea</th>
                         <th class="px-3 py-2">Estado</th>
                         <th class="px-3 py-2">Prioridad</th>
@@ -95,6 +96,15 @@
                         @php $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday(); @endphp
                         <tr wire:key="t{{ $t->id }}" wire:click="abrir({{ $t->id }})"
                             class="border-t border-gray-100 cursor-pointer hover:bg-indigo-50 {{ $abierta === $t->id ? 'bg-indigo-50' : '' }} {{ $t->abierta() ? '' : 'text-gray-400' }}">
+                            @if ($vista === 'mias' && $filtroEstado !== 'cerradas')
+                                <td class="px-3 py-2 text-center whitespace-nowrap" wire:click.stop>
+                                    @if ($t->abierta())
+                                        <button type="button" wire:click="mover({{ $t->id }}, -1)" @disabled($loop->first) title="Subir (más prioritaria)" class="px-1.5 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-30">▲</button>
+                                        <span class="inline-block w-5 font-semibold text-gray-600">{{ $loop->iteration }}</span>
+                                        <button type="button" wire:click="mover({{ $t->id }}, 1)" title="Bajar (menos prioritaria)" class="px-1.5 border border-gray-300 rounded hover:bg-gray-100">▼</button>
+                                    @endif
+                                </td>
+                            @endif
                             <td class="px-3 py-2 font-medium">{{ $t->titulo }}</td>
                             <td class="px-3 py-2"><span class="px-2 py-0.5 text-xs border rounded-full {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</span></td>
                             <td class="px-3 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
@@ -105,7 +115,7 @@
                         </tr>
                         @if ($detalle && $detalle->id === $t->id)
                             <tr wire:key="d{{ $t->id }}" class="border-t border-indigo-100 bg-indigo-50/40">
-                                <td colspan="7" class="p-3">
+                                <td colspan="8" class="p-3">
                                     <div class="grid gap-4 md:grid-cols-3">
                                         <div class="space-y-2">
                                             @if ($detalle->descripcion)
@@ -165,7 +175,7 @@
                             </tr>
                         @endif
                     @empty
-                        <tr><td colspan="7" class="px-3 py-6 text-center text-gray-400">No hay tareas aquí.</td></tr>
+                        <tr><td colspan="8" class="px-3 py-6 text-center text-gray-400">No hay tareas aquí.</td></tr>
                     @endforelse
                 </tbody>
             </table>

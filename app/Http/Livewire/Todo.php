@@ -87,6 +87,7 @@ class Todo extends Component
             'creador_id' => auth()->id(),
             'asignado_id' => $this->asignadoId,
             'prioridad' => $this->prioridad,
+            'orden' => TodoTarea::siguienteOrden((int) $this->asignadoId),
             'fecha_limite' => $this->fechaLimite ?: null,
         ]);
         $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
@@ -119,7 +120,28 @@ class Todo extends Component
     {
         $t = TodoTarea::findOrFail($id);
         abort_unless($this->puede($t) && User::whereKey($user)->exists(), 403);
-        $t->update(['asignado_id' => $user]);
+        $t->update(['asignado_id' => $user, 'orden' => TodoTarea::siguienteOrden($user)]);
+    }
+
+    /**
+     * Sube (-1) o baja (+1) la tarea en la lista de prioridades de quien la tiene asignada, entre las abiertas.
+     * Primero se renumera 1..n para que no haya huecos ni repetidos.
+     */
+    public function mover(int $id, int $sentido): void
+    {
+        $t = TodoTarea::findOrFail($id);
+        abort_unless($this->puede($t) && $t->abierta(), 403);
+        $ids = TodoTarea::where('asignado_id', $t->asignado_id)->whereNotIn('estado', TodoTarea::CERRADOS)
+            ->orderBy('orden')->orderBy('id')->pluck('id')->all();
+        $i = array_search($t->id, $ids, true);
+        $j = $i + ($sentido < 0 ? -1 : 1);
+        if ($i === false || ! isset($ids[$j])) {
+            return;
+        }
+        [$ids[$i], $ids[$j]] = [$ids[$j], $ids[$i]];
+        foreach ($ids as $n => $tid) {
+            TodoTarea::whereKey($tid)->update(['orden' => $n + 1]);
+        }
     }
 
     public function comentar(int $id): void
@@ -174,8 +196,7 @@ class Todo extends Component
             default => null,
         };
         $tareas = $q->orderByRaw("estado in ('hecha','cancelada')")
-            ->orderByRaw("fecha_limite is null")->orderBy('fecha_limite')
-            ->orderByDesc('id')->get();
+            ->orderBy('asignado_id')->orderBy('orden')->orderBy('id')->get();
 
         $detalle = null;
         if ($this->abierta) {

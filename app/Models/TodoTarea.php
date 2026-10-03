@@ -11,7 +11,7 @@ class TodoTarea extends Model
 {
     protected $table = 'todo_tareas';
 
-    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'asignado_id', 'estado', 'prioridad', 'fecha_limite', 'cerrada_at'];
+    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'asignado_id', 'estado', 'prioridad', 'orden', 'fecha_limite', 'cerrada_at'];
 
     protected $casts = [
         'fecha_limite' => 'date',
@@ -44,6 +44,12 @@ class TodoTarea extends Model
     public function comentarios(): HasMany
     {
         return $this->hasMany(TodoComentario::class, 'tarea_id')->orderBy('fecha')->orderBy('id');
+    }
+
+    /** Orden que le toca a una tarea nueva (o reasignada) de $userId: la última de su lista. */
+    public static function siguienteOrden(int $userId): int
+    {
+        return 1 + (int) static::where('asignado_id', $userId)->max('orden');
     }
 
     public function abierta(): bool
