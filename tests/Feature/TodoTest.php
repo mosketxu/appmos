@@ -110,4 +110,16 @@ class TodoTest extends TestCase
         Livewire::test(Todo::class)->call('alternarAsignado', $t->id, $bea->id);  // no se puede quitar a la última
         $this->assertCount(1, $t->fresh()->asignados);
     }
+
+    public function test_el_selector_de_personas_del_formulario(): void
+    {
+        $ana = $this->usuario('Ana');
+        $bea = $this->usuario('Bea');
+        $this->actingAs($ana);
+        Livewire::test(Todo::class)->set('nueva', true)
+            ->assertSee('Añadir persona')
+            ->call('alternarNuevo', $bea->id)->assertSet('asignadosIds', [$ana->id, $bea->id])
+            ->call('alternarNuevo', $ana->id)->assertSet('asignadosIds', [$bea->id])
+            ->call('alternarNuevo', $bea->id)->assertSet('asignadosIds', [$bea->id]);   // la última no se quita
+    }
 }

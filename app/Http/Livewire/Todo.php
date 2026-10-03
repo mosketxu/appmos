@@ -102,6 +102,20 @@ class Todo extends Component
         $this->abierta = $t->id;
     }
 
+    /** Marca o desmarca a una persona en el formulario de tarea nueva (siempre queda al menos una). */
+    public function alternarNuevo(int $user): void
+    {
+        $ids = array_map('intval', $this->asignadosIds);
+        if (in_array($user, $ids, true)) {
+            $ids = array_values(array_diff($ids, [$user]));
+        } else {
+            $ids[] = $user;
+        }
+        if ($ids) {
+            $this->asignadosIds = $ids;
+        }
+    }
+
     public function abrir(int $id): void
     {
         $this->abierta = $this->abierta === $id ? null : $id;

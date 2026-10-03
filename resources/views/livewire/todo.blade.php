@@ -55,15 +55,8 @@
                     @error('titulo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </div>
                 <textarea wire:model="descripcion" rows="3" placeholder="Descripción (opcional)" class="{{ $campo }} md:col-span-4"></textarea>
-                <div class="text-xs text-gray-500 md:col-span-4">Asignar a (una o varias personas)
-                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-700">
-                        @foreach ($this->usuarios as $u)
-                            <label class="inline-flex items-center gap-1 whitespace-nowrap">
-                                <input type="checkbox" wire:model="asignadosIds" value="{{ $u->id }}" class="border-gray-300 rounded">
-                                {{ $u->name }}{{ $u->id === auth()->id() ? ' (yo)' : '' }}
-                            </label>
-                        @endforeach
-                    </div>
+                <div class="text-xs text-gray-500 md:col-span-4">Asignar a
+                    <x-todo-asignados :usuarios="$this->usuarios" :seleccionados="$asignadosIds" accion="alternarNuevo(%d)" />
                     @error('asignadosIds') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </div>
                 <label class="text-xs text-gray-500">Prioridad
@@ -137,15 +130,8 @@
                                                         @endforeach
                                                     </select>
                                                 </label>
-                                                <div class="text-xs text-gray-500">Asignada a (marca o quita personas)
-                                                    <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-sm text-gray-700">
-                                                        @foreach ($this->usuarios as $u)
-                                                            <label wire:key="as{{ $detalle->id }}-{{ $u->id }}" class="inline-flex items-center gap-1 whitespace-nowrap">
-                                                                <input type="checkbox" wire:click="alternarAsignado({{ $detalle->id }}, {{ $u->id }})" @checked($detalle->asignados->contains('id', $u->id)) class="border-gray-300 rounded">
-                                                                {{ $u->name }}
-                                                            </label>
-                                                        @endforeach
-                                                    </div>
+                                                <div class="text-xs text-gray-500">Asignada a
+                                                    <x-todo-asignados :usuarios="$this->usuarios" :seleccionados="$detalle->asignados->pluck('id')->all()" :accion="'alternarAsignado('.$detalle->id.', %d)'" />
                                                 </div>
                                             </div>
                                             @if ($esAdmin || $detalle->creador_id === auth()->id())
