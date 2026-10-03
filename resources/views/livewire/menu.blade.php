@@ -33,6 +33,8 @@
                     <x-jet-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
                         TO-DO
                     </x-jet-nav-link>
+                    <a href="{{ route('todo', ['nueva' => 'mejora']) }}" class="inline-flex items-center px-1 pt-1 text-sm font-medium leading-5 text-gray-500 border-b-2 border-transparent hover:text-gray-700"
+                       title="Pide una mejora o cuenta qué no te funciona: queda como tarea del TO-DO para Alex">💡 Pedir mejora</a>
                     @if ($rutaContabilidad)
                         <x-jet-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*')">
                             {{ __('Contabilidad') }}
@@ -131,6 +133,20 @@
                 @if (\App\Support\TodoClaude::esGestor(auth()->user()))
                     <div class="mr-3">@livewire('todo-claude-estado')</div>
                 @endif
+                {{-- PCs de trabajo (cola de tareas): conectados y tareas en curso, para todos los usuarios --}}
+                <div class="mr-2">@livewire('trabajadores-estado')</div>
+                {{-- Tema: Automático (el del sistema, por defecto) / Claro / Oscuro. Se recuerda en este navegador. --}}
+                <div class="relative mr-1" x-data="{ abierto: false, t: window.appmosTema ? appmosTema.get() : 'auto' }" x-on:click.outside="abierto = false">
+                    <button type="button" x-on:click="abierto = !abierto" title="Tema de colores: automático, claro u oscuro"
+                            class="px-2 py-1 text-lg leading-none text-gray-500 rounded-md hover:bg-gray-100" data-sin-tema
+                            x-text="t === 'oscuro' ? '🌙' : (t === 'claro' ? '☀️' : '🌓')"></button>
+                    <div x-show="abierto" x-cloak style="display:none;min-width:11rem;z-index:60" class="absolute right-0 py-1 mt-2 text-sm bg-white border border-gray-200 rounded-md shadow-lg">
+                        <template x-for="o in [['auto','🌓 Automático (el del sistema)'],['claro','☀️ Claro'],['oscuro','🌙 Oscuro']]" :key="o[0]">
+                            <button type="button" class="block w-full px-3 py-1.5 text-left hover:bg-gray-100" :class="t === o[0] ? 'font-semibold text-indigo-700' : 'text-gray-700'"
+                                    x-on:click="t = o[0]; appmosTema.set(o[0]); abierto = false" x-text="o[1]"></button>
+                        </template>
+                    </div>
+                </div>
                 <!-- Settings Dropdown -->
                 <div class="relative ml-3">
                     <x-jet-dropdown align="right" width="w-64">

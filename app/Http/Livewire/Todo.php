@@ -58,6 +58,14 @@ class Todo extends Component
         $this->verUsuario = auth()->id();
         $this->asignadosIds = [auth()->id()];
         $this->fechaComentario = now()->format('Y-m-d');
+        // Viene de «💡 Pedir una mejora» (menú, TO-DO #7): formulario de tarea nueva para Alex con el título empezado
+        if (request('nueva') === 'mejora') {
+            $this->nueva = true;
+            $this->titulo = 'Mejora: ';
+            $this->descripcion = "Qué quieres que cambie o añada, y en qué pantalla:\n\n\nPor qué te hace falta (opcional):\n";
+            $alex = TodoClaude::gestores()[0] ?? null;
+            $this->asignadosIds = array_values(array_unique(array_filter([auth()->id(), $alex])));
+        }
         // Viene de un aviso de la campana: abre esa tarea
         if ($t = (int) request('t')) {
             $tarea = TodoTarea::with('asignados')->find($t);

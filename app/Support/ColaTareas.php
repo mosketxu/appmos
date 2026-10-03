@@ -228,6 +228,10 @@ class ColaTareas
             'estado' => $ok ? 'ok' : 'error', 'resultado' => $resultado === null ? null : json_encode($resultado, JSON_UNESCAPED_UNICODE),
             'log' => mb_substr(($tarea->log ?? '').$log.$extra, -60000), 'terminada_at' => now(), 'updated_at' => now(),
         ]);
+        if (! $ok) {
+            // Todo error de una tarea llega a Alex y a Claude como tarea del TO-DO (App\Support\ErroresApp)
+            ErroresApp::deTarea($tarea, (string) (DB::table('trabajadores')->where('id', $trabajadorId)->value('nombre') ?? ''), (string) ($tarea->log ?? '').$log, $resultado);
+        }
 
         return true;
     }

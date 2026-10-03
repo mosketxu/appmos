@@ -1,0 +1,13 @@
+/* Modo oscuro de Appmos (4-oct-2026). El CSS de Tailwind está compilado y purgado y muchas pantallas llevan estilos en línea,
+   así que el tema oscuro invierte la página entera (filter) y vuelve a invertir lo que no debe cambiar (imágenes, PDF, vídeo).
+   Se activa con la clase «dark» en <html> (public/js/tema.js: Automático = el del sistema, Claro u Oscuro, se recuerda por navegador). */
+html.dark { filter: invert(1) hue-rotate(180deg); background: #fff; }
+html.dark body { background-color: #e4e4e4; }
+html.dark .bg-white { background-color: #d8d8d8 !important; }
+html.dark .bg-gray-50 { background-color: #cfcfcf !important; }
+html.dark img, html.dark video, html.dark canvas, html.dark iframe, html.dark embed, html.dark object,
+html.dark [data-sin-tema] { filter: invert(1) hue-rotate(180deg); }
+/* los avisos y las miniaturas (que ya son imágenes) no se tocan dos veces */
+html.dark img img { filter: none; }
+/* barras de desplazamiento y selección coherentes con el tema */
+html.dark { color-scheme: dark; }
