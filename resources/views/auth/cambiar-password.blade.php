@@ -14,11 +14,11 @@
             @csrf
             <div>
                 <x-jet-label for="password" value="Contraseña nueva" />
-                <x-jet-input id="password" class="block w-full mt-1" type="password" name="password" required autofocus autocomplete="new-password" />
+                <x-password-input id="password" name="password" autocomplete="new-password" :autofocus="true" />
             </div>
             <div class="mt-4">
                 <x-jet-label for="password_confirmation" value="Repite la contraseña" />
-                <x-jet-input id="password_confirmation" class="block w-full mt-1" type="password" name="password_confirmation" required autocomplete="new-password" />
+                <x-password-input id="password_confirmation" name="password_confirmation" autocomplete="new-password" />
             </div>
             <div class="flex items-center justify-between mt-4">
                 <button type="submit" form="salir" class="text-sm text-gray-600 underline hover:text-gray-900">Salir</button>
