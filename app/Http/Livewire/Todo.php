@@ -75,19 +75,12 @@ class Todo extends Component
     }
 
     /**
-     * Listas que puede ver: la suya y, si es Admin, la de cualquiera; si no, la de las personas con las que
-     * comparte alguna tarea (a quien se la ha asignado, o quien se la ha asignado a él), para poder ordenarles las prioridades.
+     * Listas de prioridades que se pueden ver y ordenar: la propia y, solo si eres Admin, la de cualquiera.
+     * La prioridad de cada usuario es suya (decisión de Alex, 3-oct-2026).
      */
     public function getPersonasProperty()
     {
-        $yo = auth()->id();
-        if ($this->esAdmin()) {
-            return $this->usuarios;
-        }
-        $mias = \DB::table('todo_tareas')->where('creador_id', $yo)
-            ->orWhereIn('id', \DB::table('todo_tarea_user')->where('user_id', $yo)->select('tarea_id'))->pluck('id');
-        $ids = \DB::table('todo_tarea_user')->whereIn('tarea_id', $mias)->pluck('user_id')->push($yo)->unique();
-        return $this->usuarios->whereIn('id', $ids->all())->values();
+        return $this->esAdmin() ? $this->usuarios : $this->usuarios->where('id', auth()->id())->values();
     }
 
     /** Puede ver y tocar la tarea: Admin, quien la creó o a quien está asignada. */
@@ -187,7 +180,7 @@ class Todo extends Component
     /** Visto bueno de un Admin para que Claude haga una tarea que le asignó otro usuario. */
     public function autorizarClaude(int $id): void
     {
-        abort_unless($this->esAdmin(), 403);
+        abort_unless(TodoClaude::esGestor(auth()->user()), 403);
         TodoClaude::autorizar(TodoTarea::findOrFail($id), auth()->user());
     }
 
@@ -201,32 +194,8 @@ class Todo extends Component
 
     public function pausarClaudeTarea(int $id, bool $pausar): void
     {
-        abort_unless($this->esAdmin(), 403);
+        abort_unless(TodoClaude::esGestor(auth()->user()), 403);
         TodoClaude::pausarTarea(TodoTarea::findOrFail($id), $pausar);
-    }
-
-    public function pausarClaudeTodo(bool $pausar): void
-    {
-        abort_unless($this->esAdmin(), 403);
-        TodoClaude::pausarGlobal($pausar);
-    }
-
-    /** Estado de los trabajadores y de Claude para la franja del Admin. */
-    public function getEstadoClaudeProperty(): array
-    {
-        $limite = now()->subSeconds(\App\Support\ColaTareas::LATIDO_MAX);
-        $trabajadores = \DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()->map(fn ($w) => [
-            'nombre' => $w->nombre, 'en_linea' => $w->ultimo_latido && $w->ultimo_latido >= $limite,
-            'principal' => $w->nombre === config('contabilidad.claude_todo_primario'),
-        ])->all();
-        $enCurso = \DB::table('tareas')->where('proceso', 'claude.todo')->where('estado', 'en_curso')->pluck('parametros')
-            ->map(fn ($p) => TodoTarea::find((int) (json_decode($p, true)['tarea_id'] ?? 0))?->titulo)->filter()->values()->all();
-
-        return [
-            'trabajadores' => $trabajadores, 'en_curso' => $enCurso, 'pausado' => TodoClaude::pausadoGlobal(),
-            'hoy' => TodoClaude::ejecucionesHoy(), 'limite' => TodoClaude::limiteDia(),
-            'porcentaje' => TodoClaude::porcentajeUso(), 'coste' => TodoClaude::costeHoy(),
-        ];
     }
 
     /** Marca o desmarca a una persona para añadirla a la tarea junto con la respuesta (puede quedar vacío). */
@@ -421,28 +390,14 @@ class Todo extends Component
         // Las cerradas al final; primero las mías por mi orden de prioridad, luego las que solo he pedido
         $tareas = $q->orderByRaw("estado in ('hecha','cancelada')")
             ->orderByRaw('mi.orden is null')->orderBy('mi.orden')->orderByDesc('todo_tareas.id')->get();
-        // Cada tarea abierta cuenta en la lista de prioridades de una persona: la mía si la tengo asignada,
-        // si no la de su primer asignado. Se agrupan por persona (yo primero) y se numeran dentro de su grupo.
-        $personas = $this->personas->pluck('id')->all();
-        foreach ($tareas as $t) {
-            $t->grupo = null;
-            if (! $t->abierta()) {
-                continue;
-            }
-            if ($t->mi_orden !== null) {
-                [$t->grupo, $t->grupo_nombre, $t->g_orden] = [$yo, '', $t->mi_orden];
-            } elseif ($otro = $t->asignados->first()) {
-                [$t->grupo, $t->grupo_nombre, $t->g_orden] = [$otro->id, $otro->name, $otro->pivot->orden];
-            }
-            $t->arrastrable = $t->grupo !== null && in_array($t->grupo, $personas, true);
+        // Mi lista de prioridades (la de la persona cuya lista se ve): las abiertas que tiene asignadas, por su orden y
+        // numeradas 1, 2, 3… Primero van esas; después el resto (creadas para otros, cerradas), sin número ni ⠿.
+        $mias = $tareas->filter(fn ($t) => $t->abierta() && $t->mi_orden !== null)->sortBy([['mi_orden', 'asc'], ['id', 'desc']])->values();
+        foreach ($mias as $i => $t) {
+            $t->posicion = $i + 1;
         }
-        $abiertas = $tareas->filter(fn ($t) => $t->grupo !== null)
-            ->sortBy([['grupo_nombre', 'asc'], ['g_orden', 'asc'], ['id', 'desc']])->values();
-        $pos = [];
-        foreach ($abiertas as $t) {
-            $t->posicion = $pos[$t->grupo] = ($pos[$t->grupo] ?? 0) + 1;
-        }
-        $tareas = $abiertas->concat($tareas->filter(fn ($t) => $t->grupo === null)->values());
+        $ids = $mias->pluck('id')->all();
+        $tareas = $mias->concat($tareas->reject(fn ($t) => in_array($t->id, $ids, true))->values());
 
         $detalle = null;
         if ($this->abierta) {
@@ -452,6 +407,6 @@ class Todo extends Component
             }
         }
 
-        return view('livewire.todo', ['tareas' => $tareas, 'detalle' => $detalle, 'yo' => $yo, 'esAdmin' => $this->esAdmin(), 'claudeId' => TodoClaude::usuario()?->id]);
+        return view('livewire.todo', ['tareas' => $tareas, 'detalle' => $detalle, 'yo' => $yo, 'esAdmin' => $this->esAdmin(), 'claudeId' => TodoClaude::usuario()?->id, 'esGestor' => TodoClaude::esGestor(auth()->user())]);
     }
 }

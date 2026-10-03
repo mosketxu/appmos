@@ -90,6 +90,17 @@ class TodoClaude
         return ! self::pausadoGlobal() && self::ejecucionesHoy() < self::limiteDia();
     }
 
+    /** Quien manda sobre Claude: pausar, autorizar lo que le asignan otros. Por defecto solo Alex (config claude_todo_gestores). */
+    public static function esGestor(?User $u): bool
+    {
+        return $u && $u->email && in_array(mb_strtolower($u->email), array_map('mb_strtolower', config('contabilidad.claude_todo_gestores', [])), true);
+    }
+
+    public static function gestores(): array
+    {
+        return User::whereIn('email', config('contabilidad.claude_todo_gestores', []))->pluck('id')->all();
+    }
+
     public static function asignada(TodoTarea $t): bool
     {
         $c = self::usuario();
@@ -102,11 +113,10 @@ class TodoClaude
     {
         if ($t->claude_autorizada_at) {
             self::encolar($t);
-        } elseif ($actor->hasRole('Admin')) {
+        } elseif (self::esGestor($actor)) {
             self::autorizar($t, $actor);
         } else {
-            $admins = User::role('Admin')->pluck('id')->all();
-            TodoAviso::para($t, $admins, 'ha asignado una tarea a Claude: necesita tu visto bueno para que la haga', $actor->id);
+            TodoAviso::para($t, self::gestores(), 'ha asignado una tarea a Claude: necesita tu visto bueno para que la haga', $actor->id);
         }
     }
 

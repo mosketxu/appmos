@@ -164,10 +164,13 @@ class TodoTest extends TestCase
         $c->assertSee('data-handle', false);
     }
 
-    public function test_quien_asigna_ordena_las_prioridades_de_otro(): void
+    public function test_la_prioridad_de_cada_usuario_es_suya_y_solo_el_admin_ordena_la_de_otro(): void
     {
+        \Spatie\Permission\Models\Role::findOrCreate('Admin', 'web');
         $ana = $this->usuario('Ana');
         $bea = $this->usuario('Bea');
+        $alex = $this->usuario('Alex');
+        $alex->assignRole('Admin');
         $this->actingAs($ana);
         $c = Livewire::test(Todo::class);
         foreach (['Uno', 'Dos', 'Tres'] as $titulo) {
@@ -176,16 +179,20 @@ class TodoTest extends TestCase
         $id = fn ($t) => TodoTarea::where('titulo', $t)->value('id');
         $orden = fn () => \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')->where('p.user_id', $bea->id)->orderBy('p.orden')->pluck('t.titulo')->all();
 
-        // quien asigna ve el ⠿ en las tareas de Bea sin cambiar de lista (cada grupo, con su persona)
-        $c->assertSee('data-handle', false)->assertSee('data-grupo="'.$bea->id.'"', false)
-            ->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')], $bea->id);
+        // Ana creó las tareas pero la prioridad es de Bea: sin ⠿ y sin poder ordenarlas
+        $c->assertDontSee('data-handle', false)->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')], $bea->id);
+        $this->assertSame(['Uno', 'Dos', 'Tres'], $orden());
+
+        // Bea sí: ⠿ en sus tareas y orden suyo
+        $this->actingAs($bea);
+        Livewire::test(Todo::class)->assertSee('data-handle', false)->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')]);
         $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
 
-        // un tercero no puede ver ni ordenar la lista de Bea
-        $cai = $this->usuario('Cai');
-        $this->actingAs($cai);
-        Livewire::test(Todo::class)->call('reordenar', [$id('Uno'), $id('Dos'), $id('Tres')], $bea->id);
-        $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
+        // El Admin puede elegir la lista de Bea y ordenarla
+        $this->actingAs($alex);
+        Livewire::test(Todo::class)->set('verUsuario', $bea->id)->assertSee('data-handle', false)
+            ->call('reordenar', [$id('Dos'), $id('Tres'), $id('Uno')], $bea->id);
+        $this->assertSame(['Dos', 'Tres', 'Uno'], $orden());
     }
 
     public function test_la_campana_avisa_de_asignaciones_y_respuestas(): void

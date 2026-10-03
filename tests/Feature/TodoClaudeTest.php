@@ -27,6 +27,7 @@ class TodoClaudeTest extends TestCase
     {
         parent::setUp();
         Role::findOrCreate('Admin', 'web');
+        config(['contabilidad.claude_todo_gestores' => ['alex@sumaempresa.com']]);
         $this->claude = User::where('name', 'Claude')->whereNull('email')->first();   // lo crea la migración
         $this->alex = User::factory()->create(['name' => 'Alex', 'email' => 'alex@sumaempresa.com', 'activo' => true]);
         $this->alex->assignRole('Admin');
@@ -59,11 +60,16 @@ class TodoClaudeTest extends TestCase
         $t = $this->crearPara($this->ana);
         $this->assertNull($t->fresh()->claude_autorizada_at);
         $this->assertSame(0, $this->cola()->count());
-        $this->assertSame(1, TodoAviso::where('user_id', $this->alex->id)->where('texto', 'like', '%visto bueno%')->count());
+        $this->assertSame(1, TodoAviso::where('user_id', $this->alex->id)->where('texto', 'like', '%visto bueno%')->count());   // el aviso va a Alex, el gestor
         $this->assertSame(0, TodoAviso::where('user_id', $this->claude->id)->count());   // Claude no recibe avisos
 
         $this->actingAs($this->ana);
         Livewire::test(Todo::class)->call('autorizarClaude', $t->id)->assertForbidden();
+        $otroAdmin = User::factory()->create(['email' => 'otro.admin@sumaempresa.com', 'activo' => true]);
+        $otroAdmin->assignRole('Admin');                                   // ser Admin no basta: solo Alex es gestor de Claude
+        $this->actingAs($otroAdmin);
+        Livewire::test(Todo::class)->call('autorizarClaude', $t->id)->assertForbidden();
+        Livewire::test(Todo::class)->call('pausarClaudeTarea', $t->id, true)->assertForbidden();
 
         $this->actingAs($this->alex);
         Livewire::test(Todo::class)->call('autorizarClaude', $t->id);

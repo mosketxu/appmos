@@ -24,7 +24,7 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
+                <div class="hidden space-x-8 whitespace-nowrap sm:-my-px sm:ml-10 sm:flex">
                     @can('entidades.ver')
                         <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                             {{ __('Entidades') }}
@@ -73,7 +73,8 @@
             </div>
 
             {{-- Campana del TO-DO: centrada en la barra --}}
-            <div class="hidden sm:flex sm:items-center" style="position:absolute;left:50%;top:0;height:3.5rem;transform:translateX(-50%)">
+            <style>@media (min-width:1536px){.campana-todo{position:absolute;left:50%;top:0;height:3.5rem;transform:translateX(-50%)}}</style>
+            <div class="hidden sm:flex sm:items-center campana-todo ml-auto mr-2">
                 @livewire('todo-campana')
             </div>
 
@@ -127,6 +128,9 @@
                         </x-jet-nav-link>
                         @endcan
                     </div>
+                @endif
+                @if (\App\Support\TodoClaude::esGestor(auth()->user()))
+                    <div class="mr-3">@livewire('todo-claude-estado')</div>
                 @endif
                 <!-- Settings Dropdown -->
                 <div class="relative ml-3">
