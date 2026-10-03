@@ -99,7 +99,8 @@
                     @forelse ($tareas as $t)
                         @php $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday(); @endphp
                         <tr wire:key="t{{ $t->id }}" wire:click="abrir({{ $t->id }})"
-                            class="border-t border-gray-100 cursor-pointer hover:bg-indigo-50 {{ $abierta === $t->id ? 'bg-indigo-50' : '' }} {{ $t->abierta() ? '' : 'text-gray-400' }}">
+                            class="border-t border-gray-100 cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
+                            @if ($abierta === $t->id) style="background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1" @endif>
                             @if ($vista === 'mias' && $filtroEstado !== 'cerradas')
                                 <td class="px-3 py-2 text-center whitespace-nowrap" wire:click.stop>
                                     @if ($t->abierta())
@@ -118,7 +119,7 @@
                             <td class="px-3 py-2 text-center">{{ $t->comentarios_count ?: '' }}</td>
                         </tr>
                         @if ($detalle && $detalle->id === $t->id)
-                            <tr wire:key="d{{ $t->id }}" class="border-t border-indigo-100 bg-indigo-50/40">
+                            <tr wire:key="d{{ $t->id }}" style="background:#eef2ff;box-shadow:inset 4px 0 0 #6366f1;border-bottom:2px solid #6366f1">
                                 <td colspan="8" class="p-3 whitespace-normal">
                                     <div class="grid gap-4 md:grid-cols-3">
                                         <div class="space-y-2">
@@ -180,6 +181,7 @@
                                     </div>
                                 </td>
                             </tr>
+                            <tr wire:key="s{{ $t->id }}" aria-hidden="true"><td colspan="8" style="height:14px;padding:0;background:#f3f4f6"></td></tr>
                         @endif
                     @empty
                         <tr><td colspan="8" class="px-3 py-6 text-center text-gray-400">No hay tareas aquí.</td></tr>
