@@ -74,6 +74,13 @@
             </form>
         @endif
 
+        @if ($mensaje)
+            <div class="flex items-start justify-between gap-3 px-3 py-2 text-sm border rounded-lg {{ $mensajeTipo === 'ok' ? 'text-green-800 bg-green-50 border-green-300' : 'text-amber-900 bg-amber-50 border-amber-300' }}">
+                <span>{{ $mensaje }}</span>
+                <button type="button" wire:click="$set('mensaje', null)" class="text-gray-500 hover:text-gray-800">✕</button>
+            </div>
+        @endif
+
         <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg">
             <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
@@ -91,16 +98,16 @@
                 <tbody>
                     @forelse ($tareas as $t)
                         @php
-                            $mia = isset($t->posicion);   // está en mi lista de prioridades: ⠿ y número
+                            $mia = isset($t->grupo);   // está en una lista de prioridades que puedo ordenar (la mía; la de Claude si soy Alex): lleva ⠿
                             $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday();
                         @endphp
-                        <tr wire:key="t{{ $t->id }}" @if ($mia) data-orden="{{ $t->id }}" data-grupo="{{ $yo }}" @endif wire:click="abrir({{ $t->id }})"
+                        <tr wire:key="t{{ $t->id }}" @if ($mia) data-orden="{{ $t->id }}" data-grupo="{{ $t->grupo }}" @endif wire:click="abrir({{ $t->id }})"
                             class="cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
                             style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : 'border-top:1px solid #9ca3af' }}">
                             @if ($filtroEstado !== 'cerradas')
                                 <td class="py-2 pl-2 pr-1 text-center whitespace-nowrap" wire:click.stop>
                                     @if ($mia)
-                                        <span data-handle title="Arrastra para cambiar tu prioridad (posición {{ $t->posicion }})" class="inline-block px-1 text-lg leading-none text-gray-400 select-none cursor-grab hover:text-indigo-600">⠿</span>
+                                        <span data-handle title="Arrastra para cambiar la prioridad de {{ $t->grupo === $yo ? 'tu lista' : 'la lista de Claude' }}" class="inline-block px-1 text-lg leading-none text-gray-400 select-none cursor-grab hover:text-indigo-600">⠿</span>
                                     @endif
                                 </td>
                             @endif
@@ -110,7 +117,13 @@
                                 @if ($claudeId && $t->asignados->contains('id', $claudeId))
                                     @if (! $t->claude_autorizada_at) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-amber-800 bg-amber-100 rounded" title="Claude necesita el visto bueno de Alex">🤖 sin autorizar</span>
                                     @elseif ($t->claude_pausada) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-gray-600 bg-gray-200 rounded" title="Pausada para Claude">⏸ pausada</span>
-                                    @elseif ($t->abierta()) <span class="ml-1 text-xs font-normal text-indigo-600" title="Claude la hará automáticamente">🤖</span> @endif
+                                    @elseif ($t->abierta())
+                                        @php $q = $colaClaude[$t->id] ?? null; @endphp
+                                        @if ($q && $q->estado === 'en_curso') <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-white bg-indigo-600 rounded" title="Claude está trabajando en esta tarea ahora mismo">🤖 trabajando…</span>
+                                        @elseif ($q && $q->no_antes_de && \Illuminate\Support\Carbon::parse($q->no_antes_de)->isFuture()) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-indigo-800 bg-indigo-100 rounded" title="Está en la cola: Claude la hará en la próxima pasada. «Ejecutar ya» la adelanta.">🤖 ⏰ {{ \Illuminate\Support\Carbon::parse($q->no_antes_de)->format('H:i') }}</span>
+                                        @elseif ($q) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-indigo-800 bg-indigo-100 rounded" title="En la cola: la cogerá un PC trabajador en unos segundos">🤖 ⏳ en cola</span>
+                                        @else <span class="ml-1 text-xs font-normal text-indigo-600" title="Claude la hará automáticamente cuando le toque (ya está autorizada)">🤖</span> @endif
+                                    @endif
                                 @endif</td>
                             <td class="px-2 py-2"><span class="px-2 py-0.5 text-xs border rounded-full {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</span></td>
                             <td class="px-2 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>

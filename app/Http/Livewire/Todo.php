@@ -40,6 +40,10 @@ class Todo extends Component
     public string $comentario = '';
     public array $respAsignar = [];
     public bool $respUrgente = false;
+
+    /** Mensaje de confirmación o de por qué no se ha podido hacer algo (se enseña bajo la barra de filtros). */
+    public ?string $mensaje = null;
+    public string $mensajeTipo = 'ok';
     public ?string $fechaComentario = null;
 
     public function mount(): void
@@ -189,7 +193,31 @@ class Todo extends Component
     {
         $t = TodoTarea::findOrFail($id);
         abort_unless($this->esAdmin() || $t->creador_id === auth()->id(), 403);
-        TodoClaude::encolar($t, true);
+        $this->mensajeTipo = 'aviso';
+        if (! TodoClaude::asignada($t)) {
+            $this->mensaje = 'Esta tarea no está asignada a Claude.';
+        } elseif (! $t->claude_autorizada_at) {
+            $this->mensaje = 'Claude todavía no está autorizado para esta tarea: hace falta el visto bueno de Alex.';
+        } elseif (! $t->abierta()) {
+            $this->mensaje = 'La tarea está cerrada; reábrela (estado «Pendiente») para que Claude la retome.';
+        } elseif ($t->claude_pausada) {
+            $this->mensaje = 'La tarea está pausada para Claude: reanúdala primero.';
+        } elseif (TodoClaude::pausadoGlobal()) {
+            $this->mensaje = 'Todos los desarrollos automáticos están en pausa: reanúdalos en el botón de la barra.';
+        } elseif (! TodoClaude::permitido()) {
+            $this->mensaje = 'Se ha llegado al tope de pasadas automáticas de hoy ('.TodoClaude::limiteDia().'); se reinicia a las 00:00.';
+        } else {
+            $cola = TodoClaude::encolar($t, true);
+            $enLinea = \DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(\App\Support\ColaTareas::LATIDO_MAX))->pluck('nombre')->all();
+            if ($cola === 'en_curso') {
+                $this->mensaje = 'Claude ya está trabajando en esta tarea ahora mismo; leerá lo último cuando termine la pasada.';
+            } elseif ($enLinea) {
+                $this->mensaje = 'Hecho: la tarea está en la cola y la cogerá '.implode(' o ', $enLinea).' en unos segundos. Verás el resultado como respuesta de Claude y en la campana.';
+                $this->mensajeTipo = 'ok';
+            } else {
+                $this->mensaje = 'La tarea está en la cola, pero ningún PC trabajador está en línea ahora (en este entorno puede que no haya ninguno): empezará en cuanto uno conecte.';
+            }
+        }
     }
 
     public function pausarClaudeTarea(int $id, bool $pausar): void
@@ -396,8 +424,21 @@ class Todo extends Component
         foreach ($mias as $i => $t) {
             $t->posicion = $i + 1;
         }
-        $ids = $mias->pluck('id')->all();
-        $tareas = $mias->concat($tareas->reject(fn ($t) => in_array($t->id, $ids, true))->values());
+        foreach ($mias as $t) {
+            $t->grupo = $yo;
+        }
+        $cl = TodoClaude::usuario()?->id;
+        $deClaude = collect();
+        if ($cl && $cl !== $yo && TodoClaude::esGestor(auth()->user())) {
+            // Alex también ordena la lista de Claude (sus tareas asignadas a Claude, que no son suyas)
+            $deClaude = $tareas->filter(fn ($t) => $t->abierta() && $t->mi_orden === null && $t->asignados->contains('id', $cl))
+                ->sortBy(fn ($t) => [$t->asignados->firstWhere('id', $cl)->pivot->orden, -$t->id])->values();
+            foreach ($deClaude as $t) {
+                $t->grupo = $cl;
+            }
+        }
+        $ids = $mias->pluck('id')->merge($deClaude->pluck('id'))->all();
+        $tareas = $mias->concat($deClaude)->concat($tareas->reject(fn ($t) => in_array($t->id, $ids, true))->values());
 
         $detalle = null;
         if ($this->abierta) {
@@ -407,6 +448,9 @@ class Todo extends Component
             }
         }
 
-        return view('livewire.todo', ['tareas' => $tareas, 'detalle' => $detalle, 'yo' => $yo, 'esAdmin' => $this->esAdmin(), 'claudeId' => TodoClaude::usuario()?->id, 'esGestor' => TodoClaude::esGestor(auth()->user())]);
+        $colaClaude = \DB::table('tareas')->where('proceso', 'claude.todo')->whereIn('estado', ['pendiente', 'en_curso'])->get(['parametros', 'estado', 'no_antes_de'])
+            ->mapWithKeys(fn ($c) => [(int) (json_decode($c->parametros, true)['tarea_id'] ?? 0) => $c]);
+
+        return view('livewire.todo', ['colaClaude' => $colaClaude, 'tareas' => $tareas, 'detalle' => $detalle, 'yo' => $yo, 'esAdmin' => $this->esAdmin(), 'claudeId' => TodoClaude::usuario()?->id, 'esGestor' => TodoClaude::esGestor(auth()->user())]);
     }
 }

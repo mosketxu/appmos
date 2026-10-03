@@ -75,6 +75,9 @@ class ColaTareas
                 ->whereIn('proceso', $capacidades)
                 ->where(fn ($q) => $q->whereNull('destino')->orWhere('destino', $t->nombre))
                 ->where(fn ($q) => $q->whereNull('no_antes_de')->orWhere('no_antes_de', '<=', now()))
+                // las de Claude, por la prioridad que Alex les ha dado en su lista del TO-DO (después de los procesos normales)
+                ->orderByRaw("case when proceso = 'claude.todo' then 1 else 0 end")
+                ->orderByRaw("coalesce((select p.orden from todo_tarea_user p join users u on u.id = p.user_id and u.name = 'Claude' and u.email is null where p.tarea_id = json_extract(tareas.parametros, '$.tarea_id')), 999999)")
                 ->orderBy('id')->lockForUpdate();
             // Tareas de Claude: nada si está en pausa general o se ha llegado al tope del día; y las pausadas una a una no salen
             if (! TodoClaude::permitido()) {

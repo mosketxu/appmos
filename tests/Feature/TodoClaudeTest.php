@@ -170,4 +170,60 @@ class TodoClaudeTest extends TestCase
         $this->postJson("/api/trabajador/tareas/{$cola->id}/todo", [], ['X-Token' => $b])->assertNotFound();
         $this->postJson("/api/trabajador/tareas/{$cola->id}/todo", [], ['X-Token' => 'mal'])->assertForbidden();
     }
+
+    public function test_ejecutar_ya_explica_que_ha_pasado(): void
+    {
+        $t = $this->crearPara($this->alex);
+        $c = Livewire::test(Todo::class);
+        $c->call('ejecutarYa', $t->id)->assertSet('mensajeTipo', 'aviso')->assertSee('ningún PC trabajador está en línea');   // sin trabajadores
+
+        ColaTareas::latido(ColaTareas::autenticar(ColaTareas::crearTrabajador('AlexMiniPC')), ['claude.todo']);
+        $c->call('ejecutarYa', $t->id)->assertSet('mensajeTipo', 'ok')->assertSee('la cogerá AlexMiniPC');
+
+        TodoClaude::pausarGlobal(true);
+        $c->call('ejecutarYa', $t->id)->assertSee('en pausa');
+        TodoClaude::pausarGlobal(false);
+
+        $sin = $this->crearPara($this->ana, 'Sin autorizar');
+        $this->actingAs($this->alex);
+        Livewire::test(Todo::class)->call('ejecutarYa', $sin->id)->assertSee('todavía no está autorizado');
+    }
+
+    public function test_alex_ordena_tambien_la_lista_de_claude_y_la_cola_respeta_ese_orden(): void
+    {
+        $uno = $this->crearPara($this->alex, 'Primera creada');
+        $dos = $this->crearPara($this->alex, 'Segunda creada');
+        $this->cola()->update(['no_antes_de' => null]);
+
+        $c = Livewire::test(Todo::class);
+        $c->assertSee('data-grupo="'.$this->claude->id.'"', false);               // ⠿ en las tareas de Claude (Alex es gestor)
+        $c->call('reordenar', [$dos->id, $uno->id], $this->claude->id);
+
+        $w = ColaTareas::autenticar(ColaTareas::crearTrabajador('AlexMiniPC'));
+        $primera = DB::transaction(fn () => ColaTareas::reservar($w, ['claude.todo']));
+        $this->assertSame($dos->id, (int) json_decode($primera->parametros, true)['tarea_id']);   // la que Alex puso primero
+
+        $this->actingAs($this->ana);
+        Livewire::test(Todo::class)->assertDontSee('data-handle', false);
+    }
+
+    public function test_uso_real_del_plan_se_sube_se_muestra_y_frena(): void
+    {
+        $token = ColaTareas::crearTrabajador('AlexMiniPC');
+        $this->postJson('/api/trabajador/claude-uso', [
+            'sesion_pct' => 6, 'sesion_reinicia' => 'Oct 4, 2:30am (Europe/Madrid)', 'semana_pct' => 19, 'semana_reinicia' => 'Oct 7, 7am (Europe/Madrid)',
+        ], ['X-Token' => $token])->assertOk();
+
+        $u = TodoClaude::usoPlan();
+        $this->assertSame(6, (int) $u['sesion']);
+        $this->assertSame('dom. 4/10 02:30', $u['sesion_reinicia']);
+        $this->assertFalse(TodoClaude::planAgotado());
+
+        $this->postJson('/api/trabajador/claude-uso', ['sesion_pct' => 85, 'semana_pct' => 19], ['X-Token' => $token])->assertOk();
+        $this->assertTrue(TodoClaude::planAgotado());
+        $this->assertFalse(TodoClaude::permitido());                              // con el plan al 85 % no empieza nada solo
+
+        $this->actingAs($this->alex);
+        Livewire::test(\App\Http\Livewire\TodoClaudeEstado::class)->assertSee('85 %')->assertSee('FRENO');
+    }
 }

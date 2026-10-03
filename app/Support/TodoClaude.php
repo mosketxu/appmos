@@ -84,10 +84,51 @@ class TodoClaude
         return (int) round(100 * self::ejecucionesHoy() / self::limiteDia());
     }
 
-    /** ¿Puede entregarse ahora una tarea de Claude a un trabajador? (ni pausa general ni tope diario) */
+    /** Última lectura del uso real del plan (`/usage`) subida por un PC, con minutos desde que se leyó; null si no hay. */
+    public static function usoPlan(): ?array
+    {
+        $r = DB::table('claude_uso')->orderByDesc('leido_at')->first();
+        if (! $r) {
+            return null;
+        }
+
+        return [
+            'sesion' => $r->sesion_pct, 'sesion_reinicia' => self::formatoReinicio($r->sesion_reinicia),
+            'semana' => $r->semana_pct, 'semana_reinicia' => self::formatoReinicio($r->semana_reinicia),
+            'pc' => $r->pc, 'hace_min' => $r->leido_at ? (int) \Illuminate\Support\Carbon::parse($r->leido_at)->diffInMinutes(now()) : null,
+        ];
+    }
+
+    /** «Oct 4, 2:30am (Europe/Madrid)» -> «sáb 04/10 02:30»; si no se entiende, tal cual. */
+    protected static function formatoReinicio(?string $t): ?string
+    {
+        if (! $t) {
+            return null;
+        }
+        try {
+            $limpio = trim(preg_replace('/\(.*?\)/', '', $t));
+            return \Illuminate\Support\Carbon::parse($limpio, 'Europe/Madrid')->locale('es')->isoFormat('ddd D/M HH:mm');
+        } catch (\Throwable $e) {
+            return $t;
+        }
+    }
+
+    /** ¿Ha llegado el uso real del plan al freno (config claude_todo_max_uso, por defecto 80 %)? Con lectura vieja (>60 min) no se tiene en cuenta. */
+    public static function planAgotado(): bool
+    {
+        $u = self::usoPlan();
+        if (! $u || ($u['hace_min'] ?? 999) > 60) {
+            return false;
+        }
+        $max = (int) config('contabilidad.claude_todo_max_uso', 80);
+
+        return max((int) $u['sesion'], (int) $u['semana']) >= $max;
+    }
+
+    /** ¿Puede entregarse ahora una tarea de Claude a un trabajador? (ni pausa general, ni tope diario, ni plan casi agotado) */
     public static function permitido(): bool
     {
-        return ! self::pausadoGlobal() && self::ejecucionesHoy() < self::limiteDia();
+        return ! self::pausadoGlobal() && self::ejecucionesHoy() < self::limiteDia() && ! self::planAgotado();
     }
 
     /** Quien manda sobre Claude: pausar, autorizar lo que le asignan otros. Por defecto solo Alex (config claude_todo_gestores). */
@@ -133,10 +174,10 @@ class TodoClaude
      * Deja la tarea en la cola de trabajadores (una sola vez). Sin $ya espera a la próxima pasada (cada hora);
      * con $ya se puede coger ya mismo, también si ya estaba esperando.
      */
-    public static function encolar(TodoTarea $t, bool $ya = false): void
+    public static function encolar(TodoTarea $t, bool $ya = false): ?string
     {
         if (! $t->claude_autorizada_at || $t->claude_pausada || ! $t->abierta() || ! self::asignada($t)) {
-            return;
+            return null;
         }
         $cola = DB::table('tareas')->where('proceso', 'claude.todo')->whereIn('estado', ['pendiente', 'en_curso'])
             ->whereRaw("json_extract(parametros, '$.tarea_id') = ?", [$t->id])->first();
@@ -145,12 +186,14 @@ class TodoClaude
                 DB::table('tareas')->where('id', $cola->id)->update(['no_antes_de' => null, 'updated_at' => now()]);
             }
 
-            return;
+            return $cola->estado;
         }
         $minutos = max(1, (int) config('contabilidad.claude_todo_cada_minutos', 60));
         // Próxima pasada: el siguiente múltiplo de $minutos desde la hora en punto
         $siguiente = now()->copy()->startOfHour()->addMinutes(intdiv(now()->minute, $minutos) * $minutos + $minutos);
         ColaTareas::crear('claude.todo', ['tarea_id' => $t->id], null, auth()->id(), $ya ? null : $siguiente);
+
+        return 'pendiente';
     }
 
     /** Alguien (no Claude) ha respondido en una tarea de Claude. */

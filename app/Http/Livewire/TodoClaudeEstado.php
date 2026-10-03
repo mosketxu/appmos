@@ -36,6 +36,7 @@ class TodoClaudeEstado extends Component
             'trabajadores' => $trabajadores, 'en_curso' => $enCurso, 'pausado' => TodoClaude::pausadoGlobal(),
             'hoy' => TodoClaude::ejecucionesHoy(), 'limite' => TodoClaude::limiteDia(),
             'porcentaje' => TodoClaude::porcentajeUso(), 'coste' => TodoClaude::costeHoy(),
+            'plan' => TodoClaude::usoPlan(), 'freno' => (int) config('contabilidad.claude_todo_max_uso', 80), 'agotado' => TodoClaude::planAgotado(),
             // El contador del día se pone a cero a medianoche (hora del servidor)
             'reinicio' => ($m = (int) now()->diffInMinutes(now()->addDay()->startOfDay())) >= 60 ? intdiv($m, 60).' h '.($m % 60).' min' : $m.' min',
         ]]);

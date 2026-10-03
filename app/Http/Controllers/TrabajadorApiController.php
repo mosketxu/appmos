@@ -92,4 +92,17 @@ class TrabajadorApiController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    /** Uso real del plan de Claude leído en un PC (`claude -p "/usage"`). */
+    public function claudeUso(Request $r)
+    {
+        $t = $this->trabajador($r);
+        $d = $r->validate([
+            'sesion_pct' => 'nullable|integer|min:0|max:100', 'sesion_reinicia' => 'nullable|string|max:60',
+            'semana_pct' => 'nullable|integer|min:0|max:100', 'semana_reinicia' => 'nullable|string|max:60',
+        ]);
+        \Illuminate\Support\Facades\DB::table('claude_uso')->updateOrInsert(['pc' => $t->nombre], $d + ['leido_at' => now(), 'updated_at' => now(), 'created_at' => now()]);
+
+        return response()->json(['ok' => true]);
+    }
 }
