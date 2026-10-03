@@ -208,7 +208,7 @@ return [
     // ENTRADA ÚNICA (3-oct-2026): solo se entra por la web. En un PC, ENTRADA_WEB_URL=https://appmos.sumaempresa.com hace que todas las
     // páginas redirijan a la web (nunca ponerla en el VPS). Excepciones = pantallas que aún solo funcionan en el PC; la lista debe quedar vacía.
     'entrada_web_url' => env('ENTRADA_WEB_URL'),
-    'entrada_web_excepciones' => ['contabilidad/durcal*', 'contabilidad/facturas-ocr*'],
+    'entrada_web_excepciones' => ['contabilidad/durcal*'],
 
     // En un PC (localhost) el TO-DO no tiene datos propios: los trabajadores, el uso del plan y las tareas de verdad están en la BD del VPS.
     // Con TODO_URL puesta, la pestaña TO-DO (y su campana y la barra de Claude) llevan a la web, como Bancos e IS.
