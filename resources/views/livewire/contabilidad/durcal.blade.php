@@ -35,43 +35,69 @@
         tabla de resultado en el propio fichero de nómina, y da de alta las filas de amortización a 36 meses en
         <code class="px-1 bg-gray-100 rounded">Amortizacion Alpify 2026.xlsm</code>. Escribe siempre sobre los
         ficheros reales de
-        <code class="px-1 bg-gray-100 rounded">OneDrive\_Clientes\2026\Durcal 2026\Laboral</code> —
-        sube abajo el fichero de nómina del mes elegido solo para confirmar que es el correcto antes de ejecutar.
+        <code class="px-1 bg-gray-100 rounded">OneDrive\_Clientes\2026\Durcal 2026\Laboral</code>, desde el PC de trabajo —
+        antes de ejecutar se ve lo que el PC encuentra (nómina del mes, Amortizacion cerrado).
         El Amortizacion tiene que estar <b>cerrado</b>: se escribe con el propio Excel para no perder la escala de
         tiempo, las tablas dinámicas ni la macro.
     </p>
 
+    @include('livewire.contabilidad._pcs')
+
+    @php
+        $n = $this->nomina;
+        $am = $estadoPc['amort'] ?? null;
+        $sabeEstado = ! empty($estadoPc);
+    @endphp
     <div class="overflow-hidden bg-white border rounded-lg shadow">
-        <div class="p-4 border-b border-gray-200 bg-gray-50">
-            <label class="block mb-2 text-xs font-medium text-gray-600">
-                Fichero de nómina del mes (solo para confirmar, se sigue escribiendo sobre el real de OneDrive)
-            </label>
-            <x-contabilidad.soltar-fichero model="archivo" accept=".xls,.xlsx" :fichero="$archivo"
-                texto="Arrastra aquí la nómina o haz clic para elegirla" />
-            <div wire:loading wire:target="archivo" class="mt-1 text-xs text-gray-400">Subiendo…</div>
-            @error('archivo')
-                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-            @enderror
-            @if ($archivo && $this->archivoCoincide === true)
-                <p class="mt-1 text-xs text-green-700">✔ Coincide con el fichero esperado del mes.</p>
+        <div class="p-4 space-y-1 text-sm border-b border-gray-200 bg-gray-50">
+            <div class="flex flex-wrap items-center gap-x-3">
+                <span class="font-medium text-gray-700">Lo que ve el PC{{ ! empty($estadoPc['pc']) ? ' ('.$estadoPc['pc'].')' : '' }} en el OneDrive:</span>
+                <button type="button" wire:click="sincronizarAhora" class="text-xs text-indigo-700 hover:underline">↻ Comprobar en el PC</button>
+            </div>
+            @if (! $sabeEstado)
+                <p class="text-amber-700">Todavía no hay datos del PC (se están pidiendo). Pulsa «Comprobar en el PC» si tarda.</p>
+            @else
+                <p>
+                    Nómina del mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}:
+                    @if ($n)
+                        <span class="text-green-700">✔ {{ $n['nombre'] }}</span>
+                        <span class="text-gray-500">({{ number_format($n['bytes'] / 1024, 0, ',', '.') }} KB · guardada {{ $n['fecha'] }})</span>
+                    @else
+                        <span class="text-red-600">✘ no la encuentra en OneDrive (Durcal 2026\Laboral)</span>
+                    @endif
+                </p>
+                <p>
+                    Amortizacion Alpify 2026.xlsm:
+                    @if ($am)
+                        <span class="{{ ! empty($am['abierto']) ? 'text-red-600' : 'text-green-700' }}">{{ ! empty($am['abierto']) ? '⚠ está ABIERTO en Excel: ciérralo antes de ejecutar' : '✔ cerrado' }}</span>
+                        <span class="text-gray-500">({{ number_format($am['bytes'] / 1024, 0, ',', '.') }} KB · {{ $am['fecha'] }})</span>
+                    @else
+                        <span class="text-red-600">✘ no lo encuentra</span>
+                    @endif
+                </p>
+                <p class="text-xs text-gray-500">
+                    personal.xlsx: {{ ! empty($estadoPc['personal']['fecha']) ? 'modificado '.$estadoPc['personal']['fecha'] : 'no encontrado' }}.
+                    Las nóminas son datos personales: <b>no se suben a Appmos</b>; el PC trabaja con ellas en su OneDrive y aquí solo se ve esto.
+                </p>
             @endif
         </div>
         <div class="flex flex-wrap items-center p-4 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
             <x-button.primary
                 wire:click="ejecutar"
                 wire:loading.attr="disabled"
-                wire:target="ejecutar, archivo"
-                :disabled="$this->archivoCoincide !== true"
-                onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsm reales. ¿Seguro?')"
+                wire:target="ejecutar"
+                :disabled="! $n || ! empty($am['abierto'])"
+                onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsm reales, en el OneDrive del PC. ¿Seguro?')"
             >
-                <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar</span>
-                <span wire:loading wire:target="ejecutar">⏳ Ejecutando…</span>
+                <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar en el PC</span>
+                <span wire:loading wire:target="ejecutar">⏳ Pidiendo…</span>
             </x-button.primary>
 
-            @if (! empty($resultados))
-                <div class="flex flex-col min-w-0 gap-y-1">
-                    @foreach ($resultados as $r)
-                        <x-contabilidad.resultado-fichero :r="$r" />
+            @if (! empty($resultados['durcal']))
+                <div class="flex flex-col min-w-0 gap-y-1 text-sm">
+                    <span class="text-xs text-gray-500">Ficheros escritos (en el PC):</span>
+                    @foreach ($resultados['durcal'] as $r)
+                        <span class="font-mono text-xs break-all">📄 {{ $r['ruta'] }}</span>
                     @endforeach
                 </div>
             @endif

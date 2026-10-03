@@ -240,4 +240,31 @@ class TodoTest extends TestCase
         $this->actingAs($this->usuario('Ana'))->get(route('todo'))->assertRedirect('https://appmos.example.com/todo');
         $this->get(route('todo', ['t' => 5]))->assertRedirect('https://appmos.example.com/todo?t=5');
     }
+
+    public function test_pedir_prioridad_avisa_sin_tocar_el_orden_y_el_correo_de_asignacion_sale_por_graph(): void
+    {
+        config(['contabilidad.graph' => ['tenant_id' => 't', 'client_id' => 'c', 'client_secret' => 's', 'sender' => 'alex.arregui@sumaempresa.com', 'redirect' => null]]);
+        \Illuminate\Support\Facades\Cache::put('graph_token', 'tok', 60);
+        \Illuminate\Support\Facades\Http::fake(['graph.microsoft.com/*' => \Illuminate\Support\Facades\Http::response('', 202)]);
+        $ana = $this->usuario('Ana');
+        $bea = $this->usuario('Bea');
+        $this->actingAs($ana);
+        $c = Livewire::test(Todo::class)->set('titulo', 'Revisar IVA')->set('asignadosIds', [$bea->id, $ana->id])->call('crear');
+        // correo solo a Bea (no a quien asigna) y con enlace a la tarea
+        \Illuminate\Support\Facades\Http::assertSentCount(1);
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => $r['message']['toRecipients'][0]['emailAddress']['address'] === 'bea@sumaempresa.com' && str_contains($r['message']['body']['content'], '/todo?t='));
+
+        $t = TodoTarea::first();
+        $antes = \DB::table('todo_tarea_user')->orderBy('id')->pluck('orden', 'user_id')->all();
+        $c->call('pedirPrioridad', $t->id);
+        $this->assertNotNull($t->fresh()->prioridad_pedida_at);
+        $this->assertSame(1, \App\Models\TodoAviso::where('user_id', $bea->id)->where('texto', 'like', 'te pide priorizar%')->count());
+        $this->assertSame(0, \App\Models\TodoAviso::where('user_id', $ana->id)->where('texto', 'like', 'te pide priorizar%')->count());
+        $this->assertSame($antes, \DB::table('todo_tarea_user')->orderBy('id')->pluck('orden', 'user_id')->all());   // el orden de nadie cambia
+
+        $this->actingAs($bea);                                            // quien no creó la tarea no puede pedirla
+        Livewire::test(Todo::class)->call('pedirPrioridad', $t->id)->assertForbidden();
+        Livewire::test(Todo::class)->call('cambiarEstado', $t->id, 'en_curso');   // empezar la tarea limpia la marca
+        $this->assertNull($t->fresh()->prioridad_pedida_at);
+    }
 }
