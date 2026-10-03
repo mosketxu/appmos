@@ -701,7 +701,7 @@ class FacturasOcr extends Component
             return false;
         }
         $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(120)
-            ->run([$this->pythonBin(), 'ocr_previo.py', '--listar', $this->dirEntrada()]);
+            ->run([$this->pythonBin(), 'ocr_previo.py', '--listar', $this->dirEntrada(), '--cliente', $this->cliente]);
         $lista = $r->successful() ? (json_decode(trim($r->output()), true) ?: []) : [];
         $entradas = [];
         foreach ($lista as $f) {
@@ -717,7 +717,7 @@ class FacturasOcr extends Component
             $args[] = '{E'.$i.'}';
         }
         $tid = $this->lanzarEnCola([['script' => 'ocr_previo.py', 'args' => $args, 'timeout' => 900,
-            'etiqueta' => 'OCR de Windows de '.count($entradas).' factura(s) escaneada(s)']],
+            'etiqueta' => 'OCR de Windows de '.count($entradas).' factura(s) (escaneadas o sin NIF conocido)']],
             ['entradas' => $entradas, 'resultados' => 'ocr', 'post' => 'postOcrPrevio', 'ctx' => ['hasta' => time() + 180]]);
 
         return $tid !== null;
