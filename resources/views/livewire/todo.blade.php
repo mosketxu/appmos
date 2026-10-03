@@ -35,7 +35,7 @@
 
         <div class="flex flex-wrap items-center gap-4 text-sm lg:flex-nowrap">
             <div class="inline-flex overflow-hidden border border-gray-300 rounded-md">
-                @foreach (['mias' => 'Asignadas a '.($yo === auth()->id() ? 'mí' : 'esta persona'), 'pedidas' => 'Que he pedido a otros', 'todas' => 'Todas'] as $k => $t)
+                @foreach (['todas' => 'Todas (creadas y asignadas)', 'mias' => 'Asignadas a '.($yo === auth()->id() ? 'mí' : 'esta persona'), 'pedidas' => 'Que he pedido a otros'] as $k => $t)
                     <button type="button" wire:click="$set('vista','{{ $k }}')"
                         class="px-3 py-1 {{ $vista === $k ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">{{ $t }}</button>
                 @endforeach
@@ -55,13 +55,17 @@
                     @error('titulo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </div>
                 <textarea wire:model="descripcion" rows="3" placeholder="Descripción (opcional)" class="{{ $campo }} md:col-span-4"></textarea>
-                <label class="text-xs text-gray-500">Asignar a
-                    <select wire:model="asignadoId" class="{{ $campo }}">
+                <div class="text-xs text-gray-500 md:col-span-4">Asignar a (una o varias personas)
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-700">
                         @foreach ($this->usuarios as $u)
-                            <option value="{{ $u->id }}">{{ $u->name }}{{ $u->id === auth()->id() ? ' (yo)' : '' }}</option>
+                            <label class="inline-flex items-center gap-1 whitespace-nowrap">
+                                <input type="checkbox" wire:model="asignadosIds" value="{{ $u->id }}" class="border-gray-300 rounded">
+                                {{ $u->name }}{{ $u->id === auth()->id() ? ' (yo)' : '' }}
+                            </label>
                         @endforeach
-                    </select>
-                </label>
+                    </div>
+                    @error('asignadosIds') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
                 <label class="text-xs text-gray-500">Prioridad
                     <select wire:model="prioridad" class="{{ $campo }}">
                         @foreach (\App\Models\TodoTarea::PRIORIDADES as $k => $t) <option value="{{ $k }}">{{ $t }}</option> @endforeach
@@ -108,7 +112,7 @@
                             <td class="px-3 py-2 font-medium max-w-xl truncate" title="{{ $t->titulo }}">{{ $t->titulo }}</td>
                             <td class="px-3 py-2"><span class="px-2 py-0.5 text-xs border rounded-full {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</span></td>
                             <td class="px-3 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
-                            <td class="px-3 py-2">{{ $t->asignado->name }}</td>
+                            <td class="px-3 py-2">{{ $t->asignados->pluck('name')->implode(', ') }}</td>
                             <td class="px-3 py-2">{{ $t->creador->name }}</td>
                             <td class="px-3 py-2 {{ $vencida ? 'text-red-600 font-semibold' : '' }}">{{ $t->fecha_limite?->format('d/m/Y') ?? '—' }}{{ $vencida ? ' ⚠' : '' }}</td>
                             <td class="px-3 py-2 text-center">{{ $t->comentarios_count ?: '' }}</td>
@@ -132,13 +136,16 @@
                                                         @endforeach
                                                     </select>
                                                 </label>
-                                                <label class="text-xs text-gray-500">Asignada a
-                                                    <select wire:change="cambiarAsignado({{ $detalle->id }}, $event.target.value)" class="block py-1 text-sm border-gray-300 rounded-md">
+                                                <div class="text-xs text-gray-500">Asignada a (marca o quita personas)
+                                                    <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-sm text-gray-700">
                                                         @foreach ($this->usuarios as $u)
-                                                            <option value="{{ $u->id }}" @selected($detalle->asignado_id === $u->id)>{{ $u->name }}</option>
+                                                            <label wire:key="as{{ $detalle->id }}-{{ $u->id }}" class="inline-flex items-center gap-1 whitespace-nowrap">
+                                                                <input type="checkbox" wire:click="alternarAsignado({{ $detalle->id }}, {{ $u->id }})" @checked($detalle->asignados->contains('id', $u->id)) class="border-gray-300 rounded">
+                                                                {{ $u->name }}
+                                                            </label>
                                                         @endforeach
-                                                    </select>
-                                                </label>
+                                                    </div>
+                                                </div>
                                             </div>
                                             @if ($esAdmin || $detalle->creador_id === auth()->id())
                                                 <button type="button" wire:click="borrar({{ $detalle->id }})" wire:confirm="¿Borrar esta tarea y sus comentarios?" class="text-xs text-red-600 underline">Borrar tarea</button>

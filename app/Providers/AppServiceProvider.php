@@ -25,6 +25,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Canal «graph»: la notificación implementa toGraph() y envía ella misma (ver ResetPasswordGraph)
+        \Illuminate\Support\Facades\Notification::extend('graph', fn () => new class {
+            public function send($notifiable, $notification)
+            {
+                return $notification->toGraph($notifiable);
+            }
+        });
+
         // BuilComponent::macro('notify', function ($message) {
         //     $this->dispatchBrowserEvent('notify', $message);
         // });

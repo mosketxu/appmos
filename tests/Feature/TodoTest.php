@@ -27,7 +27,7 @@ class TodoTest extends TestCase
         $this->actingAs($ana);
 
         Livewire::test(Todo::class)
-            ->set('titulo', 'Revisar IVA')->set('asignadoId', $bea->id)->call('crear')
+            ->set('titulo', 'Revisar IVA')->set('asignadosIds', [$bea->id])->call('crear')
             ->assertSee('Revisar IVA');
         $t = TodoTarea::first();
         $this->assertSame($ana->id, $t->creador_id);
@@ -48,7 +48,8 @@ class TodoTest extends TestCase
         $ana = $this->usuario('Ana');
         $bea = $this->usuario('Bea');
         $cai = $this->usuario('Cai');
-        $t = TodoTarea::create(['titulo' => 'Secreta', 'creador_id' => $ana->id, 'asignado_id' => $bea->id]);
+        $t = $t = TodoTarea::create(['titulo' => 'Secreta', 'creador_id' => $ana->id]);
+        $t->asignados()->attach($bea->id, ['orden' => 1]);
 
         $this->actingAs($cai);
         Livewire::test(Todo::class)->set('vista', 'todas')->assertDontSee('Secreta')
@@ -62,7 +63,7 @@ class TodoTest extends TestCase
         $admin = $this->usuario('Alex');
         $admin->assignRole('Admin');
         $ana = $this->usuario('Ana');
-        TodoTarea::create(['titulo' => 'De Ana', 'creador_id' => $ana->id, 'asignado_id' => $ana->id]);
+        TodoTarea::create(['titulo' => 'De Ana', 'creador_id' => $ana->id])->asignados()->attach($ana->id, ['orden' => 1]);
 
         $this->actingAs($admin);
         Livewire::test(Todo::class)->assertDontSee('De Ana')
@@ -80,15 +81,33 @@ class TodoTest extends TestCase
         $this->actingAs($ana);
         $c = Livewire::test(Todo::class);
         foreach (['Uno', 'Dos', 'Tres'] as $titulo) {
-            $c->set('titulo', $titulo)->set('asignadoId', $ana->id)->call('crear');
+            $c->set('titulo', $titulo)->set('asignadosIds', [$ana->id])->call('crear');
         }
-        $ids = TodoTarea::orderBy('orden')->pluck('titulo', 'id')->all();
+        $orden = fn () => \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')->where('p.user_id', $ana->id)->orderBy('p.orden')->pluck('t.titulo', 't.id')->all();
+        $ids = $orden();
         $this->assertSame(['Uno', 'Dos', 'Tres'], array_values($ids));
         $tres = array_search('Tres', $ids);
 
-        $c->call('mover', $tres, -1);
-        $this->assertSame(['Uno', 'Tres', 'Dos'], TodoTarea::orderBy('orden')->pluck('titulo')->all());
-        $c->call('mover', $tres, -1)->call('mover', $tres, -1);   // ya es la primera: no pasa nada
-        $this->assertSame(['Tres', 'Uno', 'Dos'], TodoTarea::orderBy('orden')->pluck('titulo')->all());
+        $c->set('vista', 'mias')->call('mover', $tres, -1);
+        $this->assertSame(['Uno', 'Tres', 'Dos'], array_values($orden()));
+        $c->set('vista', 'mias')->call('mover', $tres, -1)->call('mover', $tres, -1);   // ya es la primera: no pasa nada
+        $this->assertSame(['Tres', 'Uno', 'Dos'], array_values($orden()));
+    }
+
+    public function test_una_tarea_para_varias_personas_y_cada_una_con_su_orden(): void
+    {
+        $ana = $this->usuario('Ana');
+        $bea = $this->usuario('Bea');
+        $this->actingAs($ana);
+        Livewire::test(Todo::class)->set('titulo', 'Para dos')->set('asignadosIds', [$ana->id, $bea->id])->call('crear');
+        $t = TodoTarea::first();
+        $this->assertCount(2, $t->asignados);
+
+        $this->actingAs($bea);
+        Livewire::test(Todo::class)->assertSee('Para dos')                       // vista «todas» por defecto
+            ->call('alternarAsignado', $t->id, $ana->id);                        // la quita
+        $this->assertCount(1, $t->fresh()->asignados);
+        Livewire::test(Todo::class)->call('alternarAsignado', $t->id, $bea->id);  // no se puede quitar a la última
+        $this->assertCount(1, $t->fresh()->asignados);
     }
 }

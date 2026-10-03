@@ -14,8 +14,8 @@ use Livewire\Component;
  */
 class Todo extends Component
 {
-    /** mias = asignadas a la persona vista · pedidas = creadas por ella para otros · todas */
-    public string $vista = 'mias';
+    /** todas = creadas y asignadas · mias = asignadas a la persona vista · pedidas = creadas por ella para otros */
+    public string $vista = 'todas';
 
     /** abiertas | cerradas | todas */
     public string $filtroEstado = 'abiertas';
@@ -29,7 +29,8 @@ class Todo extends Component
     public bool $nueva = false;
     public string $titulo = '';
     public string $descripcion = '';
-    public ?int $asignadoId = null;
+    /** Personas a las que se asigna la tarea nueva. */
+    public array $asignadosIds = [];
     public string $prioridad = 'normal';
     public ?string $fechaLimite = null;
 
@@ -40,7 +41,7 @@ class Todo extends Component
     public function mount(): void
     {
         $this->verUsuario = auth()->id();
-        $this->asignadoId = auth()->id();
+        $this->asignadosIds = [auth()->id()];
         $this->fechaComentario = now()->format('Y-m-d');
     }
 
@@ -58,7 +59,7 @@ class Todo extends Component
     protected function puede(TodoTarea $t): bool
     {
         $id = auth()->id();
-        return $this->esAdmin() || $t->creador_id === $id || $t->asignado_id === $id;
+        return $this->esAdmin() || $t->creador_id === $id || $t->estaAsignadaA($id);
     }
 
     public function getUsuariosProperty()
@@ -74,29 +75,30 @@ class Todo extends Component
         $this->validate([
             'titulo' => 'required|string|max:200',
             'descripcion' => 'nullable|string|max:5000',
-            'asignadoId' => 'required|exists:users,id',
+            'asignadosIds' => 'required|array|min:1',
+            'asignadosIds.*' => 'exists:users,id',
             'prioridad' => 'required|in:baja,normal,alta',
             'fechaLimite' => 'nullable|date',
         ], [
             'titulo.required' => 'Pon un título.',
-            'asignadoId.required' => 'Elige a quién se asigna.',
+            'asignadosIds.required' => 'Elige a quién se asigna.',
+            'asignadosIds.min' => 'Elige al menos a una persona.',
         ]);
         $t = TodoTarea::create([
             'titulo' => trim($this->titulo),
             'descripcion' => trim($this->descripcion) ?: null,
             'creador_id' => auth()->id(),
-            'asignado_id' => $this->asignadoId,
             'prioridad' => $this->prioridad,
-            'orden' => TodoTarea::siguienteOrden((int) $this->asignadoId),
             'fecha_limite' => $this->fechaLimite ?: null,
         ]);
-        $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
-        // Para que la tarea recién creada se vea aunque sea para otra persona
-        if ($t->asignado_id !== $this->usuarioVisto()) {
-            $this->vista = $t->creador_id === $this->usuarioVisto() ? 'pedidas' : 'todas';
+        foreach (array_unique(array_map('intval', $this->asignadosIds)) as $uid) {
+            $t->asignados()->attach($uid, ['orden' => TodoTarea::siguienteOrden($uid)]);
         }
+        $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
+        // Para que la tarea recién creada se vea
+        $this->vista = 'todas';
         $this->filtroEstado = 'abiertas';
-        $this->asignadoId = auth()->id();
+        $this->asignadosIds = [auth()->id()];
         $this->abierta = $t->id;
     }
 
@@ -116,31 +118,40 @@ class Todo extends Component
         $t->save();
     }
 
-    public function cambiarAsignado(int $id, int $user): void
+    /** Añade o quita a una persona de la tarea (siempre queda al menos una). */
+    public function alternarAsignado(int $id, int $user): void
     {
-        $t = TodoTarea::findOrFail($id);
+        $t = TodoTarea::with('asignados')->findOrFail($id);
         abort_unless($this->puede($t) && User::whereKey($user)->exists(), 403);
-        $t->update(['asignado_id' => $user, 'orden' => TodoTarea::siguienteOrden($user)]);
+        if ($t->estaAsignadaA($user)) {
+            if ($t->asignados->count() > 1) {
+                $t->asignados()->detach($user);
+            }
+        } else {
+            $t->asignados()->attach($user, ['orden' => TodoTarea::siguienteOrden($user)]);
+        }
     }
 
     /**
-     * Sube (-1) o baja (+1) la tarea en la lista de prioridades de quien la tiene asignada, entre las abiertas.
-     * Primero se renumera 1..n para que no haya huecos ni repetidos.
+     * Sube (-1) o baja (+1) la tarea en la lista de prioridades de la persona cuya lista se está viendo
+     * (la propia, o la elegida si eres Admin), entre sus abiertas. Antes se renumera 1..n sin huecos.
      */
     public function mover(int $id, int $sentido): void
     {
-        $t = TodoTarea::findOrFail($id);
-        abort_unless($this->puede($t) && $t->abierta(), 403);
-        $ids = TodoTarea::where('asignado_id', $t->asignado_id)->whereNotIn('estado', TodoTarea::CERRADOS)
-            ->orderBy('orden')->orderBy('id')->pluck('id')->all();
-        $i = array_search($t->id, $ids, true);
-        $j = $i + ($sentido < 0 ? -1 : 1);
-        if ($i === false || ! isset($ids[$j])) {
+        $yo = $this->usuarioVisto();
+        $t = TodoTarea::with('asignados')->findOrFail($id);
+        abort_unless($this->puede($t) && $t->abierta() && $t->estaAsignadaA($yo), 403);
+        $ids = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
+            ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
+            ->orderBy('p.orden')->orderBy('p.id')->pluck('p.tarea_id')->all();
+        $i = array_search($t->id, $ids);
+        $j = $i === false ? false : $i + ($sentido < 0 ? -1 : 1);
+        if ($j === false || ! isset($ids[$j])) {
             return;
         }
         [$ids[$i], $ids[$j]] = [$ids[$j], $ids[$i]];
         foreach ($ids as $n => $tid) {
-            TodoTarea::whereKey($tid)->update(['orden' => $n + 1]);
+            \DB::table('todo_tarea_user')->where('user_id', $yo)->where('tarea_id', $tid)->update(['orden' => $n + 1]);
         }
     }
 
@@ -181,13 +192,14 @@ class Todo extends Component
     public function render()
     {
         $yo = $this->usuarioVisto();
-        $q = TodoTarea::with(['creador:id,name', 'asignado:id,name'])->withCount('comentarios');
+        $q = TodoTarea::with(['creador:id,name', 'asignados:id,name'])->withCount('comentarios')->select('todo_tareas.*')
+            ->leftJoin('todo_tarea_user as mi', fn ($j) => $j->on('mi.tarea_id', '=', 'todo_tareas.id')->where('mi.user_id', $yo));
 
         $q->where(function ($q) use ($yo) {
             match ($this->vista) {
-                'mias' => $q->where('asignado_id', $yo),
-                'pedidas' => $q->where('creador_id', $yo)->where('asignado_id', '!=', $yo),
-                default => $q->where(fn ($q) => $q->where('creador_id', $yo)->orWhere('asignado_id', $yo)),
+                'mias' => $q->whereNotNull('mi.user_id'),
+                'pedidas' => $q->where('creador_id', $yo)->whereNull('mi.user_id'),
+                default => $q->where('creador_id', $yo)->orWhereNotNull('mi.user_id'),
             };
         });
         match ($this->filtroEstado) {
@@ -195,12 +207,13 @@ class Todo extends Component
             'cerradas' => $q->whereIn('estado', TodoTarea::CERRADOS),
             default => null,
         };
+        // Las cerradas al final; primero las mías por mi orden de prioridad, luego las que solo he pedido
         $tareas = $q->orderByRaw("estado in ('hecha','cancelada')")
-            ->orderBy('asignado_id')->orderBy('orden')->orderBy('id')->get();
+            ->orderByRaw('mi.orden is null')->orderBy('mi.orden')->orderByDesc('todo_tareas.id')->get();
 
         $detalle = null;
         if ($this->abierta) {
-            $detalle = TodoTarea::with(['creador:id,name', 'asignado:id,name', 'comentarios.user:id,name'])->find($this->abierta);
+            $detalle = TodoTarea::with(['creador:id,name', 'asignados:id,name', 'comentarios.user:id,name'])->find($this->abierta);
             if ($detalle && ! $this->puede($detalle)) {
                 $detalle = null;
             }
