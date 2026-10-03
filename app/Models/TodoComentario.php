@@ -9,7 +9,7 @@ class TodoComentario extends Model
 {
     protected $table = 'todo_comentarios';
 
-    protected $fillable = ['tarea_id', 'user_id', 'fecha', 'texto'];
+    protected $fillable = ['tarea_id', 'user_id', 'tipo', 'fecha', 'texto'];
 
     protected $casts = ['fecha' => 'date'];
 

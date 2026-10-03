@@ -78,7 +78,7 @@
             <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
                     <tr>
-                        @if ($vista === 'mias' && $filtroEstado !== 'cerradas') <th class="px-3 py-2 text-center">Prioridad<br>(orden)</th> @endif
+                        @if ($vista !== 'pedidas' && $filtroEstado !== 'cerradas') <th class="px-2 py-2 text-center" title="Arrastra el ⠿ para cambiar tu orden de prioridad">⠿ #</th> @endif
                         <th class="px-3 py-2">Tarea</th>
                         <th class="px-3 py-2">Estado</th>
                         <th class="px-3 py-2">Prioridad</th>
@@ -91,15 +91,14 @@
                 <tbody>
                     @forelse ($tareas as $t)
                         @php $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday(); @endphp
-                        <tr wire:key="t{{ $t->id }}" wire:click="abrir({{ $t->id }})"
-                            class="border-t border-gray-100 cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
-                            @if ($abierta === $t->id) style="background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1" @endif>
-                            @if ($vista === 'mias' && $filtroEstado !== 'cerradas')
-                                <td class="px-3 py-2 text-center whitespace-nowrap" wire:click.stop>
-                                    @if ($t->abierta())
-                                        <button type="button" wire:click="mover({{ $t->id }}, -1)" @disabled($loop->first) title="Subir (más prioritaria)" class="px-1.5 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-30">▲</button>
-                                        <span class="inline-block w-5 font-semibold text-gray-600">{{ $loop->iteration }}</span>
-                                        <button type="button" wire:click="mover({{ $t->id }}, 1)" title="Bajar (menos prioritaria)" class="px-1.5 border border-gray-300 rounded hover:bg-gray-100">▼</button>
+                        <tr wire:key="t{{ $t->id }}" @if ($t->abierta() && $t->mi_orden !== null) data-orden="{{ $t->id }}" @endif wire:click="abrir({{ $t->id }})"
+                            class="cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
+                            style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : 'border-top:1px solid #9ca3af' }}">
+                            @if ($vista !== 'pedidas' && $filtroEstado !== 'cerradas')
+                                <td class="px-2 py-2 text-center whitespace-nowrap" wire:click.stop>
+                                    @if ($t->abierta() && $t->mi_orden !== null)
+                                        <span data-handle title="Arrastra para cambiar la prioridad" class="inline-block px-1 text-lg leading-none text-gray-400 select-none cursor-grab hover:text-indigo-600">⠿</span>
+                                        <span class="inline-block w-5 font-semibold text-gray-600">{{ $t->mi_posicion }}</span>
                                     @endif
                                 </td>
                             @endif
@@ -140,28 +139,39 @@
                                         </div>
 
                                         <div class="space-y-2 md:col-span-2">
-                                            <h3 class="text-sm font-semibold text-gray-700">Comentarios</h3>
+                                            <h3 class="text-sm font-semibold text-gray-700">Respuestas</h3>
                                             @forelse ($detalle->comentarios as $c)
-                                                <div wire:key="c{{ $c->id }}" class="p-2 text-sm bg-white border border-gray-200 rounded-md">
-                                                    <div class="flex items-center justify-between text-xs text-gray-500">
-                                                        <span><b>{{ $c->user->name }}</b> · {{ $c->fecha->format('d/m/Y') }}</span>
-                                                        @if ($c->user_id === auth()->id() || $esAdmin)
-                                                            <button type="button" wire:click="borrarComentario({{ $c->id }})" wire:confirm="¿Borrar el comentario?" class="text-gray-400 hover:text-red-600">✕</button>
-                                                        @endif
+                                                @if ($c->tipo === 'evento')
+                                                    <p wire:key="c{{ $c->id }}" class="px-1 text-xs italic text-gray-500">
+                                                        ➜ <b>{{ $c->user->name }}</b> {{ $c->texto }} · {{ $c->fecha->format('d/m/Y') }}
+                                                    </p>
+                                                @else
+                                                    <div wire:key="c{{ $c->id }}" class="p-2 text-sm bg-white border border-gray-200 rounded-md">
+                                                        <div class="flex items-center justify-between text-xs text-gray-500">
+                                                            <span><b class="text-gray-800">{{ $c->user->name }}</b> responde · {{ $c->fecha->format('d/m/Y') }}</span>
+                                                            @if ($c->user_id === auth()->id() || $esAdmin)
+                                                                <button type="button" wire:click="borrarComentario({{ $c->id }})" wire:confirm="¿Borrar la respuesta?" class="text-gray-400 hover:text-red-600">✕</button>
+                                                            @endif
+                                                        </div>
+                                                        <p class="whitespace-pre-line">{{ $c->texto }}</p>
                                                     </div>
-                                                    <p class="whitespace-pre-line">{{ $c->texto }}</p>
-                                                </div>
+                                                @endif
                                             @empty
-                                                <p class="text-sm italic text-gray-400">Todavía no hay comentarios.</p>
+                                                <p class="text-sm italic text-gray-400">Todavía no hay respuestas.</p>
                                             @endforelse
 
-                                            <form wire:submit="comentar({{ $detalle->id }})" class="flex flex-wrap items-start gap-2">
-                                                <input type="date" wire:model="fechaComentario" class="text-sm border-gray-300 rounded-md">
-                                                <div class="flex-1 min-w-[16rem]">
-                                                    <textarea wire:model="comentario" rows="2" placeholder="Añadir un comentario…" class="{{ $campo }}"></textarea>
-                                                    @error('comentario') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                            <form wire:submit="comentar({{ $detalle->id }})" class="space-y-2">
+                                                <div class="flex flex-wrap items-start gap-2">
+                                                    <input type="date" wire:model="fechaComentario" class="text-sm border-gray-300 rounded-md">
+                                                    <div class="flex-1 min-w-[16rem]">
+                                                        <textarea wire:model="comentario" rows="2" placeholder="Escribe tu respuesta…" class="{{ $campo }}"></textarea>
+                                                        @error('comentario') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                                    </div>
+                                                    <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Responder</button>
                                                 </div>
-                                                <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir</button>
+                                                <div class="text-xs text-gray-500">Asignar también a (opcional)
+                                                    <x-todo-asignados :usuarios="$this->usuarios->whereNotIn('id', $detalle->asignados->pluck('id')->all())->values()" :seleccionados="$respAsignar" accion="alternarRespuesta(%d)" :minimo="0" texto="＋ Asignar a alguien ▾" />
+                                                </div>
                                             </form>
                                         </div>
                                     </div>
@@ -176,4 +186,51 @@
             </table>
         </div>
     </div>
+
+    @script
+    <script>
+        // Arrastrar y soltar para el orden de prioridad: se agarra por el ⠿ y se suelta sobre otra tarea mía
+        const raiz = $wire.$el;
+        let origen = null, destino = null, antes = true;
+        const limpiar = () => raiz.querySelectorAll('tr[data-orden]').forEach(r => { r.style.boxShadow = ''; r.style.opacity = ''; });
+
+        raiz.addEventListener('mousedown', e => {
+            const h = e.target.closest('[data-handle]');
+            if (h) h.closest('tr').draggable = true;
+        });
+        raiz.addEventListener('mouseup', () => raiz.querySelectorAll('tr[draggable=true]').forEach(r => r.draggable = false));
+        raiz.addEventListener('dragstart', e => {
+            const tr = e.target.closest ? e.target.closest('tr[data-orden]') : null;
+            if (!tr || !tr.draggable) return;
+            origen = tr;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', tr.dataset.orden);
+            setTimeout(() => tr.style.opacity = '.4');
+        });
+        raiz.addEventListener('dragover', e => {
+            if (!origen) return;
+            const tr = e.target.closest('tr[data-orden]');
+            if (!tr || tr === origen) return;
+            e.preventDefault();
+            const r = tr.getBoundingClientRect();
+            antes = e.clientY < r.top + r.height / 2;
+            destino = tr;
+            raiz.querySelectorAll('tr[data-orden]').forEach(x => { if (x !== origen) x.style.boxShadow = ''; });
+            tr.style.boxShadow = antes ? 'inset 0 3px 0 #6366f1' : 'inset 0 -3px 0 #6366f1';
+        });
+        raiz.addEventListener('drop', e => {
+            if (!origen || !destino) return;
+            e.preventDefault();
+            const ids = [...raiz.querySelectorAll('tr[data-orden]')].filter(r => r !== origen).map(r => r.dataset.orden);
+            ids.splice(ids.indexOf(destino.dataset.orden) + (antes ? 0 : 1), 0, origen.dataset.orden);
+            limpiar();
+            $wire.reordenar(ids.map(Number));
+        });
+        raiz.addEventListener('dragend', () => {
+            limpiar();
+            raiz.querySelectorAll('tr[draggable=true]').forEach(r => r.draggable = false);
+            origen = destino = null;
+        });
+    </script>
+    @endscript
 </div>

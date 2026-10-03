@@ -34,8 +34,9 @@ class Todo extends Component
     public string $prioridad = 'normal';
     public ?string $fechaLimite = null;
 
-    // Comentario de la tarea abierta
+    // Respuesta a la tarea abierta (y, si se quiere, personas que se añaden con ella)
     public string $comentario = '';
+    public array $respAsignar = [];
     public ?string $fechaComentario = null;
 
     public function mount(): void
@@ -60,6 +61,20 @@ class Todo extends Component
     {
         $id = auth()->id();
         return $this->esAdmin() || $t->creador_id === $id || $t->estaAsignadaA($id);
+    }
+
+    /**
+     * Anota en el hilo una línea de evento (asignaciones, cambios de estado) con quién la hizo y cuándo.
+     * Es solo un registro: no dispara nada más (ni correos ni avisos), así que no puede encadenarse.
+     */
+    protected function evento(TodoTarea $t, string $texto): void
+    {
+        TodoComentario::create(['tarea_id' => $t->id, 'user_id' => auth()->id(), 'tipo' => 'evento', 'fecha' => now()->format('Y-m-d'), 'texto' => $texto]);
+    }
+
+    protected function nombres(array $ids): string
+    {
+        return User::whereIn('id', $ids)->orderBy('name')->pluck('name')->implode(', ');
     }
 
     public function getUsuariosProperty()
@@ -91,9 +106,11 @@ class Todo extends Component
             'prioridad' => $this->prioridad,
             'fecha_limite' => $this->fechaLimite ?: null,
         ]);
-        foreach (array_unique(array_map('intval', $this->asignadosIds)) as $uid) {
+        $ids = array_values(array_unique(array_map('intval', $this->asignadosIds)));
+        foreach ($ids as $uid) {
             $t->asignados()->attach($uid, ['orden' => TodoTarea::siguienteOrden($uid)]);
         }
+        $this->evento($t, 'creó la tarea y la asignó a '.$this->nombres($ids));
         $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
         // Para que la tarea recién creada se vea
         $this->vista = 'todas';
@@ -116,10 +133,18 @@ class Todo extends Component
         }
     }
 
+    /** Marca o desmarca a una persona para añadirla a la tarea junto con la respuesta (puede quedar vacío). */
+    public function alternarRespuesta(int $user): void
+    {
+        $ids = array_map('intval', $this->respAsignar);
+        $this->respAsignar = in_array($user, $ids, true) ? array_values(array_diff($ids, [$user])) : [...$ids, $user];
+    }
+
     public function abrir(int $id): void
     {
         $this->abierta = $this->abierta === $id ? null : $id;
         $this->comentario = '';
+        $this->respAsignar = [];
         $this->fechaComentario = now()->format('Y-m-d');
     }
 
@@ -127,6 +152,10 @@ class Todo extends Component
     {
         $t = TodoTarea::findOrFail($id);
         abort_unless($this->puede($t) && isset(TodoTarea::ESTADOS[$estado]), 403);
+        if ($t->estado === $estado) {
+            return;
+        }
+        $this->evento($t, 'cambió el estado de «'.TodoTarea::ESTADOS[$t->estado].'» a «'.TodoTarea::ESTADOS[$estado].'»');
         $t->estado = $estado;
         $t->cerrada_at = in_array($estado, TodoTarea::CERRADOS, true) ? now() : null;
         $t->save();
@@ -140,9 +169,28 @@ class Todo extends Component
         if ($t->estaAsignadaA($user)) {
             if ($t->asignados->count() > 1) {
                 $t->asignados()->detach($user);
+                $this->evento($t, 'quitó a '.$this->nombres([$user]));
             }
         } else {
             $t->asignados()->attach($user, ['orden' => TodoTarea::siguienteOrden($user)]);
+            $this->evento($t, 'asignó a '.$this->nombres([$user]));
+        }
+    }
+
+    /**
+     * Arrastrar y soltar: $ids = los ids de mis tareas abiertas en el orden nuevo (el de la pantalla).
+     * Se ignora lo que no sea mío o esté cerrado; mis abiertas que no vengan en la lista quedan al final.
+     */
+    public function reordenar(array $ids): void
+    {
+        $yo = $this->usuarioVisto();
+        $mias = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
+            ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
+            ->orderBy('p.orden')->orderBy('p.id')->pluck('p.tarea_id')->all();
+        $nuevo = array_values(array_unique(array_intersect(array_map('intval', $ids), $mias)));
+        $nuevo = array_merge($nuevo, array_values(array_diff($mias, $nuevo)));
+        foreach ($nuevo as $n => $tid) {
+            \DB::table('todo_tarea_user')->where('user_id', $yo)->where('tarea_id', $tid)->update(['orden' => $n + 1]);
         }
     }
 
@@ -183,7 +231,17 @@ class Todo extends Component
             'fecha' => $this->fechaComentario,
             'texto' => trim($this->comentario),
         ]);
+        // Personas que se añaden con la respuesta (las que ya estaban asignadas se ignoran)
+        $nuevos = array_values(array_diff(array_map('intval', $this->respAsignar), $t->asignados()->pluck('users.id')->all()));
+        $nuevos = User::whereIn('id', $nuevos)->pluck('id')->all();
+        foreach ($nuevos as $uid) {
+            $t->asignados()->attach($uid, ['orden' => TodoTarea::siguienteOrden($uid)]);
+        }
+        if ($nuevos) {
+            $this->evento($t, 'asignó a '.$this->nombres($nuevos));
+        }
         $t->touch();
+        $this->respAsignar = [];
         $this->comentario = '';
         $this->fechaComentario = now()->format('Y-m-d');
     }
@@ -191,7 +249,7 @@ class Todo extends Component
     public function borrarComentario(int $id): void
     {
         $c = TodoComentario::findOrFail($id);
-        abort_unless($c->user_id === auth()->id() || $this->esAdmin(), 403);
+        abort_unless($c->tipo === 'respuesta' && ($c->user_id === auth()->id() || $this->esAdmin()), 403);
         $c->delete();
     }
 
@@ -206,7 +264,7 @@ class Todo extends Component
     public function render()
     {
         $yo = $this->usuarioVisto();
-        $q = TodoTarea::with(['creador:id,name', 'asignados:id,name'])->withCount('comentarios')->select('todo_tareas.*')
+        $q = TodoTarea::with(['creador:id,name', 'asignados:id,name'])->withCount(['comentarios' => fn ($c) => $c->where('tipo', 'respuesta')])->select('todo_tareas.*', 'mi.orden as mi_orden')
             ->leftJoin('todo_tarea_user as mi', fn ($j) => $j->on('mi.tarea_id', '=', 'todo_tareas.id')->where('mi.user_id', $yo));
 
         $q->where(function ($q) use ($yo) {
@@ -224,6 +282,11 @@ class Todo extends Component
         // Las cerradas al final; primero las mías por mi orden de prioridad, luego las que solo he pedido
         $tareas = $q->orderByRaw("estado in ('hecha','cancelada')")
             ->orderByRaw('mi.orden is null')->orderBy('mi.orden')->orderByDesc('todo_tareas.id')->get();
+        // Posición (1, 2, 3…) entre mis tareas abiertas
+        $pos = 0;
+        foreach ($tareas as $t) {
+            $t->mi_posicion = ($t->abierta() && $t->mi_orden !== null) ? ++$pos : null;
+        }
 
         $detalle = null;
         if ($this->abierta) {

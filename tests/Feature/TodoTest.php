@@ -122,4 +122,45 @@ class TodoTest extends TestCase
             ->call('alternarNuevo', $ana->id)->assertSet('asignadosIds', [$bea->id])
             ->call('alternarNuevo', $bea->id)->assertSet('asignadosIds', [$bea->id]);   // la última no se quita
     }
+
+    public function test_las_respuestas_registran_quien_asigna_y_no_se_encadenan(): void
+    {
+        $ana = $this->usuario('Ana');
+        $bea = $this->usuario('Bea');
+        $this->actingAs($ana);
+        $c = Livewire::test(Todo::class)->set('titulo', 'Hilo')->set('asignadosIds', [$ana->id])->call('crear');
+        $t = TodoTarea::first();
+
+        $c->set('comentario', 'Mira esto, Bea')
+            ->call('alternarRespuesta', $bea->id)->call('comentar', $t->id)->assertSee('Bea')->assertSee('responde');
+        $this->assertTrue($t->fresh()->estaAsignadaA($bea->id));
+        $this->assertDatabaseHas('todo_comentarios', ['tarea_id' => $t->id, 'tipo' => 'respuesta', 'user_id' => $ana->id]);
+        $this->assertDatabaseHas('todo_comentarios', ['tarea_id' => $t->id, 'tipo' => 'evento', 'texto' => 'asignó a Bea']);
+
+        $antes = \App\Models\TodoComentario::count();
+        $c->call('cambiarEstado', $t->id, 'en_curso');
+        $this->assertSame($antes + 1, \App\Models\TodoComentario::count());   // solo el evento del cambio: nada se dispara solo
+        $c->call('cambiarEstado', $t->id, 'en_curso');                             // sin cambio, sin evento
+        $this->assertSame($antes + 1, \App\Models\TodoComentario::count());
+    }
+
+    public function test_reordenar_arrastrando(): void
+    {
+        $ana = $this->usuario('Ana');
+        $bea = $this->usuario('Bea');
+        $this->actingAs($ana);
+        $c = Livewire::test(Todo::class);
+        foreach (['Uno', 'Dos', 'Tres'] as $titulo) {
+            $c->set('titulo', $titulo)->set('asignadosIds', [$ana->id])->call('crear');
+        }
+        $ajena = TodoTarea::create(['titulo' => 'Ajena', 'creador_id' => $bea->id]);
+        $ajena->asignados()->attach($bea->id, ['orden' => 1]);
+        $id = fn ($t) => TodoTarea::where('titulo', $t)->value('id');
+        $orden = fn () => \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')->where('p.user_id', $ana->id)->orderBy('p.orden')->pluck('t.titulo')->all();
+
+        $c->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos'), $ajena->id]);   // la ajena se ignora
+        $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
+        $this->assertSame(1, (int) \DB::table('todo_tarea_user')->where('tarea_id', $ajena->id)->value('orden'));
+        $c->assertSee('data-handle', false);
+    }
 }
