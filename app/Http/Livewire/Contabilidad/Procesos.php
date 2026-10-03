@@ -2,8 +2,11 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Support\ColaTareas;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 /**
@@ -34,6 +37,14 @@ class Procesos extends Component
 
     /** ¿Terminó bien el último ejecutarScript()? (para marcar el checklist) */
     protected bool $ultimoOk = false;
+
+    /**
+     * Tareas pedidas a los PCs trabajadores desde la web (3-oct-2026) y aún sin cerrar. En el VPS no hay
+     * ficheros de OneDrive: cada botón deja una tarea `fiq.script` en la cola, un PC la ejecuta y al terminar
+     * se hace lo mismo que en local (salida, ficheros, checklist...). Forma:
+     * [tarea_id => ['tipo' => 'script'|'estado', 'etiquetas' => [...], 'post' => método|null, 'ctx' => [...], 'resultados' => clave|null]].
+     */
+    public array $pendientes = [];
 
     // RentasVariables (formularios aparte, no encajan en el check general).
     // Dos acciones (ver PROCESO_GENERAL.md en Contabilidad/monthlyFIQ):
@@ -130,16 +141,13 @@ class Procesos extends Component
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
         $this->cargarBasePagosFinMes();
         $this->updatedPfMes();
+        $this->sincronizarEstado();
         $this->cargarCashInStore();
     }
 
     protected function confPagosFinMes(): array
     {
-        try {
-            return json_decode((string) @file_get_contents($this->scriptDir() . '/pagosFinMes.json'), true) ?: [];
-        } catch (\Throwable $e) {
-            return [];
-        }
+        return $this->estadoFiq('fiq.pagosFinMes', $this->scriptDir() . '/pagosFinMes.json') ?? [];
     }
 
     protected function cargarBasePagosFinMes(): void
@@ -431,6 +439,285 @@ class Procesos extends Component
         return $resultFiles;
     }
 
+    // -- Ejecución local (PC) o en cola de trabajadores (web) ----------------------------------------
+
+    /** En el VPS (sin ejecucion_local) los scripts los hacen los PCs trabajadores vía cola de tareas. */
+    protected function remoto(): bool
+    {
+        return ! config('contabilidad.ejecucion_local');
+    }
+
+    /** Comando local de un paso ['script', 'args', 'windows'?] → [argv, cwd|null, env]. */
+    protected function comando(array $p): array
+    {
+        $script = $p['script'];
+        $args = array_map('strval', $p['args'] ?? []);
+        if (! empty($p['windows'])) {
+            return [$this->windowsCmd($script, $args), $this->scriptDir() . '/' . dirname($script), $this->windowsEnv()];
+        }
+        if (str_ends_with($script, '.py')) {
+            // windowsEnv(): muchos scripts llaman a powershell.exe (Outlook) y bajo Apache el interop de WSL necesita WSL_INTEROP
+            return [['python3', $script, ...$args], null, $this->windowsEnv()];
+        }
+
+        return [$this->nodeCmd($script, $args), null, []];
+    }
+
+    /**
+     * Lanza uno o varios scripts de monthlyFIQ seguidos. $pasos: [['script','args','timeout','etiqueta','windows'?], ...].
+     * $opc: 'resultados' => clave de $this->resultados donde van los ficheros; 'post' => método que se llama al
+     * terminar con ($ctx, $desde, array $oks) -- $desde = posición de $this->salida donde empieza el texto del
+     * último paso, $oks = éxito de cada paso; 'ctx' => datos para el post (p. ej. el mes, que puede cambiar mientras tanto).
+     * En local se ejecuta aquí mismo; en la web se deja en la cola y se cierra en revisarTareas().
+     */
+    protected function lanzar(array $pasos, array $opc = []): void
+    {
+        $clave = $opc['resultados'] ?? null;
+        if ($clave !== null) {
+            $this->resultados[$clave] = [];
+        }
+        if ($this->remoto()) {
+            $this->lanzarEnCola($pasos, $opc);
+            return;
+        }
+        $oks = [];
+        $desde = strlen($this->salida);
+        foreach ($pasos as $p) {
+            $this->salida .= "\n\n===== {$p['etiqueta']} =====\n";
+            $desde = strlen($this->salida);
+            if (! empty($p['windows']) && ! is_dir($this->scriptDir() . '/' . dirname($p['script']) . '/node_modules/playwright-core')) {
+                $dirWin = $this->rutaWindows($this->scriptDir() . '/' . dirname($p['script']));
+                $this->salida .= "⚠️ Falta playwright-core en este PC (se instala una sola vez).\n"
+                    . "   👉 Qué hacer: abre una consola de Windows (cmd) y ejecuta:\n"
+                    . "      cd /d \"{$dirWin}\"\n"
+                    . "      npm install\n"
+                    . '   y vuelve a pulsar el botón.';
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$p['etiqueta']}\nFalta instalar playwright-core en este PC. En la caja de Salida tienes los comandos.");
+                $oks[] = false;
+                continue;
+            }
+            [$args, $cwd, $env] = $this->comando($p);
+            $ficheros = $this->ejecutarScript($args, $p['timeout'] ?? 180, $p['etiqueta'], $cwd, $env);
+            $oks[] = $this->ultimoOk;
+            if ($clave !== null) {
+                $this->anexarResultados($clave, $ficheros);
+            }
+        }
+        $this->ultimoOk = ! in_array(false, $oks, true);
+        if (! empty($opc['post'])) {
+            $this->{$opc['post']}($opc['ctx'] ?? [], $desde, $oks);
+        }
+    }
+
+    /** Deja los pasos como una tarea para los PCs (la web no ejecuta nada por sí misma). */
+    protected function lanzarEnCola(array $pasos, array $opc): void
+    {
+        $etiquetas = array_column($pasos, 'etiqueta');
+        $titulo = implode(' + ', $etiquetas);
+        if (! Schema::hasTable('tareas') || ! Schema::hasTable('estado_procesos')) {
+            $this->salida .= "\n\n⚠️ {$titulo}: falta hacer la migración de la cola de tareas en este servidor.";
+            return;
+        }
+        $params = ['pasos' => array_map(fn ($p) => [
+            'script' => $p['script'], 'args' => array_map('strval', $p['args'] ?? []), 'timeout' => $p['timeout'] ?? 180,
+        ], $pasos)];
+        // Mismo botón pulsado dos veces: no se duplica (sobre todo importante en los envíos de correo).
+        $json = json_encode($params, JSON_UNESCAPED_UNICODE);
+        if (DB::table('tareas')->where('proceso', 'fiq.script')->whereIn('estado', ['pendiente', 'en_curso'])->where('parametros', $json)->exists()) {
+            $this->salida .= "\n\n⚠️ {$titulo}: ya está pedido y sin terminar (mira «Tareas en los PCs»).";
+            return;
+        }
+        $this->podarFicherosViejos();
+        $tid = ColaTareas::crear('fiq.script', $params, null, auth()->id(), ColaTareas::preferido());
+        $this->pendientes[$tid] = ['tipo' => 'script', 'etiquetas' => $etiquetas, 'post' => $opc['post'] ?? null,
+            'ctx' => $opc['ctx'] ?? [], 'resultados' => $opc['resultados'] ?? null];
+        $this->salida .= "\n\n⏳ {$titulo} · pedido a los PCs (tarea #{$tid}); el resultado saldrá aquí en cuanto lo terminen.";
+        if ($this->pcsConectados() === 0) {
+            $this->salida .= "\n⚠️ Ahora mismo no hay ningún PC conectado: esperará hasta que alguno arranque (puedes cancelarla en «Tareas en los PCs»).";
+        }
+    }
+
+    protected function pcsConectados(): int
+    {
+        return DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))->count();
+    }
+
+    /** Ficheros que subieron los PCs de tareas con más de 30 días. */
+    protected function podarFicherosViejos(): void
+    {
+        $base = storage_path('app/tareas');
+        foreach (is_dir($base) ? (glob($base . '/*', GLOB_ONLYDIR) ?: []) : [] as $d) {
+            if (filemtime($d) < time() - 30 * 86400) {
+                array_map('unlink', glob($d . '/*') ?: []);
+                @rmdir($d);
+            }
+        }
+    }
+
+    /** wire:poll mientras haya tareas pedidas: cierra las que ya han terminado (haciendo lo que haría el modo local). */
+    public function revisarTareas(): void
+    {
+        if (! $this->pendientes) {
+            return;
+        }
+        foreach ($this->pendientes as $tid => $p) {
+            $t = DB::table('tareas')->find($tid);
+            if ($t && in_array($t->estado, ['pendiente', 'en_curso'], true)) {
+                continue;
+            }
+            unset($this->pendientes[$tid]);
+            if (! $t || $t->estado === 'cancelada') {
+                $this->salida .= "\n\n🚫 " . implode(' + ', $p['etiquetas'] ?? ['Tarea']) . ' · cancelada.';
+                continue;
+            }
+            $this->cerrarTarea($t, $p);
+        }
+    }
+
+    protected function cerrarTarea(object $t, array $p): void
+    {
+        $res = json_decode((string) $t->resultado, true) ?: [];
+        if (($p['tipo'] ?? 'script') === 'estado') {
+            $this->recargarEstado();
+            return;
+        }
+        $etiquetas = $p['etiquetas'] ?? [];
+        $pasos = $res['pasos'] ?? [];
+        $oks = [];
+        $desde = strlen($this->salida);
+        if (! $pasos) {
+            // el trabajador falló antes de ejecutar nada (script no permitido, falta playwright...)
+            $this->salida .= "\n\n===== " . implode(' + ', $etiquetas) . " =====\n⚠️ " . trim((string) $t->log);
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ ' . implode(' + ', $etiquetas) . "\nNo se pudo ejecutar en el PC. Mira la caja de Salida.");
+            $this->ultimoOk = false;
+            return;
+        }
+        $pc = $res['pc'] ?? ($t->trabajador_id ? DB::table('trabajadores')->where('id', $t->trabajador_id)->value('nombre') : '');
+        foreach ($pasos as $i => $paso) {
+            $etiqueta = $etiquetas[$i] ?? ($paso['script'] ?? 'Proceso');
+            $this->salida .= "\n\n===== {$etiqueta}" . ($pc ? " · en {$pc}" : '') . " =====\n";
+            $desde = strlen($this->salida);
+            $this->salida .= (string) ($paso['salida'] ?? '');
+            $ok = ! empty($paso['ok']);
+            $oks[] = $ok;
+            if ($ok) {
+                $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
+            } else {
+                $this->salida .= "\n\n⚠️ El proceso terminó con código de salida " . ($paso['codigo'] ?? '?') . '.';
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código " . ($paso['codigo'] ?? '?') . "). Mira la caja de Salida: cada ⚠️ dice qué hacer (👉) si el proceso lo sabe.");
+            }
+            if (! empty($p['resultados'])) {
+                foreach ($paso['ficheros'] ?? [] as $f) {
+                    $this->anexarFicheroRemoto($p['resultados'], $f, (int) $t->id, (string) $pc);
+                }
+            }
+        }
+        $this->ultimoOk = ! in_array(false, $oks, true);
+        if (! empty($p['post'])) {
+            $this->{$p['post']}($p['ctx'] ?? [], $desde, $oks);
+        }
+    }
+
+    /** Fichero resultado de una tarea de un PC: ruta Windows en ese PC y, si se subió, botón de descarga. */
+    protected function anexarFicheroRemoto(string $key, array $f, int $tid, string $pc): void
+    {
+        $win = $this->rutaWindows((string) $f['ruta']);
+        foreach ($this->resultados[$key] ?? [] as $r) {
+            if (($r['ruta'] ?? '') === $win) {
+                return;
+            }
+        }
+        $this->resultados[$key][] = ['ruta' => $win . ($pc ? " ({$pc})" : ''), 'url' => null, 'local' => null,
+            'tarea' => ! empty($f['subido']) ? $tid : null, 'nombre' => (string) ($f['nombre'] ?? basename($win))];
+    }
+
+    /** «⬇ Descargar» de un fichero que subió un PC al terminar una tarea (web). */
+    public function descargarDeTarea(int $tid, string $nombre)
+    {
+        $nombre = basename($nombre);
+        $ruta = ColaTareas::carpetaFicheros($tid) . '/' . $nombre;
+        if ($nombre === '' || ! is_file($ruta)) {
+            $this->salida .= "\n\n⚠️ No puedo descargar ese fichero (ya no está en el servidor; se borran a los 30 días).";
+            return null;
+        }
+        return response()->download($ruta, $nombre);
+    }
+
+    /** Anula una tarea que aún no ha cogido ningún PC (p. ej. un envío pedido con todos los PCs apagados). */
+    public function cancelarTarea(int $tid): void
+    {
+        $n = DB::table('tareas')->where('id', $tid)->where('estado', 'pendiente')->update(['estado' => 'cancelada', 'terminada_at' => now(), 'updated_at' => now()]);
+        $this->salida .= $n ? "\n\n🚫 Tarea #{$tid} cancelada." : "\n\n⚠️ La tarea #{$tid} ya la ha cogido un PC (o ya terminó): no se puede cancelar.";
+        $this->revisarTareas();
+    }
+
+    /** PCs trabajadores y últimas tareas, para el panel «Tareas en los PCs» (solo en la web). */
+    public function getPcsProperty(): array
+    {
+        if (! $this->remoto() || ! Schema::hasTable('trabajadores') || ! Schema::hasTable('tareas')) {
+            return ['pcs' => [], 'tareas' => []];
+        }
+        $limite = now()->subSeconds(ColaTareas::LATIDO_MAX);
+        return [
+            'pcs' => DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()
+                ->map(fn ($t) => ['nombre' => $t->nombre, 'conectado' => $t->ultimo_latido && $t->ultimo_latido >= $limite->toDateTimeString(), 'latido' => $t->ultimo_latido])->all(),
+            'tareas' => DB::table('tareas')->leftJoin('trabajadores', 'trabajadores.id', '=', 'tareas.trabajador_id')
+                ->whereIn('tareas.proceso', ['fiq.script', 'fiq.estado', 'fiq.checklist'])->orderByDesc('tareas.id')->limit(6)
+                ->get(['tareas.id', 'tareas.proceso', 'tareas.parametros', 'tareas.estado', 'tareas.created_at', 'trabajadores.nombre as pc'])->all(),
+        ];
+    }
+
+    // -- Estado que dejan los scripts (JSON en los PCs; en la web, copia en BD) -------------------------
+
+    /** Lee un JSON de estado: del fichero en un PC, de la copia que subió el trabajador en la web. */
+    protected function estadoFiq(string $clave, ?string $fichero): ?array
+    {
+        if ($this->remoto()) {
+            try {
+                $d = Schema::hasTable('estado_procesos') ? ColaTareas::estado($clave) : null;
+            } catch (\Throwable $e) {
+                $d = null;
+            }
+            return is_array($d) ? $d : null;
+        }
+        $d = $fichero && is_file($fichero) ? json_decode((string) file_get_contents($fichero), true) : null;
+
+        return is_array($d) ? $d : null;
+    }
+
+    /** Web: pide a un PC que suba el estado si no hay copia o es vieja (>30 min). Sin esperar: se recarga al llegar. */
+    protected function sincronizarEstado(bool $forzar = false): void
+    {
+        if (! $this->remoto() || ! Schema::hasTable('estado_procesos') || ! Schema::hasTable('tareas')) {
+            return;
+        }
+        $ultima = DB::table('estado_procesos')->where('clave', 'fiq.checklist_def')->value('updated_at');
+        if (! $forzar && $ultima && \Carbon\Carbon::parse($ultima)->gt(now()->subMinutes(30))) {
+            return;
+        }
+        if (DB::table('tareas')->where('proceso', 'fiq.estado')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            return;
+        }
+        $tid = ColaTareas::crear('fiq.estado', [], null, auth()->id(), ColaTareas::preferido());
+        $this->pendientes[$tid] = ['tipo' => 'estado', 'etiquetas' => ['Estado de los procesos'], 'post' => null, 'ctx' => [], 'resultados' => null];
+    }
+
+    public function sincronizarAhora(): void
+    {
+        $this->sincronizarEstado(true);
+    }
+
+    /** Ha llegado estado nuevo de un PC: vuelve a cargar lo que depende de él (sin tocar lo que el usuario esté escribiendo). */
+    protected function recargarEstado(): void
+    {
+        unset($this->checklist, $this->checklistMarcas);
+        $this->cargarBasePagosFinMes();
+        if (! $this->pfRecFilas && trim($this->pfSaldo) === '' && trim($this->pfIva) === '') {
+            $this->updatedPfMes();
+        }
+        $this->cargarCashInStore($this->cisAbierto);
+    }
+
     protected function ejecutarUno(string $id): void
     {
         $procesos = $this->procesos();
@@ -443,44 +730,27 @@ class Procesos extends Component
         // Un proceso puede lanzar varios scripts seguidos ('scripts' => [...]);
         // 'script' => '...' es el caso de uno solo.
         $scripts = $p['scripts'] ?? [$p['script']];
-
-        $this->resultados[$id] = []; // se refresca en cada ejecución
-        $todoOk = true;
+        $pasos = [];
         foreach ($scripts as $script) {
-            $windows = ! empty($p['windows']);
-            $args = match (true) {
-                $windows => $this->windowsCmd($script, [$mm]),
-                ! empty($p['python']) => ['python3', $script, $mm],
-                default => $this->nodeCmd($script, [$mm]),
-            };
-            if ($p['soportaReal']) {
-                $args[] = '--real'; // siempre real (ya no hay check "Modo real")
-            }
             $sufijo = count($scripts) > 1 ? " · {$script}" : '';
-            $etiqueta = "{$p['label']}{$sufijo} (mes {$mm}, REAL)";
-            $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            if ($windows && ! is_dir($this->scriptDir() . '/' . dirname($script) . '/node_modules/playwright-core')) {
-                $dirWin = $this->rutaWindows($this->scriptDir() . '/' . dirname($script));
-                $this->salida .= "⚠️ Falta playwright-core en este PC (se instala una sola vez).\n"
-                    . "   👉 Qué hacer: abre una consola de Windows (cmd) y ejecuta:\n"
-                    . "      cd /d \"{$dirWin}\"\n"
-                    . "      npm install\n"
-                    . '   y vuelve a pulsar el botón.';
-                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nFalta instalar playwright-core en este PC. En la caja de Salida tienes los comandos.");
-                continue;
-            }
-            $this->anexarResultados($id, $this->ejecutarScript(
-                $args,
-                $p['timeout'] ?? 180,
-                $etiqueta,
-                $windows ? $this->scriptDir() . '/' . dirname($script) : null,
-                $windows ? $this->windowsEnv() : []
-            ));
-            $todoOk = $todoOk && $this->ultimoOk;
+            $pasos[] = [
+                'script' => $script,
+                // siempre real (ya no hay check "Modo real")
+                'args' => $p['soportaReal'] ? [$mm, '--real'] : [$mm],
+                'timeout' => $p['timeout'] ?? 180,
+                'etiqueta' => "{$p['label']}{$sufijo} (mes {$mm}, REAL)",
+                'windows' => ! empty($p['windows']),
+            ];
         }
-        if ($todoOk) {
-            // con envío aparte (Cash flow): procesado ≠ hecho; se cierra al enviar
-            $this->marcarChecklist($id, $this->mes, ! empty($p['envio']) ? 'proc' : 'ok');
+        $this->lanzar($pasos, ['resultados' => $id, 'post' => 'postProceso', 'ctx' => ['id' => $id, 'mes' => $this->mes]]);
+    }
+
+    /** Fin de un proceso de la tabla: si todo fue bien, marca el checklist (con envío aparte: «procesado», no «hecho»). */
+    protected function postProceso(array $ctx, int $desde, array $oks): void
+    {
+        if (! in_array(false, $oks, true)) {
+            $p = $this->procesos()[$ctx['id']] ?? [];
+            $this->marcarChecklist($ctx['id'], $ctx['mes'], ! empty($p['envio']) ? 'proc' : 'ok');
         }
     }
 
@@ -532,34 +802,36 @@ class Procesos extends Component
      */
     public function ejecutarRvCalculosYDeclaracion(): void
     {
-        $this->resultados['rv'] = [];
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
-
-        $args = $this->nodeCmd('calculosRentasVariables.js', [$mm, '--no-open', '--real']);
-        $etiqueta = "RentasVariables · Cálculos (mes {$mm}, REAL)";
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->anexarResultados('rv', $this->ejecutarScript($args, 180, $etiqueta));
-        if ($this->ultimoOk) {
-            $this->marcarChecklist('rv_calculos', $this->mes);
-        }
+        $pasos = [[
+            'script' => 'calculosRentasVariables.js', 'args' => [$mm, '--no-open', '--real'], 'timeout' => 180,
+            'etiqueta' => "RentasVariables · Cálculos (mes {$mm}, REAL)",
+        ]];
 
         $tiendas = array_values(array_intersect(
             array_keys($this->rvTiendasArrendador()),
             $this->rvTiendas
         ));
         if (empty($tiendas)) {
-            $this->salida .= "\n\n(Declaración a arrendador: no hay ninguna tienda marcada -- Barcelona / Málaga -- así que solo se han hecho los Cálculos.)\n";
-            return;
+            $this->salida .= "\n\n(Declaración a arrendador: no hay ninguna tienda marcada -- Barcelona / Málaga -- así que solo se hacen los Cálculos.)\n";
         }
-
         foreach ($tiendas as $tienda) {
-            $args = $this->nodeCmd('rentasVariablesDeclaracion.js', [$tienda, $mm, '--real']);
-            $etiqueta = "RentasVariables · Declaración {$tienda} (mes {$mm}, REAL)";
-            $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            $this->anexarResultados('rv', $this->ejecutarScript($args, 180, $etiqueta));
-            if ($this->ultimoOk) {
-                $this->marcarChecklist('rv_certificacion', $this->mes);
-            }
+            $pasos[] = [
+                'script' => 'rentasVariablesDeclaracion.js', 'args' => [$tienda, $mm, '--real'], 'timeout' => 180,
+                'etiqueta' => "RentasVariables · Declaración {$tienda} (mes {$mm}, REAL)",
+            ];
+        }
+        $this->lanzar($pasos, ['resultados' => 'rv', 'post' => 'postRvCalculos', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    /** $oks[0] = Cálculos; el resto, una Declaración por tienda marcada. */
+    protected function postRvCalculos(array $ctx, int $desde, array $oks): void
+    {
+        if ($oks[0] ?? false) {
+            $this->marcarChecklist('rv_calculos', $ctx['mes']);
+        }
+        if (in_array(true, array_slice($oks, 1), true)) {
+            $this->marcarChecklist('rv_certificacion', $ctx['mes']);
         }
     }
 
@@ -579,21 +851,21 @@ class Procesos extends Component
             return;
         }
 
-        $args = ['python3', 'enviarRentasVariables.py', $tienda];
+        $args = [$tienda];
         if (! empty($cfg['correccion'])) {
             $args[] = '--correction';
         }
-        $args[] = '--real';
-        $args[] = '--to';
-        $args[] = $to;
-        $args[] = '--cc';
-        $args[] = $cc;
+        array_push($args, '--real', '--to', $to, '--cc', $cc);
 
-        $etiqueta = "RentasVariables · Envío {$tienda} (REAL, a {$to})";
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->ejecutarScript($args, 120, $etiqueta);
-        if ($this->ultimoOk) {
-            $this->marcarChecklist('rv_envio', $this->mes);
+        $this->lanzar([['script' => 'enviarRentasVariables.py', 'args' => $args, 'timeout' => 120,
+            'etiqueta' => "RentasVariables · Envío {$tienda} (REAL, a {$to})"]],
+            ['post' => 'postRvEnvio', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    protected function postRvEnvio(array $ctx, int $desde, array $oks): void
+    {
+        if (! in_array(false, $oks, true)) {
+            $this->marcarChecklist('rv_envio', $ctx['mes']);
         }
     }
 
@@ -611,21 +883,18 @@ class Procesos extends Component
             return;
         }
 
+        $pasos = [];
         foreach (array_keys($this->rvTiendasArrendador()) as $tienda) {
             $cfg = $this->rvEnvio[$tienda] ?? [];
-            $args = ['python3', 'enviarRentasVariables.py', $tienda, '--test', $email];
+            $args = [$tienda, '--test', $email];
             if (! empty($cfg['correccion'])) {
                 $args[] = '--correction';
             }
-            $args[] = '--to';
-            $args[] = trim($cfg['to'] ?? '');
-            $args[] = '--cc';
-            $args[] = trim($cfg['cc'] ?? '');
-
-            $etiqueta = "RentasVariables · Envío PRUEBA {$tienda} (a {$email})";
-            $this->salida .= "\n\n===== {$etiqueta} =====\n";
-            $this->ejecutarScript($args, 120, $etiqueta);
+            array_push($args, '--to', trim($cfg['to'] ?? ''), '--cc', trim($cfg['cc'] ?? ''));
+            $pasos[] = ['script' => 'enviarRentasVariables.py', 'args' => $args, 'timeout' => 120,
+                'etiqueta' => "RentasVariables · Envío PRUEBA {$tienda} (a {$email})"];
         }
+        $this->lanzar($pasos);
     }
 
     // -- Pagos fin de mes (correo a Plein) ------------------------------------
@@ -653,7 +922,7 @@ class Procesos extends Component
             return;
         }
 
-        $args = ['python3', 'pagosFinMes.py', (string) $this->pfMes, '--saldo', trim($this->pfSaldo)];
+        $args = [(string) $this->pfMes, '--saldo', trim($this->pfSaldo)];
         foreach (['--iva' => $this->pfIva, '--ss' => $this->pfSs] as $opt => $v) {
             if (trim($v) !== '') {
                 array_push($args, $opt, trim($v));
@@ -680,17 +949,18 @@ class Procesos extends Component
             'prueba' => 'prueba a ' . trim($this->pfEmailPrueba),
             default => 'vista previa',
         };
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->resultados['pf'] = [];
-        // windowsEnv(): el script llama a powershell.exe (Outlook) y bajo Apache
-        // el interop de WSL necesita WSL_INTEROP (igual que subirAnaplan.js).
-        $this->anexarResultados('pf', $this->ejecutarScript($args, 240, $etiqueta, null, $this->windowsEnv()));
-        if ($modo === 'real' && $this->ultimoOk) {
-            $this->marcarChecklist('pagos_fin_mes', $this->pfMes);
+        $this->lanzar([['script' => 'pagosFinMes.py', 'args' => $args, 'timeout' => 240, 'etiqueta' => $etiqueta]],
+            ['resultados' => 'pf', 'post' => 'postPagosFinMes', 'ctx' => ['modo' => $modo, 'mes' => $this->pfMes]]);
+    }
+
+    protected function postPagosFinMes(array $ctx, int $desde, array $oks): void
+    {
+        if ($ctx['modo'] === 'real' && ! in_array(false, $oks, true)) {
+            $this->marcarChecklist('pagos_fin_mes', $ctx['mes']);
         }
-        if ($modo === 'real') {
+        if ($ctx['modo'] === 'real') {
             $this->cargarBasePagosFinMes(); // ya es la base del mes que viene
-            $this->pfEnviado = (string) ($this->confPagosFinMes()['meses'][sprintf('%02d', $this->pfMes)]['enviado'] ?? '');
+            $this->pfEnviado = (string) ($this->confPagosFinMes()['meses'][sprintf('%02d', $ctx['mes'])]['enviado'] ?? '');
         }
     }
 
@@ -776,9 +1046,12 @@ class Procesos extends Component
     {
         $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
         $etiqueta = "Pagos fin de mes {$mm} · buscar importes";
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $desde = strlen($this->salida);
-        $this->ejecutarScript(['python3', 'pagosFinMes.py', (string) $this->pfMes, '--buscar'], 240, $etiqueta, null, $this->windowsEnv());
+        $this->lanzar([['script' => 'pagosFinMes.py', 'args' => [(string) $this->pfMes, '--buscar'], 'timeout' => 240, 'etiqueta' => $etiqueta]],
+            ['post' => 'postBuscarImportes']);
+    }
+
+    protected function postBuscarImportes(array $ctx, int $desde, array $oks): void
+    {
         $nuevo = substr($this->salida, $desde);
         $campos = ['iva' => 'pfIva', 'ss' => 'pfSs', 'nominas' => 'pfNominas'];
         if (preg_match_all('/^DATO (\w+)=([\d.\-]+)\s*$/m', $nuevo, $m, PREG_SET_ORDER)) {
@@ -816,9 +1089,12 @@ class Procesos extends Component
     {
         $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
         $etiqueta = "Pagos fin de mes {$mm} · cargar correo enviado";
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $desde = strlen($this->salida);
-        $this->ejecutarScript(['python3', 'pagosFinMes.py', (string) $this->pfMes, '--leer-enviado'], 240, $etiqueta, null, $this->windowsEnv());
+        $this->lanzar([['script' => 'pagosFinMes.py', 'args' => [(string) $this->pfMes, '--leer-enviado'], 'timeout' => 240, 'etiqueta' => $etiqueta]],
+            ['post' => 'postLeerEnviado']);
+    }
+
+    protected function postLeerEnviado(array $ctx, int $desde, array $oks): void
+    {
         $nuevo = substr($this->salida, $desde);
         $filas = [];
         if (preg_match_all('/^FILA (.*)$/m', $nuevo, $m)) {
@@ -857,7 +1133,7 @@ class Procesos extends Component
             $this->dispatch('proceso-terminado', mensaje: "⚠️ Recordatorio\n" . ucfirst($error));
             return;
         }
-        $args = ['python3', 'pagosFinMes.py', (string) $this->pfMes, '--recordatorio',
+        $args = [(string) $this->pfMes, '--recordatorio',
             '--saldo', trim($this->pfRecSaldo), '--texto', $this->pfRecTexto,
             '--filas', json_encode(array_values($this->pfRecFilas), JSON_UNESCAPED_UNICODE)];
         $args = array_merge($args, match ($modo) {
@@ -865,9 +1141,7 @@ class Procesos extends Component
             'prueba' => ['--test', trim($this->pfEmailPrueba)],
             default => ['--sin-enviar'],
         });
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->resultados['pfRec'] = [];
-        $this->anexarResultados('pfRec', $this->ejecutarScript($args, 240, $etiqueta, null, $this->windowsEnv()));
+        $this->lanzar([['script' => 'pagosFinMes.py', 'args' => $args, 'timeout' => 240, 'etiqueta' => $etiqueta]], ['resultados' => 'pfRec']);
     }
 
     /** Totales del recordatorio para verlos en la tarjeta (mismas cuentas que el script). */
@@ -948,11 +1222,16 @@ class Procesos extends Component
     {
         $mm = $this->cisMm();
         $etiqueta = "Cash in store {$mm} · buscar en Outlook";
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        // windowsEnv(): el script llama a powershell.exe (Outlook) y bajo Apache necesita WSL_INTEROP.
-        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--buscar'], 300, $etiqueta, null, $this->windowsEnv());
+        $this->lanzar([['script' => 'CashInStore/cashInStore.py', 'args' => [(string) $this->mes, '--buscar'], 'timeout' => 300, 'etiqueta' => $etiqueta]],
+            ['post' => 'postBuscarCashInStore', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    protected function postBuscarCashInStore(array $ctx, int $desde, array $oks): void
+    {
         $this->salida = preg_replace('/^CASH_JSON:.*(\r?\n)?/m', '', $this->salida);
-        $this->cargarCashInStore(true);
+        if ($ctx['mes'] === $this->mes) {
+            $this->cargarCashInStore(true);
+        }
     }
 
     /**
@@ -963,8 +1242,7 @@ class Procesos extends Component
     {
         $this->cisFilas = [];
         $this->cisAbierto = $abrir;
-        $fichero = $this->scriptDir() . '/CashInStore/_cashInStore_' . $this->cisMm() . '.json';
-        $datos = is_file($fichero) ? json_decode((string) file_get_contents($fichero), true) : null;
+        $datos = $this->estadoFiq('fiq.cashInStore.' . $this->cisMm(), $this->scriptDir() . '/CashInStore/_cashInStore_' . $this->cisMm() . '.json');
         if (! is_array($datos)) {
             return;
         }
@@ -996,9 +1274,7 @@ class Procesos extends Component
             $this->salida .= "\n\n⚠️ {$etiqueta}: no falta ninguna tienda (pulsa antes «Buscar»).";
             return;
         }
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        // windowsEnv(): tras enviar, mueve cada correo en Outlook (powershell.exe) a Cash end Month
-        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 600, $etiqueta, null, $this->windowsEnv());
+        $this->lanzar([['script' => 'CashInStore/cashInStore.py', 'args' => [(string) $this->mes, '--pedir', implode(',', $faltan), '--real'], 'timeout' => 600, 'etiqueta' => $etiqueta]]);
     }
 
     /** Cash flow: manda el Cashflow del mes a Plein (Graph) y lo marca como hecho (enviado). */
@@ -1006,12 +1282,14 @@ class Procesos extends Component
     {
         $mm = $this->cisMm();
         $etiqueta = "Cash flow {$mm} · envío a Plein";
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $desde = strlen($this->salida);
-        // windowsEnv(): tras enviar, mueve el correo en Outlook (powershell.exe) a su carpeta
-        $this->ejecutarScript(['python3', 'CashFlow/cashflow.py', (string) $this->mes, '--enviar', '--real'], 300, $etiqueta, null, $this->windowsEnv());
-        if ($this->ultimoOk && str_contains(substr($this->salida, $desde), 'ENVIADO_REAL')) {
-            $this->marcarChecklist('cashflow', $this->mes, 'ok');
+        $this->lanzar([['script' => 'CashFlow/cashflow.py', 'args' => [(string) $this->mes, '--enviar', '--real'], 'timeout' => 300, 'etiqueta' => $etiqueta]],
+            ['post' => 'postEnviarCashflow', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    protected function postEnviarCashflow(array $ctx, int $desde, array $oks): void
+    {
+        if (! in_array(false, $oks, true) && str_contains(substr($this->salida, $desde), 'ENVIADO_REAL')) {
+            $this->marcarChecklist('cashflow', $ctx['mes'], 'ok');
         }
         $this->salida = preg_replace('/^ENVIADO_REAL\s*$/m', '', $this->salida);
     }
@@ -1025,9 +1303,7 @@ class Procesos extends Component
             $this->salida .= "\n\n⚠️ {$etiqueta}: no falta ninguna tienda (pulsa antes «Buscar»).";
             return;
         }
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->ejecutarScript(['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--recordatorio', implode(',', $faltan)],
-            240, $etiqueta, null, $this->windowsEnv());
+        $this->lanzar([['script' => 'CashInStore/cashInStore.py', 'args' => [(string) $this->mes, '--recordatorio', implode(',', $faltan)], 'timeout' => 240, 'etiqueta' => $etiqueta]]);
     }
 
     /** Escribe la fila del mes en "Cash End Month" de Ctrol Dinamico. */
@@ -1046,12 +1322,14 @@ class Procesos extends Component
             $this->salida .= "\n\n⚠️ {$etiqueta}: no hay importes que grabar.";
             return;
         }
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
-        $this->resultados['cis'] = [];
-        $this->anexarResultados('cis', $this->ejecutarScript(
-            ['python3', 'CashInStore/cashInStore.py', (string) $this->mes, '--grabar', '--datos', json_encode($datos), '--real'], 120, $etiqueta));
-        if ($this->ultimoOk) {
-            $this->marcarChecklist('cash_in_store', $this->mes);
+        $this->lanzar([['script' => 'CashInStore/cashInStore.py', 'args' => [(string) $this->mes, '--grabar', '--datos', json_encode($datos), '--real'], 'timeout' => 120, 'etiqueta' => $etiqueta]],
+            ['resultados' => 'cis', 'post' => 'postGrabarCashInStore', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    protected function postGrabarCashInStore(array $ctx, int $desde, array $oks): void
+    {
+        if (! in_array(false, $oks, true)) {
+            $this->marcarChecklist('cash_in_store', $ctx['mes']);
         }
     }
 
@@ -1080,8 +1358,7 @@ class Procesos extends Component
      */
     public function getChecklistProperty(): array
     {
-        $f = $this->scriptDir() . '/checklist.json';
-        $d = is_file($f) ? json_decode((string) file_get_contents($f), true) : null;
+        $d = $this->estadoFiq('fiq.checklist_def', $this->scriptDir() . '/checklist.json');
         $procesos = $d['procesos'] ?? [];
         $orden = array_flip($this->leerChecklistEstado()['orden'] ?? []);
         $pos = fn ($p, $i) => $orden[$p['id']] ?? (count($orden) + $i);
@@ -1105,7 +1382,7 @@ class Procesos extends Component
         $this->escribirChecklistEstado(function (array $d) use ($ids) {
             $d['orden'] = $ids;
             return $d;
-        });
+        }, ['op' => 'orden', 'ids' => $ids]);
     }
 
     protected function checklistEstadoPath(): ?string
@@ -1123,8 +1400,7 @@ class Procesos extends Component
 
     protected function leerChecklistEstado(): array
     {
-        $f = $this->checklistEstadoPath();
-        $d = ($f && is_file($f)) ? json_decode((string) file_get_contents($f), true) : null;
+        $d = $this->estadoFiq('fiq.checklist_estado', $this->checklistEstadoPath());
         return is_array($d) ? $d + ['marcas' => []] : ['marcas' => []];
     }
 
@@ -1147,12 +1423,25 @@ class Procesos extends Component
             }
             ksort($d['marcas']);
             return $d;
-        });
+        }, ['op' => 'marca', 'id' => $id, 'mes' => $mes, 'marca' => $marca]);
     }
 
-    /** Lee el estado de OneDrive, le aplica $cambio y lo escribe (atómico). */
-    protected function escribirChecklistEstado(callable $cambio): void
+    /**
+     * Lee el estado de OneDrive, le aplica $cambio y lo escribe (atómico). En la web no hay OneDrive: se aplica
+     * a la copia de la BD (para verlo al momento) y se pide a un PC que haga el mismo cambio ($op) en OneDrive.
+     */
+    protected function escribirChecklistEstado(callable $cambio, array $op): void
     {
+        if ($this->remoto()) {
+            if (! Schema::hasTable('estado_procesos') || ! Schema::hasTable('tareas')) {
+                $this->salida .= "\n\n⚠️ Checklist: falta la migración de la cola de tareas; no se ha guardado.";
+                return;
+            }
+            ColaTareas::guardarEstado('fiq.checklist_estado', $cambio($this->leerChecklistEstado()), 'web');
+            ColaTareas::crear('fiq.checklist', $op, null, auth()->id(), ColaTareas::preferido());
+            unset($this->checklist, $this->checklistMarcas);
+            return;
+        }
         $f = $this->checklistEstadoPath();
         if (! $f) {
             $this->salida .= "\n\n⚠️ Checklist: no encuentro la carpeta Fashion 2026 de OneDrive; no se ha guardado.";

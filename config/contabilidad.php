@@ -158,6 +158,20 @@ return [
     */
     'tareas_procesos' => [
         'certificados.escanear' => 'Escanear los certificados digitales de este PC',
+        // Procesos FIQ (pantalla Procesos) desde la web: el PC ejecuta uno o varios scripts de monthlyFIQ de la
+        // lista cerrada 'fiq_scripts' (nunca rutas ni comandos libres) y devuelve salida, ficheros y estado.
+        'fiq.script' => 'Ejecutar scripts de monthlyFIQ',
+        'fiq.estado' => 'Subir el estado de los procesos FIQ (pagosFinMes.json, Cash in store, checklist)',
+        'fiq.checklist' => 'Aplicar un cambio del checklist de cierre en OneDrive',
+    ],
+
+    // Scripts de monthlyFIQ que el trabajador puede ejecutar (ruta relativa a monthlyFIQ). El tipo (node, python,
+    // node de Windows) lo decide el trabajador, no la web. Si se añade uno aquí, también en trabajador.py.
+    'fiq_scripts' => [
+        'monthlyFIQ.js', 'sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js', 'anaplanWeb/subirAnaplan.js',
+        'imputacionCostes.js', 'adyenReparto.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
+        'enviarRentasVariables.py', 'pagosFinMes.py', 'FacturasEmitidas/facturasEmitidas.py', 'CashFlow/cashflow.py',
+        'CashInStore/cashInStore.py',
     ],
 
 ];

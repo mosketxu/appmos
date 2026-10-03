@@ -13,14 +13,57 @@ class ColaTareas
     /** Segundos sin latido tras los cuales una tarea «en curso» se da por perdida y vuelve a la cola. */
     public const LATIDO_MAX = 120;
 
-    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null): int
+    /** Minutos durante los que el PC que hizo la última tarea FIQ sigue siendo el «preferido» para la siguiente. */
+    public const PREFERIDO_MIN = 15;
+
+    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null, ?string $preferido = null): int
     {
         abort_unless(array_key_exists($proceso, config('contabilidad.tareas_procesos', [])), 422, 'Proceso no permitido');
+        if ($proceso === 'fiq.script') {
+            foreach ((array) ($parametros['pasos'] ?? []) as $paso) {
+                abort_unless(in_array($paso['script'] ?? null, config('contabilidad.fiq_scripts', []), true), 422, 'Script no permitido');
+                abort_unless(collect($paso['args'] ?? [])->every(fn ($a) => is_scalar($a)), 422, 'Argumentos no válidos');
+            }
+        }
 
         return DB::table('tareas')->insertGetId([
             'proceso' => $proceso, 'parametros' => json_encode($parametros, JSON_UNESCAPED_UNICODE), 'destino' => $destino,
-            'estado' => 'pendiente', 'user_id' => $userId, 'created_at' => now(), 'updated_at' => now(),
+            'preferido' => $preferido, 'estado' => 'pendiente', 'user_id' => $userId, 'created_at' => now(), 'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * PC que hizo la última tarea FIQ hace poco y sigue conectado: los pasos encadenados de un proceso van mejor
+     * al mismo PC (OneDrive tarda en sincronizar el fichero que acaba de dejar el otro).
+     */
+    public static function preferido(): ?string
+    {
+        $t = DB::table('tareas')->join('trabajadores', 'trabajadores.id', '=', 'tareas.trabajador_id')
+            ->where('tareas.proceso', 'fiq.script')->where('tareas.estado', 'ok')
+            ->where('tareas.terminada_at', '>=', now()->subMinutes(self::PREFERIDO_MIN))
+            ->where('trabajadores.ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))
+            ->orderByDesc('tareas.id')->first(['trabajadores.nombre']);
+
+        return $t->nombre ?? null;
+    }
+
+    public static function estado(string $clave): mixed
+    {
+        $v = DB::table('estado_procesos')->where('clave', $clave)->value('valor');
+
+        return $v === null ? null : json_decode($v, true);
+    }
+
+    public static function guardarEstado(string $clave, mixed $valor, ?string $origen = null): void
+    {
+        DB::table('estado_procesos')->updateOrInsert(['clave' => $clave],
+            ['valor' => json_encode($valor, JSON_UNESCAPED_UNICODE), 'origen' => $origen, 'updated_at' => now(), 'created_at' => now()]);
+    }
+
+    /** Carpeta donde se guardan los ficheros que subió el PC al terminar una tarea. */
+    public static function carpetaFicheros(int $tareaId): string
+    {
+        return storage_path('app/tareas/'.$tareaId);
     }
 
     /** Alta de un trabajador; devuelve el token en claro (solo se ve esta vez). */
@@ -74,6 +117,8 @@ class ColaTareas
             $q = DB::table('tareas')->where('estado', 'pendiente')
                 ->whereIn('proceso', $capacidades)
                 ->where(fn ($q) => $q->whereNull('destino')->orWhere('destino', $t->nombre))
+                ->where(fn ($q) => $q->whereNull('preferido')->orWhere('preferido', $t->nombre)
+                    ->orWhereNotIn('preferido', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')))
                 ->orderBy('id')->lockForUpdate();
             $tarea = $q->first();
             if (! $tarea) {
@@ -113,6 +158,14 @@ class ColaTareas
                 $ok = false;
                 $extra = "\nNo se pudo guardar el escaneo: ".$e->getMessage();
             }
+        }
+        // Procesos FIQ: el PC sube una copia del estado que han dejado los scripts (OneDrive sigue siendo la verdad).
+        if (str_starts_with($tarea->proceso, 'fiq.') && is_array($resultado['estado'] ?? null)) {
+            $nombre = DB::table('trabajadores')->where('id', $trabajadorId)->value('nombre');
+            foreach ($resultado['estado'] as $clave => $valor) {
+                self::guardarEstado((string) $clave, $valor, $nombre);
+            }
+            unset($resultado['estado']);
         }
         DB::table('tareas')->where('id', $id)->update([
             'estado' => $ok ? 'ok' : 'error', 'resultado' => $resultado === null ? null : json_encode($resultado, JSON_UNESCAPED_UNICODE),

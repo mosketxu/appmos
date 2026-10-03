@@ -54,6 +54,22 @@ class TrabajadorApiController extends Controller
         return response()->json(['ok' => ColaTareas::anadirLog($id, $t->id, (string) $r->input('texto', ''))]);
     }
 
+    /** El PC sube un fichero resultado de la tarea (cuerpo = el fichero; nombre en X-Nombre, en base64). */
+    public function fichero(Request $r, int $id)
+    {
+        $t = $this->trabajador($r);
+        abort_unless(\Illuminate\Support\Facades\DB::table('tareas')->where('id', $id)->where('trabajador_id', $t->id)->where('estado', 'en_curso')->exists(), 404);
+        $nombre = basename(str_replace('\\', '/', (string) base64_decode((string) $r->header('X-Nombre'), true)));
+        abort_if($nombre === '' || $nombre[0] === '.', 422, 'Nombre no válido');
+        $dir = ColaTareas::carpetaFicheros($id);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        file_put_contents($dir.'/'.$nombre, $r->getContent());
+
+        return response()->json(['ok' => true]);
+    }
+
     public function fin(Request $r, int $id)
     {
         $t = $this->trabajador($r);

@@ -15,6 +15,7 @@ class ColaTareasTest extends TestCase
         parent::setUp();
         Schema::create('users', fn ($t) => $t->id());
         (require base_path('database/migrations/2026_10_02_140000_create_trabajadores_tareas_tables.php'))->up();
+        (require base_path('database/migrations/2026_10_03_210000_create_estado_procesos_table.php'))->up();
         Schema::create('certificados_escaneos', function ($t) {
             $t->id(); $t->string('pc')->unique(); $t->string('escaneado'); $t->longText('certs'); $t->timestamps();
         });
