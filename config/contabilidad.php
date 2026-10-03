@@ -194,6 +194,9 @@ return [
         ]],
         // Facturación PDF (Suma/Balerga): el PDF subido viaja como entrada y el PC lo procesa con su OneDrive.
         'facturacion' => ['scripts' => ['procesar_facturas.py', 'herramientas/listar_destinatarios.py']],
+        // Durcal: el .XLS de nóminas y el Amortizacion (.xlsm, con Excel por COM) están en el OneDrive del PC; un solo PC para no escribir
+        // dos veces: DURCAL_PC=AlexMiniPC en el .env del VPS. Los ficheros resultado NO se suben a la web (son nóminas).
+        'durcal' => ['pc' => env('DURCAL_PC'), 'scripts' => ['activarDurcal.py']],
         // Neteges: la base (xlsx) va por git, así que solo un PC debe modificarla: NETEGES_PC=AlexMiniPC en el .env del VPS.
         'neteges' => ['pc' => env('NETEGES_PC'), 'scripts' => [
             'neteges_base.py', 'neteges_cobros.py', 'neteges_conciliar.py', 'neteges_estado.py', 'neteges_extractos.py',
@@ -208,7 +211,7 @@ return [
     // ENTRADA ÚNICA (3-oct-2026): solo se entra por la web. En un PC, ENTRADA_WEB_URL=https://appmos.sumaempresa.com hace que todas las
     // páginas redirijan a la web (nunca ponerla en el VPS). Excepciones = pantallas que aún solo funcionan en el PC; la lista debe quedar vacía.
     'entrada_web_url' => env('ENTRADA_WEB_URL'),
-    'entrada_web_excepciones' => ['contabilidad/durcal*'],
+    'entrada_web_excepciones' => [],
 
     // En un PC (localhost) el TO-DO no tiene datos propios: los trabajadores, el uso del plan y las tareas de verdad están en la BD del VPS.
     // Con TODO_URL puesta, la pestaña TO-DO (y su campana y la barra de Claude) llevan a la web, como Bancos e IS.
