@@ -11,7 +11,7 @@
         'contabilidad.procesosmensuales' => 'contabilidad.procesos-mensuales',
     ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
 @endphp
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+<nav x-data="{ open: false }" class="relative bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
     <div class="max-w-full px-4 mx-auto">
         <div class="flex justify-between h-14">
@@ -70,6 +70,11 @@
                     </div>
                     --}}
                 </div>
+            </div>
+
+            {{-- Campana del TO-DO: centrada en la barra --}}
+            <div class="hidden sm:flex sm:items-center" style="position:absolute;left:50%;top:0;height:3.5rem;transform:translateX(-50%)">
+                @livewire('todo-campana')
             </div>
 
             <div class="hidden sm:flex sm:items-center sm:ml-6">

@@ -187,4 +187,24 @@ class TodoTest extends TestCase
         Livewire::test(Todo::class)->set('verUsuario', $bea->id)->call('reordenar', [$id('Uno'), $id('Dos'), $id('Tres')]);
         $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
     }
+
+    public function test_la_campana_avisa_de_asignaciones_y_respuestas(): void
+    {
+        $ana = $this->usuario('Ana');
+        $bea = $this->usuario('Bea');
+        $this->actingAs($ana);
+        Livewire::test(Todo::class)->set('titulo', 'Para Bea')->set('asignadosIds', [$ana->id, $bea->id])->call('crear');
+        $t = TodoTarea::first();
+        $this->assertSame(0, \App\Models\TodoAviso::where('user_id', $ana->id)->count());   // a uno mismo no se avisa
+        $this->assertSame(1, \App\Models\TodoAviso::where('user_id', $bea->id)->sinLeer()->count());
+
+        $this->actingAs($bea);
+        Livewire::test(\App\Http\Livewire\TodoCampana::class)->assertSee('Ana')->assertSee('te ha asignado');
+        Livewire::test(Todo::class)->call('abrir', $t->id);                      // abrir la tarea la marca leída
+        $this->assertSame(0, \App\Models\TodoAviso::where('user_id', $bea->id)->sinLeer()->count());
+
+        Livewire::test(Todo::class)->set('comentario', 'Hecho')->call('comentar', $t->id);
+        $this->assertSame(1, \App\Models\TodoAviso::where('user_id', $ana->id)->sinLeer()->where('texto', 'ha respondido')->count());
+        $this->assertSame(0, \App\Models\TodoAviso::where('user_id', $bea->id)->sinLeer()->count());
+    }
 }

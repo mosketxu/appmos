@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire;
 
+use App\Models\TodoAviso;
 use App\Models\TodoComentario;
 use App\Models\TodoTarea;
 use App\Models\User;
@@ -44,6 +45,19 @@ class Todo extends Component
         $this->verUsuario = auth()->id();
         $this->asignadosIds = [auth()->id()];
         $this->fechaComentario = now()->format('Y-m-d');
+        // Viene de un aviso de la campana: abre esa tarea
+        if ($t = (int) request('t')) {
+            $tarea = TodoTarea::with('asignados')->find($t);
+            if ($tarea && $this->puede($tarea)) {
+                $this->abierta = $tarea->id;
+                $this->leerAvisos($tarea->id);
+            }
+        }
+    }
+
+    protected function leerAvisos(int $tareaId): void
+    {
+        TodoAviso::where('user_id', auth()->id())->where('tarea_id', $tareaId)->sinLeer()->update(['leido_at' => now()]);
     }
 
     protected function esAdmin(): bool
@@ -90,6 +104,12 @@ class Todo extends Component
         TodoComentario::create(['tarea_id' => $t->id, 'user_id' => auth()->id(), 'tipo' => 'evento', 'fecha' => now()->format('Y-m-d'), 'texto' => $texto]);
     }
 
+    /** Quien tiene que enterarse de lo que pasa en la tarea: quien la creó y quienes la tienen asignada. */
+    protected function interesados(TodoTarea $t): array
+    {
+        return array_values(array_unique(array_merge([$t->creador_id], $t->asignados()->pluck('users.id')->all())));
+    }
+
     protected function nombres(array $ids): string
     {
         return User::whereIn('id', $ids)->orderBy('name')->pluck('name')->implode(', ');
@@ -129,6 +149,7 @@ class Todo extends Component
             $t->asignados()->attach($uid, ['orden' => TodoTarea::siguienteOrden($uid)]);
         }
         $this->evento($t, 'creó la tarea y la asignó a '.$this->nombres($ids));
+        TodoAviso::para($t, $ids, 'te ha asignado una tarea');
         $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
         // Para que la tarea recién creada se vea
         $this->vista = 'todas';
@@ -161,6 +182,9 @@ class Todo extends Component
     public function abrir(int $id): void
     {
         $this->abierta = $this->abierta === $id ? null : $id;
+        if ($this->abierta) {
+            $this->leerAvisos($id);
+        }
         $this->comentario = '';
         $this->respAsignar = [];
         $this->fechaComentario = now()->format('Y-m-d');
@@ -174,6 +198,7 @@ class Todo extends Component
             return;
         }
         $this->evento($t, 'cambió el estado de «'.TodoTarea::ESTADOS[$t->estado].'» a «'.TodoTarea::ESTADOS[$estado].'»');
+        TodoAviso::para($t, $this->interesados($t), 'cambió el estado a «'.TodoTarea::ESTADOS[$estado].'»');
         $t->estado = $estado;
         $t->cerrada_at = in_array($estado, TodoTarea::CERRADOS, true) ? now() : null;
         $t->save();
@@ -192,6 +217,7 @@ class Todo extends Component
         } else {
             $t->asignados()->attach($user, ['orden' => TodoTarea::siguienteOrden($user)]);
             $this->evento($t, 'asignó a '.$this->nombres([$user]));
+            TodoAviso::para($t, [$user], 'te ha asignado una tarea');
         }
     }
 
@@ -280,7 +306,9 @@ class Todo extends Component
         }
         if ($nuevos) {
             $this->evento($t, 'asignó a '.$this->nombres($nuevos));
+            TodoAviso::para($t, $nuevos, 'te ha asignado una tarea');
         }
+        TodoAviso::para($t, array_diff($this->interesados($t), $nuevos), 'ha respondido');
         $t->touch();
         $this->respAsignar = [];
         $this->comentario = '';
