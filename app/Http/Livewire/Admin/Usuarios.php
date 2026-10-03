@@ -143,7 +143,9 @@ class Usuarios extends Component
         $entidades = collect();
         $porResponsable = [];
         if ($this->editando !== null) {
+            // Solo clientes activos; una entidad de baja ya marcada sigue saliendo para poder desmarcarla
             $entidades = Entidad::withoutGlobalScopes()
+                ->where(fn ($q) => $q->where('estado', '<>', 0)->orWhereIn('id', $this->entidadesAsignadas ?: [0]))
                 ->when($this->buscarEntidad !== '', fn ($q) => $q->where(fn ($q) => $q->where('entidad', 'like', '%'.$this->buscarEntidad.'%')->orWhere('alias', 'like', '%'.$this->buscarEntidad.'%')))
                 ->when($this->soloMarcadas, fn ($q) => $q->whereIn('id', $this->entidadesAsignadas ?: [0]))
                 ->orderBy('entidad')->limit(300)->get(['id', 'entidad', 'alias', 'estado', 'suma_id']);

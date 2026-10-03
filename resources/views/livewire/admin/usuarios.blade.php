@@ -155,7 +155,7 @@
                                     <label class="inline-flex items-center gap-1 text-xs"><input type="checkbox" wire:model.live="soloMarcadas" class="border-gray-300 rounded"> solo las marcadas</label>
                                 </div>
                                 <p class="mb-1 text-xs text-gray-400">
-                                    En gris: entidades de baja. Casilla marcada y gris: ya la ve por ser su Responsable Suma (se cambia en la entidad).
+                                    Solo salen las entidades activas (una de baja ya marcada sigue saliendo, en gris, para poder quitarla). Casilla marcada y deshabilitada: ya la ve por ser su Responsable Suma (se cambia en la entidad).
                                 </p>
                                 <div class="overflow-auto border rounded-md" style="max-height:18rem">
                                     @forelse ($entidades as $e)
