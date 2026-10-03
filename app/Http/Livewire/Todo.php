@@ -27,6 +27,9 @@ class Todo extends Component
 
     public ?int $abierta = null;
 
+    /** Texto que filtra las filas (título, descripción, creador o asignados). */
+    public string $buscar = '';
+
     // Alta
     public bool $nueva = false;
     public string $titulo = '';
@@ -293,14 +296,13 @@ class Todo extends Component
         $mias = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
             ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
             ->orderBy('p.orden')->orderBy('p.id')->pluck('p.tarea_id')->all();
-        // Solo las que se ven; ocupan los mismos huecos que tenían en la lista de $yo (las que no se ven no se mueven)
+        // Solo las que llegan (las que se ven en pantalla y puedo tocar); ocupan los mismos huecos que tenían en la lista de $yo,
+        // así las que no se ven no se mueven de su sitio
         $nuevo = array_values(array_unique(array_intersect(array_map('intval', $ids), $mias, $visibles)));
-        $huecos = array_keys(array_filter($mias, fn ($id) => in_array($id, $visibles, true)));
+        $huecos = array_keys(array_filter($mias, fn ($id) => in_array($id, $nuevo, true)));
         $lista = $mias;
         foreach ($huecos as $k => $pos) {
-            if (isset($nuevo[$k])) {
-                $lista[$pos] = $nuevo[$k];
-            }
+            $lista[$pos] = $nuevo[$k];
         }
         if (count(array_unique($lista)) !== count($mias)) {
             return;   // lista incoherente (ids repetidos o a medias): no se toca nada
@@ -409,6 +411,12 @@ class Todo extends Component
         });
         if (! $this->esAdmin() && $yo !== auth()->id()) {
             $q->whereIn('todo_tareas.id', $this->tareasVisiblesDe($yo));
+        }
+        if (($b = trim($this->buscar)) !== '') {
+            $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $b).'%';
+            $q->where(fn ($w) => $w->where('todo_tareas.titulo', 'like', $like)->orWhere('todo_tareas.descripcion', 'like', $like)
+                ->orWhereHas('creador', fn ($c) => $c->where('name', 'like', $like))
+                ->orWhereHas('asignados', fn ($c) => $c->where('users.name', 'like', $like)));
         }
         match ($this->filtroEstado) {
             'abiertas' => $q->whereNotIn('estado', TodoTarea::CERRADOS),

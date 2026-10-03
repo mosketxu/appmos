@@ -214,4 +214,23 @@ class TodoTest extends TestCase
         $this->assertSame(1, \App\Models\TodoAviso::where('user_id', $ana->id)->sinLeer()->where('texto', 'ha respondido')->count());
         $this->assertSame(0, \App\Models\TodoAviso::where('user_id', $bea->id)->sinLeer()->count());
     }
+
+    public function test_el_buscador_filtra_las_filas_y_reordenar_funciona_con_un_subconjunto(): void
+    {
+        $ana = $this->usuario('Ana');
+        $this->actingAs($ana);
+        $c = Livewire::test(Todo::class);
+        foreach (['Factura IVA', 'Llamar a Pedro', 'Revisar IVA trimestral'] as $titulo) {
+            $c->set('titulo', $titulo)->set('asignadosIds', [$ana->id])->call('crear');
+        }
+        $c->assertSee('Llamar a Pedro')->set('buscar', 'iva')->assertSee('Factura IVA')->assertSee('Revisar IVA trimestral')->assertDontSee('Llamar a Pedro')
+            ->set('buscar', 'ana')->assertSee('Llamar a Pedro')                  // también busca por nombre (creador/asignado)
+            ->set('buscar', '50%')->assertDontSee('Llamar a Pedro');             // el % no es comodín
+
+        // ordenar solo las visibles: las otras no se mueven de su sitio
+        $id = fn ($t) => TodoTarea::where('titulo', $t)->value('id');
+        $orden = fn () => \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')->where('p.user_id', $ana->id)->orderBy('p.orden')->pluck('t.titulo')->all();
+        $c->call('reordenar', [$id('Revisar IVA trimestral'), $id('Factura IVA')]);
+        $this->assertSame(['Revisar IVA trimestral', 'Llamar a Pedro', 'Factura IVA'], $orden());
+    }
 }

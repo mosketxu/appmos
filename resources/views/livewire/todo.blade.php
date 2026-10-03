@@ -85,6 +85,18 @@
             <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
                     <tr>
+                        @if ($filtroEstado !== 'cerradas') <th></th> @endif
+                        <th></th><th></th>
+                        <th class="px-2 pt-2 normal-case">
+                            <div class="relative">
+                                <input type="search" wire:model.live.debounce.250ms="buscar" placeholder="Filtrar tareas…" autocomplete="off"
+                                       class="w-full py-1 pl-7 pr-2 text-sm font-normal text-gray-800 bg-white border-gray-300 rounded-md shadow-sm" style="min-width:16rem">
+                                <span class="absolute text-gray-400 pointer-events-none" style="left:.5rem;top:.3rem">🔍</span>
+                            </div>
+                        </th>
+                        <th colspan="4"></th>
+                    </tr>
+                    <tr>
                         @if ($filtroEstado !== 'cerradas') <th class="py-2 pl-2 pr-1 text-center" title="Arrastra el ⠿ para cambiar el orden de TU lista de prioridades">⠿</th> @endif
                         <th class="px-2 py-2">Asignada a</th>
                         <th class="px-2 py-2">Creada por</th>
@@ -96,7 +108,32 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        // Secciones: mi lista, la lista de Claude (si la puedo ordenar) y el resto. Con una sola no hace falta cabecera.
+                        $claveSeccion = fn ($t) => isset($t->grupo) ? 'g'.$t->grupo : 'otras';
+                        $cuentaSecciones = $tareas->groupBy($claveSeccion)->map->count();
+                        $seccionAnt = null;
+                    @endphp
                     @forelse ($tareas as $t)
+                        @php $seccion = $claveSeccion($t); @endphp
+                        @if ($cuentaSecciones->count() > 1 && $seccion !== $seccionAnt)
+                            @php
+                                $esMia = $seccion === 'g'.$yo;
+                                $esClaude = $claudeId && $seccion === 'g'.$claudeId;
+                                $titulo = $esMia ? ($yo === auth()->id() ? 'MIS TAREAS' : 'TAREAS DE '.strtoupper($this->personas->firstWhere('id', $yo)?->name ?? 'ESTA PERSONA'))
+                                    : ($esClaude ? '🤖 TAREAS DE CLAUDE' : 'OTRAS TAREAS (creadas para otros y cerradas)');
+                                $nota = $esMia ? 'Arrastra el ⠿ para ordenar tu prioridad' : ($esClaude ? 'Su propia lista de prioridades: arrastra el ⠿ para ordenar lo que hará primero' : 'Sin prioridad propia: no se ordenan aquí');
+                                $fondo = $esMia ? '#1d4ed8' : ($esClaude ? '#6d28d9' : '#4b5563');
+                            @endphp
+                            <tr wire:key="sec-{{ $seccion }}" aria-hidden="true">
+                                <td colspan="8" style="background:{{ $fondo }};color:#fff;padding:.45rem .75rem;border-top:{{ $seccionAnt === null ? '0' : '14px solid #f3f4f6' }}">
+                                    <span style="font-weight:700;letter-spacing:.04em">{{ $titulo }}</span>
+                                    <span style="opacity:.85"> · {{ $cuentaSecciones[$seccion] }}</span>
+                                    <span style="opacity:.75;font-size:.75rem;text-transform:none;margin-left:.75rem">{{ $nota }}</span>
+                                </td>
+                            </tr>
+                        @endif
+                        @php $seccionAnt = $seccion; @endphp
                         @php
                             $mia = isset($t->grupo);   // está en una lista de prioridades que puedo ordenar (la mía; la de Claude si soy Alex): lleva ⠿
                             $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday();
