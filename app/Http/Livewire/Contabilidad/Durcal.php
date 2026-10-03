@@ -83,7 +83,8 @@ class Durcal extends Component
         $etiqueta = "Durcal · Activación (mes {$this->mm()}, REAL)";
         $this->lanzarEnCola(
             [['script' => 'activarDurcal.py', 'args' => [$this->mm(), '--real'], 'timeout' => 300, 'etiqueta' => $etiqueta]],
-            ['resultados' => 'durcal'],
+            // 'esperado': lo que se vio en el OneDrive del PC principal; si lo hace el PC de relevo, comprueba que el suyo tiene lo mismo
+            ['resultados' => 'durcal', 'extra' => ['esperado' => $this->estadoPc]],
         );
     }
 

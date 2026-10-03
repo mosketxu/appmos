@@ -198,9 +198,9 @@ return [
         'facturasocr' => ['scripts' => ['ocr_previo.py']],
         // Durcal: el .XLS de nóminas y el Amortizacion (.xlsm, con Excel por COM) están en el OneDrive del PC; un solo PC para no escribir
         // dos veces: DURCAL_PC=AlexMiniPC en el .env del VPS. Los ficheros resultado NO se suben a la web (son nóminas).
-        'durcal' => ['pc' => env('DURCAL_PC'), 'scripts' => ['activarDurcal.py']],
+        'durcal' => ['pc' => env('DURCAL_PC'), 'relevo' => array_filter(explode(',', env('DURCAL_RELEVO', 'PortalExomen'))), 'scripts' => ['activarDurcal.py']],
         // Neteges: la base (xlsx) va por git, así que solo un PC debe modificarla: NETEGES_PC=AlexMiniPC en el .env del VPS.
-        'neteges' => ['pc' => env('NETEGES_PC'), 'scripts' => [
+        'neteges' => ['pc' => env('NETEGES_PC'), 'relevo' => array_filter(explode(',', env('NETEGES_RELEVO', 'PortalExomen'))), 'scripts' => [
             'neteges_base.py', 'neteges_cobros.py', 'neteges_conciliar.py', 'neteges_estado.py', 'neteges_extractos.py',
             'neteges_plugin.py', 'neteges_ventas.py', 'bajarAdjuntosNeteges.ps1',
         ]],

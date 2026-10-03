@@ -1,0 +1,59 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Support\ColaTareas;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+
+/** Neteges y Durcal van a AlexMiniPC; si no da señales y la tarea espera, las coge PortalExomen (relevo). */
+class RelevoTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        \Tests\Support\TablasCola::crear();
+        config(['contabilidad.pc_grupos.neteges.relevo' => ['PortalExomen'], 'contabilidad.pc_grupos.durcal.relevo' => ['PortalExomen']]);
+        $this->a = ColaTareas::crearTrabajador('AlexMiniPC');
+        $this->p = ColaTareas::crearTrabajador('PortalExomen');
+    }
+
+    protected string $a;
+    protected string $p;
+
+    protected function pideP(): ?int
+    {
+        return $this->postJson('/api/trabajador/siguiente', ['capacidades' => ['pc.script', 'pc.estado']], ['X-Token' => $this->p])->json('tarea.id');
+    }
+
+    public function test_el_relevo_solo_entra_si_el_principal_no_da_senales_y_la_tarea_espera(): void
+    {
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()]);
+        DB::table('trabajadores')->where('nombre', 'PortalExomen')->update(['ultimo_latido' => now()]);
+        $id = ColaTareas::crear('pc.script', ['grupo' => 'neteges', 'pasos' => [['script' => 'neteges_base.py', 'args' => []]]], 'AlexMiniPC');
+        $this->assertNull($this->pideP(), 'recién pedida: espera a AlexMiniPC');
+
+        DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(10)]);
+        $this->assertNull($this->pideP(), 'esperando mucho, pero AlexMiniPC está en línea: no hay relevo');
+
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()->subMinutes(10)]);
+        DB::table('trabajadores')->where('nombre', 'PortalExomen')->update(['ultimo_latido' => now()]);
+        $this->assertSame($id, $this->pideP(), 'AlexMiniPC sin señales y tarea esperando: la coge PortalExomen');
+    }
+
+    public function test_un_grupo_sin_relevo_no_se_coge(): void
+    {
+        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'monthlyFIQ.js', 'args' => ['09']]]], 'AlexMiniPC');
+        DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(10)]);
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()->subMinutes(10)]);
+        $this->assertNull($this->pideP());
+    }
+
+    public function test_durcal_tambien_y_el_estado_pedido_al_principal_igual(): void
+    {
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()->subMinutes(10)]);
+        $id = ColaTareas::crear('pc.estado', ['grupo' => 'durcal'], 'AlexMiniPC');
+        DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(5)]);
+        $this->assertSame($id, $this->pideP());
+    }
+}

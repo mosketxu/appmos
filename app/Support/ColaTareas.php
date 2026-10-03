@@ -16,6 +16,9 @@ class ColaTareas
     /** Minutos durante los que el PC que hizo la última tarea FIQ sigue siendo el «preferido» para la siguiente. */
     public const PREFERIDO_MIN = 15;
 
+    /** Minutos que una tarea fijada a un PC espera a que vuelva antes de que la coja un PC de relevo (pc_grupos.<grupo>.relevo). */
+    public const RELEVO_MIN = 3;
+
     /**
      * $estado 'preparando': la tarea aún no la coge nadie (la web está dejando los ficheros de entrada); se libera con liberar().
      */
@@ -153,7 +156,17 @@ class ColaTareas
         return DB::transaction(function () use ($t, $capacidades) {
             $q = DB::table('tareas')->where('estado', 'pendiente')
                 ->whereIn('proceso', $capacidades)
-                ->where(fn ($q) => $q->whereNull('destino')->orWhere('destino', $t->nombre))
+                ->where(function ($q) use ($t) {
+                    $q->whereNull('destino')->orWhere('destino', $t->nombre);
+                    // Relevo: lo fijado a otro PC (p. ej. Neteges y Durcal a AlexMiniPC) lo hace este si ese PC no da señales y la tarea lleva esperando
+                    foreach (config('contabilidad.pc_grupos', []) as $grupo => $g) {
+                        if (in_array($t->nombre, (array) ($g['relevo'] ?? []), true)) {
+                            $q->orWhere(fn ($r) => $r->where('parametros', 'like', '%"grupo":"'.$grupo.'"%')
+                                ->where('created_at', '<=', now()->subMinutes(self::RELEVO_MIN))
+                                ->whereNotIn('destino', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')));
+                        }
+                    }
+                })
                 ->where(fn ($q) => $q->whereNull('preferido')->orWhere('preferido', $t->nombre)
                     ->orWhereNotIn('preferido', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')))
                 ->where(fn ($q) => $q->whereNull('no_antes_de')->orWhere('no_antes_de', '<=', now()))

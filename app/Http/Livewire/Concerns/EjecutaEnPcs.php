@@ -67,6 +67,7 @@ trait EjecutaEnPcs
             'script' => $p['script'], 'args' => array_map('strval', $p['args'] ?? []), 'timeout' => $p['timeout'] ?? 180,
             'solo_si_ok' => ! empty($p['solo_si_ok']) ?: null,
         ], fn ($v) => $v !== null), $pasos)];
+        $params += (array) ($opc['extra'] ?? []);   // datos que el PC necesita (p. ej. el estado que se esperaba de OneDrive)
         $entradas = array_values($opc['entradas'] ?? []);
         foreach ($entradas as $i => $e) {
             $params['entradas'][] = ['archivo' => 'e'.$i, 'nombre' => $e['nombre'], 'dir' => $e['dir'], 'sello' => ! empty($e['sello']), 'unico' => ! empty($e['unico'])];
