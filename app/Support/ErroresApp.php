@@ -30,6 +30,10 @@ class ErroresApp
             if (! $alex) {
                 return;
             }
+            // la BD guarda utf8 de 3 bytes: fuera emojis y otros caracteres de 4 bytes, o el insert fallaría y se perdería el aviso
+            $sin4 = fn (string $x) => preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $x) ?? $x;
+            $titulo = $sin4($titulo);
+            $detalle = $sin4($detalle);
             $marca = '[err-'.substr(sha1($huella), 0, 10).']';
             $abierta = TodoTarea::where('descripcion', 'like', '%'.$marca.'%')->whereNotIn('estado', TodoTarea::CERRADOS)->first();
             if ($abierta) {
