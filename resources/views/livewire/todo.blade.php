@@ -14,7 +14,7 @@
     @endphp
 
     <div class="p-3 space-y-3">
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3 lg:flex-nowrap">
             <h1 class="text-2xl font-semibold text-gray-900">TO-DO</h1>
             <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">＋ Nueva tarea</button>
 
@@ -33,7 +33,7 @@
             @endif
         </div>
 
-        <div class="flex flex-wrap items-center gap-4 text-sm">
+        <div class="flex flex-wrap items-center gap-4 text-sm lg:flex-nowrap">
             <div class="inline-flex overflow-hidden border border-gray-300 rounded-md">
                 @foreach (['mias' => 'Asignadas a '.($yo === auth()->id() ? 'mí' : 'esta persona'), 'pedidas' => 'Que he pedido a otros', 'todas' => 'Todas'] as $k => $t)
                     <button type="button" wire:click="$set('vista','{{ $k }}')"
@@ -78,7 +78,7 @@
         @endif
 
         <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg">
-            <table class="min-w-full text-sm">
+            <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
                     <tr>
                         @if ($vista === 'mias' && $filtroEstado !== 'cerradas') <th class="px-3 py-2 text-center">Prioridad<br>(orden)</th> @endif
@@ -105,7 +105,7 @@
                                     @endif
                                 </td>
                             @endif
-                            <td class="px-3 py-2 font-medium">{{ $t->titulo }}</td>
+                            <td class="px-3 py-2 font-medium max-w-xl truncate" title="{{ $t->titulo }}">{{ $t->titulo }}</td>
                             <td class="px-3 py-2"><span class="px-2 py-0.5 text-xs border rounded-full {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</span></td>
                             <td class="px-3 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
                             <td class="px-3 py-2">{{ $t->asignado->name }}</td>
@@ -115,7 +115,7 @@
                         </tr>
                         @if ($detalle && $detalle->id === $t->id)
                             <tr wire:key="d{{ $t->id }}" class="border-t border-indigo-100 bg-indigo-50/40">
-                                <td colspan="8" class="p-3">
+                                <td colspan="8" class="p-3 whitespace-normal">
                                     <div class="grid gap-4 md:grid-cols-3">
                                         <div class="space-y-2">
                                             @if ($detalle->descripcion)
