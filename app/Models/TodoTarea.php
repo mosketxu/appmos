@@ -12,7 +12,7 @@ class TodoTarea extends Model
 {
     protected $table = 'todo_tareas';
 
-    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'estado', 'prioridad', 'fecha_limite', 'cerrada_at', 'claude_autorizada_at', 'claude_autorizada_por', 'claude_pausada', 'claude_permisos'];
+    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'estado', 'prioridad', 'fecha_limite', 'cerrada_at', 'claude_autorizada_at', 'claude_autorizada_por', 'claude_pausada', 'claude_permisos', 'prioridad_pedida_at', 'prioridad_pedida_por'];
 
     protected $casts = [
         'fecha_limite' => 'date',
@@ -20,6 +20,7 @@ class TodoTarea extends Model
         'claude_autorizada_at' => 'datetime',
         'claude_pausada' => 'boolean',
         'claude_permisos' => 'array',
+        'prioridad_pedida_at' => 'datetime',
     ];
 
     public const ESTADOS = [
@@ -56,6 +57,11 @@ class TodoTarea extends Model
     public function asignados(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'todo_tarea_user', 'tarea_id', 'user_id')->withPivot('orden')->orderBy('users.name');
+    }
+
+    public function prioridadPedidaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'prioridad_pedida_por');
     }
 
     public function comentarios(): HasMany

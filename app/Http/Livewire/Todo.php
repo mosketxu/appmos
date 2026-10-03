@@ -7,6 +7,7 @@ use App\Models\TodoComentario;
 use App\Models\TodoTarea;
 use App\Models\User;
 use App\Support\TodoClaude;
+use App\Support\TodoCorreo;
 use Livewire\Component;
 
 /**
@@ -161,6 +162,7 @@ class Todo extends Component
             }
         }
         $this->siClaude($t, $ids);
+        TodoCorreo::avisarAsignacion($t, $ids);
         $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva', 'permisosNuevos');
         // Para que la tarea recién creada se vea
         $this->vista = 'todas';
@@ -231,6 +233,30 @@ class Todo extends Component
         }
     }
 
+    /**
+     * «Pedir prioridad»: quien creó la tarea (o un Admin) avisa a los asignados de que la prioricen. No toca el orden de nadie (la prioridad
+     * de cada uno es suya); deja una marca visible y un aviso en la campana.
+     */
+    public function pedirPrioridad(int $id): void
+    {
+        $t = TodoTarea::with('asignados')->findOrFail($id);
+        abort_unless($t->creador_id === auth()->id() || $this->esAdmin(), 403);
+        $destino = $t->asignados->pluck('id')->reject(fn ($u) => $u === auth()->id())->all();
+        if (! $t->abierta() || ! $destino) {
+            return;
+        }
+        $t->update(['prioridad_pedida_at' => now(), 'prioridad_pedida_por' => auth()->id()]);
+        $this->evento($t, 'pidió que se priorice la tarea');
+        TodoAviso::para($t, $destino, 'te pide priorizar «'.mb_substr($t->titulo, 0, 50).'»');
+    }
+
+    public function quitarPrioridadPedida(int $id): void
+    {
+        $t = TodoTarea::with('asignados')->findOrFail($id);
+        abort_unless($this->puede($t), 403);
+        $t->update(['prioridad_pedida_at' => null, 'prioridad_pedida_por' => null]);
+    }
+
     /** Concede o quita un permiso a Claude en una tarea: solo Alex (gestor). */
     public function permisoClaude(int $id, string $permiso): void
     {
@@ -272,6 +298,8 @@ class Todo extends Component
         }
         $this->evento($t, 'cambió el estado de «'.TodoTarea::ESTADOS[$t->estado].'» a «'.TodoTarea::ESTADOS[$estado].'»');
         TodoAviso::para($t, $this->interesados($t), 'cambió el estado a «'.TodoTarea::ESTADOS[$estado].'»');
+        $t->prioridad_pedida_at = null;
+        $t->prioridad_pedida_por = null;
         $t->estado = $estado;
         $t->cerrada_at = in_array($estado, TodoTarea::CERRADOS, true) ? now() : null;
         $t->save();
@@ -295,6 +323,7 @@ class Todo extends Component
             $this->evento($t, 'asignó a '.$this->nombres([$user]));
             TodoAviso::para($t, [$user], 'te ha asignado una tarea');
             $this->siClaude($t, [$user]);
+            TodoCorreo::avisarAsignacion($t, [$user]);
         }
     }
 
@@ -388,6 +417,7 @@ class Todo extends Component
             $this->evento($t, 'asignó a '.$this->nombres($nuevos));
             TodoAviso::para($t, $nuevos, 'te ha asignado una tarea');
             $this->siClaude($t, $nuevos);
+            TodoCorreo::avisarAsignacion($t, $nuevos);
         }
         TodoClaude::alResponder($t, auth()->id(), $this->respUrgente && ($this->esAdmin() || $t->creador_id === auth()->id()));
         TodoAviso::para($t, array_diff($this->interesados($t), $nuevos), 'ha respondido');
@@ -416,7 +446,7 @@ class Todo extends Component
     public function render()
     {
         $yo = $this->usuarioVisto();
-        $q = TodoTarea::with(['creador:id,name', 'asignados:id,name'])->withCount(['comentarios' => fn ($c) => $c->where('tipo', 'respuesta')])->select('todo_tareas.*', 'mi.orden as mi_orden')
+        $q = TodoTarea::with(['creador:id,name', 'asignados:id,name', 'prioridadPedidaPor:id,name'])->withCount(['comentarios' => fn ($c) => $c->where('tipo', 'respuesta')])->select('todo_tareas.*', 'mi.orden as mi_orden')
             ->leftJoin('todo_tarea_user as mi', fn ($j) => $j->on('mi.tarea_id', '=', 'todo_tareas.id')->where('mi.user_id', $yo));
 
         $q->where(function ($q) use ($yo) {

@@ -53,3 +53,4 @@ Cada sitio tiene su **propia BD** (la buena es la del VPS; para copiarla a un PC
 - Permisos de Claude por tarea (scripts, correo, desplegar, ssh, borrar): solo los concede Alex; sin ellos no hay python/ssh/rm en las ejecuciones desatendidas.
 - Claude automático: PC principal AlexMiniPC, secundario PortalExomen; pasadas cada hora o «Ejecutar ya»; freno con el uso real del plan ≥ 80 %.
 - Al asignar entidades a un colaborador solo salen las activas.
+- TO-DO: «⚑ Pedir prioridad» (creador/Admin) avisa por la campana sin tocar el orden de nadie; al asignar una tarea a otra persona sale un **correo por Graph** desde `GRAPH_SENDER` (OK de Alex 3-oct-2026; se apaga con `TODO_CORREO_ASIGNACION=false`).

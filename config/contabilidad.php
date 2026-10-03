@@ -214,6 +214,9 @@ return [
     // Con TODO_URL puesta, la pestaña TO-DO (y su campana y la barra de Claude) llevan a la web, como Bancos e IS.
     'todo_url' => env('TODO_URL'),
 
+    // Correo al asignar una tarea a otra persona (por Graph, desde GRAPH_SENDER)
+    'todo_correo_asignacion' => filter_var(env('TODO_CORREO_ASIGNACION', true), FILTER_VALIDATE_BOOLEAN),
+
     // Solo ellos pausan a Claude y dan el visto bueno a lo que le asignan otros usuarios (correos separados por comas)
     'claude_todo_gestores' => array_filter(array_map('trim', explode(',', env('CLAUDE_TODO_GESTORES', 'alex.arregui@sumaempresa.com')))),
     'claude_todo_max_uso' => (int) env('CLAUDE_TODO_MAX_USO', 80),   // % del plan (sesión o semana) a partir del cual Claude no empieza tareas solo

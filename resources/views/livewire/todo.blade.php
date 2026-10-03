@@ -174,6 +174,9 @@
                                         @elseif ($q) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-indigo-800 bg-indigo-100 rounded" title="En la cola: la cogerá un PC trabajador en unos segundos">🤖 ⏳ en cola</span>
                                         @else <span class="ml-1 text-xs font-normal text-indigo-600" title="Claude la hará automáticamente cuando le toque (ya está autorizada)">🤖</span> @endif
                                     @endif
+                                @endif
+                                @if ($t->prioridad_pedida_at && $t->abierta())
+                                    <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-yellow-900 bg-yellow-200 border border-yellow-400 rounded" title="{{ $t->prioridadPedidaPor?->name }} pide que se priorice esta tarea ({{ $t->prioridad_pedida_at->format('d/m H:i') }})">⚑ {{ $t->prioridadPedidaPor?->name }} pide prioridad</span>
                                 @endif</td>
                             <td class="px-2 py-2"><span class="px-2 py-0.5 text-xs border rounded-full {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</span></td>
                             <td class="px-2 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
@@ -230,6 +233,17 @@
                                                                 <button type="button" wire:click="pausarClaudeTarea({{ $detalle->id }}, {{ $detalle->claude_pausada ? 'false' : 'true' }})" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">{{ $detalle->claude_pausada ? '▶ Reanudar' : '⏸ Pausar esta' }}</button>
                                                             @endif
                                                         </span>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                            @if ($detalle->abierta())
+                                                <div class="flex flex-wrap items-center gap-2 text-xs">
+                                                    @if (($esAdmin || $detalle->creador_id === auth()->id()) && $detalle->asignados->where('id', '!=', auth()->id())->isNotEmpty())
+                                                        <button type="button" wire:click="pedirPrioridad({{ $detalle->id }})" wire:confirm="¿Pedir a los asignados que prioricen esta tarea? (les llega un aviso; su orden no cambia)" class="px-2 py-0.5 text-yellow-900 bg-yellow-100 border border-yellow-400 rounded hover:bg-yellow-200">⚑ Pedir prioridad</button>
+                                                    @endif
+                                                    @if ($detalle->prioridad_pedida_at)
+                                                        <span class="text-yellow-800">⚑ {{ $detalle->prioridadPedidaPor?->name }} pidió prioridad el {{ $detalle->prioridad_pedida_at->format('d/m H:i') }}</span>
+                                                        <button type="button" wire:click="quitarPrioridadPedida({{ $detalle->id }})" class="text-gray-500 underline">Quitar marca</button>
                                                     @endif
                                                 </div>
                                             @endif
