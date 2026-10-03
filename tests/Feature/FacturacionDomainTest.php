@@ -83,7 +83,7 @@ class FacturacionDomainTest extends TestCase
 
     public function test_prefactura_without_concepts_still_appears_in_the_listing(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($this->adminUser());
 
         $entity = Entidad::create(['entidad' => 'Entidad sin conceptos']);
         $cycle = Ciclo::findOrFail(DB::table('ciclos')->insertGetId(['ciclo' => 'Mensual', 'ciclos' => 12]));

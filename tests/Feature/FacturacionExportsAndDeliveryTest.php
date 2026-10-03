@@ -62,7 +62,7 @@ class FacturacionExportsAndDeliveryTest extends TestCase
 
     public function test_remesa_export_does_not_mix_other_entities_invoices(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($this->adminUser());
         $cycle = $this->makeCycle();
 
         $entidadObjetivo = Entidad::create(['entidad' => 'Entidad objetivo']);
@@ -85,7 +85,7 @@ class FacturacionExportsAndDeliveryTest extends TestCase
 
     public function test_mail_selected_only_sends_when_pdf_and_email_exist_and_marks_invoice_as_sent(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($this->adminUser());
         Mail::fake();
         Storage::fake('public');
 

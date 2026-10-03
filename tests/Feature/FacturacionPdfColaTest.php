@@ -16,6 +16,7 @@ class FacturacionPdfColaTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Storage::fake('local');   // los tests no escriben en storage/app real (en un PC es de www-data)
         config(['contabilidad.ejecucion_local' => false, 'app.key' => 'base64:'.base64_encode(str_repeat('k', 32)), 'app.cipher' => 'AES-256-CBC']);
         \Tests\Support\TablasCola::crear();
         DB::table('users')->insert(['id' => 1]);
