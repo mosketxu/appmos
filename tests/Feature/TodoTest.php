@@ -163,4 +163,28 @@ class TodoTest extends TestCase
         $this->assertSame(1, (int) \DB::table('todo_tarea_user')->where('tarea_id', $ajena->id)->value('orden'));
         $c->assertSee('data-handle', false);
     }
+
+    public function test_quien_asigna_ordena_las_prioridades_de_otro(): void
+    {
+        $ana = $this->usuario('Ana');
+        $bea = $this->usuario('Bea');
+        $this->actingAs($ana);
+        $c = Livewire::test(Todo::class);
+        foreach (['Uno', 'Dos', 'Tres'] as $titulo) {
+            $c->set('titulo', $titulo)->set('asignadosIds', [$bea->id])->call('crear');
+        }
+        $id = fn ($t) => TodoTarea::where('titulo', $t)->value('id');
+        $orden = fn () => \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')->where('p.user_id', $bea->id)->orderBy('p.orden')->pluck('t.titulo')->all();
+
+        $c->assertDontSee('data-handle', false)                                   // en su lista no tiene nada asignado
+            ->set('verUsuario', $bea->id)->assertSee('data-handle', false)
+            ->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')]);
+        $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
+
+        // un tercero no puede ver ni ordenar la lista de Bea
+        $cai = $this->usuario('Cai');
+        $this->actingAs($cai);
+        Livewire::test(Todo::class)->set('verUsuario', $bea->id)->call('reordenar', [$id('Uno'), $id('Dos'), $id('Tres')]);
+        $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
+    }
 }

@@ -18,17 +18,17 @@
             <h1 class="text-2xl font-semibold text-gray-900">TO-DO</h1>
             <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">＋ Nueva tarea</button>
 
-            @if ($esAdmin)
+            @if ($this->personas->count() > 1)
                 <label class="flex items-center gap-1 ml-4 text-sm text-gray-600">
-                    Ver tareas de
+                    {{ $esAdmin ? 'Ver tareas de' : 'Prioridades de' }}
                     <select wire:model.live="verUsuario" class="py-1 text-sm border-gray-300 rounded-md">
-                        @foreach ($this->usuarios as $u)
+                        @foreach ($this->personas as $u)
                             <option value="{{ $u->id }}">{{ $u->name }}{{ $u->id === auth()->id() ? ' (yo)' : '' }}</option>
                         @endforeach
                     </select>
                 </label>
                 @if ($yo !== auth()->id())
-                    <span class="px-2 py-0.5 text-xs text-amber-800 bg-amber-100 rounded">Estás viendo las tareas de otra persona (como Admin)</span>
+                    <span class="px-2 py-0.5 text-xs text-amber-800 bg-amber-100 rounded">Estás viendo la lista de otra persona: arrastra el ⠿ para ordenar sus prioridades</span>
                 @endif
             @endif
         </div>

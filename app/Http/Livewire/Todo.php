@@ -51,9 +51,27 @@ class Todo extends Component
         return auth()->user()->hasRole('Admin');
     }
 
+    /** Persona cuya lista se ve (y cuyo orden de prioridad se mueve): uno mismo, o alguien de $this->personas. */
     protected function usuarioVisto(): int
     {
-        return $this->esAdmin() ? ($this->verUsuario ?: auth()->id()) : auth()->id();
+        $v = $this->verUsuario ?: auth()->id();
+        return $this->personas->contains('id', $v) ? $v : auth()->id();
+    }
+
+    /**
+     * Listas que puede ver: la suya y, si es Admin, la de cualquiera; si no, la de las personas con las que
+     * comparte alguna tarea (a quien se la ha asignado, o quien se la ha asignado a él), para poder ordenarles las prioridades.
+     */
+    public function getPersonasProperty()
+    {
+        $yo = auth()->id();
+        if ($this->esAdmin()) {
+            return $this->usuarios;
+        }
+        $mias = \DB::table('todo_tareas')->where('creador_id', $yo)
+            ->orWhereIn('id', \DB::table('todo_tarea_user')->where('user_id', $yo)->select('tarea_id'))->pluck('id');
+        $ids = \DB::table('todo_tarea_user')->whereIn('tarea_id', $mias)->pluck('user_id')->push($yo)->unique();
+        return $this->usuarios->whereIn('id', $ids->all())->values();
     }
 
     /** Puede ver y tocar la tarea: Admin, quien la creó o a quien está asignada. */
@@ -184,14 +202,37 @@ class Todo extends Component
     public function reordenar(array $ids): void
     {
         $yo = $this->usuarioVisto();
+        $visibles = $this->tareasVisiblesDe($yo);
         $mias = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
             ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
             ->orderBy('p.orden')->orderBy('p.id')->pluck('p.tarea_id')->all();
-        $nuevo = array_values(array_unique(array_intersect(array_map('intval', $ids), $mias)));
-        $nuevo = array_merge($nuevo, array_values(array_diff($mias, $nuevo)));
-        foreach ($nuevo as $n => $tid) {
+        // Solo las que se ven; ocupan los mismos huecos que tenían en la lista de $yo (las que no se ven no se mueven)
+        $nuevo = array_values(array_unique(array_intersect(array_map('intval', $ids), $mias, $visibles)));
+        $huecos = array_keys(array_filter($mias, fn ($id) => in_array($id, $visibles, true)));
+        $lista = $mias;
+        foreach ($huecos as $k => $pos) {
+            if (isset($nuevo[$k])) {
+                $lista[$pos] = $nuevo[$k];
+            }
+        }
+        if (count(array_unique($lista)) !== count($mias)) {
+            return;   // lista incoherente (ids repetidos o a medias): no se toca nada
+        }
+        foreach ($lista as $n => $tid) {
             \DB::table('todo_tarea_user')->where('user_id', $yo)->where('tarea_id', $tid)->update(['orden' => $n + 1]);
         }
+    }
+
+    /** Ids de las tareas de $persona que el usuario conectado puede ver (todas si es Admin o es su propia lista). */
+    protected function tareasVisiblesDe(int $persona): array
+    {
+        $q = \DB::table('todo_tarea_user as p')->where('p.user_id', $persona);
+        if (! $this->esAdmin() && $persona !== auth()->id()) {
+            $q->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
+                ->where(fn ($w) => $w->where('t.creador_id', auth()->id())
+                    ->orWhereIn('t.id', \DB::table('todo_tarea_user')->where('user_id', auth()->id())->select('tarea_id')));
+        }
+        return $q->pluck('p.tarea_id')->map(fn ($i) => (int) $i)->all();
     }
 
     /**
@@ -202,7 +243,7 @@ class Todo extends Component
     {
         $yo = $this->usuarioVisto();
         $t = TodoTarea::with('asignados')->findOrFail($id);
-        abort_unless($this->puede($t) && $t->abierta() && $t->estaAsignadaA($yo), 403);
+        abort_unless($this->puede($t) && $t->abierta() && $t->estaAsignadaA($yo) && in_array($t->id, $this->tareasVisiblesDe($yo), true), 403);
         $ids = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
             ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
             ->orderBy('p.orden')->orderBy('p.id')->pluck('p.tarea_id')->all();
@@ -274,6 +315,9 @@ class Todo extends Component
                 default => $q->where('creador_id', $yo)->orWhereNotNull('mi.user_id'),
             };
         });
+        if (! $this->esAdmin() && $yo !== auth()->id()) {
+            $q->whereIn('todo_tareas.id', $this->tareasVisiblesDe($yo));
+        }
         match ($this->filtroEstado) {
             'abiertas' => $q->whereNotIn('estado', TodoTarea::CERRADOS),
             'cerradas' => $q->whereIn('estado', TodoTarea::CERRADOS),
