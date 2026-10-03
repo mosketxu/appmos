@@ -12,13 +12,14 @@ class TodoTarea extends Model
 {
     protected $table = 'todo_tareas';
 
-    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'estado', 'prioridad', 'fecha_limite', 'cerrada_at', 'claude_autorizada_at', 'claude_autorizada_por', 'claude_pausada'];
+    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'estado', 'prioridad', 'fecha_limite', 'cerrada_at', 'claude_autorizada_at', 'claude_autorizada_por', 'claude_pausada', 'claude_permisos'];
 
     protected $casts = [
         'fecha_limite' => 'date',
         'cerrada_at' => 'datetime',
         'claude_autorizada_at' => 'datetime',
         'claude_pausada' => 'boolean',
+        'claude_permisos' => 'array',
     ];
 
     public const ESTADOS = [
@@ -27,6 +28,18 @@ class TodoTarea extends Model
         'bloqueada' => 'Bloqueada',
         'hecha' => 'Hecha',
         'cancelada' => 'Cancelada',
+    ];
+
+    /**
+     * Permisos que solo Alex concede a Claude para una tarea. Sin ninguno: lee, edita ficheros del proyecto, hace tests y commits locales.
+     * Los técnicos se imponen en el PC (claude_todo.py: lista de herramientas); «correo» y «borrar» además van en las instrucciones.
+     */
+    public const PERMISOS_CLAUDE = [
+        'scripts' => ['Ejecutar scripts (python / node / tinker)', 'Hace falta para casi cualquier proceso de Contabilidad. Ojo: con scripts puede hacer casi de todo.'],
+        'correo' => ['Enviar correos', 'Por Graph, desde un script. Implica scripts.'],
+        'desplegar' => ['Desplegar / hacer push', 'git push, subir al VPS o a producción.'],
+        'ssh' => ['Usar ssh / scp (VPS)', 'Conectarse a servidores.'],
+        'borrar' => ['Borrar o sobrescribir ficheros', 'rm, mv, cp sobre datos o ficheros de clientes.'],
     ];
 
     public const PRIORIDADES = ['baja' => 'Baja', 'normal' => 'Normal', 'alta' => 'Alta'];

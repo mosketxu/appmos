@@ -191,6 +191,10 @@ return [
     // Tareas del TO-DO para Claude: el PC principal las coge enseguida; el secundario solo si el principal no da señales
     // o la tarea lleva esperando más de 10 minutos. Pasadas cada hora (minutos) salvo «Ejecutar ya».
     'claude_todo_primario' => env('CLAUDE_TODO_PRIMARIO', 'AlexMiniPC'),
+    // En un PC (localhost) el TO-DO no tiene datos propios: los trabajadores, el uso del plan y las tareas de verdad están en la BD del VPS.
+    // Con TODO_URL puesta, la pestaña TO-DO (y su campana y la barra de Claude) llevan a la web, como Bancos e IS.
+    'todo_url' => env('TODO_URL'),
+
     // Solo ellos pausan a Claude y dan el visto bueno a lo que le asignan otros usuarios (correos separados por comas)
     'claude_todo_gestores' => array_filter(array_map('trim', explode(',', env('CLAUDE_TODO_GESTORES', 'alex.arregui@sumaempresa.com')))),
     'claude_todo_max_uso' => (int) env('CLAUDE_TODO_MAX_USO', 80),   // % del plan (sesión o semana) a partir del cual Claude no empieza tareas solo

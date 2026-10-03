@@ -111,11 +111,11 @@ class TrabajadorApiController extends Controller
     {
         $t = $this->tareaClaude($r, $id);
         $d = $r->validate([
-            'estado' => 'nullable|in:hecha,bloqueada,en_curso', 'respuesta' => 'nullable|string|max:20000',
+            'estado' => 'nullable|in:hecha,bloqueada,en_curso', 'respuesta' => 'nullable|string|max:20000', 'alerta' => 'nullable|string|max:2000',
             'uso' => 'nullable|array', 'uso.coste_usd' => 'nullable|numeric', 'uso.turnos' => 'nullable|integer',
             'uso.tokens' => 'nullable|integer', 'uso.segundos' => 'nullable|integer', 'uso.ok' => 'nullable|boolean', 'uso.pc' => 'nullable|string',
         ]);
-        \App\Support\TodoClaude::registrar($t, $d['estado'] ?? null, $d['respuesta'] ?? null, $d['uso'] ?? null);
+        \App\Support\TodoClaude::registrar($t, $d['estado'] ?? null, $d['respuesta'] ?? null, $d['uso'] ?? null, $d['alerta'] ?? null);
 
         return response()->json(['ok' => true]);
     }

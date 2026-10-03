@@ -34,6 +34,9 @@ class Todo extends Component
     public bool $nueva = false;
     public string $titulo = '';
     public string $descripcion = '';
+    /** Permisos de Claude para la tarea nueva (solo los aplica si quien la crea es gestor). */
+    public array $permisosNuevos = [];
+
     /** Personas a las que se asigna la tarea nueva. */
     public array $asignadosIds = [];
     public string $prioridad = 'normal';
@@ -152,8 +155,13 @@ class Todo extends Component
         }
         $this->evento($t, 'creó la tarea y la asignó a '.$this->nombres($ids));
         TodoAviso::para($t, $ids, 'te ha asignado una tarea');
+        if (TodoClaude::esGestor(auth()->user())) {
+            foreach ($this->permisosNuevos as $pm) {
+                TodoClaude::ponerPermiso($t, (string) $pm, true);
+            }
+        }
         $this->siClaude($t, $ids);
-        $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
+        $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva', 'permisosNuevos');
         // Para que la tarea recién creada se vea
         $this->vista = 'todas';
         $this->filtroEstado = 'abiertas';
@@ -221,6 +229,14 @@ class Todo extends Component
                 $this->mensaje = 'La tarea está en la cola, pero ningún PC trabajador está en línea ahora (en este entorno puede que no haya ninguno): empezará en cuanto uno conecte.';
             }
         }
+    }
+
+    /** Concede o quita un permiso a Claude en una tarea: solo Alex (gestor). */
+    public function permisoClaude(int $id, string $permiso): void
+    {
+        abort_unless(TodoClaude::esGestor(auth()->user()), 403);
+        $t = TodoTarea::findOrFail($id);
+        TodoClaude::ponerPermiso($t, $permiso, ! in_array($permiso, (array) $t->claude_permisos, true));
     }
 
     public function pausarClaudeTarea(int $id, bool $pausar): void

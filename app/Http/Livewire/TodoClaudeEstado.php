@@ -21,7 +21,7 @@ class TodoClaudeEstado extends Component
 
     public function render()
     {
-        if (! TodoClaude::esGestor(auth()->user()) || ! TodoClaude::usuario()) {
+        if (config('contabilidad.todo_url') || ! TodoClaude::esGestor(auth()->user()) || ! TodoClaude::usuario()) {   // en un PC: no hay trabajadores ni uso propios
             return view('livewire.todo-claude-estado', ['ec' => null]);
         }
         $limite = now()->subSeconds(ColaTareas::LATIDO_MAX);

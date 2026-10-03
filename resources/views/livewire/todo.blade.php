@@ -59,6 +59,19 @@
                     <x-todo-asignados :usuarios="$this->usuarios" :seleccionados="$asignadosIds" accion="alternarNuevo(%d)" />
                     @error('asignadosIds') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </div>
+                @if ($esGestor && $claudeId && in_array($claudeId, array_map('intval', $asignadosIds), true))
+                    <div class="p-2 text-xs border border-indigo-200 rounded-md md:col-span-4 bg-indigo-50">
+                        <b class="text-indigo-900">🤖 Permisos de Claude para esta tarea</b>
+                        <span class="text-gray-600">(solo tú los concedes; sin marcar nada solo lee, edita ficheros del proyecto, hace tests y commits locales)</span>
+                        <div class="flex flex-wrap mt-1 gap-x-4 gap-y-1">
+                            @foreach (\App\Models\TodoTarea::PERMISOS_CLAUDE as $k => [$etiqueta, $ayuda])
+                                <label class="inline-flex items-center gap-1 whitespace-nowrap" title="{{ $ayuda }}">
+                                    <input type="checkbox" wire:model="permisosNuevos" value="{{ $k }}" class="border-gray-300 rounded"> {{ $etiqueta }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
                 <label class="text-xs text-gray-500">Prioridad
                     <select wire:model="prioridad" class="{{ $campo }}">
                         @foreach (\App\Models\TodoTarea::PRIORIDADES as $k => $t) <option value="{{ $k }}">{{ $t }}</option> @endforeach
@@ -197,6 +210,18 @@
                                                         @if ($esGestor) <button type="button" wire:click="autorizarClaude({{ $detalle->id }})" class="ml-1 px-2 py-0.5 text-white bg-green-600 rounded hover:bg-green-700">✔ Autorizar</button> @endif
                                                     @else
                                                         🤖 Claude la hará automáticamente (autorizada). {{ $detalle->claude_pausada ? 'Ahora está PAUSADA.' : 'Pasa cada hora; puedes adelantarlo.' }}
+                                                        <span class="block mt-1 mb-1">
+                                                            <b>Permisos:</b>
+                                                            @foreach (\App\Models\TodoTarea::PERMISOS_CLAUDE as $k => [$etiqueta, $ayuda])
+                                                                @php $tiene = in_array($k, (array) $detalle->claude_permisos, true); @endphp
+                                                                @if ($esGestor)
+                                                                    <label class="inline-flex items-center gap-1 mr-2 whitespace-nowrap" title="{{ $ayuda }}"><input type="checkbox" wire:click="permisoClaude({{ $detalle->id }}, '{{ $k }}')" @checked($tiene) class="border-gray-300 rounded"> {{ $etiqueta }}</label>
+                                                                @elseif ($tiene)
+                                                                    <span class="px-1.5 py-0.5 mr-1 bg-white border border-indigo-200 rounded">{{ $etiqueta }}</span>
+                                                                @endif
+                                                            @endforeach
+                                                            @if (! $esGestor && empty($detalle->claude_permisos)) <span class="text-gray-500">ninguno (solo lee, edita el proyecto y hace tests)</span> @endif
+                                                        </span>
                                                         <span class="flex flex-wrap gap-2 mt-1">
                                                             @if (($esAdmin || $detalle->creador_id === auth()->id()) && $detalle->abierta() && ! $detalle->claude_pausada)
                                                                 <button type="button" wire:click="ejecutarYa({{ $detalle->id }})" class="px-2 py-0.5 text-white bg-indigo-600 rounded hover:bg-indigo-700">⚡ Ejecutar ya</button>

@@ -23,6 +23,9 @@ class TodoCampana extends Component
 
     public function render()
     {
+        if (config('contabilidad.todo_url')) {   // en un PC no hay avisos propios: están en la web
+            return view('livewire.todo-campana', ['total' => 0, 'avisos' => collect(), 'oculta' => true]);
+        }
         $q = TodoAviso::where('user_id', auth()->id())->sinLeer();
         return view('livewire.todo-campana', [
             'total' => (clone $q)->count(),

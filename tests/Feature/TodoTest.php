@@ -233,4 +233,11 @@ class TodoTest extends TestCase
         $c->call('reordenar', [$id('Revisar IVA trimestral'), $id('Factura IVA')]);
         $this->assertSame(['Revisar IVA trimestral', 'Llamar a Pedro', 'Factura IVA'], $orden());
     }
+
+    public function test_en_un_pc_con_todo_url_el_todo_redirige_a_la_web(): void
+    {
+        config(['contabilidad.todo_url' => 'https://appmos.example.com/todo']);
+        $this->actingAs($this->usuario('Ana'))->get(route('todo'))->assertRedirect('https://appmos.example.com/todo');
+        $this->get(route('todo', ['t' => 5]))->assertRedirect('https://appmos.example.com/todo?t=5');
+    }
 }
