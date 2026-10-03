@@ -130,4 +130,87 @@ class FacturasOcrWebTest extends TestCase
         $this->get('/api/trabajador/facturasocr/Durcal/archivo?ruta='.urlencode('_Clientes/_FacturasOCR/Durcal/_texto/x.txt'), $h)->assertNotFound();
         $this->get('/api/trabajador/facturasocr/Durcal/archivo?ruta='.urlencode('_Clientes/_FacturasOCR/Durcal/../../secreto.txt'), $h)->assertNotFound();
     }
+
+    /** PDF válido de una página en blanco: sin texto, o sea «escaneado» para ocr_previo.py. */
+    protected function pdfEscaneado(string $marca): \Illuminate\Http\UploadedFile
+    {
+        $f = tempnam(sys_get_temp_dir(), 'pdf');
+        file_put_contents($f, "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            ."3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n%$marca\ntrailer<</Root 1 0 R>>\n");
+
+        return new \Illuminate\Http\UploadedFile($f, "escaneada {$marca}.pdf", 'application/pdf', null, true);
+    }
+
+    public function test_las_escaneadas_pasan_por_el_ocr_de_windows_de_un_pc_antes_de_leerse(): void
+    {
+        $py = getenv('HOME').'/appmos/storage/app/venv-facturasocr/bin/python';
+        if (! is_executable($py)) {
+            $this->markTestSkipped('No hay venv de Facturas OCR en este PC');
+        }
+        config(['contabilidad.facturasocr_python' => $py, 'contabilidad.facturasocr_dir' => '/mnt/f/Claude/Contabilidad/FacturasOcr']);
+        @mkdir('/mnt/f/Claude/Contabilidad/FacturasOcr', 0777, true);
+        if (! is_file('/mnt/f/Claude/Contabilidad/FacturasOcr/ocr_previo.py')) {
+            $this->markTestSkipped('No está ocr_previo.py');
+        }
+        // el cliente de la prueba vive en su propia carpeta de código; ocr_previo.py se llama desde la carpeta real
+        $token = \App\Support\ColaTareas::crearTrabajador('PC');
+        \Illuminate\Support\Facades\DB::table('trabajadores')->update(['ultimo_latido' => now()]);
+        $c = new class extends FacturasOcr {
+            public int $analisis = 0;
+            protected function lanzarAnalisis(): void
+            {
+                $this->analisis++;
+            }
+            protected function baseDir(): string
+            {
+                return '/mnt/f/Claude/Contabilidad/FacturasOcr';
+            }
+            protected function dirCliente(): string
+            {
+                return config('contabilidad.facturasocr_dir_cliente');
+            }
+        };
+        config(['contabilidad.facturasocr_dir_cliente' => $this->raiz.'/codigo/Durcal']);
+        $c->cliente = 'Durcal';
+        $c->ciclo = 'T';
+        $c->periodo = '2026-3T';
+        $esc = $this->pdfEscaneado('A');
+        $id = substr(sha1_file($esc->getRealPath()), 0, 12);
+        $c->pdfsSubidos = [$esc, $this->pdf('con texto')];
+        $c->recibirPdfs();
+
+        $this->assertSame(0, $c->analisis, 'espera al OCR del PC: '.$c->salida);
+        $this->assertTrue($c->leyendo);
+        $t = \Illuminate\Support\Facades\DB::table('tareas')->where('proceso', 'pc.script')->first();
+        $p = json_decode($t->parametros, true);
+        $this->assertSame('facturasocr', $p['grupo']);
+        $this->assertSame('ocr_previo.py', $p['pasos'][0]['script']);
+        $this->assertCount(1, $p['entradas']);   // solo la escaneada
+
+        // el PC la coge, hace el OCR y sube el json de lo leído
+        $h = ['X-Token' => $token];
+        $this->postJson('/api/trabajador/siguiente', ['capacidades' => ['pc.script']], $h)->assertOk();
+        $this->call('POST', "/api/trabajador/tareas/{$t->id}/fichero", [], [], [], ['HTTP_X-Token' => $token, 'HTTP_X-Nombre' => base64_encode("$id.json")], '{"p0|r0|d250|":"texto de windows"}')->assertOk();
+        $this->postJson("/api/trabajador/tareas/{$t->id}/fin", ['ok' => true, 'resultado' => ['ok' => true, 'pasos' => [['script' => 'ocr_previo.py', 'ok' => true, 'codigo' => 0, 'salida' => '1 de 1', 'ficheros' => [['ruta' => "/x/$id.json", 'nombre' => "$id.json", 'subido' => true]]]]]], $h)->assertOk();
+        $c->revisarLectura();
+
+        $this->assertFileExists($this->raiz."/OneDrive/_Clientes/_FacturasOCR/Durcal/_ocr/$id.json");
+        $this->assertSame(1, $c->analisis, 'con el OCR ya en la caché empieza la lectura');
+    }
+
+    public function test_sin_ningun_pc_conectado_se_lee_ya_con_tesseract(): void
+    {
+        $c = new class extends FacturasOcr {
+            public int $analisis = 0;
+            protected function lanzarAnalisis(): void
+            {
+                $this->analisis++;
+            }
+        };
+        $c->cliente = 'Durcal';
+        $c->ciclo = 'T';
+        $c->pdfsSubidos = [$this->pdf('Z')];
+        $c->recibirPdfs();
+        $this->assertSame(1, $c->analisis);
+    }
 }

@@ -194,6 +194,8 @@ return [
         ]],
         // Facturación PDF (Suma/Balerga): el PDF subido viaja como entrada y el PC lo procesa con su OneDrive.
         'facturacion' => ['scripts' => ['procesar_facturas.py', 'herramientas/listar_destinatarios.py']],
+        // Facturas OCR (web): OCR de Windows por adelantado de las facturas escaneadas (ocr_previo.py)
+        'facturasocr' => ['scripts' => ['ocr_previo.py']],
         // Neteges: la base (xlsx) va por git, así que solo un PC debe modificarla: NETEGES_PC=AlexMiniPC en el .env del VPS.
         'neteges' => ['pc' => env('NETEGES_PC'), 'scripts' => [
             'neteges_base.py', 'neteges_cobros.py', 'neteges_conciliar.py', 'neteges_estado.py', 'neteges_extractos.py',

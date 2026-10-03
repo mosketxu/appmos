@@ -26,6 +26,21 @@ use Livewire\WithFileUploads;
 class FacturasOcr extends Component
 {
     use WithFileUploads;
+    // Web: el OCR de las facturas escaneadas lo hace un PC con el OCR de Windows (trait: cola de tareas, 3-oct-2026)
+    use \App\Http\Livewire\Concerns\EjecutaEnPcs;
+
+    protected string $grupoPc = 'facturasocr';
+    protected bool $ultimoOk = false;
+    public array $resultados = [];
+
+    protected function recargarEstado(): void
+    {
+    }
+
+    protected function rutaWindows(string $p): string
+    {
+        return $this->aWindows($p) ?: $p;
+    }
 
     public string $cliente = '';
     public string $carpeta = '';
@@ -70,6 +85,7 @@ class FacturasOcr extends Component
     {
         $this->cliente = $this->clientes()[0] ?? '';
         $this->cargarCliente();
+        $this->retomarTareas();
     }
 
     // ------------------------------------------------------------ modo web (VPS)
@@ -93,6 +109,10 @@ class FacturasOcr extends Component
         if ($this->web()) {
             $env['ONEDRIVE_ROOT'] = rtrim((string) config('contabilidad.facturasocr_onedrive'), '/');
             $env['FACTURAS_OCR_MOTOR'] = 'tesseract';
+            // Lo que ya leyó el OCR de Windows de un PC (ocr_previo.py) se usa en vez de volver a leer con Tesseract
+            if ($this->cliente !== '' && $this->clienteValido()) {
+                $env['OCR_CACHE_DIR'] = $this->dirDatos().'/_ocr';
+            }
         }
 
         return $env;
@@ -647,7 +667,11 @@ class FacturasOcr extends Component
         return ($fin >= $ini || time() - $ini > 2400) ? null : [$ini, null];
     }
 
-    /** Lee en segundo plano las facturas de la carpeta de entrada (OCR incluido); no bloquea la página. */
+    /**
+     * Lee las facturas de la carpeta de entrada sin bloquear la página. Las que son una imagen (sin texto) pasan antes por el
+     * OCR de Windows de un PC trabajador (ocr_previo.py: lee mejor NIF y fechas que Tesseract); si no hay ningún PC conectado, o
+     * tarda más de 3 minutos, se lee ya con Tesseract. Las que tienen texto se leen directamente.
+     */
     public function leerEnSegundoPlano(): void
     {
         if (! $this->web() || ! $this->clienteValido()) {
@@ -664,6 +688,64 @@ class FacturasOcr extends Component
         @mkdir($dir, 0775, true);
         file_put_contents($dir.'/lectura.inicio', (string) time());
         @unlink($dir.'/lectura.fin');
+        $this->leyendo = true;
+        if (! $this->pedirOcrDeWindows()) {
+            $this->lanzarAnalisis();
+        }
+    }
+
+    /** Pide a un PC el OCR de Windows de las facturas escaneadas de la entrada que aún no lo tienen. true si ha quedado pedido. */
+    protected function pedirOcrDeWindows(): bool
+    {
+        if (! $this->colaLista() || $this->pcsConectados() === 0) {
+            return false;
+        }
+        $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(120)
+            ->run([$this->pythonBin(), 'ocr_previo.py', '--listar', $this->dirEntrada()]);
+        $lista = $r->successful() ? (json_decode(trim($r->output()), true) ?: []) : [];
+        $entradas = [];
+        foreach ($lista as $f) {
+            if (! is_file($this->dirDatos().'/_ocr/'.$f['id'].'.json') && count($entradas) < 40) {
+                $entradas[] = ['ruta' => $this->dirEntrada().'/'.$f['nombre'], 'nombre' => $f['id'].'.pdf', 'dir' => '_tmp/ocr_in', 'unico' => true];
+            }
+        }
+        if (! $entradas) {
+            return false;
+        }
+        $args = ['--salida', '{DIR}/_tmp/ocr_out'];
+        foreach (array_keys($entradas) as $i) {
+            $args[] = '{E'.$i.'}';
+        }
+        $tid = $this->lanzarEnCola([['script' => 'ocr_previo.py', 'args' => $args, 'timeout' => 900,
+            'etiqueta' => 'OCR de Windows de '.count($entradas).' factura(s) escaneada(s)']],
+            ['entradas' => $entradas, 'resultados' => 'ocr', 'post' => 'postOcrPrevio', 'ctx' => ['hasta' => time() + 180]]);
+
+        return $tid !== null;
+    }
+
+    /** Llegó el OCR de Windows de un PC: se guarda en la caché del cliente y empieza la lectura. */
+    protected function postOcrPrevio(array $ctx, int $desde, array $oks): void
+    {
+        $this->ingerirOcr((int) ($ctx['tarea'] ?? 0));
+        $this->lanzarAnalisis();
+    }
+
+    /** Copia a la caché de OCR del cliente lo que subió el PC (<id>.json). */
+    protected function ingerirOcr(int $tarea): void
+    {
+        $dst = $this->dirDatos().'/_ocr';
+        @mkdir($dst, 0775, true);
+        foreach (glob(\App\Support\ColaTareas::carpetaFicheros($tarea).'/*.json') ?: [] as $f) {
+            if (preg_match('/^[0-9a-f]{12}\.json$/', basename($f)) && is_array(json_decode((string) file_get_contents($f), true))) {
+                copy($f, $dst.'/'.basename($f));
+            }
+        }
+    }
+
+    /** Lanza la lectura (facturas_ocr.py analizar) en segundo plano; al terminar deja la marca lectura.fin. */
+    protected function lanzarAnalisis(): void
+    {
+        $dir = $this->dirDatos().'/_cola';
         $env = '';
         foreach ($this->entornoPython() as $k => $v) {
             $env .= $k.'='.escapeshellarg($v).' ';
@@ -673,7 +755,6 @@ class FacturasOcr extends Component
             .' '.implode(' ', array_map('escapeshellarg', $args)).' > '.escapeshellarg($dir.'/lectura.log').' 2>&1; date +%s > '.escapeshellarg($dir.'/lectura.fin')
             .') < /dev/null > /dev/null 2>&1 &';
         Process::run(['bash', '-c', 'nohup setsid bash -c '.escapeshellarg($cmd).' &']);
-        $this->leyendo = true;
     }
 
     /** wire:poll mientras se lee: al terminar enseña el resumen y deja la lista al día. */
@@ -681,6 +762,15 @@ class FacturasOcr extends Component
     {
         if (! $this->leyendo) {
             return;
+        }
+        $this->revisarTareas();   // el OCR de Windows que se espera de un PC (cierra la tarea y arranca la lectura)
+        foreach ($this->pendientes as $tid => $p) {
+            // Si el PC tarda más de 3 minutos, se lee ya con Tesseract (y la tarea se anula si nadie la había cogido)
+            if (($p['ctx']['hasta'] ?? PHP_INT_MAX) < time()) {
+                unset($this->pendientes[$tid]);
+                \Illuminate\Support\Facades\DB::table('tareas')->where('id', $tid)->where('estado', 'pendiente')->update(['estado' => 'cancelada', 'updated_at' => now()]);
+                $this->lanzarAnalisis();
+            }
         }
         if ($this->lecturaEnCurso() === null) {
             $this->leyendo = false;

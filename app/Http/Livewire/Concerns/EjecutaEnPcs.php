@@ -230,7 +230,7 @@ trait EjecutaEnPcs
         }
         $this->ultimoOk = ! in_array(false, $oks, true);
         if (! empty($p['post'])) {
-            $this->{$p['post']}($p['ctx'] ?? [], $desde, $oks);
+            $this->{$p['post']}(($p['ctx'] ?? []) + ['tarea' => (int) $t->id], $desde, $oks);
         }
     }
 
