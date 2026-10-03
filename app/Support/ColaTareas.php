@@ -167,6 +167,18 @@ class ColaTareas
                         }
                     }
                 })
+                ->where(function ($q) {
+                    // Grupos «exclusivos» (Neteges, Durcal: escriben en una base/OneDrive que no admite dos PCs a la vez): si ya hay una tarea
+                    // del grupo en curso en un PC que sigue dando señales, no se entrega otra a nadie hasta que termine.
+                    foreach (config('contabilidad.pc_grupos', []) as $grupo => $g) {
+                        if (! empty($g['exclusivo'])) {
+                            $like = '%"grupo":"'.$grupo.'"%';
+                            $q->whereRaw('not (tareas.parametros like ? and exists (select 1 from tareas t2 join trabajadores w on w.id = t2.trabajador_id '
+                                .'where t2.estado = ? and t2.parametros like ? and w.ultimo_latido >= ?))',
+                                [$like, 'en_curso', $like, now()->subSeconds(self::LATIDO_MAX)->toDateTimeString()]);
+                        }
+                    }
+                })
                 ->where(fn ($q) => $q->whereNull('preferido')->orWhere('preferido', $t->nombre)
                     ->orWhereNotIn('preferido', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')))
                 ->where(fn ($q) => $q->whereNull('no_antes_de')->orWhere('no_antes_de', '<=', now()))

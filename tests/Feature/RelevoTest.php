@@ -56,4 +56,19 @@ class RelevoTest extends TestCase
         DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(5)]);
         $this->assertSame($id, $this->pideP());
     }
+
+    public function test_nunca_dos_tareas_de_neteges_a_la_vez_en_dos_pcs(): void
+    {
+        config(['contabilidad.pc_grupos.neteges.exclusivo' => true]);
+        DB::table('trabajadores')->update(['ultimo_latido' => now()]);
+        $t1 = ColaTareas::crear('pc.script', ['grupo' => 'neteges', 'pasos' => [['script' => 'neteges_base.py', 'args' => []]]]);
+        $t2 = ColaTareas::crear('pc.script', ['grupo' => 'neteges', 'pasos' => [['script' => 'neteges_ventas.py', 'args' => []]]]);
+        $otra = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'monthlyFIQ.js', 'args' => ['09']]]]);
+        $this->assertSame($t1, $this->pideP());                      // Portal empieza la primera de Neteges
+        $a = fn () => $this->postJson('/api/trabajador/siguiente', ['capacidades' => ['pc.script']], ['X-Token' => $this->a])->json('tarea.id');
+        $this->assertSame($otra, $a(), 'lo de otro grupo sí puede ir al otro PC');
+        $this->assertNull($a(), 'la 2.ª de Neteges espera mientras la 1.ª siga en curso en el otro PC');
+        $this->postJson("/api/trabajador/tareas/$t1/fin", ['ok' => true, 'resultado' => ['ok' => true]], ['X-Token' => $this->p])->assertOk();
+        $this->assertSame($t2, $a(), 'terminada la 1.ª, ya puede ir la 2.ª');
+    }
 }
