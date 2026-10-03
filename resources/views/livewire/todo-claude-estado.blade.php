@@ -13,7 +13,7 @@
                 </span>
             @endforeach
             @if ($p)
-                <span title="Uso real de tu plan de Claude, leído con /usage en {{ $p['pc'] }} hace {{ $p['hace_min'] }} min. Si sube del {{ $ec['freno'] }} % Claude no empieza tareas solo. Hoy ha hecho {{ $ec['hoy'] }} pasadas automáticas (tope {{ $ec['limite'] }}/día, {{ number_format($ec['coste'], 2) }} $ estimados).{{ $ec['en_curso'] ? ' Haciendo ahora: '.implode(' · ', $ec['en_curso']) : '' }}">
+                <span title="Uso real de tu plan de Claude, leído con /usage en {{ $p['pc'] }} hace {{ $p['hace_min'] }} min. Si sube del {{ $ec['freno'] }} % Claude no empieza tareas solo. Hoy Claude ha hecho {{ $ec['hoy'] }} tareas por su cuenta ({{ number_format($ec['coste'], 2) }} $ estimados; red de seguridad: máx. {{ $ec['limite'] }} al día).{{ $ec['en_curso'] ? ' Haciendo ahora: '.implode(' · ', $ec['en_curso']) : '' }}">
                     Sesión <b class="{{ $color($p['sesion']) }}">{{ $p['sesion'] ?? '?' }} %</b><span class="text-gray-500"> (reinicia {{ $p['sesion_reinicia'] ?? '?' }})</span>
                     · Semana <b class="{{ $color($p['semana']) }}">{{ $p['semana'] ?? '?' }} %</b><span class="text-gray-500"> (reinicia {{ $p['semana_reinicia'] ?? '?' }})</span>
                     @if ($ec['en_curso']) <span class="text-indigo-600">▶</span> @endif

@@ -168,7 +168,7 @@ return [
     // Solo ellos pausan a Claude y dan el visto bueno a lo que le asignan otros usuarios (correos separados por comas)
     'claude_todo_gestores' => array_filter(array_map('trim', explode(',', env('CLAUDE_TODO_GESTORES', 'alex.arregui@sumaempresa.com')))),
     'claude_todo_max_uso' => (int) env('CLAUDE_TODO_MAX_USO', 80),   // % del plan (sesión o semana) a partir del cual Claude no empieza tareas solo
-    'claude_todo_max_dia' => (int) env('CLAUDE_TODO_MAX_DIA', 10),   // tope de pasadas automáticas de Claude al día
+    'claude_todo_max_dia' => (int) env('CLAUDE_TODO_MAX_DIA', 30),   // red de seguridad: ejecuciones de Claude al día (el freno de verdad es el % del plan, claude_todo_max_uso)
     'claude_todo_cada_minutos' => (int) env('CLAUDE_TODO_CADA_MINUTOS', 60),
 
 ];

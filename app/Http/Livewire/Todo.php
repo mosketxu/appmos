@@ -205,7 +205,7 @@ class Todo extends Component
         } elseif (TodoClaude::pausadoGlobal()) {
             $this->mensaje = 'Todos los desarrollos automáticos están en pausa: reanúdalos en el botón de la barra.';
         } elseif (! TodoClaude::permitido()) {
-            $this->mensaje = 'Se ha llegado al tope de pasadas automáticas de hoy ('.TodoClaude::limiteDia().'); se reinicia a las 00:00.';
+            $this->mensaje = 'Claude ha hecho hoy el máximo de ejecuciones de seguridad ('.TodoClaude::limiteDia().'); se reinicia a las 00:00.';
         } else {
             $cola = TodoClaude::encolar($t, true);
             $enLinea = \DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(\App\Support\ColaTareas::LATIDO_MAX))->pluck('nombre')->all();
