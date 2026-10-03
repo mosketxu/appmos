@@ -37,7 +37,8 @@
             </div> --}}
 
             <div class="flex items-center justify-end mt-4">
-                @if (Route::has('password.request'))
+                {{-- Solo si el correo está configurado (en el VPS mientras sea mailhog no sale ningún correo) --}}
+                @if (Route::has('password.request') && config('mail.mailers.smtp.host') !== 'mailhog')
                     <a class="text-sm text-gray-600 underline hover:text-gray-900" href="{{ route('password.request') }}">
                         ¿Olvidaste tu contraseña?
                     </a>

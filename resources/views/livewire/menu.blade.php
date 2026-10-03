@@ -30,6 +30,9 @@
                             {{ __('Entidades') }}
                         </x-jet-nav-link>
                     @endcan
+                    <x-jet-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
+                        TO-DO
+                    </x-jet-nav-link>
                     @if ($rutaContabilidad)
                         <x-jet-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*')">
                             {{ __('Contabilidad') }}
