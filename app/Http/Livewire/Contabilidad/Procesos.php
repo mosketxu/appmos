@@ -2,8 +2,8 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Http\Livewire\Concerns\EjecutaEnPcs;
 use App\Support\ColaTareas;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
@@ -22,6 +22,11 @@ use Livewire\Component;
  */
 class Procesos extends Component
 {
+    // En la web los scripts los hacen los PCs trabajadores por la cola de tareas (ver el trait).
+    use EjecutaEnPcs;
+
+    protected string $grupoPc = 'fiq';
+
     public int $mes;
     public string $salida = '';
     // Ya no hay check "Modo real" (pedido del usuario 2026-09-09: "siempre va a
@@ -37,14 +42,6 @@ class Procesos extends Component
 
     /** ¿Terminó bien el último ejecutarScript()? (para marcar el checklist) */
     protected bool $ultimoOk = false;
-
-    /**
-     * Tareas pedidas a los PCs trabajadores desde la web (3-oct-2026) y aún sin cerrar. En el VPS no hay
-     * ficheros de OneDrive: cada botón deja una tarea `fiq.script` en la cola, un PC la ejecuta y al terminar
-     * se hace lo mismo que en local (salida, ficheros, checklist...). Forma:
-     * [tarea_id => ['tipo' => 'script'|'estado', 'etiquetas' => [...], 'post' => método|null, 'ctx' => [...], 'resultados' => clave|null]].
-     */
-    public array $pendientes = [];
 
     // RentasVariables (formularios aparte, no encajan en el check general).
     // Dos acciones (ver PROCESO_GENERAL.md en Contabilidad/monthlyFIQ):
@@ -141,7 +138,7 @@ class Procesos extends Component
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
         $this->cargarBasePagosFinMes();
         $this->updatedPfMes();
-        $this->sincronizarEstado();
+        $this->sincronizarEstado('fiq.checklist_def');
         $this->cargarCashInStore();
     }
 
@@ -441,12 +438,6 @@ class Procesos extends Component
 
     // -- Ejecución local (PC) o en cola de trabajadores (web) ----------------------------------------
 
-    /** En el VPS (sin ejecucion_local) los scripts los hacen los PCs trabajadores vía cola de tareas. */
-    protected function remoto(): bool
-    {
-        return ! config('contabilidad.ejecucion_local');
-    }
-
     /** Comando local de un paso ['script', 'args', 'windows'?] → [argv, cwd|null, env]. */
     protected function comando(array $p): array
     {
@@ -509,202 +500,23 @@ class Procesos extends Component
         }
     }
 
-    /** Deja los pasos como una tarea para los PCs (la web no ejecuta nada por sí misma). */
-    protected function lanzarEnCola(array $pasos, array $opc): void
-    {
-        $etiquetas = array_column($pasos, 'etiqueta');
-        $titulo = implode(' + ', $etiquetas);
-        if (! Schema::hasTable('tareas') || ! Schema::hasTable('estado_procesos')) {
-            $this->salida .= "\n\n⚠️ {$titulo}: falta hacer la migración de la cola de tareas en este servidor.";
-            return;
-        }
-        $params = ['pasos' => array_map(fn ($p) => [
-            'script' => $p['script'], 'args' => array_map('strval', $p['args'] ?? []), 'timeout' => $p['timeout'] ?? 180,
-        ], $pasos)];
-        // Mismo botón pulsado dos veces: no se duplica (sobre todo importante en los envíos de correo).
-        $json = json_encode($params, JSON_UNESCAPED_UNICODE);
-        if (DB::table('tareas')->where('proceso', 'fiq.script')->whereIn('estado', ['pendiente', 'en_curso'])->where('parametros', $json)->exists()) {
-            $this->salida .= "\n\n⚠️ {$titulo}: ya está pedido y sin terminar (mira «Tareas en los PCs»).";
-            return;
-        }
-        $this->podarFicherosViejos();
-        $tid = ColaTareas::crear('fiq.script', $params, null, auth()->id(), ColaTareas::preferido());
-        $this->pendientes[$tid] = ['tipo' => 'script', 'etiquetas' => $etiquetas, 'post' => $opc['post'] ?? null,
-            'ctx' => $opc['ctx'] ?? [], 'resultados' => $opc['resultados'] ?? null];
-        $this->salida .= "\n\n⏳ {$titulo} · pedido a los PCs (tarea #{$tid}); el resultado saldrá aquí en cuanto lo terminen.";
-        if ($this->pcsConectados() === 0) {
-            $this->salida .= "\n⚠️ Ahora mismo no hay ningún PC conectado: esperará hasta que alguno arranque (puedes cancelarla en «Tareas en los PCs»).";
-        }
-    }
-
-    protected function pcsConectados(): int
-    {
-        return DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))->count();
-    }
-
-    /** Ficheros que subieron los PCs de tareas con más de 30 días. */
-    protected function podarFicherosViejos(): void
-    {
-        $base = storage_path('app/tareas');
-        foreach (is_dir($base) ? (glob($base . '/*', GLOB_ONLYDIR) ?: []) : [] as $d) {
-            if (filemtime($d) < time() - 30 * 86400) {
-                array_map('unlink', glob($d . '/*') ?: []);
-                @rmdir($d);
-            }
-        }
-    }
-
-    /** wire:poll mientras haya tareas pedidas: cierra las que ya han terminado (haciendo lo que haría el modo local). */
-    public function revisarTareas(): void
-    {
-        if (! $this->pendientes) {
-            return;
-        }
-        foreach ($this->pendientes as $tid => $p) {
-            $t = DB::table('tareas')->find($tid);
-            if ($t && in_array($t->estado, ['pendiente', 'en_curso'], true)) {
-                continue;
-            }
-            unset($this->pendientes[$tid]);
-            if (! $t || $t->estado === 'cancelada') {
-                $this->salida .= "\n\n🚫 " . implode(' + ', $p['etiquetas'] ?? ['Tarea']) . ' · cancelada.';
-                continue;
-            }
-            $this->cerrarTarea($t, $p);
-        }
-    }
-
-    protected function cerrarTarea(object $t, array $p): void
-    {
-        $res = json_decode((string) $t->resultado, true) ?: [];
-        if (($p['tipo'] ?? 'script') === 'estado') {
-            $this->recargarEstado();
-            return;
-        }
-        $etiquetas = $p['etiquetas'] ?? [];
-        $pasos = $res['pasos'] ?? [];
-        $oks = [];
-        $desde = strlen($this->salida);
-        if (! $pasos) {
-            // el trabajador falló antes de ejecutar nada (script no permitido, falta playwright...)
-            $this->salida .= "\n\n===== " . implode(' + ', $etiquetas) . " =====\n⚠️ " . trim((string) $t->log);
-            $this->dispatch('proceso-terminado', mensaje: '⚠️ ' . implode(' + ', $etiquetas) . "\nNo se pudo ejecutar en el PC. Mira la caja de Salida.");
-            $this->ultimoOk = false;
-            return;
-        }
-        $pc = $res['pc'] ?? ($t->trabajador_id ? DB::table('trabajadores')->where('id', $t->trabajador_id)->value('nombre') : '');
-        foreach ($pasos as $i => $paso) {
-            $etiqueta = $etiquetas[$i] ?? ($paso['script'] ?? 'Proceso');
-            $this->salida .= "\n\n===== {$etiqueta}" . ($pc ? " · en {$pc}" : '') . " =====\n";
-            $desde = strlen($this->salida);
-            $this->salida .= (string) ($paso['salida'] ?? '');
-            $ok = ! empty($paso['ok']);
-            $oks[] = $ok;
-            if ($ok) {
-                $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
-            } else {
-                $this->salida .= "\n\n⚠️ El proceso terminó con código de salida " . ($paso['codigo'] ?? '?') . '.';
-                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código " . ($paso['codigo'] ?? '?') . "). Mira la caja de Salida: cada ⚠️ dice qué hacer (👉) si el proceso lo sabe.");
-            }
-            if (! empty($p['resultados'])) {
-                foreach ($paso['ficheros'] ?? [] as $f) {
-                    $this->anexarFicheroRemoto($p['resultados'], $f, (int) $t->id, (string) $pc);
-                }
-            }
-        }
-        $this->ultimoOk = ! in_array(false, $oks, true);
-        if (! empty($p['post'])) {
-            $this->{$p['post']}($p['ctx'] ?? [], $desde, $oks);
-        }
-    }
-
-    /** Fichero resultado de una tarea de un PC: ruta Windows en ese PC y, si se subió, botón de descarga. */
-    protected function anexarFicheroRemoto(string $key, array $f, int $tid, string $pc): void
-    {
-        $win = $this->rutaWindows((string) $f['ruta']);
-        foreach ($this->resultados[$key] ?? [] as $r) {
-            if (($r['ruta'] ?? '') === $win) {
-                return;
-            }
-        }
-        $this->resultados[$key][] = ['ruta' => $win . ($pc ? " ({$pc})" : ''), 'url' => null, 'local' => null,
-            'tarea' => ! empty($f['subido']) ? $tid : null, 'nombre' => (string) ($f['nombre'] ?? basename($win))];
-    }
-
-    /** «⬇ Descargar» de un fichero que subió un PC al terminar una tarea (web). */
-    public function descargarDeTarea(int $tid, string $nombre)
-    {
-        $nombre = basename($nombre);
-        $ruta = ColaTareas::carpetaFicheros($tid) . '/' . $nombre;
-        if ($nombre === '' || ! is_file($ruta)) {
-            $this->salida .= "\n\n⚠️ No puedo descargar ese fichero (ya no está en el servidor; se borran a los 30 días).";
-            return null;
-        }
-        return response()->download($ruta, $nombre);
-    }
-
-    /** Anula una tarea que aún no ha cogido ningún PC (p. ej. un envío pedido con todos los PCs apagados). */
-    public function cancelarTarea(int $tid): void
-    {
-        $n = DB::table('tareas')->where('id', $tid)->where('estado', 'pendiente')->update(['estado' => 'cancelada', 'terminada_at' => now(), 'updated_at' => now()]);
-        $this->salida .= $n ? "\n\n🚫 Tarea #{$tid} cancelada." : "\n\n⚠️ La tarea #{$tid} ya la ha cogido un PC (o ya terminó): no se puede cancelar.";
-        $this->revisarTareas();
-    }
-
-    /** PCs trabajadores y últimas tareas, para el panel «Tareas en los PCs» (solo en la web). */
-    public function getPcsProperty(): array
-    {
-        if (! $this->remoto() || ! Schema::hasTable('trabajadores') || ! Schema::hasTable('tareas')) {
-            return ['pcs' => [], 'tareas' => []];
-        }
-        $limite = now()->subSeconds(ColaTareas::LATIDO_MAX);
-        return [
-            'pcs' => DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()
-                ->map(fn ($t) => ['nombre' => $t->nombre, 'conectado' => $t->ultimo_latido && $t->ultimo_latido >= $limite->toDateTimeString(), 'latido' => $t->ultimo_latido])->all(),
-            'tareas' => DB::table('tareas')->leftJoin('trabajadores', 'trabajadores.id', '=', 'tareas.trabajador_id')
-                ->whereIn('tareas.proceso', ['fiq.script', 'fiq.estado', 'fiq.checklist'])->orderByDesc('tareas.id')->limit(6)
-                ->get(['tareas.id', 'tareas.proceso', 'tareas.parametros', 'tareas.estado', 'tareas.created_at', 'trabajadores.nombre as pc'])->all(),
-        ];
-    }
-
     // -- Estado que dejan los scripts (JSON en los PCs; en la web, copia en BD) -------------------------
 
     /** Lee un JSON de estado: del fichero en un PC, de la copia que subió el trabajador en la web. */
     protected function estadoFiq(string $clave, ?string $fichero): ?array
     {
         if ($this->remoto()) {
-            try {
-                $d = Schema::hasTable('estado_procesos') ? ColaTareas::estado($clave) : null;
-            } catch (\Throwable $e) {
-                $d = null;
-            }
-            return is_array($d) ? $d : null;
+            return $this->estadoRemoto($clave);
         }
         $d = $fichero && is_file($fichero) ? json_decode((string) file_get_contents($fichero), true) : null;
 
         return is_array($d) ? $d : null;
     }
 
-    /** Web: pide a un PC que suba el estado si no hay copia o es vieja (>30 min). Sin esperar: se recarga al llegar. */
-    protected function sincronizarEstado(bool $forzar = false): void
-    {
-        if (! $this->remoto() || ! Schema::hasTable('estado_procesos') || ! Schema::hasTable('tareas')) {
-            return;
-        }
-        $ultima = DB::table('estado_procesos')->where('clave', 'fiq.checklist_def')->value('updated_at');
-        if (! $forzar && $ultima && \Carbon\Carbon::parse($ultima)->gt(now()->subMinutes(30))) {
-            return;
-        }
-        if (DB::table('tareas')->where('proceso', 'fiq.estado')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
-            return;
-        }
-        $tid = ColaTareas::crear('fiq.estado', [], null, auth()->id(), ColaTareas::preferido());
-        $this->pendientes[$tid] = ['tipo' => 'estado', 'etiquetas' => ['Estado de los procesos'], 'post' => null, 'ctx' => [], 'resultados' => null];
-    }
-
+    /** «↻ Sincronizar estado» del panel de PCs. */
     public function sincronizarAhora(): void
     {
-        $this->sincronizarEstado(true);
+        $this->sincronizarEstado('fiq.checklist_def', true);
     }
 
     /** Ha llegado estado nuevo de un PC: vuelve a cargar lo que depende de él (sin tocar lo que el usuario esté escribiendo). */

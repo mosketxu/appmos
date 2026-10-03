@@ -54,6 +54,17 @@ class TrabajadorApiController extends Controller
         return response()->json(['ok' => ColaTareas::anadirLog($id, $t->id, (string) $r->input('texto', ''))]);
     }
 
+    /** El PC se baja un fichero que dejó la web para la tarea (los que ha subido el usuario en la pantalla). */
+    public function entrada(Request $r, int $id, string $nombre)
+    {
+        $t = $this->trabajador($r);
+        abort_unless(\Illuminate\Support\Facades\DB::table('tareas')->where('id', $id)->where('trabajador_id', $t->id)->where('estado', 'en_curso')->exists(), 404);
+        $ruta = ColaTareas::carpetaEntradas($id).'/'.basename($nombre);
+        abort_unless(is_file($ruta), 404);
+
+        return response()->file($ruta);
+    }
+
     /** El PC sube un fichero resultado de la tarea (cuerpo = el fichero; nombre en X-Nombre, en base64). */
     public function fichero(Request $r, int $id)
     {

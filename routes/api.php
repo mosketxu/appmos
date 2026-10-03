@@ -31,6 +31,7 @@ Route::prefix('trabajador')->group(function () {
     Route::post('/siguiente', [\App\Http\Controllers\TrabajadorApiController::class, 'siguiente']);
     Route::post('/latido', [\App\Http\Controllers\TrabajadorApiController::class, 'latido']);
     Route::post('/tareas/{id}/log', [\App\Http\Controllers\TrabajadorApiController::class, 'log']);
+    Route::get('/tareas/{id}/entrada/{nombre}', [\App\Http\Controllers\TrabajadorApiController::class, 'entrada']);
     Route::post('/tareas/{id}/fichero', [\App\Http\Controllers\TrabajadorApiController::class, 'fichero']);
     Route::post('/tareas/{id}/fin', [\App\Http\Controllers\TrabajadorApiController::class, 'fin']);
 });

@@ -158,20 +158,30 @@ return [
     */
     'tareas_procesos' => [
         'certificados.escanear' => 'Escanear los certificados digitales de este PC',
-        // Procesos FIQ (pantalla Procesos) desde la web: el PC ejecuta uno o varios scripts de monthlyFIQ de la
-        // lista cerrada 'fiq_scripts' (nunca rutas ni comandos libres) y devuelve salida, ficheros y estado.
-        'fiq.script' => 'Ejecutar scripts de monthlyFIQ',
-        'fiq.estado' => 'Subir el estado de los procesos FIQ (pagosFinMes.json, Cash in store, checklist)',
-        'fiq.checklist' => 'Aplicar un cambio del checklist de cierre en OneDrive',
+        // Procesos desde la web (3-oct-2026): el PC ejecuta uno o varios scripts de la lista cerrada de un grupo
+        // ('pc_grupos'; nunca rutas ni comandos libres), con ficheros de entrada que sube la web, y devuelve salida,
+        // ficheros y una copia del estado. Ver Contabilidad/TrabajadorWeb/DIAGNOSTICO.md.
+        'pc.script' => 'Ejecutar scripts de Contabilidad',
+        'pc.estado' => 'Subir el estado de un grupo de procesos (la web no ve OneDrive)',
+        'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
+        'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',
     ],
 
-    // Scripts de monthlyFIQ que el trabajador puede ejecutar (ruta relativa a monthlyFIQ). El tipo (node, python,
-    // node de Windows) lo decide el trabajador, no la web. Si se añade uno aquí, también en trabajador.py.
-    'fiq_scripts' => [
-        'monthlyFIQ.js', 'sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js', 'anaplanWeb/subirAnaplan.js',
-        'imputacionCostes.js', 'adyenReparto.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
-        'enviarRentasVariables.py', 'pagosFinMes.py', 'FacturasEmitidas/facturasEmitidas.py', 'CashFlow/cashflow.py',
-        'CashInStore/cashInStore.py',
+    // Scripts que el trabajador puede ejecutar, por grupo (ruta relativa a la carpeta del grupo en Contabilidad/).
+    // El tipo (node, python, powershell...) y la carpeta los decide el trabajador, no la web. Si se añade uno aquí,
+    // también en Contabilidad/TrabajadorWeb/trabajador.py (GRUPOS).
+    'pc_grupos' => [
+        'fiq' => ['scripts' => [
+            'monthlyFIQ.js', 'sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js', 'anaplanWeb/subirAnaplan.js',
+            'imputacionCostes.js', 'adyenReparto.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
+            'enviarRentasVariables.py', 'pagosFinMes.py', 'FacturasEmitidas/facturasEmitidas.py', 'CashFlow/cashflow.py',
+            'CashInStore/cashInStore.py',
+        ]],
+        // Neteges: la base (xlsx) va por git, así que solo un PC debe modificarla: NETEGES_PC=AlexMiniPC en el .env del VPS.
+        'neteges' => ['pc' => env('NETEGES_PC'), 'scripts' => [
+            'neteges_base.py', 'neteges_cobros.py', 'neteges_conciliar.py', 'neteges_estado.py', 'neteges_extractos.py',
+            'neteges_plugin.py', 'neteges_ventas.py', 'bajarAdjuntosNeteges.ps1',
+        ]],
     ],
 
 ];

@@ -19,6 +19,8 @@
 
     <h1 class="text-2xl font-semibold text-gray-900">Neteges</h1>
 
+    @include('livewire.contabilidad._pcs')
+
     @php
         $ev = $estadoVentas;
         $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];

@@ -16,30 +16,55 @@ class ColaTareas
     /** Minutos durante los que el PC que hizo la última tarea FIQ sigue siendo el «preferido» para la siguiente. */
     public const PREFERIDO_MIN = 15;
 
-    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null, ?string $preferido = null): int
+    /**
+     * $estado 'preparando': la tarea aún no la coge nadie (la web está dejando los ficheros de entrada); se libera con liberar().
+     */
+    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null, ?string $preferido = null, string $estado = 'pendiente'): int
     {
         abort_unless(array_key_exists($proceso, config('contabilidad.tareas_procesos', [])), 422, 'Proceso no permitido');
-        if ($proceso === 'fiq.script') {
+        if (in_array($proceso, ['pc.script', 'pc.estado', 'pc.fichero'], true)) {
+            $grupo = config('contabilidad.pc_grupos.'.($parametros['grupo'] ?? ''));
+            abort_unless(is_array($grupo), 422, 'Grupo no permitido');
             foreach ((array) ($parametros['pasos'] ?? []) as $paso) {
-                abort_unless(in_array($paso['script'] ?? null, config('contabilidad.fiq_scripts', []), true), 422, 'Script no permitido');
+                abort_unless(in_array($paso['script'] ?? null, $grupo['scripts'], true), 422, 'Script no permitido');
                 abort_unless(collect($paso['args'] ?? [])->every(fn ($a) => is_scalar($a)), 422, 'Argumentos no válidos');
+            }
+            foreach ((array) ($parametros['entradas'] ?? []) as $e) {
+                abort_unless(self::rutaRelativaSegura((string) ($e['dir'] ?? '')) && basename((string) ($e['nombre'] ?? '')) !== '', 422, 'Entrada no válida');
+            }
+            if ($proceso === 'pc.fichero') {
+                abort_unless(self::rutaRelativaSegura((string) ($parametros['relativa'] ?? '')), 422, 'Ruta no válida');
             }
         }
 
         return DB::table('tareas')->insertGetId([
             'proceso' => $proceso, 'parametros' => json_encode($parametros, JSON_UNESCAPED_UNICODE), 'destino' => $destino,
-            'preferido' => $preferido, 'estado' => 'pendiente', 'user_id' => $userId, 'created_at' => now(), 'updated_at' => now(),
+            'preferido' => $preferido, 'estado' => $estado, 'user_id' => $userId, 'created_at' => now(), 'updated_at' => now(),
         ]);
+    }
+
+    /** Ruta relativa a la carpeta de un grupo: sin «..», sin rutas absolutas ni unidades de Windows. */
+    public static function rutaRelativaSegura(string $r): bool
+    {
+        return $r !== '' && ! str_starts_with($r, '/') && ! str_starts_with($r, '\\') && ! preg_match('/^[A-Za-z]:/', $r)
+            && ! in_array('..', preg_split('#[/\\\\]#', $r), true);
+    }
+
+    /** La tarea estaba «preparando» (la web subía los ficheros de entrada): ya la pueden coger los PCs. */
+    public static function liberar(int $id): void
+    {
+        DB::table('tareas')->where('id', $id)->where('estado', 'preparando')->update(['estado' => 'pendiente', 'updated_at' => now()]);
     }
 
     /**
      * PC que hizo la última tarea FIQ hace poco y sigue conectado: los pasos encadenados de un proceso van mejor
      * al mismo PC (OneDrive tarda en sincronizar el fichero que acaba de dejar el otro).
      */
-    public static function preferido(): ?string
+    public static function preferido(string $grupo = 'fiq'): ?string
     {
         $t = DB::table('tareas')->join('trabajadores', 'trabajadores.id', '=', 'tareas.trabajador_id')
-            ->where('tareas.proceso', 'fiq.script')->where('tareas.estado', 'ok')
+            ->where('tareas.proceso', 'pc.script')->where('tareas.estado', 'ok')
+            ->where('tareas.parametros', 'like', '%"grupo":"'.$grupo.'"%')
             ->where('tareas.terminada_at', '>=', now()->subMinutes(self::PREFERIDO_MIN))
             ->where('trabajadores.ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))
             ->orderByDesc('tareas.id')->first(['trabajadores.nombre']);
@@ -64,6 +89,12 @@ class ColaTareas
     public static function carpetaFicheros(int $tareaId): string
     {
         return storage_path('app/tareas/'.$tareaId);
+    }
+
+    /** Ficheros que la web deja para el PC antes de la tarea (los que ha subido el usuario). */
+    public static function carpetaEntradas(int $tareaId): string
+    {
+        return storage_path('app/tareas/'.$tareaId.'/entrada');
     }
 
     /** Alta de un trabajador; devuelve el token en claro (solo se ve esta vez). */
@@ -160,7 +191,7 @@ class ColaTareas
             }
         }
         // Procesos FIQ: el PC sube una copia del estado que han dejado los scripts (OneDrive sigue siendo la verdad).
-        if (str_starts_with($tarea->proceso, 'fiq.') && is_array($resultado['estado'] ?? null)) {
+        if ((str_starts_with($tarea->proceso, 'pc.') || str_starts_with($tarea->proceso, 'fiq.')) && is_array($resultado['estado'] ?? null)) {
             $nombre = DB::table('trabajadores')->where('id', $trabajadorId)->value('nombre');
             foreach ($resultado['estado'] as $clave => $valor) {
                 self::guardarEstado((string) $clave, $valor, $nombre);

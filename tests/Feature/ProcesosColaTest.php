@@ -27,7 +27,7 @@ class ProcesosColaTest extends TestCase
     protected function pc(string $nombre = 'AlexMiniPC'): array
     {
         $token = ColaTareas::crearTrabajador($nombre);
-        $cap = ['capacidades' => ['fiq.script', 'fiq.estado', 'fiq.checklist']];
+        $cap = ['capacidades' => ['pc.script', 'pc.estado', 'fiq.checklist']];
 
         return [['X-Token' => $token], $cap];
     }
@@ -62,7 +62,7 @@ class ProcesosColaTest extends TestCase
         $this->assertSame([], $c->pendientes);
 
         $c->buscarCashInStore();
-        $tareas = DB::table('tareas')->where('proceso', 'fiq.script')->get();
+        $tareas = DB::table('tareas')->where('proceso', 'pc.script')->get();
         $this->assertCount(1, $tareas);
         $params = json_decode($tareas[0]->parametros, true);
         $this->assertSame('CashInStore/cashInStore.py', $params['pasos'][0]['script']);
@@ -71,7 +71,7 @@ class ProcesosColaTest extends TestCase
 
         // el mismo botón dos veces no duplica
         $c->buscarCashInStore();
-        $this->assertSame(1, DB::table('tareas')->where('proceso', 'fiq.script')->count());
+        $this->assertSame(1, DB::table('tareas')->where('proceso', 'pc.script')->count());
 
         $this->trabajar($h, $cap, [
             'ok' => true, 'pc' => 'AlexMiniPC',
@@ -129,7 +129,7 @@ class ProcesosColaTest extends TestCase
         $this->pc();
         $c = $this->componente();
         $c->buscarCashInStore();
-        $tid = DB::table('tareas')->where('proceso', 'fiq.script')->value('id');
+        $tid = DB::table('tareas')->where('proceso', 'pc.script')->value('id');
         $c->cancelarTarea($tid);
         $this->assertSame('cancelada', DB::table('tareas')->find($tid)->estado);
         $this->assertSame([], array_filter($c->pendientes, fn ($p) => $p['tipo'] === 'script'));
@@ -138,13 +138,13 @@ class ProcesosColaTest extends TestCase
     public function test_la_web_no_acepta_scripts_fuera_de_la_lista(): void
     {
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        ColaTareas::crear('fiq.script', ['pasos' => [['script' => '../../etc/passwd', 'args' => []]]]);
+        ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => '../../etc/passwd', 'args' => []]]]);
     }
 
     public function test_subida_y_descarga_de_ficheros_de_una_tarea(): void
     {
         [$h, $cap] = $this->pc();
-        $id = ColaTareas::crear('fiq.script', ['pasos' => [['script' => 'monthlyFIQ.js', 'args' => ['09']]]]);
+        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'monthlyFIQ.js', 'args' => ['09']]]]);
         $this->postJson('/api/trabajador/siguiente', $cap, $h)->assertOk();
         $this->call('POST', "/api/trabajador/tareas/$id/fichero", [], [], [], ['HTTP_X-Token' => $h['X-Token'], 'HTTP_X-Nombre' => base64_encode('a b.xlsx')], 'contenido')->assertOk();
         $f = ColaTareas::carpetaFicheros($id).'/a b.xlsx';
@@ -165,11 +165,11 @@ class ProcesosColaTest extends TestCase
         [$ha, $cap] = $this->pc('AlexMiniPC');
         [$hb] = $this->pc('PortalExomen');
         // A hace una tarea FIQ → la siguiente va preferentemente a A
-        ColaTareas::crear('fiq.script', ['pasos' => [['script' => 'monthlyFIQ.js', 'args' => ['09']]]]);
+        ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'monthlyFIQ.js', 'args' => ['09']]]]);
         $this->trabajar($ha, $cap, ['ok' => true, 'pasos' => []]);
         $this->assertSame('AlexMiniPC', ColaTareas::preferido());
 
-        $id = ColaTareas::crear('fiq.script', ['pasos' => [['script' => 'sysSplit.js', 'args' => ['09']]]], null, null, ColaTareas::preferido());
+        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'sysSplit.js', 'args' => ['09']]]], null, null, ColaTareas::preferido());
         // B no la coge mientras A esté conectado...
         $this->assertNull($this->postJson('/api/trabajador/siguiente', $cap, $hb)->json('tarea'));
         // ...pero si A se apaga (sin latido), sí

@@ -2,7 +2,10 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Http\Livewire\Concerns\EjecutaEnPcs;
+use App\Support\ColaTareas;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Livewire\Component;
@@ -26,11 +29,26 @@ use Livewire\WithFileUploads;
  *   - "Mis clientes": el fichero de clientes que mantiene Alex (vale el último; manda sobre el de SAGE).
  * Extracto del banco con su cuenta: de momento solo se guarda en Input (el proceso, después).
  *
- * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados).
+ * Solo se ejecuta donde contabilidad.ejecucion_local está a true (PCs autorizados). En la web (VPS) no ejecuta nada
+ * ella misma: cada acción deja una tarea para el PC trabajador que guarda la base de Neteges (NETEGES_PC; los
+ * ficheros viajan por git, así que solo un PC debe modificarlos), con los ficheros subidos como entrada, y el
+ * estado de la pantalla es la copia en BD de neteges_estado.py (3-oct-2026, trait EjecutaEnPcs).
  */
 class Neteges extends Component
 {
+    use EjecutaEnPcs;
     use WithFileUploads;
+
+    protected string $grupoPc = 'neteges';
+
+    /** ¿Terminó bien el último paso remoto? (lo usa el trait) */
+    protected bool $ultimoOk = false;
+
+    /** Neteges no enseña ficheros resultado en la pantalla (se descargan con «⬇»); el trait lo pide. */
+    public array $resultados = [];
+
+    /** Web: listados de carpetas que sube el PC (recibidos, remesas, plugins, fechas...). */
+    public array $listadosPc = [];
 
     /** Ficheros base recién subidos; al terminar la subida el navegador llama a procesarSubidas(fila). */
     public array $subidas = [];
@@ -64,6 +82,19 @@ class Neteges extends Component
     public function mount(): void
     {
         $this->cargarEstado();
+        $this->sincronizarEstado('neteges.estado');
+    }
+
+    /** «↻ Sincronizar estado» del panel de PCs. */
+    public function sincronizarAhora(): void
+    {
+        $this->sincronizarEstado('neteges.estado', true);
+    }
+
+    /** Ha llegado estado nuevo de un PC. */
+    protected function recargarEstado(): void
+    {
+        $this->cargarEstado();
     }
 
     protected function baseDir(): string
@@ -93,6 +124,17 @@ class Neteges extends Component
      */
     public function cargarEstado(): void
     {
+        if ($this->remoto()) {
+            $d = $this->estadoRemoto('neteges.estado') ?? [];
+            $e = $d['estado'] ?? [];
+            $this->listadosPc = $d['listados'] ?? [];
+            $this->estadoBase = $e['base'] ?? [];
+            $this->estadoVentas = $e['ventas'] ?? [];
+            $this->estadoPlugin = $e['plugin'] ?? [];
+            $this->estadoNeteges = $e['neteges'] ?? [];
+            $this->estadoExtractos = $e['extractos'] ?? [];
+            return;
+        }
         try {
             $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'neteges_estado.py']);
             $e = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
@@ -109,6 +151,11 @@ class Neteges extends Component
     /** Cuentas de banco cargadas en la base (pestañas con código de cuenta). */
     protected function cuentasBanco(): array
     {
+        if ($this->remoto()) {
+            $c = array_map('strval', array_keys($this->estadoBase['cuentas'] ?? []));
+            sort($c);
+            return $c;
+        }
         if (! is_file($this->basePath())) {
             return [];
         }
@@ -128,8 +175,12 @@ class Neteges extends Component
     }
 
     /** Ejecuta neteges_base.py (o el script que se diga) y deja el texto en $salida; devuelve si fue bien. */
-    protected function ejecutar(array $args, string $etiqueta, string $script = 'neteges_base.py'): bool
+    protected function ejecutar(array $args, string $etiqueta, string $script = 'neteges_base.py', array $entradas = []): bool
     {
+        if ($this->remoto()) {
+            $this->ejecutarEnPc([['script' => $script, 'args' => $args, 'timeout' => 300, 'etiqueta' => $etiqueta]], $etiqueta, $entradas);
+            return true;   // el resultado llega después (revisarTareas)
+        }
         try {
             $r = Process::path($this->baseDir())->timeout(300)->run(array_merge([$this->pythonBin(), $script], $args));
             $ok = $r->successful();
@@ -142,6 +193,29 @@ class Neteges extends Component
         $this->dispatch('proceso-terminado', mensaje: ($ok ? "✅ {$etiqueta}\nTerminado." : "⚠️ {$etiqueta}\nCon avisos o errores: mira la Salida."));
         $this->cargarEstado();
         return $ok;
+    }
+
+    /** Web: deja los pasos como una tarea para el PC de Neteges; al terminar, postNeteges() deja la Salida como en local. */
+    protected function ejecutarEnPc(array $pasos, string $etiqueta, array $entradas = [], string $post = 'postNeteges'): void
+    {
+        $this->salida = '';
+        $this->lanzarEnCola($pasos, ['entradas' => $entradas, 'post' => $post, 'ctx' => ['etiqueta' => $etiqueta, 'ini' => 0]]);
+    }
+
+    /** Texto de lo que han hecho los pasos remotos, sin las cabeceras ni los avisos de «pedido» que pone el trait. */
+    protected function textoRemoto(): string
+    {
+        $t = preg_replace('/^(⏳|⚠️ Ahora mismo no hay ningún PC).*$/mu', '', $this->salida);
+        $t = preg_replace('/^===== .* =====$/mu', '', $t);
+
+        return trim(preg_replace("/\n{3,}/", "\n\n", $t));
+    }
+
+    /** Fin de una acción de Neteges hecha por el PC: la Salida queda igual que en local y se relee el estado. */
+    protected function postNeteges(array $ctx, int $desde, array $oks): void
+    {
+        $this->salida = "===== {$ctx['etiqueta']} =====\n".$this->textoRemoto();
+        $this->cargarEstado();
     }
 
     public function procesarSubidas(string $fila): void
@@ -161,7 +235,7 @@ class Neteges extends Component
             return;
         }
         $etiqueta = 'Neteges · '.$filas[$fila];
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
@@ -178,6 +252,10 @@ class Neteges extends Component
             return;
         }
 
+        if ($this->remoto()) {
+            $this->subidasEnPc($fila, $etiqueta, $ficheros);
+            return;
+        }
         $dir = $this->baseDir().($fila === 'remesas' ? '/Base/Remesas' : '/Base/Recibidos');
         if (! is_dir($dir) && ! @mkdir($dir, 0777, true)) {
             $this->addError('subidas', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
@@ -227,6 +305,35 @@ class Neteges extends Component
         }
     }
 
+    /**
+     * Web: lo mismo que procesarSubidas() en local, pero los ficheros viajan como entrada de la tarea y el PC los
+     * guarda en Base/Recibidos (o Base/Remesas) con la fecha delante; en los argumentos, {E0}, {E1}... son sus rutas allí.
+     */
+    protected function subidasEnPc(string $fila, string $etiqueta, array $ficheros): void
+    {
+        $entradas = array_map(fn ($f) => [
+            'ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(),
+            'dir' => $fila === 'remesas' ? 'Base/Remesas' : 'Base/Recibidos', 'sello' => true,
+        ], $ficheros);
+        $rutas = array_map(fn ($i) => '{E'.$i.'}', array_keys($entradas));
+        $ultima = end($rutas);
+        $paso = fn (string $script, array $args, array $extra = []) => ['script' => $script, 'args' => $args, 'timeout' => 300, 'etiqueta' => $etiqueta] + $extra;
+
+        $pasos = match (true) {
+            $fila === 'ventas' => [$paso('neteges_ventas.py', $rutas)],
+            $fila === 'remesas' => [$paso('neteges_cobros.py', [])],
+            in_array($fila, ['netcobros', 'netbbva', 'netsabadell'], true) => [$paso('neteges_cobros.py', array_merge(
+                ['--subir', '--esperado='.['netcobros' => 'cobros', 'netbbva' => 'BBVA_NET', 'netsabadell' => 'SABADELL_NET'][$fila]], $rutas))],
+            $fila === 'misclientes' => [$paso('neteges_ventas.py', ['--mis-clientes', $ultima])],
+            in_array($fila, ['clientessage', 'proveedoressage'], true) => [$paso('neteges_ventas.py', ['--listado', $ultima, $fila === 'clientessage' ? 'clientes' : 'proveedores'])],
+            // plan: da las cuentas 430 y sus CIF → se rehace la cuenta SAGE de los clientes de Ventas (solo si el plan entró bien)
+            $fila === 'plan' => [$paso('neteges_base.py', array_merge(['--espera', $fila], $rutas)),
+                $paso('neteges_ventas.py', ['--identificar'], ['solo_si_ok' => true])],
+            default => [$paso('neteges_base.py', array_merge(['--espera', $fila], $rutas))],
+        };
+        $this->ejecutarEnPc($pasos, $etiqueta, $entradas);
+    }
+
     public function anadirOtraCuenta(): void
     {
         $cuenta = trim($this->otraCuenta);
@@ -247,7 +354,7 @@ class Neteges extends Component
     {
         $this->resetErrorBag('otraCuenta');
         $etiqueta = 'Neteges · '.($accion === 'anadir' ? 'añadir' : 'quitar')." cuenta de banco {$cuenta}";
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
@@ -265,7 +372,7 @@ class Neteges extends Component
         if (! $ficheros) {
             return;
         }
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado('Neteges · extractos');
             return;
         }
@@ -274,6 +381,13 @@ class Neteges extends Component
             array_filter($ficheros, fn ($f) => ! in_array(strtolower($f->getClientOriginalExtension()), $validas, true)));
         if ($malos) {
             $this->addError('extractos', 'Solo Excel, XML o TXT. No se ha subido nada; sobran: '.implode(', ', $malos));
+            return;
+        }
+        if ($this->remoto()) {
+            // el PC los guarda en Input (si ya hay uno con ese nombre, con la fecha delante) y detecta su cuenta
+            $entradas = array_map(fn ($f) => ['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => 'Input', 'unico' => true], $ficheros);
+            $this->ejecutar(array_merge(['detectar'], array_map(fn ($i) => '{E'.$i.'}', array_keys($entradas))),
+                'Neteges · extractos ('.count($entradas).')', 'neteges_extractos.py', $entradas);
             return;
         }
         $dir = $this->baseDir().'/Input';
@@ -297,8 +411,12 @@ class Neteges extends Component
     /** Cuenta elegida a mano para un extracto de Input ('' = sin cuenta). */
     public function asignarCuenta(string $fichero, string $cuenta): void
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado('Neteges · extractos');
+            return;
+        }
+        if ($this->remoto()) {
+            $this->ejecutar(['asignar', $fichero, $cuenta], 'Neteges · cuenta del extracto '.$fichero, 'neteges_extractos.py');
             return;
         }
         try {
@@ -317,8 +435,15 @@ class Neteges extends Component
     public function buscarEnCorreo(): void
     {
         $etiqueta = 'Neteges · buscar en el correo los ficheros de Neteges';
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado($etiqueta);
+            return;
+        }
+        if ($this->remoto()) {
+            $this->ejecutarEnPc([
+                ['script' => 'bajarAdjuntosNeteges.ps1', 'args' => ['-Destino', '{DIRWIN}\\Base\\Recibidos'], 'timeout' => 600, 'etiqueta' => $etiqueta],
+                ['script' => 'neteges_cobros.py', 'args' => [], 'timeout' => 120, 'etiqueta' => $etiqueta],
+            ], $etiqueta, [], 'postBuscarEnCorreo');
             return;
         }
         $ps = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
@@ -343,11 +468,25 @@ class Neteges extends Component
         $this->cargarEstado();
     }
 
+    /** Fin de «buscar en el correo» en el PC: mismo texto que en local (nuevos ficheros + resultado de neteges_cobros.py). */
+    protected function postBuscarEnCorreo(array $ctx, int $desde, array $oks): void
+    {
+        $t = $this->textoRemoto();
+        $lineas = array_filter(array_map('trim', explode("\n", $t)));
+        $nuevos = array_map(fn ($l) => '• '.basename(str_replace('\\', '/', substr($l, 9))), array_filter($lineas, fn ($l) => str_starts_with($l, 'GUARDADO|')));
+        $resto = trim(implode("\n", array_filter($lineas, fn ($l) => ! str_starts_with($l, 'GUARDADO|'))));
+        $texto = ($oks[0] ?? false)
+            ? ($nuevos ? "Nuevos:\n".implode("\n", $nuevos) : 'No hay ficheros nuevos de Neteges en el correo.')."\n\n".$resto
+            : '⚠️ No se ha podido leer el Outlook del PC: '.$resto;
+        $this->salida = "===== {$ctx['etiqueta']} =====\n".trim($texto);
+        $this->cargarEstado();
+    }
+
     /** Plugin de SAGE con las emitidas pendientes del periodo (neteges_plugin.py; una fila por factura). */
     public function prepararPlugin(): void
     {
         $etiqueta = 'Neteges · plugin de facturas emitidas';
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado($etiqueta);
             return;
         }
@@ -363,7 +502,7 @@ class Neteges extends Component
     /** Vuelve a dejar pendientes las facturas de un plugin (p.ej. si no se llegó a importar). */
     public function desmarcarPlugin(string $fichero): void
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado('Neteges · plugin');
             return;
         }
@@ -373,7 +512,7 @@ class Neteges extends Component
     /** Concilia los cobros de los extractos con Ventas (neteges_conciliar.py → Output/Conciliacion cobros Neteges.xlsx). */
     public function conciliar(): void
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado('Neteges · conciliar cobros');
             return;
         }
@@ -383,7 +522,7 @@ class Neteges extends Component
     /** Quita extractos de Input ($fichero = '' → todos); quedan en Input/Borrados. */
     public function borrarExtracto(string $fichero = ''): void
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado('Neteges · extractos');
             return;
         }
@@ -394,7 +533,7 @@ class Neteges extends Component
     /** Empieza las ventas de cero (el acumulado se aparta a Base/Recibidos). */
     public function vaciarVentas(): void
     {
-        if (! config('contabilidad.ejecucion_local')) {
+        if (! config('contabilidad.ejecucion_local') && ! $this->colaLista()) {
             $this->avisarNoAutorizado('Neteges · ventas');
             return;
         }
@@ -415,6 +554,10 @@ class Neteges extends Component
     /** Descarga un fichero de la carpeta de Neteges (Base/..., Input/...). */
     public function descargar(string $relativa)
     {
+        if ($this->remoto()) {
+            $this->pedirFichero($relativa);
+            return null;
+        }
         $raiz = realpath($this->baseDir());
         $ruta = realpath($this->baseDir().'/'.$relativa);
         if (! $raiz || ! $ruta || ! str_starts_with($ruta, $raiz.'/') || ! is_file($ruta)) {
@@ -454,6 +597,22 @@ class Neteges extends Component
 
     public function render()
     {
+        if ($this->remoto()) {
+            $l = $this->listadosPc;
+            return view('livewire.contabilidad.neteges', [
+                'cuentas' => $this->cuentasBanco(),
+                'hayBase' => (bool) ($l['hayBase'] ?? false),
+                'recibidos' => array_slice($l['recibidos'] ?? [], 0, 15),
+                'remesas' => $l['remesas'] ?? [],
+                'plugins' => $l['plugins'] ?? [],
+                'haySustitucion' => $l['sustitucion'] ?? null,
+                'hayConciliacion' => $l['conciliacion'] ?? null,
+                'extractosInput' => $this->estadoExtractos['extractos'] ?? [],
+                'nombresCuentas' => $this->estadoExtractos['cuentas'] ?? [],
+                'carpeta' => $l['carpeta'] ?? '(aún sin datos del PC)',
+            ]);
+        }
+
         return view('livewire.contabilidad.neteges', [
             'cuentas' => $this->cuentasBanco(),
             'hayBase' => is_file($this->basePath()),

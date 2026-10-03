@@ -91,6 +91,12 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     })->name('contabilidad.is')->middleware('can:contabilidad.is');
 
     // Contabilidad (Neteges): como Bancos pero con más ficheros de consulta (Ventas...). Se ejecuta en local (ejecucion_local)
+    // Fichero que un PC trabajador subió a Appmos para descargarlo (URL firmada que crea la pantalla, trait EjecutaEnPcs)
+    Route::get('/contabilidad/tarea-fichero/{id}/{nombre}', function (int $id, string $nombre) {
+        $ruta = \App\Support\ColaTareas::carpetaFicheros($id).'/'.basename($nombre);
+        abort_unless(is_file($ruta), 404);
+        return response()->download($ruta, basename($nombre));
+    })->whereNumber('id')->name('contabilidad.tarea-fichero')->middleware('signed');
     Route::get('/contabilidad/neteges', function () {return view('contabilidad.neteges');})->name('contabilidad.neteges')->middleware('can:contabilidad.neteges');
 
     // Contabilidad (Proc.Mensuales): agrupa varios procesos mensuales. Se usa en la web (datos de la BD del VPS)
