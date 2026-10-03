@@ -19,6 +19,7 @@
     <server name="SESSION_DRIVER" value="array"/>
     <server name="TELESCOPE_ENABLED" value="false"/>
     <server name="TODO_URL" value=""/>
+    <server name="ENTRADA_WEB_URL" value=""/>
   </php>
   <source>
     <include>
