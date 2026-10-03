@@ -73,8 +73,7 @@
             </div>
 
             {{-- Campana del TO-DO: centrada en la barra --}}
-            <style>@media (min-width:1536px){.campana-todo{position:absolute;left:50%;top:0;height:3.5rem;transform:translateX(-50%)}}</style>
-            <div class="hidden sm:flex sm:items-center campana-todo ml-auto mr-2">
+            <div class="hidden sm:flex sm:items-center">
                 @livewire('todo-campana')
             </div>
 

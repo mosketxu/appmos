@@ -107,6 +107,9 @@ class TodoClaude
         }
         try {
             $limpio = trim(preg_replace('/\(.*?\)/', '', $t));
+            if (! preg_match('/\d:\d\d/', $limpio)) {   // «Oct 7, 7am» -> «Oct 7, 7:00am»
+                $limpio = preg_replace('/(\d)\s*(am|pm)/i', '$1:00$2', $limpio);
+            }
             return \Illuminate\Support\Carbon::parse($limpio, 'Europe/Madrid')->locale('es')->isoFormat('ddd D/M HH:mm');
         } catch (\Throwable $e) {
             return $t;

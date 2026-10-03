@@ -217,6 +217,7 @@ class TodoClaudeTest extends TestCase
         $u = TodoClaude::usoPlan();
         $this->assertSame(6, (int) $u['sesion']);
         $this->assertSame('dom. 4/10 02:30', $u['sesion_reinicia']);
+        $this->assertSame('mié. 7/10 07:00', $u['semana_reinicia']);
         $this->assertFalse(TodoClaude::planAgotado());
 
         $this->postJson('/api/trabajador/claude-uso', ['sesion_pct' => 85, 'semana_pct' => 19], ['X-Token' => $token])->assertOk();
