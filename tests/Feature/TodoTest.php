@@ -176,15 +176,15 @@ class TodoTest extends TestCase
         $id = fn ($t) => TodoTarea::where('titulo', $t)->value('id');
         $orden = fn () => \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')->where('p.user_id', $bea->id)->orderBy('p.orden')->pluck('t.titulo')->all();
 
-        $c->assertDontSee('data-handle', false)                                   // en su lista no tiene nada asignado
-            ->set('verUsuario', $bea->id)->assertSee('data-handle', false)
-            ->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')]);
+        // quien asigna ve el ⠿ en las tareas de Bea sin cambiar de lista (cada grupo, con su persona)
+        $c->assertSee('data-handle', false)->assertSee('data-grupo="'.$bea->id.'"', false)
+            ->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')], $bea->id);
         $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
 
         // un tercero no puede ver ni ordenar la lista de Bea
         $cai = $this->usuario('Cai');
         $this->actingAs($cai);
-        Livewire::test(Todo::class)->set('verUsuario', $bea->id)->call('reordenar', [$id('Uno'), $id('Dos'), $id('Tres')]);
+        Livewire::test(Todo::class)->call('reordenar', [$id('Uno'), $id('Dos'), $id('Tres')], $bea->id);
         $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
     }
 

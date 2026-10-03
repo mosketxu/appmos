@@ -222,12 +222,15 @@ class Todo extends Component
     }
 
     /**
-     * Arrastrar y soltar: $ids = los ids de mis tareas abiertas en el orden nuevo (el de la pantalla).
+     * Arrastrar y soltar: $ids = los ids de las tareas abiertas de $persona (por defecto, la lista que se ve) en el orden nuevo.
      * Se ignora lo que no sea mío o esté cerrado; mis abiertas que no vengan en la lista quedan al final.
      */
-    public function reordenar(array $ids): void
+    public function reordenar(array $ids, ?int $persona = null): void
     {
-        $yo = $this->usuarioVisto();
+        $yo = $persona ?: $this->usuarioVisto();
+        if (! $this->personas->contains('id', $yo)) {
+            return;
+        }
         $visibles = $this->tareasVisiblesDe($yo);
         $mias = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
             ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
@@ -354,11 +357,28 @@ class Todo extends Component
         // Las cerradas al final; primero las mías por mi orden de prioridad, luego las que solo he pedido
         $tareas = $q->orderByRaw("estado in ('hecha','cancelada')")
             ->orderByRaw('mi.orden is null')->orderBy('mi.orden')->orderByDesc('todo_tareas.id')->get();
-        // Posición (1, 2, 3…) entre mis tareas abiertas
-        $pos = 0;
+        // Cada tarea abierta cuenta en la lista de prioridades de una persona: la mía si la tengo asignada,
+        // si no la de su primer asignado. Se agrupan por persona (yo primero) y se numeran dentro de su grupo.
+        $personas = $this->personas->pluck('id')->all();
         foreach ($tareas as $t) {
-            $t->mi_posicion = ($t->abierta() && $t->mi_orden !== null) ? ++$pos : null;
+            $t->grupo = null;
+            if (! $t->abierta()) {
+                continue;
+            }
+            if ($t->mi_orden !== null) {
+                [$t->grupo, $t->grupo_nombre, $t->g_orden] = [$yo, '', $t->mi_orden];
+            } elseif ($otro = $t->asignados->first()) {
+                [$t->grupo, $t->grupo_nombre, $t->g_orden] = [$otro->id, $otro->name, $otro->pivot->orden];
+            }
+            $t->arrastrable = $t->grupo !== null && in_array($t->grupo, $personas, true);
         }
+        $abiertas = $tareas->filter(fn ($t) => $t->grupo !== null)
+            ->sortBy([['grupo_nombre', 'asc'], ['g_orden', 'asc'], ['id', 'desc']])->values();
+        $pos = [];
+        foreach ($abiertas as $t) {
+            $t->posicion = $pos[$t->grupo] = ($pos[$t->grupo] ?? 0) + 1;
+        }
+        $tareas = $abiertas->concat($tareas->filter(fn ($t) => $t->grupo === null)->values());
 
         $detalle = null;
         if ($this->abierta) {

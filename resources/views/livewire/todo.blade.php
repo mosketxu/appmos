@@ -78,7 +78,7 @@
             <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
                     <tr>
-                        @if ($vista !== 'pedidas' && $filtroEstado !== 'cerradas') <th class="px-2 py-2 text-center" title="Arrastra el ⠿ para cambiar tu orden de prioridad">⠿ #</th> @endif
+                        @if ($filtroEstado !== 'cerradas') <th class="px-2 py-2 text-center" title="Arrastra el ⠿ para cambiar el orden de prioridad (dentro de la lista de cada persona)">⠿ #</th> @endif
                         <th class="px-3 py-2">Tarea</th>
                         <th class="px-3 py-2">Estado</th>
                         <th class="px-3 py-2">Prioridad</th>
@@ -89,16 +89,21 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php $grupoAnt = null; @endphp
                     @forelse ($tareas as $t)
-                        @php $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday(); @endphp
-                        <tr wire:key="t{{ $t->id }}" @if ($t->abierta() && $t->mi_orden !== null) data-orden="{{ $t->id }}" @endif wire:click="abrir({{ $t->id }})"
+                        @php
+                            $cambiaGrupo = $grupoAnt !== null && $t->grupo !== $grupoAnt;
+                            $grupoAnt = $t->grupo;
+                            $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday();
+                        @endphp
+                        <tr wire:key="t{{ $t->id }}" @if ($t->abierta() && $t->arrastrable) data-orden="{{ $t->id }}" data-grupo="{{ $t->grupo }}" @endif wire:click="abrir({{ $t->id }})"
                             class="cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
-                            style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : 'border-top:1px solid #9ca3af' }}">
-                            @if ($vista !== 'pedidas' && $filtroEstado !== 'cerradas')
+                            style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : ($cambiaGrupo ? 'border-top:3px solid #6b7280' : 'border-top:1px solid #9ca3af') }}">
+                            @if ($filtroEstado !== 'cerradas')
                                 <td class="px-2 py-2 text-center whitespace-nowrap" wire:click.stop>
-                                    @if ($t->abierta() && $t->mi_orden !== null)
+                                    @if ($t->abierta() && $t->arrastrable)
                                         <span data-handle title="Arrastra para cambiar la prioridad" class="inline-block px-1 text-lg leading-none text-gray-400 select-none cursor-grab hover:text-indigo-600">⠿</span>
-                                        <span class="inline-block w-5 font-semibold text-gray-600">{{ $t->mi_posicion }}</span>
+                                        <span class="inline-block w-5 font-semibold text-gray-600">{{ $t->posicion }}</span>
                                     @endif
                                 </td>
                             @endif
@@ -210,7 +215,7 @@
         raiz.addEventListener('dragover', e => {
             if (!origen) return;
             const tr = e.target.closest('tr[data-orden]');
-            if (!tr || tr === origen) return;
+            if (!tr || tr === origen || tr.dataset.grupo !== origen.dataset.grupo) return;   // solo dentro de la lista de la misma persona
             e.preventDefault();
             const r = tr.getBoundingClientRect();
             antes = e.clientY < r.top + r.height / 2;
@@ -221,10 +226,10 @@
         raiz.addEventListener('drop', e => {
             if (!origen || !destino) return;
             e.preventDefault();
-            const ids = [...raiz.querySelectorAll('tr[data-orden]')].filter(r => r !== origen).map(r => r.dataset.orden);
+            const ids = [...raiz.querySelectorAll('tr[data-orden]')].filter(r => r !== origen && r.dataset.grupo === origen.dataset.grupo).map(r => r.dataset.orden);
             ids.splice(ids.indexOf(destino.dataset.orden) + (antes ? 0 : 1), 0, origen.dataset.orden);
             limpiar();
-            $wire.reordenar(ids.map(Number));
+            $wire.reordenar(ids.map(Number), Number(origen.dataset.grupo));
         });
         raiz.addEventListener('dragend', () => {
             limpiar();
