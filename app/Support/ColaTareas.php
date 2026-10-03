@@ -125,6 +125,10 @@ class ColaTareas
     /** Las tareas «en curso» de un trabajador que dejó de dar señales vuelven a la cola. */
     public static function recuperarPerdidas(): int
     {
+        // «preparando» (la web iba a dejar ficheros de entrada y no llegó a liberarla): se descarta a los 10 min
+        DB::table('tareas')->where('estado', 'preparando')->where('created_at', '<', now()->subMinutes(10))
+            ->update(['estado' => 'cancelada', 'updated_at' => now()]);
+
         $limite = now()->subSeconds(self::LATIDO_MAX);
         $ids = DB::table('tareas')->join('trabajadores', 'trabajadores.id', '=', 'tareas.trabajador_id')
             ->where('tareas.estado', 'en_curso')

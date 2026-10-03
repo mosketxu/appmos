@@ -24,6 +24,20 @@ class ProcesosColaTest extends TestCase
         (require base_path('database/migrations/2026_10_03_210000_create_estado_procesos_table.php'))->up();
     }
 
+    protected function borrar(string $dir): void
+    {
+        foreach (glob($dir.'/*') ?: [] as $f) {
+            is_dir($f) ? $this->borrar($f) : unlink($f);
+        }
+        @rmdir($dir);
+    }
+
+    protected function tearDown(): void
+    {
+        $this->borrar(storage_path('app/tareas'));   // las pruebas usan ids 1, 2... de una BD en memoria
+        parent::tearDown();
+    }
+
     protected function pc(string $nombre = 'AlexMiniPC'): array
     {
         $token = ColaTareas::crearTrabajador($nombre);
@@ -156,8 +170,7 @@ class ProcesosColaTest extends TestCase
         $c = $this->componente();
         $this->assertNotNull($c->descargarDeTarea($id, 'a b.xlsx'));
         $this->assertNull($c->descargarDeTarea($id, '../a b.xlsx.nada'));
-        array_map('unlink', glob(ColaTareas::carpetaFicheros($id).'/*'));
-        rmdir(ColaTareas::carpetaFicheros($id));
+        $this->borrar(ColaTareas::carpetaFicheros($id));
     }
 
     public function test_el_pc_preferido_solo_vale_si_esta_conectado(): void
@@ -216,6 +229,45 @@ class ProcesosColaTest extends TestCase
         $this->assertStringNotContainsString('DATO iva', $c->salida);
         $this->assertSame(0, Schema::hasTable('tareas') ? DB::table('tareas')->count() : 0);
         $this->assertSame([], $c->pendientes);
+    }
+
+    public function test_si_se_recarga_la_pagina_la_tarea_se_retoma_y_se_cierra_una_sola_vez(): void
+    {
+        [$h, $cap] = $this->pc();
+        DB::table('users')->insert(['id' => 1]);
+        $u = new \App\Models\User();
+        $u->id = 1;
+        $this->actingAs($u);
+        ColaTareas::guardarEstado('fiq.checklist_def', ['procesos' => [['id' => 'monthly_sales', 'nombre' => 'MS']]]);
+        $a = $this->componente();
+        $a->mes = 9;
+        $a->ejecutar('monthly_sales');
+        $this->assertCount(1, $a->pendientes);
+
+        // «recarga»: otra instancia de la pantalla (otra pestaña) encuentra la tarea sin cerrar
+        $b = $this->componente();
+        $this->assertCount(1, $b->pendientes);
+        $this->trabajar($h, $cap, ['ok' => true, 'pc' => 'AlexMiniPC', 'pasos' => [['script' => 'monthlyFIQ.js', 'ok' => true, 'codigo' => 0, 'salida' => 'hecho', 'ficheros' => []]]]);
+        $b->revisarTareas();
+        $this->assertStringContainsString('hecho', $b->salida);
+        $this->assertSame('ok', ColaTareas::estado('fiq.checklist_estado')['marcas']['2026-09']['monthly_sales']['estado']);
+
+        // la primera pestaña ya no la vuelve a cerrar (ni repite el check)
+        $a->revisarTareas();
+        $this->assertStringNotContainsString('hecho', $a->salida);
+        $this->assertSame(1, DB::table('tareas')->where('proceso', 'fiq.checklist')->count());
+        // y una tercera ya no la encuentra
+        $this->assertSame([], $this->componente()->pendientes);
+    }
+
+    public function test_una_tarea_preparando_abandonada_se_descarta(): void
+    {
+        $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => []], null, null, null, 'preparando');
+        $this->assertSame(0, ColaTareas::recuperarPerdidas());
+        $this->assertSame('preparando', DB::table('tareas')->find($id)->estado);
+        DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(11)]);
+        ColaTareas::recuperarPerdidas();
+        $this->assertSame('cancelada', DB::table('tareas')->find($id)->estado);
     }
 
     public function test_la_pantalla_se_pinta_en_la_web(): void

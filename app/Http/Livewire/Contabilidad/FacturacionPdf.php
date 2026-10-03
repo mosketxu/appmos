@@ -181,6 +181,7 @@ class FacturacionPdf extends Component
         $this->genericoCliente = (string) session('facturacion-pdf.generico-cliente', '');
         $proceso = (string) session('facturacion-pdf.proceso', 'Suma');
         $this->proceso = in_array($proceso, ['Suma', 'Balerga', 'Generico'], true) ? $proceso : 'Suma';
+        $this->retomarTareas();
     }
 
     public function updatedProceso(string $valor): void

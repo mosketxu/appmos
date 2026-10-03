@@ -93,6 +93,8 @@ trait EjecutaEnPcs
         }
         $this->pendientes[$tid] = ['tipo' => 'script', 'etiquetas' => $etiquetas, 'post' => $opc['post'] ?? null,
             'ctx' => $opc['ctx'] ?? [], 'resultados' => $opc['resultados'] ?? null];
+        // Se guarda también en la tarea: si se recarga la página (o se cierra y se vuelve), retomarTareas() la recoge.
+        DB::table('tareas')->where('id', $tid)->update(['web' => json_encode(['pantalla' => static::class] + $this->pendientes[$tid], JSON_UNESCAPED_UNICODE)]);
         $this->salida .= "\n\n⏳ {$titulo} · pedido a los PCs (tarea #{$tid}); el resultado saldrá aquí en cuanto lo terminen.";
         if ($this->pcsConectados() === 0) {
             $this->salida .= "\n⚠️ Ahora mismo no hay ningún PC conectado: esperará hasta que alguno arranque (puedes cancelarla en «Tareas en los PCs»).";
@@ -131,6 +133,26 @@ trait EjecutaEnPcs
         }
     }
 
+    /**
+     * Al abrir la pantalla en la web: recoge las tareas que este usuario pidió desde esta misma pantalla hace menos de
+     * 12 h y cuyo resultado nadie ha recogido (cerró la pestaña, recargó...). Así no se pierden la salida ni los checks.
+     */
+    protected function retomarTareas(): void
+    {
+        if (! $this->remoto() || ! $this->colaLista() || ! auth()->id()) {
+            return;
+        }
+        $filas = DB::table('tareas')->where('user_id', auth()->id())->where('proceso', 'pc.script')->whereNull('cerrada_at')
+            ->whereNotNull('web')->where('created_at', '>=', now()->subHours(12))->orderBy('id')->get(['id', 'web']);
+        foreach ($filas as $f) {
+            $w = json_decode($f->web, true) ?: [];
+            if (($w['pantalla'] ?? '') === static::class && ($w['tipo'] ?? '') === 'script') {
+                unset($w['pantalla']);
+                $this->pendientes[$f->id] = $w;
+            }
+        }
+    }
+
     /** wire:poll mientras haya tareas pedidas: cierra las que ya han terminado (haciendo lo que haría el modo local). */
     public function revisarTareas(): void
     {
@@ -143,6 +165,10 @@ trait EjecutaEnPcs
                 continue;
             }
             unset($this->pendientes[$tid]);
+            // Quien la cierra es quien consigue marcarla: con dos pestañas abiertas no se hace dos veces
+            if ($t && ! DB::table('tareas')->where('id', $tid)->whereNull('cerrada_at')->update(['cerrada_at' => now()])) {
+                continue;
+            }
             if (! $t || $t->estado === 'cancelada') {
                 $this->salida .= "\n\n🚫 ".implode(' + ', $p['etiquetas'] ?? ['Tarea']).' · cancelada.';
                 continue;

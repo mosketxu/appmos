@@ -23,12 +23,14 @@ return new class extends Migration
 
         Schema::table('tareas', function (Blueprint $table) {
             $table->string('preferido', 50)->nullable()->after('destino')->comment('PC que debería cogerla; si está apagado, cualquiera');
+            $table->json('web')->nullable()->comment('qué hace la pantalla al terminar (post, ctx, etiquetas): permite cerrarla aunque se recargue la página');
+            $table->timestamp('cerrada_at')->nullable()->comment('la pantalla ya ha recogido el resultado');
         });
     }
 
     public function down(): void
     {
-        Schema::table('tareas', fn (Blueprint $table) => $table->dropColumn('preferido'));
+        Schema::table('tareas', fn (Blueprint $table) => $table->dropColumn(['preferido', 'web', 'cerrada_at']));
         Schema::dropIfExists('estado_procesos');
     }
 };

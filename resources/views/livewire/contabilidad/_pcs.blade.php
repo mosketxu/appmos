@@ -33,7 +33,7 @@
                             <tr wire:key="tarea-{{ $t->id }}">
                                 <td class="px-2 py-0.5 text-gray-400">#{{ $t->id }}</td>
                                 <td class="px-2 py-0.5 text-gray-500">{{ $t->created_at }}</td>
-                                <td class="px-2 py-0.5">{{ ['pendiente' => '⏳ en cola', 'en_curso' => '⚙️ en curso', 'ok' => '✅ ok', 'error' => '❌ error', 'cancelada' => '🚫 cancelada'][$t->estado] ?? $t->estado }}</td>
+                                <td class="px-2 py-0.5">{{ ['preparando' => '🕓 preparando', 'pendiente' => '⏳ en cola', 'en_curso' => '⚙️ en curso', 'ok' => '✅ ok', 'error' => '❌ error', 'cancelada' => '🚫 cancelada'][$t->estado] ?? $t->estado }}</td>
                                 <td class="px-2 py-0.5 text-gray-500">{{ $t->pc }}</td>
                                 <td class="px-2 py-0.5 font-mono text-gray-700">{{ \Illuminate\Support\Str::limit($quePide, 110) }}</td>
                                 <td class="px-2 py-0.5">

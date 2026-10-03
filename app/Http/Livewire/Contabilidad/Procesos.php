@@ -139,6 +139,7 @@ class Procesos extends Component
         $this->cargarBasePagosFinMes();
         $this->updatedPfMes();
         $this->sincronizarEstado('fiq.checklist_def');
+        $this->retomarTareas();
         $this->cargarCashInStore();
     }
 

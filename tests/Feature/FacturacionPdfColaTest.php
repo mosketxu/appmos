@@ -32,6 +32,18 @@ class FacturacionPdfColaTest extends TestCase
         $this->token = ColaTareas::crearTrabajador('PortalExomen');
     }
 
+    protected function tearDown(): void
+    {
+        $b = function (string $d) use (&$b) {
+            foreach (glob($d.'/*') ?: [] as $f) {
+                is_dir($f) ? $b($f) : unlink($f);
+            }
+            @rmdir($d);
+        };
+        $b(storage_path('app/tareas'));
+        parent::tearDown();
+    }
+
     protected string $token;
 
     protected function trabajar(array $resultado): int

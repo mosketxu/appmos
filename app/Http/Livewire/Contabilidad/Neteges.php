@@ -83,6 +83,7 @@ class Neteges extends Component
     {
         $this->cargarEstado();
         $this->sincronizarEstado('neteges.estado');
+        $this->retomarTareas();
     }
 
     /** «↻ Sincronizar estado» del panel de PCs. */
