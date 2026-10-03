@@ -49,7 +49,7 @@
         </div>
 
         @if ($nueva)
-            <form wire:submit="crear" class="grid gap-2 p-3 bg-white border border-indigo-200 rounded-lg md:grid-cols-4">
+            <form wire:submit="crear" class="grid max-w-4xl gap-2 p-3 bg-white border border-indigo-200 rounded-lg md:grid-cols-4">
                 <div class="md:col-span-4">
                     <input type="text" wire:model="titulo" placeholder="Título de la tarea" class="{{ $campo }}" autofocus>
                     @error('titulo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
@@ -70,9 +70,9 @@
                 <label class="text-xs text-gray-500">Fecha límite
                     <input type="date" wire:model="fechaLimite" class="{{ $campo }}">
                 </label>
-                <div class="flex items-end justify-end gap-2">
-                    <button type="button" wire:click="$set('nueva', false)" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
-                    <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Crear</button>
+                <div class="flex items-end justify-start gap-2 md:col-span-4">
+                    <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Crear tarea</button>
+                    <button type="button" wire:click="$set('nueva', false)" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                 </div>
             </form>
         @endif
