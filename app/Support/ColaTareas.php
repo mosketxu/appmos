@@ -13,12 +13,12 @@ class ColaTareas
     /** Segundos sin latido tras los cuales una tarea «en curso» se da por perdida y vuelve a la cola. */
     public const LATIDO_MAX = 120;
 
-    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null): int
+    public static function crear(string $proceso, array $parametros = [], ?string $destino = null, ?int $userId = null, $noAntesDe = null): int
     {
         abort_unless(array_key_exists($proceso, config('contabilidad.tareas_procesos', [])), 422, 'Proceso no permitido');
 
         return DB::table('tareas')->insertGetId([
-            'proceso' => $proceso, 'parametros' => json_encode($parametros, JSON_UNESCAPED_UNICODE), 'destino' => $destino,
+            'proceso' => $proceso, 'parametros' => json_encode($parametros, JSON_UNESCAPED_UNICODE), 'destino' => $destino, 'no_antes_de' => $noAntesDe,
             'estado' => 'pendiente', 'user_id' => $userId, 'created_at' => now(), 'updated_at' => now(),
         ]);
     }
@@ -74,7 +74,24 @@ class ColaTareas
             $q = DB::table('tareas')->where('estado', 'pendiente')
                 ->whereIn('proceso', $capacidades)
                 ->where(fn ($q) => $q->whereNull('destino')->orWhere('destino', $t->nombre))
+                ->where(fn ($q) => $q->whereNull('no_antes_de')->orWhere('no_antes_de', '<=', now()))
                 ->orderBy('id')->lockForUpdate();
+            // Tareas de Claude: nada si está en pausa general o se ha llegado al tope del día; y las pausadas una a una no salen
+            if (! TodoClaude::permitido()) {
+                $q->where('proceso', '!=', 'claude.todo');
+            } else {
+                $q->where(fn ($w) => $w->where('proceso', '!=', 'claude.todo')->orWhereRaw(
+                    "not exists (select 1 from todo_tareas tt where tt.id = json_extract(tareas.parametros, '$.tarea_id') and tt.claude_pausada = 1)"));
+            }
+            // Tareas de Claude: el PC principal primero; el secundario si el principal no da señales o la tarea espera >10 min
+            $principal = config('contabilidad.claude_todo_primario');
+            if ($principal && $t->nombre !== $principal) {
+                $latido = DB::table('trabajadores')->where('nombre', $principal)->where('activo', true)->value('ultimo_latido');
+                $vivo = $latido && \Illuminate\Support\Carbon::parse($latido)->gt(now()->subSeconds(self::LATIDO_MAX));
+                if ($vivo) {
+                    $q->where(fn ($w) => $w->where('proceso', '!=', 'claude.todo')->orWhere('created_at', '<=', now()->subMinutes(10)));
+                }
+            }
             $tarea = $q->first();
             if (! $tarea) {
                 return null;

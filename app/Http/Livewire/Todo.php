@@ -6,6 +6,7 @@ use App\Models\TodoAviso;
 use App\Models\TodoComentario;
 use App\Models\TodoTarea;
 use App\Models\User;
+use App\Support\TodoClaude;
 use Livewire\Component;
 
 /**
@@ -38,6 +39,7 @@ class Todo extends Component
     // Respuesta a la tarea abierta (y, si se quiere, personas que se añaden con ella)
     public string $comentario = '';
     public array $respAsignar = [];
+    public bool $respUrgente = false;
     public ?string $fechaComentario = null;
 
     public function mount(): void
@@ -150,6 +152,7 @@ class Todo extends Component
         }
         $this->evento($t, 'creó la tarea y la asignó a '.$this->nombres($ids));
         TodoAviso::para($t, $ids, 'te ha asignado una tarea');
+        $this->siClaude($t, $ids);
         $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
         // Para que la tarea recién creada se vea
         $this->vista = 'todas';
@@ -170,6 +173,60 @@ class Todo extends Component
         if ($ids) {
             $this->asignadosIds = $ids;
         }
+    }
+
+    /** Si entre los recién asignados está Claude: autorizar y encolar (Admin) o pedir visto bueno (otros). */
+    protected function siClaude(TodoTarea $t, array $ids): void
+    {
+        $c = TodoClaude::usuario();
+        if ($c && in_array($c->id, array_map('intval', $ids), true)) {
+            TodoClaude::alAsignar($t, auth()->user());
+        }
+    }
+
+    /** Visto bueno de un Admin para que Claude haga una tarea que le asignó otro usuario. */
+    public function autorizarClaude(int $id): void
+    {
+        abort_unless($this->esAdmin(), 403);
+        TodoClaude::autorizar(TodoTarea::findOrFail($id), auth()->user());
+    }
+
+    /** «Ejecutar ya»: que Claude no espere a la próxima pasada. Lo pueden pedir el Admin y quien creó la tarea. */
+    public function ejecutarYa(int $id): void
+    {
+        $t = TodoTarea::findOrFail($id);
+        abort_unless($this->esAdmin() || $t->creador_id === auth()->id(), 403);
+        TodoClaude::encolar($t, true);
+    }
+
+    public function pausarClaudeTarea(int $id, bool $pausar): void
+    {
+        abort_unless($this->esAdmin(), 403);
+        TodoClaude::pausarTarea(TodoTarea::findOrFail($id), $pausar);
+    }
+
+    public function pausarClaudeTodo(bool $pausar): void
+    {
+        abort_unless($this->esAdmin(), 403);
+        TodoClaude::pausarGlobal($pausar);
+    }
+
+    /** Estado de los trabajadores y de Claude para la franja del Admin. */
+    public function getEstadoClaudeProperty(): array
+    {
+        $limite = now()->subSeconds(\App\Support\ColaTareas::LATIDO_MAX);
+        $trabajadores = \DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()->map(fn ($w) => [
+            'nombre' => $w->nombre, 'en_linea' => $w->ultimo_latido && $w->ultimo_latido >= $limite,
+            'principal' => $w->nombre === config('contabilidad.claude_todo_primario'),
+        ])->all();
+        $enCurso = \DB::table('tareas')->where('proceso', 'claude.todo')->where('estado', 'en_curso')->pluck('parametros')
+            ->map(fn ($p) => TodoTarea::find((int) (json_decode($p, true)['tarea_id'] ?? 0))?->titulo)->filter()->values()->all();
+
+        return [
+            'trabajadores' => $trabajadores, 'en_curso' => $enCurso, 'pausado' => TodoClaude::pausadoGlobal(),
+            'hoy' => TodoClaude::ejecucionesHoy(), 'limite' => TodoClaude::limiteDia(),
+            'porcentaje' => TodoClaude::porcentajeUso(), 'coste' => TodoClaude::costeHoy(),
+        ];
     }
 
     /** Marca o desmarca a una persona para añadirla a la tarea junto con la respuesta (puede quedar vacío). */
@@ -202,6 +259,9 @@ class Todo extends Component
         $t->estado = $estado;
         $t->cerrada_at = in_array($estado, TodoTarea::CERRADOS, true) ? now() : null;
         $t->save();
+        if ($estado === 'pendiente') {   // se reabre una tarea de Claude: que la retome
+            TodoClaude::alResponder($t, auth()->id());
+        }
     }
 
     /** Añade o quita a una persona de la tarea (siempre queda al menos una). */
@@ -218,6 +278,7 @@ class Todo extends Component
             $t->asignados()->attach($user, ['orden' => TodoTarea::siguienteOrden($user)]);
             $this->evento($t, 'asignó a '.$this->nombres([$user]));
             TodoAviso::para($t, [$user], 'te ha asignado una tarea');
+            $this->siClaude($t, [$user]);
         }
     }
 
@@ -310,10 +371,13 @@ class Todo extends Component
         if ($nuevos) {
             $this->evento($t, 'asignó a '.$this->nombres($nuevos));
             TodoAviso::para($t, $nuevos, 'te ha asignado una tarea');
+            $this->siClaude($t, $nuevos);
         }
+        TodoClaude::alResponder($t, auth()->id(), $this->respUrgente && ($this->esAdmin() || $t->creador_id === auth()->id()));
         TodoAviso::para($t, array_diff($this->interesados($t), $nuevos), 'ha respondido');
         $t->touch();
         $this->respAsignar = [];
+        $this->respUrgente = false;
         $this->comentario = '';
         $this->fechaComentario = now()->format('Y-m-d');
     }
@@ -388,6 +452,6 @@ class Todo extends Component
             }
         }
 
-        return view('livewire.todo', ['tareas' => $tareas, 'detalle' => $detalle, 'yo' => $yo, 'esAdmin' => $this->esAdmin()]);
+        return view('livewire.todo', ['tareas' => $tareas, 'detalle' => $detalle, 'yo' => $yo, 'esAdmin' => $this->esAdmin(), 'claudeId' => TodoClaude::usuario()?->id]);
     }
 }

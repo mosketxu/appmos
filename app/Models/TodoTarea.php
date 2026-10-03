@@ -12,11 +12,13 @@ class TodoTarea extends Model
 {
     protected $table = 'todo_tareas';
 
-    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'estado', 'prioridad', 'fecha_limite', 'cerrada_at'];
+    protected $fillable = ['titulo', 'descripcion', 'creador_id', 'estado', 'prioridad', 'fecha_limite', 'cerrada_at', 'claude_autorizada_at', 'claude_autorizada_por', 'claude_pausada'];
 
     protected $casts = [
         'fecha_limite' => 'date',
         'cerrada_at' => 'datetime',
+        'claude_autorizada_at' => 'datetime',
+        'claude_pausada' => 'boolean',
     ];
 
     public const ESTADOS = [

@@ -158,6 +158,14 @@ return [
     */
     'tareas_procesos' => [
         'certificados.escanear' => 'Escanear los certificados digitales de este PC',
+        'claude.todo' => 'Claude hace una tarea del TO-DO que se le ha asignado',
     ],
+
+
+    // Tareas del TO-DO para Claude: el PC principal las coge enseguida; el secundario solo si el principal no da señales
+    // o la tarea lleva esperando más de 10 minutos. Pasadas cada hora (minutos) salvo «Ejecutar ya».
+    'claude_todo_primario' => env('CLAUDE_TODO_PRIMARIO', 'AlexMiniPC'),
+    'claude_todo_max_dia' => (int) env('CLAUDE_TODO_MAX_DIA', 10),   // tope de pasadas automáticas de Claude al día
+    'claude_todo_cada_minutos' => (int) env('CLAUDE_TODO_CADA_MINUTOS', 60),
 
 ];

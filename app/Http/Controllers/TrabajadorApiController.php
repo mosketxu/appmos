@@ -61,4 +61,35 @@ class TrabajadorApiController extends Controller
 
         return response()->json(['ok' => ColaTareas::terminar($id, $t->id, (bool) $d['ok'], $d['resultado'] ?? null, (string) ($d['log'] ?? ''))]);
     }
+
+    /** Tarea de la cola «claude.todo» que este trabajador tiene en curso, con su tarea del TO-DO. */
+    protected function tareaClaude(Request $r, int $id): \App\Models\TodoTarea
+    {
+        $t = $this->trabajador($r);
+        $cola = \Illuminate\Support\Facades\DB::table('tareas')->where('id', $id)->where('proceso', 'claude.todo')
+            ->where('trabajador_id', $t->id)->where('estado', 'en_curso')->first();
+        abort_unless($cola, 404);
+
+        return \App\Models\TodoTarea::findOrFail((int) (json_decode($cola->parametros ?? '{}', true)['tarea_id'] ?? 0));
+    }
+
+    /** Lo que Claude tiene que hacer: la tarea del TO-DO con su hilo de respuestas. */
+    public function todo(Request $r, int $id)
+    {
+        return response()->json(\App\Support\TodoClaude::detalle($this->tareaClaude($r, $id)));
+    }
+
+    /** Resultado de una pasada de Claude: estado (hecha | bloqueada | en_curso), respuesta y uso. */
+    public function todoResultado(Request $r, int $id)
+    {
+        $t = $this->tareaClaude($r, $id);
+        $d = $r->validate([
+            'estado' => 'nullable|in:hecha,bloqueada,en_curso', 'respuesta' => 'nullable|string|max:20000',
+            'uso' => 'nullable|array', 'uso.coste_usd' => 'nullable|numeric', 'uso.turnos' => 'nullable|integer',
+            'uso.tokens' => 'nullable|integer', 'uso.segundos' => 'nullable|integer', 'uso.ok' => 'nullable|boolean', 'uso.pc' => 'nullable|string',
+        ]);
+        \App\Support\TodoClaude::registrar($t, $d['estado'] ?? null, $d['respuesta'] ?? null, $d['uso'] ?? null);
+
+        return response()->json(['ok' => true]);
+    }
 }

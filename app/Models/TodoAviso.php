@@ -30,11 +30,12 @@ class TodoAviso extends Model
     }
 
     /** Avisa a $userIds (menos a quien hace la acción) de algo de la tarea. */
-    public static function para(TodoTarea $t, array $userIds, string $texto): void
+    public static function para(TodoTarea $t, array $userIds, string $texto, ?int $actor = null): void
     {
-        $actor = auth()->id();
+        $actor ??= auth()->id();
+        $claude = \App\Support\TodoClaude::usuario()?->id;
         foreach (array_unique(array_map('intval', $userIds)) as $uid) {
-            if ($uid !== $actor) {
+            if ($uid !== $actor && $uid !== $claude) {
                 static::create(['user_id' => $uid, 'tarea_id' => $t->id, 'origen_id' => $actor, 'texto' => $texto]);
             }
         }

@@ -33,6 +33,40 @@
             @endif
         </div>
 
+        @if ($esAdmin && $claudeId)
+            @php $ec = $this->estadoClaude; @endphp
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg lg:flex-nowrap">
+                <span class="font-semibold text-gray-700">🤖 Claude automático</span>
+                <span class="flex items-center gap-3 whitespace-nowrap">
+                    @forelse ($ec['trabajadores'] as $w)
+                        <span title="{{ $w['en_linea'] ? 'En línea' : 'Sin señal' }}{{ $w['principal'] ? ' · principal' : ' · secundario' }}">
+                            <span style="display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;background:{{ $w['en_linea'] ? '#16a34a' : '#9ca3af' }}"></span>
+                            {{ $w['nombre'] }}<span class="text-xs text-gray-400">{{ $w['principal'] ? ' (principal)' : '' }}</span>
+                        </span>
+                    @empty
+                        <span class="text-gray-400">Sin trabajadores</span>
+                    @endforelse
+                </span>
+                <span class="whitespace-nowrap" title="Pasadas automáticas de Claude hoy respecto al tope diario ({{ $ec['limite'] }}). Coste estimado de hoy: {{ number_format($ec['coste'], 2) }} $. No es el uso del plan de Claude.">
+                    Uso de hoy:
+                    <b class="{{ $ec['porcentaje'] >= 100 ? 'text-red-600' : ($ec['porcentaje'] >= 70 ? 'text-amber-600' : 'text-gray-800') }}">{{ $ec['porcentaje'] }} %</b>
+                    <span class="text-xs text-gray-500">({{ $ec['hoy'] }}/{{ $ec['limite'] }} pasadas · {{ number_format($ec['coste'], 2) }} $)</span>
+                    <span style="display:inline-block;vertical-align:middle;width:5rem;height:.5rem;background:#e5e7eb;border-radius:9999px;overflow:hidden"><span style="display:block;height:100%;width:{{ min(100, $ec['porcentaje']) }}%;background:{{ $ec['porcentaje'] >= 100 ? '#dc2626' : ($ec['porcentaje'] >= 70 ? '#d97706' : '#6366f1') }}"></span></span>
+                </span>
+                @if ($ec['en_curso'])
+                    <span class="text-xs text-indigo-700 truncate">▶ Haciendo ahora: {{ implode(' · ', $ec['en_curso']) }}</span>
+                @endif
+                <span class="ml-auto">
+                    @if ($ec['pausado'])
+                        <span class="px-2 py-0.5 mr-2 text-xs font-semibold text-red-700 bg-red-100 rounded">EN PAUSA</span>
+                        <button type="button" wire:click="pausarClaudeTodo(false)" class="px-3 py-1 text-white bg-green-600 rounded-md hover:bg-green-700 whitespace-nowrap">▶ Reanudar todos</button>
+                    @else
+                        <button type="button" wire:click="pausarClaudeTodo(true)" wire:confirm="¿Pausar TODOS los desarrollos automáticos de Claude? (lo que esté en curso termina; nada nuevo empieza)" class="px-3 py-1 text-white bg-red-600 rounded-md hover:bg-red-700 whitespace-nowrap">⏸ Pausar todos</button>
+                    @endif
+                </span>
+            </div>
+        @endif
+
         <div class="flex flex-wrap items-center gap-4 text-sm lg:flex-nowrap">
             <div class="inline-flex overflow-hidden border border-gray-300 rounded-md">
                 @foreach (['todas' => 'Todas (creadas y asignadas)', 'mias' => 'Asignadas a '.($yo === auth()->id() ? 'mí' : 'esta persona'), 'pedidas' => 'Que he pedido a otros'] as $k => $t)
@@ -107,7 +141,12 @@
                                     @endif
                                 </td>
                             @endif
-                            <td class="px-3 py-2 font-medium max-w-xl truncate" title="{{ $t->titulo }}">{{ $t->titulo }}</td>
+                            <td class="px-3 py-2 font-medium max-w-xl truncate" title="{{ $t->titulo }}">{{ $t->titulo }}
+                                @if ($claudeId && $t->asignados->contains('id', $claudeId))
+                                    @if (! $t->claude_autorizada_at) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-amber-800 bg-amber-100 rounded" title="Claude necesita el visto bueno de un Admin">🤖 sin autorizar</span>
+                                    @elseif ($t->claude_pausada) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-gray-600 bg-gray-200 rounded" title="Pausada para Claude">⏸ pausada</span>
+                                    @elseif ($t->abierta()) <span class="ml-1 text-xs font-normal text-indigo-600" title="Claude la hará automáticamente">🤖</span> @endif
+                                @endif</td>
                             <td class="px-3 py-2"><span class="px-2 py-0.5 text-xs border rounded-full {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</span></td>
                             <td class="px-3 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
                             <td class="px-3 py-2">{{ $t->asignados->pluck('name')->implode(', ') }}</td>
@@ -138,6 +177,24 @@
                                                     <x-todo-asignados :usuarios="$this->usuarios" :seleccionados="$detalle->asignados->pluck('id')->all()" :accion="'alternarAsignado('.$detalle->id.', %d)'" />
                                                 </div>
                                             </div>
+                                            @if ($claudeId && $detalle->asignados->contains('id', $claudeId))
+                                                <div class="p-2 text-xs border rounded-md {{ $detalle->claude_autorizada_at ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-amber-50 border-amber-300 text-amber-900' }}">
+                                                    @if (! $detalle->claude_autorizada_at)
+                                                        🤖 <b>Claude necesita el visto bueno de un Admin</b> para hacer esta tarea.
+                                                        @if ($esAdmin) <button type="button" wire:click="autorizarClaude({{ $detalle->id }})" class="ml-1 px-2 py-0.5 text-white bg-green-600 rounded hover:bg-green-700">✔ Autorizar</button> @endif
+                                                    @else
+                                                        🤖 Claude la hará automáticamente (autorizada). {{ $detalle->claude_pausada ? 'Ahora está PAUSADA.' : 'Pasa cada hora; puedes adelantarlo.' }}
+                                                        <span class="flex flex-wrap gap-2 mt-1">
+                                                            @if (($esAdmin || $detalle->creador_id === auth()->id()) && $detalle->abierta() && ! $detalle->claude_pausada)
+                                                                <button type="button" wire:click="ejecutarYa({{ $detalle->id }})" class="px-2 py-0.5 text-white bg-indigo-600 rounded hover:bg-indigo-700">⚡ Ejecutar ya</button>
+                                                            @endif
+                                                            @if ($esAdmin)
+                                                                <button type="button" wire:click="pausarClaudeTarea({{ $detalle->id }}, {{ $detalle->claude_pausada ? 'false' : 'true' }})" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">{{ $detalle->claude_pausada ? '▶ Reanudar' : '⏸ Pausar esta' }}</button>
+                                                            @endif
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            @endif
                                             @if ($esAdmin || $detalle->creador_id === auth()->id())
                                                 <button type="button" wire:click="borrar({{ $detalle->id }})" wire:confirm="¿Borrar esta tarea y sus comentarios?" class="text-xs text-red-600 underline">Borrar tarea</button>
                                             @endif
@@ -174,6 +231,9 @@
                                                     </div>
                                                     <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Responder</button>
                                                 </div>
+                                                @if ($claudeId && $detalle->asignados->contains('id', $claudeId) && ($esAdmin || $detalle->creador_id === auth()->id()))
+                                                    <label class="inline-flex items-center gap-1 mr-4 text-xs text-indigo-700"><input type="checkbox" wire:model="respUrgente" class="border-gray-300 rounded"> ⚡ Que Claude la lea ya (sin esperar a la hora)</label>
+                                                @endif
                                                 <div class="text-xs text-gray-500">Asignar también a (opcional)
                                                     <x-todo-asignados :usuarios="$this->usuarios->whereNotIn('id', $detalle->asignados->pluck('id')->all())->values()" :seleccionados="$respAsignar" accion="alternarRespuesta(%d)" :minimo="0" texto="＋ Asignar a alguien ▾" />
                                                 </div>

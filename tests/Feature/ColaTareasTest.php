@@ -15,6 +15,11 @@ class ColaTareasTest extends TestCase
         parent::setUp();
         Schema::create('users', fn ($t) => $t->id());
         (require base_path('database/migrations/2026_10_02_140000_create_trabajadores_tareas_tables.php'))->up();
+        // Lo que añadió el TO-DO de Claude a la cola (columna no_antes_de y las tablas que consulta reservar)
+        Schema::table('tareas', fn ($t) => $t->timestamp('no_antes_de')->nullable());
+        Schema::create('todo_ajustes', function ($t) { $t->string('clave')->primary(); $t->string('valor')->nullable(); $t->timestamps(); });
+        Schema::create('claude_ejecuciones', function ($t) { $t->id(); $t->timestamps(); });
+        Schema::create('todo_tareas', function ($t) { $t->id(); $t->boolean('claude_pausada')->default(false); });
         Schema::create('certificados_escaneos', function ($t) {
             $t->id(); $t->string('pc')->unique(); $t->string('escaneado'); $t->longText('certs'); $t->timestamps();
         });
