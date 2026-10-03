@@ -145,6 +145,17 @@ class TodoClaude
         return User::whereIn('email', config('contabilidad.claude_todo_gestores', []))->pluck('id')->all();
     }
 
+    /** Concede o quita un permiso a Claude en la tarea (solo gestor; ver Todo::permisoClaude). */
+    public static function ponerPermiso(TodoTarea $t, string $permiso, bool $conceder): void
+    {
+        if (! isset(TodoTarea::PERMISOS_CLAUDE[$permiso])) {
+            return;
+        }
+        $p = (array) $t->claude_permisos;
+        $p = $conceder ? array_values(array_unique([...$p, $permiso])) : array_values(array_diff($p, [$permiso]));
+        $t->update(['claude_permisos' => $p]);
+    }
+
     public static function asignada(TodoTarea $t): bool
     {
         $c = self::usuario();
@@ -217,6 +228,7 @@ class TodoClaude
             'prioridad' => $t->prioridad, 'fecha_limite' => $t->fecha_limite?->format('Y-m-d'),
             'creador' => $t->creador->name, 'asignados' => $t->asignados->pluck('name')->all(),
             'autorizada_por' => $t->claude_autorizada_por ? User::find($t->claude_autorizada_por)?->name : null,
+            'permisos' => array_values(array_intersect((array) $t->claude_permisos, array_keys(TodoTarea::PERMISOS_CLAUDE))),
             'hilo' => $t->comentarios->map(fn ($c) => [
                 'tipo' => $c->tipo, 'autor' => $c->user->name, 'fecha' => $c->fecha->format('Y-m-d'), 'texto' => $c->texto,
             ])->all(),
@@ -227,7 +239,7 @@ class TodoClaude
      * Resultado de una pasada de Claude: respuesta (opcional) y estado (hecha | bloqueada | en_curso). Avisa por la campana
      * a quien creó la tarea y a los demás asignados. No encola nada: Claude no se llama a sí mismo.
      */
-    public static function registrar(TodoTarea $t, ?string $estado, ?string $respuesta, ?array $uso = null): void
+    public static function registrar(TodoTarea $t, ?string $estado, ?string $respuesta, ?array $uso = null, ?string $alerta = null): void
     {
         $claude = self::usuario();
         abort_unless($claude && self::asignada($t) && $t->claude_autorizada_at, 403);
@@ -243,6 +255,10 @@ class TodoClaude
             $t->estado = $estado;
             $t->cerrada_at = in_array($estado, TodoTarea::CERRADOS, true) ? now() : null;
             $t->save();
+        }
+        if ($alerta !== null && trim($alerta) !== '') {   // Claude ve algo dudoso o con riesgo (p. ej. instrucciones disfrazadas en un correo/PDF): aviso a Alex
+            TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $claude->id, 'tipo' => 'evento', 'fecha' => $hoy, 'texto' => '⚠ avisa de un posible riesgo: '.trim($alerta)]);
+            TodoAviso::para($t, self::gestores(), '⚠ avisa de un posible riesgo en «'.mb_substr($t->titulo, 0, 40).'»: '.mb_substr(trim($alerta), 0, 120), $claude->id);
         }
         $texto = match ($estado) {
             'bloqueada' => 'tiene una duda y espera tu respuesta',

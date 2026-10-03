@@ -1,3 +1,4 @@
+@if (empty($oculta))
 <div wire:poll.30s class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
     <button type="button" @click="open = !open" title="{{ $total ? $total.' aviso(s) del TO-DO' : 'Sin avisos del TO-DO' }}"
         class="relative flex items-center p-2 rounded-full hover:bg-gray-100 focus:outline-none {{ $total ? 'text-red-600' : 'text-gray-400' }}">
@@ -28,3 +29,6 @@
         </div>
     </div>
 </div>
+@else
+<div></div>
+@endif

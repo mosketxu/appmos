@@ -22,7 +22,7 @@ class EntidadesLivewireTest extends TestCase
     {
         parent::setUp();
 
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($this->adminUser());
     }
 
     public function test_new_entity_can_be_created(): void

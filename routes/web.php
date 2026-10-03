@@ -47,7 +47,12 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     });
 
     // TO-DO: tareas tipo ticket; cada usuario ve las suyas (creadas o asignadas), el Admin las de cualquiera
-    Route::get('/todo', function () {return view('todo.index');})->name('todo');
+    Route::get('/todo', function () {
+        if (config('contabilidad.todo_url')) {   // en un PC: los datos buenos están en la web
+            return redirect()->away(config('contabilidad.todo_url').(request('t') ? '?t='.(int) request('t') : ''));
+        }
+        return view('todo.index');
+    })->name('todo');
 
     // Contabilidad (Fashion IQ): lanzar los scripts Node/Python de monthlyFIQ
     Route::get('/contabilidad/procesos', function () {return view('contabilidad.procesos');})->name('contabilidad.procesos')->middleware('can:contabilidad.procesos');

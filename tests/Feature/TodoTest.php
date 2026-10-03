@@ -164,7 +164,7 @@ class TodoTest extends TestCase
         $c->assertSee('data-handle', false);
     }
 
-    public function test_la_prioridad_de_cada_usuario_es_suya_y_solo_el_admin_ordena_la_de_otro(): void
+    public function test_la_prioridad_de_cada_usuario_es_suya_y_el_admin_solo_la_ve(): void
     {
         \Spatie\Permission\Models\Role::findOrCreate('Admin', 'web');
         $ana = $this->usuario('Ana');
@@ -188,11 +188,11 @@ class TodoTest extends TestCase
         Livewire::test(Todo::class)->assertSee('data-handle', false)->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')]);
         $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
 
-        // El Admin puede elegir la lista de Bea y ordenarla
+        // El Admin ve la lista de Bea tal como ella la priorizó, pero es suya: sin ⠿ y sin poder cambiarla
         $this->actingAs($alex);
-        Livewire::test(Todo::class)->set('verUsuario', $bea->id)->assertSee('data-handle', false)
+        Livewire::test(Todo::class)->set('verUsuario', $bea->id)->assertSee('Tres')->assertDontSee('data-handle', false)
             ->call('reordenar', [$id('Dos'), $id('Tres'), $id('Uno')], $bea->id);
-        $this->assertSame(['Dos', 'Tres', 'Uno'], $orden());
+        $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
     }
 
     public function test_la_campana_avisa_de_asignaciones_y_respuestas(): void
@@ -232,5 +232,12 @@ class TodoTest extends TestCase
         $orden = fn () => \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')->where('p.user_id', $ana->id)->orderBy('p.orden')->pluck('t.titulo')->all();
         $c->call('reordenar', [$id('Revisar IVA trimestral'), $id('Factura IVA')]);
         $this->assertSame(['Revisar IVA trimestral', 'Llamar a Pedro', 'Factura IVA'], $orden());
+    }
+
+    public function test_en_un_pc_con_todo_url_el_todo_redirige_a_la_web(): void
+    {
+        config(['contabilidad.todo_url' => 'https://appmos.example.com/todo']);
+        $this->actingAs($this->usuario('Ana'))->get(route('todo'))->assertRedirect('https://appmos.example.com/todo');
+        $this->get(route('todo', ['t' => 5]))->assertRedirect('https://appmos.example.com/todo?t=5');
     }
 }

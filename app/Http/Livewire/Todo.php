@@ -34,6 +34,9 @@ class Todo extends Component
     public bool $nueva = false;
     public string $titulo = '';
     public string $descripcion = '';
+    /** Permisos de Claude para la tarea nueva (solo los aplica si quien la crea es gestor). */
+    public array $permisosNuevos = [];
+
     /** Personas a las que se asigna la tarea nueva. */
     public array $asignadosIds = [];
     public string $prioridad = 'normal';
@@ -152,8 +155,13 @@ class Todo extends Component
         }
         $this->evento($t, 'creó la tarea y la asignó a '.$this->nombres($ids));
         TodoAviso::para($t, $ids, 'te ha asignado una tarea');
+        if (TodoClaude::esGestor(auth()->user())) {
+            foreach ($this->permisosNuevos as $pm) {
+                TodoClaude::ponerPermiso($t, (string) $pm, true);
+            }
+        }
         $this->siClaude($t, $ids);
-        $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva');
+        $this->reset('titulo', 'descripcion', 'prioridad', 'fechaLimite', 'nueva', 'permisosNuevos');
         // Para que la tarea recién creada se vea
         $this->vista = 'todas';
         $this->filtroEstado = 'abiertas';
@@ -223,6 +231,14 @@ class Todo extends Component
         }
     }
 
+    /** Concede o quita un permiso a Claude en una tarea: solo Alex (gestor). */
+    public function permisoClaude(int $id, string $permiso): void
+    {
+        abort_unless(TodoClaude::esGestor(auth()->user()), 403);
+        $t = TodoTarea::findOrFail($id);
+        TodoClaude::ponerPermiso($t, $permiso, ! in_array($permiso, (array) $t->claude_permisos, true));
+    }
+
     public function pausarClaudeTarea(int $id, bool $pausar): void
     {
         abort_unless(TodoClaude::esGestor(auth()->user()), 403);
@@ -289,7 +305,8 @@ class Todo extends Component
     public function reordenar(array $ids, ?int $persona = null): void
     {
         $yo = $persona ?: $this->usuarioVisto();
-        if (! $this->personas->contains('id', $yo)) {
+        // La prioridad de cada usuario es suya: solo ordeno la mía o, si soy Alex (gestor), la de Claude. La de los demás es solo lectura.
+        if (! $this->personas->contains('id', $yo) || ! ($yo === auth()->id() || ($yo === TodoClaude::usuario()?->id && TodoClaude::esGestor(auth()->user())))) {
             return;
         }
         $visibles = $this->tareasVisiblesDe($yo);
@@ -332,7 +349,7 @@ class Todo extends Component
     {
         $yo = $this->usuarioVisto();
         $t = TodoTarea::with('asignados')->findOrFail($id);
-        abort_unless($this->puede($t) && $t->abierta() && $t->estaAsignadaA($yo) && in_array($t->id, $this->tareasVisiblesDe($yo), true), 403);
+        abort_unless($yo === auth()->id() && $this->puede($t) && $t->abierta() && $t->estaAsignadaA($yo) && in_array($t->id, $this->tareasVisiblesDe($yo), true), 403);
         $ids = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
             ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
             ->orderBy('p.orden')->orderBy('p.id')->pluck('p.tarea_id')->all();
@@ -434,6 +451,7 @@ class Todo extends Component
         }
         foreach ($mias as $t) {
             $t->grupo = $yo;
+            $t->soloLectura = $yo !== auth()->id();   // el Admin ve cómo ha priorizado otra persona, sin poder tocarlo
         }
         $cl = TodoClaude::usuario()?->id;
         $deClaude = collect();
