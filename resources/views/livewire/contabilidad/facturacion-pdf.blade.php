@@ -18,6 +18,8 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'contabilidad.facturacion-pdf'])
     @include('livewire.contabilidad._subnav')
 
+    <div class="px-4 pt-4">@include('livewire.contabilidad._pcs')</div>
+
     <div class="p-4 space-y-6">
 
     {{-- 2026-09-29: un proceso cada vez, elegido con los botones junto al título --}}
@@ -219,11 +221,10 @@
                         <button type="button" x-on:click="porque = ! porque" class="text-lg font-bold text-indigo-700" title="¿Por qué no se puede usar en la web?">*</button>
                     </div>
                     <div x-show="porque" x-cloak class="p-2 mt-2 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
-                        <strong>¿Por qué solo en los PCs y no en la web?</strong> Partir el PDF y mandar los correos se podría
-                        hacer en el servidor, pero el proceso necesita tu OneDrive: {{ $id === 'Suma' ? 'lee los destinatarios del Excel maestro (ToDO Alex) y ' : '' }}copia
-                        las facturas a las carpetas de OneDrive (Facturas del mes y la carpeta de cada cliente), y el paso
-                        «revisar el Excel» abre Excel en tu PC. El servidor no ve tu OneDrive; para eso habría que darle
-                        a la app de Microsoft permiso sobre tus ficheros (ahora solo puede enviar correo).
+                        <strong>¿Dónde se hace?</strong> El proceso necesita OneDrive ({{ $id === 'Suma' ? 'lee los destinatarios del Excel maestro (ToDO Alex) y ' : '' }}copia
+                        las facturas a las carpetas de OneDrive: Facturas del mes y la de cada cliente), así que lo hace un PC de
+                        trabajo (AlexMiniPC / PortalExomen). Desde la web, el PDF se le manda al PC, que lo procesa y devuelve
+                        aquí el resultado; si ningún PC está encendido, la tarea espera (se puede cancelar).
                     </div>
                 </div>
                 <p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>

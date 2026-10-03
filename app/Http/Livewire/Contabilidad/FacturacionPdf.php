@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Http\Livewire\Concerns\EjecutaEnPcs;
 use App\Models\Entidad;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
@@ -31,7 +32,18 @@ use Livewire\WithFileUploads;
  */
 class FacturacionPdf extends Component
 {
+    use EjecutaEnPcs;
     use WithFileUploads;
+
+    // Web (VPS): Suma/Balerga los hace un PC trabajador con su OneDrive (cola de tareas, trait EjecutaEnPcs, 3-oct-2026).
+    protected string $grupoPc = 'facturacion';
+
+    protected bool $ultimoOk = false;
+
+    /** Esta pantalla no guarda estado de PC: no hay nada que recargar cuando llega. */
+    protected function recargarEstado(): void
+    {
+    }
 
     /** Fichero subido por cliente, mientras está en el formulario (antes de separarPdf). */
     public array $archivo = [];
@@ -347,6 +359,18 @@ class FacturacionPdf extends Component
         }
 
         $etiqueta = "Facturación PDF · {$cliente} ({$etiquetaSufijo})";
+        if ($this->remoto()) {
+            // El PDF viaja como entrada de la tarea: el PC lo deja en <Cliente>\Entrada con nombre nuevo (el script lo archiva)
+            $this->resultados[$cliente] = [];
+            $this->lanzarEnCola([[
+                'script' => 'procesar_facturas.py', 'args' => ['--client', $cliente, '--input', '{E0}', $enviar ? '--send' : '--no-mail'],
+                'timeout' => 180, 'etiqueta' => $etiqueta,
+            ]], [
+                'entradas' => [['ruta' => $rutaMasterAbs, 'nombre' => date('Ymd_His').'_'.basename($rutaMasterAbs), 'dir' => "{$cliente}/Entrada"]],
+                'resultados' => $cliente, 'post' => 'postProcesarFacturas', 'ctx' => ['cliente' => $cliente, 'enviar' => $enviar],
+            ]);
+            return false;   // la fase avanza cuando el PC termina (postProcesarFacturas)
+        }
         if (! config('contabilidad.ejecucion_local')) {
             // Sin acceso real al proyecto en esta máquina no tiene sentido ni
             // intentar copiar/crear nada.
@@ -375,6 +399,15 @@ class FacturacionPdf extends Component
         $this->salidaCliente[$cliente] = trim(substr($this->salida, $inicio));
         $this->anexarResultados($cliente, $res['archivos']);
         return $res['ok'];
+    }
+
+    /** Fin de una fase en el PC: la fase de la tarjeta avanza solo si fue bien y la salida de la tarjeta se actualiza. */
+    protected function postProcesarFacturas(array $ctx, int $desde, array $oks): void
+    {
+        $this->salidaCliente[$ctx['cliente']] = trim(substr($this->salida, $desde));
+        if (! in_array(false, $oks, true)) {
+            $this->estado[$ctx['cliente']]['fase'] = $ctx['enviar'] ? 'enviado' : 'separado';
+        }
     }
 
     // -- Genérico: cualquier proveedor ------------------------------------
@@ -658,6 +691,12 @@ class FacturacionPdf extends Component
         if (! isset($this->clientes()[$cliente])) {
             return;
         }
+        if ($this->remoto()) {
+            $this->lanzarEnCola([['script' => 'herramientas/listar_destinatarios.py', 'args' => ['--client', $cliente], 'timeout' => 60,
+                'etiqueta' => "Facturación PDF · {$cliente} · destinatarios"]],
+                ['post' => 'postDestinatarios', 'ctx' => ['cliente' => $cliente, 'ini' => strlen($this->salida)]]);
+            return;
+        }
         if (! config('contabilidad.ejecucion_local')) {
             $this->destinatarios[$cliente] = ['error' => 'Opción no válida. Solo ejecutable desde un terminal autorizado.'];
             return;
@@ -687,6 +726,26 @@ class FacturacionPdf extends Component
         } catch (\Throwable $e) {
             $this->destinatarios[$cliente] = ['error' => $e->getMessage()];
         }
+    }
+
+    /** Fin de «Cargar lista» en el PC: el JSON de listar_destinatarios.py no se enseña en la Salida, se lee como en local. */
+    protected function postDestinatarios(array $ctx, int $desde, array $oks): void
+    {
+        $cliente = $ctx['cliente'];
+        $texto = trim(substr($this->salida, $desde));
+        $this->salida = substr($this->salida, 0, $ctx['ini']);
+        $ini = strpos($texto, '{');
+        $data = $ini === false ? null : json_decode(substr($texto, $ini), true);
+        if (! ($oks[0] ?? false) || ! is_array($data) || isset($data['error'])) {
+            $this->destinatarios[$cliente] = ['error' => is_array($data) && isset($data['error']) ? $data['error'] : ($texto ?: 'Respuesta no reconocida del PC.')];
+            return;
+        }
+        $this->destinatarios[$cliente] = [
+            'filas' => $data['filas'] ?? [],
+            'xlsxPathWindows' => $this->rutaWindows($data['xlsx_path'] ?? ''),
+            'xlsxUrl' => $this->fileUrl($data['xlsx_path'] ?? ''),
+            'avisos' => $data['avisos'] ?? [],
+        ];
     }
 
     public function getDestinatariosFiltradosProperty(): array
