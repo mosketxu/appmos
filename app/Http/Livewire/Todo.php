@@ -63,7 +63,10 @@ class Todo extends Component
 
     public function getUsuariosProperty()
     {
-        return User::where('activo', true)->whereNotNull('email')->orderBy('name')->get(['id', 'name']);
+        // Los compañeros de Suma con correo (los que pueden entrar) y Claude, que recibe tareas sin entrar en Appmos
+        return User::where('activo', true)
+            ->where(fn ($q) => $q->whereNotNull('email')->orWhere('name', 'Claude'))
+            ->orderBy('name')->get(['id', 'name']);
     }
 
     public function crear(): void
