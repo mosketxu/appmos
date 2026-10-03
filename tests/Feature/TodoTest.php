@@ -164,7 +164,7 @@ class TodoTest extends TestCase
         $c->assertSee('data-handle', false);
     }
 
-    public function test_la_prioridad_de_cada_usuario_es_suya_y_solo_el_admin_ordena_la_de_otro(): void
+    public function test_la_prioridad_de_cada_usuario_es_suya_y_el_admin_solo_la_ve(): void
     {
         \Spatie\Permission\Models\Role::findOrCreate('Admin', 'web');
         $ana = $this->usuario('Ana');
@@ -188,11 +188,11 @@ class TodoTest extends TestCase
         Livewire::test(Todo::class)->assertSee('data-handle', false)->call('reordenar', [$id('Tres'), $id('Uno'), $id('Dos')]);
         $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
 
-        // El Admin puede elegir la lista de Bea y ordenarla
+        // El Admin ve la lista de Bea tal como ella la priorizó, pero es suya: sin ⠿ y sin poder cambiarla
         $this->actingAs($alex);
-        Livewire::test(Todo::class)->set('verUsuario', $bea->id)->assertSee('data-handle', false)
+        Livewire::test(Todo::class)->set('verUsuario', $bea->id)->assertSee('Tres')->assertDontSee('data-handle', false)
             ->call('reordenar', [$id('Dos'), $id('Tres'), $id('Uno')], $bea->id);
-        $this->assertSame(['Dos', 'Tres', 'Uno'], $orden());
+        $this->assertSame(['Tres', 'Uno', 'Dos'], $orden());
     }
 
     public function test_la_campana_avisa_de_asignaciones_y_respuestas(): void

@@ -305,7 +305,8 @@ class Todo extends Component
     public function reordenar(array $ids, ?int $persona = null): void
     {
         $yo = $persona ?: $this->usuarioVisto();
-        if (! $this->personas->contains('id', $yo)) {
+        // La prioridad de cada usuario es suya: solo ordeno la mía o, si soy Alex (gestor), la de Claude. La de los demás es solo lectura.
+        if (! $this->personas->contains('id', $yo) || ! ($yo === auth()->id() || ($yo === TodoClaude::usuario()?->id && TodoClaude::esGestor(auth()->user())))) {
             return;
         }
         $visibles = $this->tareasVisiblesDe($yo);
@@ -348,7 +349,7 @@ class Todo extends Component
     {
         $yo = $this->usuarioVisto();
         $t = TodoTarea::with('asignados')->findOrFail($id);
-        abort_unless($this->puede($t) && $t->abierta() && $t->estaAsignadaA($yo) && in_array($t->id, $this->tareasVisiblesDe($yo), true), 403);
+        abort_unless($yo === auth()->id() && $this->puede($t) && $t->abierta() && $t->estaAsignadaA($yo) && in_array($t->id, $this->tareasVisiblesDe($yo), true), 403);
         $ids = \DB::table('todo_tarea_user as p')->join('todo_tareas as t', 't.id', '=', 'p.tarea_id')
             ->where('p.user_id', $yo)->whereNotIn('t.estado', TodoTarea::CERRADOS)
             ->orderBy('p.orden')->orderBy('p.id')->pluck('p.tarea_id')->all();
@@ -450,6 +451,7 @@ class Todo extends Component
         }
         foreach ($mias as $t) {
             $t->grupo = $yo;
+            $t->soloLectura = $yo !== auth()->id();   // el Admin ve cómo ha priorizado otra persona, sin poder tocarlo
         }
         $cl = TodoClaude::usuario()?->id;
         $deClaude = collect();

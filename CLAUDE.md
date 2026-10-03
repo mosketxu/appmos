@@ -48,7 +48,7 @@ Cada sitio tiene su **propia BD** (la buena es la del VPS; para copiarla a un PC
 
 - Registro público cerrado; usuarios y roles los crea el Admin (entran con nombre.apellido@sumaempresa.com; `debe_cambiar_password` obliga a cambiarla la primera vez).
 - Contraseña olvidada: el enlace sale por Graph desde `GRAPH_SENDER` (no por SMTP).
-- Solo **Alex** (`CLAUDE_TODO_GESTORES`) pausa, reanuda y autoriza a Claude; la prioridad de cada usuario en el TO-DO es suya (solo un Admin ve/ordena la de otro).
+- Solo **Alex** (`CLAUDE_TODO_GESTORES`) pausa, reanuda y autoriza a Claude; la prioridad de cada usuario en el TO-DO es suya (un Admin la ve en «Ver tareas de», solo lectura; Alex además ordena la de Claude).
 - En un PC, `TODO_URL` (en el `.env`) hace que el TO-DO redirija a la web: los datos buenos (tareas, trabajadores, uso del plan) están en la BD del VPS; no crear tareas en `localhost`.
 - Permisos de Claude por tarea (scripts, correo, desplegar, ssh, borrar): solo los concede Alex; sin ellos no hay python/ssh/rm en las ejecuciones desatendidas.
 - Claude automático: PC principal AlexMiniPC, secundario PortalExomen; pasadas cada hora o «Ejecutar ya»; freno con el uso real del plan ≥ 80 %.

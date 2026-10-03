@@ -135,7 +135,7 @@
                                 $esClaude = $claudeId && $seccion === 'g'.$claudeId;
                                 $titulo = $esMia ? ($yo === auth()->id() ? 'MIS TAREAS' : 'TAREAS DE '.strtoupper($this->personas->firstWhere('id', $yo)?->name ?? 'ESTA PERSONA'))
                                     : ($esClaude ? '🤖 TAREAS DE CLAUDE' : 'OTRAS TAREAS (creadas para otros y cerradas)');
-                                $nota = $esMia ? 'Arrastra el ⠿ para ordenar tu prioridad' : ($esClaude ? 'Su propia lista de prioridades: arrastra el ⠿ para ordenar lo que hará primero' : 'Sin prioridad propia: no se ordenan aquí');
+                                $nota = $esMia ? ($yo === auth()->id() ? 'Arrastra el ⠿ para ordenar tu prioridad' : 'Así las ha priorizado esa persona: es suya y no se puede cambiar desde aquí') : ($esClaude ? 'Su propia lista de prioridades: arrastra el ⠿ para ordenar lo que hará primero' : 'Sin prioridad propia: no se ordenan aquí');
                                 $fondo = $esMia ? '#1d4ed8' : ($esClaude ? '#6d28d9' : '#4b5563');
                             @endphp
                             <tr wire:key="sec-{{ $seccion }}" aria-hidden="true">
@@ -148,7 +148,7 @@
                         @endif
                         @php $seccionAnt = $seccion; @endphp
                         @php
-                            $mia = isset($t->grupo);   // está en una lista de prioridades que puedo ordenar (la mía; la de Claude si soy Alex): lleva ⠿
+                            $mia = isset($t->grupo) && ! ($t->soloLectura ?? false);   // está en una lista de prioridades que puedo ordenar (la mía; la de Claude si soy Alex): lleva ⠿
                             $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday();
                         @endphp
                         <tr wire:key="t{{ $t->id }}" @if ($mia) data-orden="{{ $t->id }}" data-grupo="{{ $t->grupo }}" @endif wire:click="abrir({{ $t->id }})"
