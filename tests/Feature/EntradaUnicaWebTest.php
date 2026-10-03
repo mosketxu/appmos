@@ -17,7 +17,7 @@ class EntradaUnicaWebTest extends TestCase
 
     public function test_las_excepciones_y_las_llamadas_internas_no_redirigen(): void
     {
-        config(['contabilidad.entrada_web_url' => 'https://appmos.example.com']);
+        config(['contabilidad.entrada_web_url' => 'https://appmos.example.com', 'contabilidad.entrada_web_excepciones' => ['contabilidad/durcal*']]);
         $this->get('/contabilidad/durcal')->assertRedirectContains('/login');          // pasa al flujo normal (pide login), no sale a la web
         $this->assertNotSame('https://appmos.example.com/livewire/update', $this->post('/livewire/update')->headers->get('Location'));   // AJAX de Livewire: no sale a la web
         $this->getJson('/api/user')->assertStatus(401);
