@@ -260,6 +260,12 @@ class FacturasOcr extends Component
         if (! array_key_exists($this->cierre, $this->mesesCierre())) {
             $this->cierre = '';
         }
+        // Ficheros base centrales de la empresa (mayor, plan, proveedores): lo subido en otro proceso se instala aquí y lo de aquí se publica allí
+        try {
+            $this->sincronizarCentral();
+        } catch (\Throwable $e) {
+            report($e);   // no impide abrir la pantalla
+        }
     }
 
     public function updatedCliente(): void
@@ -2047,6 +2053,23 @@ class FacturasOcr extends Component
             $this->dispatch('proceso-terminado', mensaje: "⚠️ {$nombre}: tiene que ser un Excel (.xlsx) exportado de SAGE.");
             return;
         }
+        $this->instalarBase($tipo, $f->getRealPath(), $nombre, true);
+    }
+
+    /** Fichero base central (App\Support\FicherosBase) ↔ tipo local de Facturas OCR. */
+    protected const CENTRAL = ['prov' => 'proveedores', 'mayor' => 'mayor', 'plan' => 'plan'];
+
+    protected function entidadIdCliente(): int
+    {
+        return (int) ($this->cfg()['entidad_id'] ?? 0);
+    }
+
+    /**
+     * Mete un fichero en Base/ (con el prefijo de su tipo, apartando los anteriores a Base/OLD) y rehace proveedores.json.
+     * $publicar = viene de una subida en esta pantalla: se copia también a los ficheros base CENTRALES de la empresa (los demás procesos lo ven).
+     */
+    protected function instalarBase(string $tipo, string $origen, string $nombre, bool $publicar, bool $avisar = true): bool
+    {
         [$patron, $prefijo] = self::TIPOS_BASE[$tipo];
         if (! preg_match($patron, $nombre)) {
             $nombre = $prefijo.$nombre;
@@ -2054,9 +2077,9 @@ class FacturasOcr extends Component
         $dir = $this->dirDatos().'/Base';
         @mkdir($dir, 0775, true);
         $tmp = $dir.'/.subiendo-'.$nombre;
-        if (! @copy($f->getRealPath(), $tmp)) {
+        if (! @copy($origen, $tmp)) {
             $this->dispatch('proceso-terminado', mensaje: "⚠️ No se pudo guardar {$nombre}.");
-            return;
+            return false;
         }
         // Solo queda a la vista el último de cada tipo: los anteriores van a Base/OLD (de ahí se siguen
         // sumando los mayores; del listado y el plan vale el último)
@@ -2075,9 +2098,50 @@ class FacturasOcr extends Component
         }
         if (! @rename($tmp, $dir.'/'.$nombre)) {
             $this->dispatch('proceso-terminado', mensaje: "⚠️ No se pudo guardar {$nombre} (¿está abierto en Excel?).");
-            return;
+            return false;
+        }
+        if ($publicar && ($eid = $this->entidadIdCliente()) && ! \App\Support\FicherosBase::existeContenido($eid, self::CENTRAL[$tipo], $dir.'/'.$nombre)) {
+            \App\Support\FicherosBase::guardar($eid, self::CENTRAL[$tipo], $dir.'/'.$nombre, $nombre, 'Facturas OCR');
         }
         $this->rehacerBase("Guardado Base/{$nombre}.".($apartados ? ' A Base/OLD: '.implode(', ', $apartados).'.' : ''));
+
+        return true;
+    }
+
+    /**
+     * Ficheros base centrales ↔ Base/ de este cliente, en los dos sentidos (gana el más reciente): lo que se subió en otro proceso se instala aquí
+     * y lo que se sube aquí se publica allí. Se hace al abrir el cliente. Devuelve lo hecho.
+     */
+    protected function sincronizarCentral(): array
+    {
+        $hecho = [];
+        $eid = $this->entidadIdCliente();
+        if (! $eid || ! $this->web() || ! $this->clienteValido()) {
+            return $hecho;
+        }
+        $dir = $this->dirDatos().'/Base';
+        foreach (self::CENTRAL as $tipo => $tc) {
+            [$patron] = self::TIPOS_BASE[$tipo];
+            $locales = array_values(array_filter(glob($dir.'/*.xlsx') ?: [], fn ($f) => preg_match($patron, basename($f)) && ! str_starts_with(basename($f), '~$')));
+            usort($locales, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+            $local = $locales[0] ?? null;
+            $central = \App\Support\FicherosBase::ultimo($eid, $tc);
+            if ($central && (! $local || (filemtime($central['ruta']) > filemtime($local) && hash_file('sha256', $central['ruta']) !== hash_file('sha256', $local)))) {
+                $yaEsta = false;   // ¿el mismo contenido ya está en Base/ o en Base/OLD? entonces no se vuelve a instalar
+                foreach (array_merge($locales, glob($dir.'/OLD/*.xlsx') ?: []) as $f) {
+                    $yaEsta = $yaEsta || hash_file('sha256', $f) === hash_file('sha256', $central['ruta']);
+                }
+                if (! $yaEsta && $this->instalarBase($tipo, $central['ruta'], $central['nombre'], false)) {
+                    $hecho[] = "{$tc}: instalado el del central ({$central['nombre']})";
+                }
+            } elseif ($local && (! $central || (filemtime($local) > filemtime($central['ruta']) && hash_file('sha256', $local) !== hash_file('sha256', $central['ruta'])))
+                && ! \App\Support\FicherosBase::existeContenido($eid, $tc, $local)) {
+                \App\Support\FicherosBase::guardar($eid, $tc, $local, basename($local), 'Facturas OCR (existente)');
+                $hecho[] = "{$tc}: publicado el de Facturas OCR ({$local})";
+            }
+        }
+
+        return $hecho;
     }
 
     /** Quita el fichero base a la vista (p.ej. subido por error): se borra y vuelve el anterior de su tipo desde Base/OLD. */

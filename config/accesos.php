@@ -55,6 +55,7 @@ return [
             'petdocimpuestos' => 'Pet. Documentación Impuestos',
             'certificados' => 'Certificados por caducar',
             'seguimiento' => 'Seguimiento (checklist mensual)',
+            'revisionmayor' => 'Revisión del mayor',
         ]],
     ],
 

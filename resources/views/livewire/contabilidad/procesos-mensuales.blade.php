@@ -22,6 +22,10 @@
             @endforeach
         </div>
 
+        @if ($proceso === 'revisionmayor')
+            @livewire('contabilidad.revision-mayor', [], key('revisionmayor-embebido'))
+        @endif
+
         @if ($proceso === 'certificados')
             @livewire('contabilidad.certificados', ['embebido' => true], key('certificados-embebido'))
         @endif

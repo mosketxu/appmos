@@ -40,6 +40,8 @@ class ProcesosMensuales extends Component
     public const PROCESOS = [
         'petdocimpuestos' => ['icono' => '📨', 'titulo' => 'Pet. Documentación Impuestos',
             'descripcion' => 'Petición mensual de la documentación para los impuestos.'],
+        'revisionmayor' => ['icono' => '🔎', 'titulo' => 'Revisión del mayor',
+            'descripcion' => 'Revisa el mayor de cada empresa: provisiones por aplicar, pagos sin cruzar, pagos en 410000... Solo informa.'],
         'certificados' => ['icono' => '🔐', 'titulo' => 'Certificados por caducar', 'local' => true,
             'descripcion' => 'Certificados digitales que caducan en los próximos meses (AlexMiniPC + PortalExomen). Se ejecuta en local.'],
     ];
