@@ -630,7 +630,10 @@ class FacturasOcr extends Component
         } else {
             $this->ordenarAccion = $this->ordenarMes = [];
         }
-        $this->ejecutar($args, 900, $aplicar ? 'Ordenar facturas sueltas (aplicado)' : 'Ordenar facturas sueltas (simulación)');
+        $ok = $this->ejecutar($args, 900, $aplicar ? 'Ordenar facturas sueltas (aplicado)' : 'Ordenar facturas sueltas (simulación)');
+        if ($aplicar && $ok) {
+            $this->enviarAlPc();   // y se lleva ya al OneDrive del PC (renombradas/movidas) y se quitan allí las sueltas idénticas
+        }
     }
 
     protected function ordenarResultado(): ?array
