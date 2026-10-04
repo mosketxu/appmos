@@ -9,6 +9,9 @@
         .focr-dos { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,27rem); gap:1rem; align-items:stretch; }
         .focr-izq { display:flex; flex-direction:column; gap:.75rem; min-width:0; }
         .focr-der { display:flex; flex-direction:column; min-height:21rem; min-width:0; }
+        .focr-dos.comprimida { grid-template-columns:minmax(0,1fr) 13rem; }
+        .focr-dos.comprimida .focr-der { min-height:0; align-self:start; }
+        .focr-der-cuerpo { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
         @media (max-width:1100px) { .focr-dos { grid-template-columns:minmax(0,1fr); } }
         .focr-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:.75rem 1rem; }
         .focr-lbl { display:block; font-size:.75rem; font-weight:600; color:#4b5563; margin-bottom:.15rem; }
@@ -298,7 +301,7 @@
             {{-- 1. Parámetros y facturas. Web: dos columnas (izquierda: IVA, periodo y ficheros base; derecha: facturas subidas con su estado y scroll).
                  PC: la tarjeta de siempre con la carpeta de entrada. --}}
             @if ($web)
-                <div class="focr-dos">
+                <div class="focr-dos" x-data="{ comprimida: (() => { try { return localStorage.getItem('focr-subidas-comprimida') === '1' } catch (e) { return false } })() }" :class="{ 'comprimida': comprimida }">
                     <div class="focr-izq">
                         <div class="p-4 focr-card">
                             @include('livewire.contabilidad.facturas-ocr._parametros')

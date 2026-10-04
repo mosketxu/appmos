@@ -1,10 +1,18 @@
 {{-- Web: zona de arrastrar + facturas subidas con su estado y scroll (parte derecha de la tarjeta de arriba). Las facturas se suben SIEMPRE aquí
      (no dependen de OneDrive): el navegador calcula la huella SHA-1 de cada PDF y solo sube las que el servidor no conoce; al llegar se leen solas. --}}
-<div class="flex items-center justify-between mb-1">
-    <span class="text-sm font-semibold text-gray-700">Facturas subidas</span>
-    @php $nLeidas = collect($entrada)->filter(fn ($e) => ! in_array($e[1], ['en el servidor', 'leyendo'], true))->count(); @endphp
-    <span class="text-xs text-gray-500">{{ count($entrada) }} en la carpeta · {{ $nLeidas }} leídas</span>
+@php $nLeidas = collect($entrada)->filter(fn ($e) => ! in_array($e[1], ['en el servidor', 'leyendo'], true))->count(); @endphp
+<div class="flex items-center justify-between gap-2">
+    <button type="button" x-on:click="comprimida = ! comprimida; try { localStorage.setItem('focr-subidas-comprimida', comprimida ? '1' : '0') } catch (e) {}"
+            class="text-sm font-semibold text-left text-gray-700" title="Comprimir / desplegar las facturas subidas">
+        <span x-text="comprimida ? '▸' : '▾'"></span> Facturas subidas
+    </button>
+    <span class="text-xs text-gray-500 whitespace-nowrap">
+        {{ count($entrada) }} · {{ $nLeidas }} leídas
+        @if ($lecturaDesde) <b style="color:#b45309">⏳</b> @endif
+    </span>
 </div>
+<div class="focr-der-cuerpo" x-show="! comprimida">
+<div class="mt-1"></div>
                         <div x-data="focrSubida()" wire:key="subida">
                             <input type="file" multiple accept="application/pdf,.pdf" x-ref="f" style="display:none" x-on:change="elegir($event.target.files); $event.target.value = ''">
                             <div x-on:click="$refs.f.click()" x-on:dragover.prevent="encima = true" x-on:dragleave.prevent="encima = false" x-on:drop.prevent="encima = false; elegir($event.dataTransfer.files)"
@@ -70,4 +78,5 @@
 
 <div class="pt-2 mt-2 border-t border-gray-100" style="font-size:.7rem">
     @include('livewire.contabilidad.facturas-ocr._archivo-pc')
+</div>
 </div>

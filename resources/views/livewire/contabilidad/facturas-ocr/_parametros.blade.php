@@ -1,19 +1,20 @@
 {{-- IVA, periodo, cierre, analítica, botones de lectura y salida (parte izquierda de la tarjeta de arriba en la web) --}}
 <div class="focr-grid">
                     <div>
-                        <label class="focr-lbl">IVA del cliente</label>
+                        <label class="focr-lbl">IVA del cliente
+                            <x-neteges-info>
+                                @if ($entidad && (int) $entidad->cicloimpuesto_id === 0)
+                                    La entidad no lo tiene: se grabará en Entidades (Ciclo Impuesto) al elegirlo.
+                                @else
+                                    Sale de Entidades (Ciclo Impuesto).
+                                @endif
+                            </x-neteges-info>
+                        </label>
                         <select wire:model.live="ciclo" class="focr-in {{ $ciclo === '' ? 'falta' : '' }}">
                             <option value="">— elegir —</option>
                             <option value="M">Mensual</option>
                             <option value="T">Trimestral</option>
                         </select>
-                        <div class="mt-1 text-xs text-gray-500">
-                            @if ($entidad && (int) $entidad->cicloimpuesto_id === 0)
-                                La entidad no lo tiene: se grabará en Entidades al elegirlo.
-                            @else
-                                De Entidades (Ciclo Impuesto).
-                            @endif
-                        </div>
                         @error('ciclo') <div class="mt-1 text-xs text-red-600">{{ $message }}</div> @enderror
                     </div>
                     <div>
@@ -36,10 +37,12 @@
                         </div>
                     @endif
                     <div>
-                        <label class="focr-lbl">Contabilidad analítica</label>
+                        <label class="focr-lbl">Analítica
+                            <x-neteges-info>Contabilidad analítica: si la marcas, cada factura lleva el código de canal que el proveedor tenga por defecto en su ficha. Se guarda en la entidad.</x-neteges-info>
+                        </label>
                         <label class="flex items-center gap-2 mt-1 text-sm">
                             <input type="checkbox" wire:model.live="analitica" class="rounded">
-                            Poner el código de canal del proveedor
+                            Canal del proveedor por defecto
                         </label>
                         @unless ($hayAnalitica)
                             <div class="mt-1 text-xs" style="color:#b45309">Falta la migración en la base de datos: de momento no se guarda en la entidad.</div>
