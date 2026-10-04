@@ -227,7 +227,7 @@
                                                         </span>
                                                         <span class="flex flex-wrap gap-2 mt-1">
                                                             @if (($esAdmin || $detalle->creador_id === auth()->id()) && $detalle->abierta() && ! $detalle->claude_pausada)
-                                                                <button type="button" wire:click="ejecutarYa({{ $detalle->id }})" class="px-2 py-0.5 text-white bg-indigo-600 rounded hover:bg-indigo-700">⚡ Ejecutar ya</button>
+                                                                <button type="button" wire:click="ejecutarYa({{ $detalle->id }})" class="px-2 py-0.5 text-white bg-indigo-600 rounded hover:bg-indigo-700" title="Claude coge ya la tarea tal como está (sin escribir nada nuevo). Si has escrito una respuesta, usa «Responder y que Claude la lea ya», abajo.">⚡ Ejecutar ya la tarea</button>
                                                             @endif
                                                             @if ($esGestor)
                                                                 <button type="button" wire:click="pausarClaudeTarea({{ $detalle->id }}, {{ $detalle->claude_pausada ? 'false' : 'true' }})" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">{{ $detalle->claude_pausada ? '▶ Reanudar' : '⏸ Pausar esta' }}</button>
@@ -281,11 +281,15 @@
                                                         <textarea wire:model="comentario" rows="2" placeholder="Escribe tu respuesta…" class="{{ $campo }}"></textarea>
                                                         @error('comentario') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                                                     </div>
-                                                    <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Responder</button>
+                                                    <span class="flex flex-col gap-1">
+                                                        <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Responder</button>
+                                                        @if ($claudeId && $detalle->asignados->contains('id', $claudeId) && ($esAdmin || $detalle->creador_id === auth()->id()) && $detalle->abierta())
+                                                            {{-- Un solo botón: envía la respuesta Y avisa a Claude para que la lea ya, sin esperar a la próxima hora en punto --}}
+                                                            <button type="button" wire:click="comentarYa({{ $detalle->id }})" wire:loading.attr="disabled" class="px-3 py-1 text-sm text-indigo-700 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50"
+                                                                    title="Envía tu respuesta y Claude la lee ya, sin esperar a la hora en punto">⚡ Responder y que Claude la lea ya</button>
+                                                        @endif
+                                                    </span>
                                                 </div>
-                                                @if ($claudeId && $detalle->asignados->contains('id', $claudeId) && ($esAdmin || $detalle->creador_id === auth()->id()))
-                                                    <label class="inline-flex items-center gap-1 mr-4 text-xs text-indigo-700"><input type="checkbox" wire:model="respUrgente" class="border-gray-300 rounded"> ⚡ Que Claude la lea ya (sin esperar a la hora)</label>
-                                                @endif
                                                 <div class="text-xs text-gray-500">Asignar también a (opcional)
                                                     <x-todo-asignados :usuarios="$this->usuarios->whereNotIn('id', $detalle->asignados->pluck('id')->all())->values()" :seleccionados="$respAsignar" accion="alternarRespuesta(%d)" :minimo="0" texto="＋ Asignar a alguien ▾" />
                                                 </div>

@@ -436,6 +436,13 @@ class Todo extends Component
         $this->fechaComentario = now()->format('Y-m-d');
     }
 
+    /** «⚡ Responder y que Claude la lea ya»: lo mismo que Responder con la casilla antigua marcada, en un solo botón. */
+    public function comentarYa(int $id): void
+    {
+        $this->respUrgente = true;
+        $this->comentar($id);
+    }
+
     public function borrarComentario(int $id): void
     {
         $c = TodoComentario::findOrFail($id);
