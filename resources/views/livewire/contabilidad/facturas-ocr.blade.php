@@ -1,6 +1,16 @@
 <div class=""
-    x-data="{ avisos: [] }"
+    x-data="{ avisos: [],
+        {{-- Historial del navegador: abrir una factura añade UNA entrada (pasar a otra la sustituye) y «atrás» (o el botón del ratón) vuelve al listado --}}
+        historia(id) {
+            if (id) {
+                history.state && history.state.focr ? history.replaceState({ focr: id }, '') : history.pushState({ focr: id }, '');
+            } else if (history.state && history.state.focr) {
+                history.back();
+            }
+        } }"
     x-on:proceso-terminado.window="avisos.push({ id: Date.now() + '-' + Math.random(), mensaje: $event.detail.mensaje })"
+    x-on:focr-historia.window="historia($event.detail.id || '')"
+    x-on:popstate.window="const e = $event.state; if (e && e.focr) { if ($wire.sel !== e.focr) $wire.abrir(e.focr) } else if ($wire.sel) { $wire.cerrar() }"
 >
     {{-- Estilos propios: el app.css de Tailwind 2 está compilado y purgado --}}
     <style>

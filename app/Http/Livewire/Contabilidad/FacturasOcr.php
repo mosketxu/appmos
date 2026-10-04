@@ -1098,6 +1098,7 @@ class FacturasOcr extends Component
             $d[$k] = isset($d[$k]) && $d[$k] !== null ? (string) $d[$k] : '';
         }
         $this->form = $d;
+        $this->avisarHistoria($id);
     }
 
     public function cerrar(): void
@@ -1105,6 +1106,15 @@ class FacturasOcr extends Component
         $this->sel = '';
         $this->propuestaCif = null;
         $this->form = [];
+        $this->avisarHistoria('');
+    }
+
+    /** Para que el botón «atrás» del ratón/navegador vuelva al listado desde una factura abierta (el navegador lo gestiona en el cliente). */
+    protected function avisarHistoria(string $id): void
+    {
+        if (! $this->enLote) {
+            $this->dispatch('focr-historia', id: $id);
+        }
     }
 
     public function mover(int $paso): void
