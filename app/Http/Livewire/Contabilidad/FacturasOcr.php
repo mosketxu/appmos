@@ -643,6 +643,36 @@ class FacturasOcr extends Component
         return $f !== '' && is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: null) : null;
     }
 
+    /** Lo que Alex ha dado por «revisado» en el chequeo (no se vuelve a proponer): clave => [fecha, nota]. */
+    public bool $verRevisadas = false;
+
+    protected function chequeoRevisados(): array
+    {
+        $f = $this->clienteValido() ? $this->dirDatos().'/chequeo_revisados.json' : '';
+        $d = $f !== '' && is_file($f) ? json_decode((string) file_get_contents($f), true) : [];
+
+        return is_array($d) ? $d : [];
+    }
+
+    public function marcarRevisado(string $clave, string $nota = ''): void
+    {
+        if (! $this->clienteValido() || ! preg_match('/^(pdf|mayor)\|/', $clave)) {
+            return;
+        }
+        $r = $this->chequeoRevisados();
+        $r[$clave] = ['fecha' => now()->format('Y-m-d H:i'), 'nota' => mb_substr($nota, 0, 200), 'quien' => auth()->user()?->name];
+        file_put_contents($this->dirDatos().'/chequeo_revisados.json', json_encode((object) $r, JSON_UNESCAPED_UNICODE));
+    }
+
+    public function desmarcarRevisado(string $clave): void
+    {
+        $r = $this->chequeoRevisados();
+        unset($r[$clave]);
+        if ($this->clienteValido()) {
+            file_put_contents($this->dirDatos().'/chequeo_revisados.json', json_encode((object) $r, JSON_UNESCAPED_UNICODE));
+        }
+    }
+
     protected function chequeoResultado(): ?array
     {
         $p = trim($this->chequeoPeriodo);
@@ -2213,6 +2243,7 @@ class FacturasOcr extends Component
             'conflictos' => $conflictos,
             'dirDatos' => $valido ? $this->dirDatos() : '',
             'chequeo' => $this->vista === 'chequeo' ? $this->chequeoResultado() : null,
+            'revisados' => $this->vista === 'chequeo' ? $this->chequeoRevisados() : [],
             'ordenar' => in_array($this->vista, ['chequeo', 'ordenar'], true) ? $this->ordenarResultado() : null,
             'clientes' => $this->clientes(),
             'cola' => $cola,

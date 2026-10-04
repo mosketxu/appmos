@@ -47,17 +47,36 @@
                                     <span class="focr-chip {{ $chequeo['mayor_sin_pdf'] ? 'c-falta' : 'c-ok' }}">Mayor sin PDF {{ $chequeo['mayor_sin_pdf'] }}</span>
                                 </div>
                                 @if ($chequeo['problemas'])
-                                    <div class="text-sm font-semibold">Para revisar ({{ count($chequeo['problemas']) }})</div>
+                                    @php
+                                        $filtrar = fn ($filas, $hechas) => array_values(array_filter($filas, fn ($x) => (isset($revisados[$x['clave'] ?? 'pdf|'.$x['fichero']]) ) === $hechas));
+                                        $pendientesChq = $filtrar($chequeo['problemas'], false);
+                                        $hechasChq = $filtrar($chequeo['problemas'], true);
+                                        $nRevTotal = count($hechasChq) + ($chequeo['revisadas'] ?? 0);
+                                    @endphp
+                                    <div class="text-sm font-semibold" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+                                        Para revisar ({{ count($pendientesChq) }})
+                                        @if ($nRevTotal || $verRevisadas)
+                                            <button type="button" wire:click="$toggle('verRevisadas')" class="focr-btn b-gris" style="padding:.1rem .5rem; font-size:.72rem; font-weight:400">{{ $verRevisadas ? 'Ocultar' : 'Ver' }} las ya revisadas ({{ $nRevTotal }})</button>
+                                        @endif
+                                    </div>
                                     <table class="focr-tabla">
-                                        <thead><tr><th>Estado</th><th>Mes</th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th style="text-align:right">Total</th><th>Detalle</th></tr></thead>
+                                        <thead><tr><th>Estado</th><th>Mes</th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th style="text-align:right">Total</th><th>Detalle</th><th></th></tr></thead>
                                         <tbody>
-                                            @foreach ($chequeo['problemas'] as $x)
-                                                <tr>
+                                            @foreach (array_merge($pendientesChq, $verRevisadas ? $hechasChq : []) as $x)
+                                                @php $kx = $x['clave'] ?? 'pdf|'.$x['fichero']; $hecha = isset($revisados[$kx]); @endphp
+                                                <tr wire:key="chq-{{ md5($kx) }}" @if ($hecha) style="opacity:.55" @endif>
                                                     <td><span class="focr-chip {{ in_array($x['estado'], ['DIVISA (probable)', 'PROBABLE']) ? 'c-revisar' : 'c-falta' }}" style="white-space:nowrap">{{ $x['estado'] }}</span></td>
                                                     <td>{{ $x['mes'] }}</td><td style="max-width:260px; word-break:break-all"><a href="{{ route('contabilidad.facturas-ocr.archivo', [$cliente, $x['mes'], $x['fichero']]) }}?a={{ substr($chequeo['periodo'], 0, 4) }}" target="_blank" style="color:#1d4ed8; text-decoration:underline" title="Abrir la factura">{{ $x['fichero'] }}</a></td>
                                                     <td>{{ $x['cuenta'] }} {{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td>
                                                     <td style="text-align:right">{{ $x['total'] !== null ? number_format((float) $x['total'], 2, ',', '.') : '' }}</td>
-                                                    <td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
+                                                    <td class="text-xs text-gray-600">{{ $x['detalle'] }}@if ($hecha) <br><i>revisada {{ $revisados[$kx]['fecha'] ?? '' }} {{ $revisados[$kx]['quien'] ?? '' }} {{ $revisados[$kx]['nota'] ?? '' }}</i>@endif</td>
+                                                    <td style="white-space:nowrap">
+                                                        @if ($hecha)
+                                                            <button type="button" wire:click="desmarcarRevisado(@js($kx))" class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.7rem" title="Volver a proponerla">↺ Quitar «revisado»</button>
+                                                        @else
+                                                            <button type="button" x-on:click="const n = prompt('Nota (opcional). Aceptar = darla por revisada y no volver a proponerla:'); if (n !== null) $wire.marcarRevisado(@js($kx), n)" class="focr-btn b-verde" style="padding:.05rem .4rem; font-size:.7rem" title="Ya la he mirado: que no me la vuelva a proponer">✔ Revisado</button>
+                                                        @endif
+                                                    </td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
@@ -67,12 +86,14 @@
                                 @endif
                                 @if ($chequeo['sin_pdf'])
                                     <details>
-                                        <summary class="text-sm font-semibold cursor-pointer">En el mayor sin PDF en las carpetas ({{ $chequeo['mayor_sin_pdf'] }})</summary>
+                                        @php $sinPdfPend = array_values(array_filter($chequeo['sin_pdf'], fn ($x) => ! isset($revisados[$x['clave'] ?? '-']))); @endphp
+                                        <summary class="text-sm font-semibold cursor-pointer">En el mayor sin PDF en las carpetas ({{ count($sinPdfPend) }})</summary>
                                         <table class="focr-tabla">
-                                            <thead><tr><th>Cuenta</th><th>Proveedor</th><th>Nº factura</th><th>Fecha asiento</th><th style="text-align:right">Total</th></tr></thead>
+                                            <thead><tr><th>Cuenta</th><th>Proveedor</th><th>Nº factura</th><th>Fecha asiento</th><th style="text-align:right">Total</th><th></th></tr></thead>
                                             <tbody>
-                                                @foreach ($chequeo['sin_pdf'] as $x)
-                                                    <tr><td>{{ $x['cuenta'] }}</td><td>{{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td><td>{{ $x['fecha'] }}</td><td style="text-align:right">{{ number_format((float) $x['total'], 2, ',', '.') }}</td></tr>
+                                                @foreach ($sinPdfPend as $x)
+                                                    <tr wire:key="sp-{{ md5($x['clave'] ?? json_encode($x)) }}"><td>{{ $x['cuenta'] }}</td><td>{{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td><td>{{ $x['fecha'] }}</td><td style="text-align:right">{{ number_format((float) $x['total'], 2, ',', '.') }}</td>
+                                                        <td>@if (isset($x['clave']))<button type="button" x-on:click="const n = prompt('Nota (opcional). Aceptar = darla por revisada y no volver a proponerla:'); if (n !== null) $wire.marcarRevisado(@js($x['clave']), n)" class="focr-btn b-verde" style="padding:.05rem .4rem; font-size:.7rem">✔ Revisado</button>@endif</td></tr>
                                                 @endforeach
                                             </tbody>
                                         </table>
