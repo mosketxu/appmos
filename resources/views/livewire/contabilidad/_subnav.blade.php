@@ -17,6 +17,7 @@
         ['contabilidad.facturasocr', 'contabilidad.facturas-ocr', 'Facturas OCR', null],
         ['contabilidad.is', 'contabilidad.is', 'IS', config('contabilidad.is_url')],
         ['contabilidad.neteges', 'contabilidad.neteges', 'Neteges', null],
+        ['contabilidad.leoybra', 'contabilidad.leoybra', 'LeoyBra', null],
     ];
 @endphp
 <style>

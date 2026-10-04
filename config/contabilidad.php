@@ -124,6 +124,12 @@ return [
     | Procesos FIQ (contabilidad.ejecucion_local). Datos en Contabilidad/Neteges.
     */
 
+    // LeoyBra (4-oct-2026): motor y datos en el servidor (LEOYBRA_DIR=/var/www/leoybra). En un PC, la carpeta del repo.
+    'leoybra_dir' => env('LEOYBRA_DIR') ?: (collect(['e', 'f', 'd'])
+        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/LeoyBra")
+        ->first(fn ($d) => is_dir($d)) ?? '/var/www/leoybra'),
+    'leoybra_python' => env('LEOYBRA_PYTHON'),
+
     'neteges_dir' => env('NETEGES_DIR') ?: (collect(['e', 'f', 'd'])
         ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Neteges")
         ->first(fn ($d) => is_dir($d)) ?? '/mnt/e/Claude/Contabilidad/Neteges'),

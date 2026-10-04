@@ -104,6 +104,8 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return response()->download($ruta, basename($nombre));
     })->whereNumber('id')->name('contabilidad.tarea-fichero')->middleware('signed');
     Route::get('/contabilidad/neteges', function () {return view('contabilidad.neteges');})->name('contabilidad.neteges')->middleware('can:contabilidad.neteges');
+    // Contabilidad (LeoyBra, 4-oct-2026): Grupo Leoybra; genera PluginFacturas y PluginBancos. Se usa en la web (datos en el VPS)
+    Route::get('/contabilidad/leoybra', function () {return view('contabilidad.leoybra');})->name('contabilidad.leoybra')->middleware('can:contabilidad.leoybra');
 
     // Contabilidad (Proc.Mensuales): agrupa varios procesos mensuales. Se usa en la web (datos de la BD del VPS)
     Route::get('/contabilidad/procesos-mensuales', function () {
