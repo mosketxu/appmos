@@ -191,6 +191,50 @@ class Is extends Component
         $this->dispatch('proceso-terminado', mensaje: '✅ '.self::FUENTES[$clave][0]."\n".$f->getClientOriginalName());
     }
 
+    /** Mayores guardados de la empresa en los ficheros base centrales (otro proceso los subió): el IS usa el de cada ejercicio, así que se elige uno a mano. */
+    public function mayoresCentrales(): array
+    {
+        if (! $this->entidadId) {
+            return [];
+        }
+        $out = [];
+        foreach (\App\Support\FicherosBase::historial((int) $this->entidadId, 'mayor') as $h) {
+            $out[basename($h['ruta'])] = $h['nombre'].' · '.date('d/m/Y H:i', $h['fecha']).($h['origen'] ? ' ('.$h['origen'].')' : '');
+        }
+
+        return $out;
+    }
+
+    /** «Usar este mayor» (de los ficheros base de la empresa) como Mayor de este ejercicio. El anterior se guarda aparte. */
+    public function usarMayorCentral(string $archivo): void
+    {
+        $this->resetErrorBag('subida.mayor');
+        if (! $this->autorizado('IS · usar mayor de la empresa') || ! $this->listo()) {
+            return;
+        }
+        $h = collect(\App\Support\FicherosBase::historial((int) $this->entidadId, 'mayor'))->first(fn ($x) => basename($x['ruta']) === basename($archivo));
+        if (! $h) {
+            $this->addError('subida.mayor', 'Ese mayor ya no está en los ficheros base de la empresa.');
+            return;
+        }
+        $dir = $this->dirEjercicio().'/fuentes';
+        if (! is_dir($dir.'/anteriores') && ! @mkdir($dir.'/anteriores', 0777, true)) {
+            $this->addError('subida.mayor', 'No se ha podido crear la carpeta del cliente.');
+            return;
+        }
+        foreach (glob($dir.'/mayor.*') ?: [] as $viejo) {
+            if (! str_ends_with($viejo, '.origen.txt')) {
+                @rename($viejo, $dir.'/anteriores/'.date('Ymd-His').' '.basename($viejo));
+            }
+        }
+        if (! @copy($h['ruta'], $dir.'/mayor.xlsx')) {
+            $this->addError('subida.mayor', 'No se ha podido guardar el fichero.');
+            return;
+        }
+        file_put_contents($dir.'/mayor.origen.txt', $h['nombre']."\n".date('d/m/Y H:i')." · de los ficheros base de la empresa\n");
+        $this->dispatch('proceso-terminado', mensaje: '✅ Mayor de la empresa: '.$h['nombre']);
+    }
+
     /** Estado de cada fuente: nombre original y fecha de subida, o null. */
     protected function estadoFuentes(): array
     {
@@ -401,6 +445,7 @@ class Is extends Component
             'entidades' => $this->entidades(),
             'fuentes' => self::FUENTES,
             'estado' => $this->estadoFuentes(),
+            'mayoresCentrales' => $this->mayoresCentrales(),
             'paginas' => $paginas,
             'hay200' => $this->listo() && is_file($this->dirEjercicio().'/salida/'.$this->nif().'_'.(int) $this->ejercicio.'.200'),
             'carpeta' => $this->listo() ? 'clientes/'.$this->nif().'/'.(int) $this->ejercicio : '',

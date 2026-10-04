@@ -129,6 +129,9 @@ return [
         ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/LeoyBra")
         ->first(fn ($d) => is_dir($d)) ?? '/var/www/leoybra'),
     'leoybra_python' => env('LEOYBRA_PYTHON'),
+    'leoybra_entidad' => (int) env('LEOYBRA_ENTIDAD', 2484),   // entidad «GRUPO LEOYBRA, S.L.»: sus ficheros base centrales (FicherosBase)
+
+    'neteges_entidad' => (int) env('NETEGES_ENTIDAD', 2552),   // entidad «Neteges Sicilia SL»: sus ficheros base centrales (FicherosBase)
 
     'neteges_dir' => env('NETEGES_DIR') ?: (collect(['e', 'f', 'd'])
         ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Neteges")

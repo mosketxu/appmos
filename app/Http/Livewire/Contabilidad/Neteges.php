@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Contabilidad;
 
 use App\Http\Livewire\Concerns\EjecutaEnPcs;
 use App\Support\ColaTareas;
+use App\Support\FicherosBase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
@@ -253,6 +254,7 @@ class Neteges extends Component
             return;
         }
 
+        $this->publicarCentral($fila, $ficheros);
         if ($this->remoto()) {
             $this->subidasEnPc($fila, $etiqueta, $ficheros);
             return;
@@ -333,6 +335,74 @@ class Neteges extends Component
             default => [$paso('neteges_base.py', array_merge(['--espera', $fila], $rutas))],
         };
         $this->ejecutarEnPc($pasos, $etiqueta, $entradas);
+    }
+
+    // ------------------------------------------------------------ ficheros base centrales (App\Support\FicherosBase)
+
+    /** Fila de Neteges → tipo del central. */
+    private const CENTRAL = ['plan' => 'plan', 'mayor' => 'mayor', 'clientessage' => 'clientes', 'proveedoressage' => 'proveedores'];
+
+    /** Lo subido aquí (plan, mayor, clientes y proveedores de SAGE) se copia también a los ficheros base de la empresa, y se apunta como «ya usado». */
+    protected function publicarCentral(string $fila, array $ficheros): void
+    {
+        $eid = (int) config('contabilidad.neteges_entidad');
+        if (! $eid || ! isset(self::CENTRAL[$fila]) || ! $ficheros) {
+            return;
+        }
+        $f = end($ficheros);
+        if (! FicherosBase::existeContenido($eid, self::CENTRAL[$fila], $f->getRealPath())) {
+            FicherosBase::guardar($eid, self::CENTRAL[$fila], $f->getRealPath(), $f->getClientOriginalName(), 'Neteges');
+        }
+        $this->marcarUsado($fila, hash_file('sha256', $f->getRealPath()));
+    }
+
+    protected function marcaUsado(): string
+    {
+        return FicherosBase::raiz().'/'.(int) config('contabilidad.neteges_entidad').'/_neteges_usado.json';
+    }
+
+    protected function marcarUsado(string $fila, string $sha): void
+    {
+        $f = $this->marcaUsado();
+        $d = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: []) : [];
+        $d[$fila] = $sha;
+        @mkdir(dirname($f), 0775, true);
+        @file_put_contents($f, json_encode((object) $d));
+    }
+
+    /** Ficheros base centrales más nuevos que lo que usó Neteges (otro proceso subió uno): [fila => nombre, fecha, origen]. */
+    public function centralNuevos(): array
+    {
+        $eid = (int) config('contabilidad.neteges_entidad');
+        if (! $eid) {
+            return [];
+        }
+        $f = $this->marcaUsado();
+        $usado = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: []) : [];
+        $out = [];
+        foreach (self::CENTRAL as $fila => $tipo) {
+            $c = FicherosBase::ultimo($eid, $tipo);
+            if ($c && (($usado[$fila] ?? null) !== FicherosBase::sha($c['ruta']))) {
+                $out[$fila] = ['nombre' => $c['nombre'], 'fecha' => date('d/m/Y H:i', $c['fecha']), 'origen' => $c['origen']];
+            }
+        }
+
+        return $out;
+    }
+
+    /** «Traer los nuevos»: pasa por Neteges (como una subida) los ficheros base de la empresa que Neteges aún no ha usado. */
+    public function traerDelCentral(): void
+    {
+        $eid = (int) config('contabilidad.neteges_entidad');
+        foreach (array_keys($this->centralNuevos()) as $fila) {
+            $c = FicherosBase::ultimo($eid, self::CENTRAL[$fila]);
+            if (! $c) {
+                continue;
+            }
+            $this->subidas = [new UploadedFile($c['ruta'], $c['nombre'], null, null, true)];
+            $this->procesarSubidas($fila);
+            $this->marcarUsado($fila, FicherosBase::sha($c['ruta']));
+        }
     }
 
     public function anadirOtraCuenta(): void

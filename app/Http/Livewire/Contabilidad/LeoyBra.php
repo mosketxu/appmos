@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Support\FicherosBase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Livewire\Component;
@@ -34,6 +35,11 @@ class LeoyBra extends Component
     {
         // El trimestre que se estaba viendo (sesión); si no, el último con resultado; si no, el último terminado
         $this->periodo = (string) session('leoybra.periodo', '');
+        try {
+            $this->sincronizarCentral();   // ficheros base centrales de la empresa ↔ Base/ de LeoyBra
+        } catch (\Throwable $e) {
+            report($e);
+        }
         $this->cargar();
         if (! preg_match('/^\d{4}-[1-4]T$/', $this->periodo)) {
             $con = collect($this->estado['periodos'] ?? [])->filter(fn ($v) => isset($v['resumen']))->keys()->sort()->last();
@@ -124,6 +130,7 @@ class LeoyBra extends Component
             @mkdir($carpeta, 0775, true);
             $nombre = self::BASE[$fila].'_'.date('Ymd_His').'_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $f->getClientOriginalName());
             copy($f->getRealPath(), $carpeta.'/'.$nombre);
+            $this->publicarCentral($fila, $carpeta.'/'.$nombre, $f->getClientOriginalName());
             if ($fila !== 'mayor') {   // de los demás solo vale el último: se quitan los anteriores
                 foreach (glob($carpeta.'/'.self::BASE[$fila].'_*') ?: [] as $viejo) {
                     if (basename($viejo) !== $nombre) {
@@ -135,6 +142,52 @@ class LeoyBra extends Component
         }
         $this->cargar();
         $this->dispatch('proceso-terminado', mensaje: '✅ Fichero base guardado.');
+    }
+
+    /** Tipo de LeoyBra → tipo del central (FicherosBase). */
+    private const CENTRAL = ['mayor' => 'mayor', 'plan' => 'plan', 'proveedores' => 'proveedores', 'clientes' => 'clientes'];
+
+    protected function publicarCentral(string $fila, string $ruta, string $nombreOriginal): void
+    {
+        $eid = (int) config('contabilidad.leoybra_entidad');
+        if ($eid && ! FicherosBase::existeContenido($eid, self::CENTRAL[$fila], $ruta)) {
+            FicherosBase::guardar($eid, self::CENTRAL[$fila], $ruta, $nombreOriginal, 'LeoyBra');
+        }
+    }
+
+    /** Central ↔ Base/ de LeoyBra en los dos sentidos (gana el más reciente; mismo contenido = nada que hacer). */
+    protected function sincronizarCentral(): void
+    {
+        $eid = (int) config('contabilidad.leoybra_entidad');
+        if (! $eid) {
+            return;
+        }
+        $carpeta = $this->dir().'/Base';
+        @mkdir($carpeta, 0775, true);
+        foreach (self::CENTRAL as $fila => $tc) {
+            $locales = glob($carpeta.'/'.$fila.'_*') ?: [];
+            usort($locales, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+            $local = $locales[0] ?? null;
+            $central = FicherosBase::ultimo($eid, $tc);
+            if ($central && (! $local || (filemtime($central['ruta']) > filemtime($local) && hash_file('sha256', $central['ruta']) !== hash_file('sha256', $local)))) {
+                $ya = false;
+                foreach (array_merge($locales, glob($carpeta.'/OLD/'.$fila.'_*') ?: []) as $f) {
+                    $ya = $ya || hash_file('sha256', $f) === hash_file('sha256', $central['ruta']);
+                }
+                if (! $ya) {
+                    $nombre = $fila.'_'.date('Ymd_His').'_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $central['nombre']);
+                    copy($central['ruta'], $carpeta.'/'.$nombre);
+                    if ($fila !== 'mayor') {   // de los demás solo vale el último
+                        foreach ($locales as $viejo) {
+                            @mkdir($carpeta.'/OLD', 0775, true);
+                            @rename($viejo, $carpeta.'/OLD/'.basename($viejo));
+                        }
+                    }
+                }
+            } elseif ($local && (! $central || filemtime($local) > filemtime($central['ruta'])) && ! FicherosBase::existeContenido($eid, $tc, $local)) {
+                FicherosBase::guardar($eid, $tc, $local, preg_replace('/^'.$fila.'_\d{8}_\d{6}_/', '', basename($local)), 'LeoyBra (existente)');
+            }
+        }
     }
 
     protected function carpetaPeriodo(string $sub): string

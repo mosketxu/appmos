@@ -138,6 +138,15 @@
                         <input type="file" class="hidden" wire:model="subida.{{ $clave }}" accept="{{ collect($exts)->map(fn ($x) => '.'.$x)->implode(',') }}">
                         {{ $estado[$clave] ? 'Cambiar' : 'Subir' }} ({{ implode(' / ', $exts) }})
                     </label>
+                    @if ($clave === 'mayor' && $mayoresCentrales)
+                        <div class="flex items-center gap-1" x-data="{ m: '' }">
+                            <select x-model="m" class="py-1 text-xs border-gray-300 rounded-md" title="Mayores de esta empresa guardados en los ficheros base (los subió otro proceso)">
+                                <option value="">…o usar uno de los de la empresa</option>
+                                @foreach ($mayoresCentrales as $arch => $txt) <option value="{{ $arch }}">{{ $txt }}</option> @endforeach
+                            </select>
+                            <button type="button" x-on:click="if (m) $wire.usarMayorCentral(m)" class="px-2 py-1 text-xs text-indigo-700 border border-indigo-300 rounded-md bg-indigo-50 hover:bg-indigo-100">Usar</button>
+                        </div>
+                    @endif
                     <div wire:loading wire:target="subida.{{ $clave }}" class="text-xs text-yellow-600">⏳ Subiendo…</div>
                 </div>
             @endforeach

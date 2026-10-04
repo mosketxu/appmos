@@ -191,4 +191,39 @@ class MenuFalsoNeteges extends \Livewire\Component
     {
         return '<div></div>';
     }
+
+    public function test_los_ficheros_base_de_la_empresa_se_comparten_con_los_otros_procesos(): void
+    {
+        $raiz = sys_get_temp_dir().'/nfb-'.uniqid();
+        config(['contabilidad.ficheros_base_dir' => $raiz, 'contabilidad.neteges_entidad' => 88]);
+        $c = $this->componente();
+        $c->subidas = [UploadedFile::fake()->create('Plan de Cuentas.xlsx', 5)];
+        $c->procesarSubidas('plan');
+        $this->assertSame('Plan de Cuentas.xlsx', \App\Support\FicherosBase::ultimo(88, 'plan')['nombre'], 'lo subido en Neteges queda en los ficheros base de la empresa');
+        $this->assertSame([], $c->centralNuevos(), 'y no se ofrece como «nuevo» a Neteges');
+
+        // otro proceso (Facturas OCR) sube un mayor: Neteges lo ofrece y, al traerlo, lo pasa por su flujo de subida
+        $tmp = tempnam(sys_get_temp_dir(), 'm').'.xlsx';
+        file_put_contents($tmp, 'mayor de otro proceso');
+        \App\Support\FicherosBase::guardar(88, 'mayor', $tmp, 'Mayor Neteges.xlsx', 'Facturas OCR');
+        $this->assertSame(['mayor'], array_keys($c->centralNuevos()));
+        $c->traerDelCentral();
+        $this->assertSame([], $c->centralNuevos());
+        $tareas = DB::table('tareas')->where('proceso', 'pc.script')->orderByDesc('id')->get();
+        $ultima = json_decode($tareas->first()->parametros, true);
+        $this->assertSame(['--espera', 'mayor', '{E0}'], $ultima['pasos'][0]['args']);
+        $this->assertSame('Mayor Neteges.xlsx', $ultima['entradas'][0]['nombre']);
+
+        $b = function (string $d) use (&$b) {
+            foreach (glob($d.'/{,.}[!.]*', GLOB_BRACE) ?: [] as $f) {
+                is_dir($f) ? $b($f) : unlink($f);
+            }
+            @rmdir($d);
+        };
+        $b($raiz);
+        foreach ($tareas as $t) {
+            $b(ColaTareas::carpetaEntradas($t->id));
+            @rmdir(ColaTareas::carpetaFicheros($t->id));
+        }
+    }
 }

@@ -42,6 +42,7 @@ class FicherosBase
         if ($origen !== '') {
             @file_put_contents($destino.'.origen', $origen);
         }
+        self::sha($destino);
 
         return $destino;
     }
@@ -64,12 +65,27 @@ class FicherosBase
         return self::historial($entidadId, $tipo)[0] ?? null;
     }
 
+    /** Huella SHA-256 del fichero; para los guardados aquí se apunta en un «.sha256» al lado (no se recalcula en cada pantalla). */
+    public static function sha(string $ruta): string
+    {
+        $c = $ruta.'.sha256';
+        if (is_file($c) && filemtime($c) >= filemtime($ruta)) {
+            return trim((string) file_get_contents($c));
+        }
+        $h = hash_file('sha256', $ruta);
+        if (str_starts_with($ruta, self::raiz().'/')) {
+            @file_put_contents($c, $h);
+        }
+
+        return $h;
+    }
+
     /** ¿Ya hay en el central un fichero con ese contenido? (para no duplicar al sincronizar con un proceso). */
     public static function existeContenido(int $entidadId, string $tipo, string $ruta): bool
     {
         $sha = hash_file('sha256', $ruta);
         foreach (self::historial($entidadId, $tipo) as $h) {
-            if (hash_file('sha256', $h['ruta']) === $sha) {
+            if (self::sha($h['ruta']) === $sha) {
                 return true;
             }
         }

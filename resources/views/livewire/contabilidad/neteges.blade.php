@@ -21,6 +21,17 @@
 
     @include('livewire.contabilidad._pcs')
 
+    @php $centralNuevos = $this->centralNuevos(); @endphp
+    @if ($centralNuevos)
+        <div style="padding:.5rem .75rem; border:2px solid #6366f1; background:#eef2ff; border-radius:.5rem; display:flex; gap:.75rem; align-items:center; flex-wrap:wrap">
+            <span class="text-sm" style="color:#312e81">📥 Hay ficheros base de la empresa más nuevos que los de Neteges:
+                @foreach ($centralNuevos as $fila => $n) <b>{{ ['plan' => 'plan', 'mayor' => 'mayor', 'clientessage' => 'clientes', 'proveedoressage' => 'proveedores'][$fila] }}</b> ({{ \Illuminate\Support\Str::limit($n['nombre'], 30) }}, {{ $n['fecha'] }}{{ $n['origen'] ? ', subido en '.$n['origen'] : '' }}){{ ! $loop->last ? ' · ' : '' }} @endforeach</span>
+            <button type="button" wire:click="traerDelCentral" wire:loading.attr="disabled" wire:target="traerDelCentral" class="px-3 py-1 text-sm font-semibold text-white bg-indigo-600 rounded">
+                <span wire:loading.remove wire:target="traerDelCentral">⬇ Traer los nuevos</span><span wire:loading wire:target="traerDelCentral">Trabajando…</span>
+            </button>
+        </div>
+    @endif
+
     @php
         $ev = $estadoVentas;
         $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];

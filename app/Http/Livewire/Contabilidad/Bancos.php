@@ -98,6 +98,7 @@ class Bancos extends Component
     public function mount(): void
     {
         $this->cliente = $this->clientes()[0] ?? '';
+        $this->sincronizarCentral();
         $this->cargarMaestro();
         $this->cargarConfig();
         $this->cargarFormatos();
@@ -369,6 +370,7 @@ class Bancos extends Component
 
     public function updatedCliente(): void
     {
+        $this->sincronizarCentral();
         $this->resultados = [];
         $this->cuenta = '';
         $this->extracto = null;
@@ -728,6 +730,10 @@ class Bancos extends Component
                 return;
             }
             $rutas[] = $destino;
+            // Los ficheros base valen para todos los procesos de la empresa: se copian también a los centrales
+            if (($eid = $this->entidadIdCliente()) && ! \App\Support\FicherosBase::existeContenido($eid, $fila, $destino)) {
+                \App\Support\FicherosBase::guardar($eid, $fila, $destino, $nombre, 'Bancos');
+            }
         }
 
         $this->resultados = [];
@@ -735,6 +741,64 @@ class Bancos extends Component
         $archivos = $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--espera', $fila], $rutas), 120, $etiqueta);
         $this->anexarResultados($archivos);
         $this->cargarMaestro();
+    }
+
+    protected function entidadIdCliente(): int
+    {
+        $cfg = json_decode((string) @file_get_contents($this->baseDir().'/'.$this->cliente.'/cliente.json'), true);
+
+        return (int) ($cfg['entidad_id'] ?? 0);
+    }
+
+    /**
+     * Ficheros base CENTRALES de la empresa (mayor y plan de cuentas, App\Support\FicherosBase): si se subieron en otro proceso (Facturas OCR...) y aquí aún no, se
+     * pasan por el mismo bancos_base.py que una subida de esta pantalla (solo añade filas nuevas; antes se guarda una copia de la base). Se recuerda lo ya visto por su huella.
+     */
+    protected function sincronizarCentral(): void
+    {
+        if ($this->cliente === '' || ! $this->clienteValido() || ! config('contabilidad.bancos_ejecucion') || ! ($eid = $this->entidadIdCliente())) {
+            return;
+        }
+        try {
+            $baseCli = $this->baseDir().'/'.$this->cliente.'/Base';
+            $marca = $baseCli.'/central_visto.json';
+            $visto = is_file($marca) ? (json_decode((string) file_get_contents($marca), true) ?: []) : [];
+            foreach (['plan', 'mayor'] as $tipo) {
+                $c = \App\Support\FicherosBase::ultimo($eid, $tipo);
+                if (! $c) {
+                    continue;
+                }
+                $sha = hash_file('sha256', $c['ruta']);
+                if (($visto[$tipo] ?? null) === $sha) {
+                    continue;
+                }
+                $yaRecibido = false;   // mismo contenido ya subido aquí (a mano o desde otro cliente de pantalla)
+                foreach (glob($baseCli.'/Recibidos/*') ?: [] as $f) {
+                    $yaRecibido = $yaRecibido || (is_file($f) && filesize($f) === filesize($c['ruta']) && hash_file('sha256', $f) === $sha);
+                }
+                if (! $yaRecibido) {
+                    foreach (glob($baseCli.'/Base *.xlsx') ?: [] as $b) {   // copia de seguridad de la base antes de tocarla (se guardan las 5 últimas)
+                        @mkdir($baseCli.'/copias', 0775, true);
+                        @copy($b, $baseCli.'/copias/'.pathinfo($b, PATHINFO_FILENAME).' '.date('Ymd-His').'.xlsx');
+                    }
+                    $cop = glob($baseCli.'/copias/*.xlsx') ?: [];
+                    rsort($cop);
+                    foreach (array_slice($cop, 5) as $viejo) {
+                        @unlink($viejo);
+                    }
+                    @mkdir($baseCli.'/Recibidos', 0775, true);
+                    $destino = $baseCli.'/Recibidos/'.date('Ymd-His').' '.str_replace(['/', '\\'], '_', $c['nombre']);
+                    if (@copy($c['ruta'], $destino)) {
+                        $this->salida .= "\n===== Bancos · {$this->cliente} · fichero base central ({$tipo}: {$c['nombre']}) =====\n";
+                        $this->ejecutarScript([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--espera', $tipo, $destino], 300, "Bancos · {$this->cliente} · {$tipo} del central");
+                    }
+                }
+                $visto[$tipo] = $sha;
+            }
+            @file_put_contents($marca, json_encode((object) $visto));
+        } catch (\Throwable $e) {
+            report($e);   // no impide abrir la pantalla
+        }
     }
 
     /** Marca (o desmarca) como de banco una cuenta que no empieza por 572; al marcarla se saca de los mayores ya subidos. */

@@ -44,7 +44,7 @@ PY);
                 return '<div></div>';
             }
         });
-        config(['contabilidad.leoybra_dir' => $this->dir, 'contabilidad.leoybra_python' => trim((string) shell_exec('command -v python3'))]);
+        config(['contabilidad.leoybra_entidad' => 77, 'contabilidad.ficheros_base_dir' => $this->dir.'/fb', 'contabilidad.leoybra_dir' => $this->dir, 'contabilidad.leoybra_python' => trim((string) shell_exec('command -v python3'))]);
     }
 
     protected function tearDown(): void
@@ -90,5 +90,24 @@ PY);
         Livewire::test(LeoyBra::class)->set('subidas', [UploadedFile::fake()->create('mayor.pdf', 5)])->call('procesarSubidas', 'mayor')
             ->assertSet('error', '«mayor.pdf» no es un Excel (.xlsx o .xls).');
         $this->assertEmpty(glob($this->dir.'/Base/*'));
+    }
+
+    public function test_los_ficheros_base_se_publican_en_el_central_y_se_traen_de_el(): void
+    {
+        $c = Livewire::test(LeoyBra::class);
+        $c->set('subidas', [UploadedFile::fake()->create('Mayor 2026.xlsx', 5)])->call('procesarSubidas', 'mayor');
+        $this->assertSame('Mayor 2026.xlsx', \App\Support\FicherosBase::ultimo(77, 'mayor')['nombre'], 'lo subido en LeoyBra queda en el central');
+
+        // otro proceso sube el plan de cuentas al central: LeoyBra lo trae al abrirse
+        $tmp = tempnam(sys_get_temp_dir(), 'p').'.xlsx';
+        file_put_contents($tmp, 'plan desde otro proceso');
+        \App\Support\FicherosBase::guardar(77, 'plan', $tmp, 'Plan de cuentas.xlsx', 'Facturas OCR');
+        Livewire::test(LeoyBra::class);
+        $traidos = glob($this->dir.'/Base/plan_*');
+        $this->assertCount(1, $traidos);
+        $this->assertSame('plan desde otro proceso', file_get_contents($traidos[0]));
+        Livewire::test(LeoyBra::class);   // abrir otra vez no lo duplica
+        $this->assertCount(1, glob($this->dir.'/Base/plan_*'));
+        $this->assertCount(1, \App\Support\FicherosBase::historial(77, 'mayor'));
     }
 }
