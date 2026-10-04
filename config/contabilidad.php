@@ -230,6 +230,8 @@ return [
     'claude_todo_max_dia' => (int) env('CLAUDE_TODO_MAX_DIA', 30),   // red de seguridad: ejecuciones de Claude al día (el freno de verdad es el % del plan, claude_todo_max_uso)
     // Los errores de Appmos (500 y tareas de los PCs que fallan) abren solos una tarea del TO-DO para Alex y Claude (App\Support\ErroresApp)
     'errores_a_todo' => (bool) env('ERRORES_A_TODO', true),
+    // Permisos de Claude con los que nacen esas tareas de error (separados por comas). Alex decidió el 4-oct: solo «scripts» (comprobar sintaxis, tests y commit local; sin desplegar ni ssh).
+    'errores_permisos' => array_filter(array_map('trim', explode(',', env('ERRORES_PERMISOS', 'scripts')))),
     'claude_todo_cada_minutos' => (int) env('CLAUDE_TODO_CADA_MINUTOS', 60),
 
 ];

@@ -49,6 +49,7 @@ class ErroresATodoTest extends TestCase
         $this->assertSame([1, 2], $t->asignados()->pluck('users.id')->sort()->values()->all());   // Alex y Claude
         $this->assertSame(1, DB::table('todo_avisos')->where('user_id', 1)->count());               // campana de Alex
         $this->assertNotNull($t->fresh()->claude_autorizada_at);                                    // Claude puede cogerla sin permisos
+        $this->assertSame(['scripts'], $t->fresh()->claude_permisos);                               // nace con «scripts» y nada más (ni desplegar ni ssh)
 
         ErroresApp::registrar('prueba|1', 'Algo ha fallado', 'otra vez');
         $this->assertSame(1, TodoTarea::where('descripcion', 'like', '%[err-%')->count());
