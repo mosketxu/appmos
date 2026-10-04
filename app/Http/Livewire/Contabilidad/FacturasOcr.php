@@ -1657,7 +1657,92 @@ class FacturasOcr extends Component
             return $e;
         });
         $this->lanzarCola();
-        $this->siguiente($antes);
+        if ($this->enLote) {
+            $this->cerrar();
+        } else {
+            $this->siguiente($antes);
+        }
+    }
+
+    /** Facturas marcadas en el listado de «Por revisar» (casillas) para validarlas de una vez. */
+    public array $marcadas = [];
+
+    protected bool $enLote = false;
+
+    /** ✅ de una fila del listado: la valida sin abrirla (si no cuadra, es duplicada o falta algo, dice por qué). */
+    public function validarFila(string $id): void
+    {
+        $this->validarListado([$id]);
+    }
+
+    public function validarMarcadas(): void
+    {
+        $this->validarListado($this->marcadas);
+    }
+
+    /** Marca las que se pueden validar a ojo: lectura toda «ok», cuadran, con cuenta y contrapartida y sin duplicada. */
+    public function marcarSeguras(): void
+    {
+        $this->marcadas = [];
+        foreach ($this->cola() as $f) {
+            if ($f['estado'] !== 'pendiente' || collect($f['avisos'] ?? [])->contains(fn ($a) => str_starts_with($a, 'DUPLICADA'))) {
+                continue;
+            }
+            $conf = $f['confianza'] ?? [];
+            if (! $conf || collect($conf)->contains(fn ($v) => $v !== 'ok')) {
+                continue;
+            }
+            $d = $f['datos'] ?? [];
+            if (($d['cuenta'] ?? '') === '' || ($d['contrapartida'] ?? '') === '' || ($d['total'] ?? null) === null) {
+                continue;
+            }
+            $suma = 0.0;
+            foreach ($d['lineas'] ?? [] as $l) {
+                $suma += (float) ($l['base'] ?? 0) + (float) ($l['cuota'] ?? 0);
+            }
+            $suma -= (float) ($d['cuota_retencion'] ?? 0);
+            if (abs((float) $d['total'] - $suma) < 0.015) {
+                $this->marcadas[] = $f['id'];
+            }
+        }
+    }
+
+    /** Valida varias sin abrirlas. Las que no se pueden (no cuadran, duplicadas, faltan datos) se dejan y se cuentan aparte. */
+    protected function validarListado(array $ids): void
+    {
+        $ok = 0;
+        $no = [];
+        $this->enLote = true;
+        try {
+            foreach (array_values(array_unique($ids)) as $id) {
+                $f = $this->factura($id);
+                if (! $f || $f['estado'] !== 'pendiente') {
+                    continue;
+                }
+                $nombre = basename($f['ruta']);
+                $this->abrir($id);
+                if ($this->duplicados()) {
+                    $no[] = "{$nombre}: parece duplicada";
+                } elseif (($dc = $this->descuadre()) !== null && abs($dc) >= 0.015 || $this->lineasMal()) {
+                    $no[] = "{$nombre}: no cuadra";
+                } else {
+                    $this->validar(false);
+                    if ($this->getErrorBag()->has('validar')) {
+                        $no[] = "{$nombre}: ".$this->getErrorBag()->first('validar');
+                        $this->resetErrorBag();
+                    } else {
+                        $ok++;
+                        continue;
+                    }
+                }
+                $this->cerrar();
+            }
+        } finally {
+            $this->enLote = false;
+            $this->marcadas = [];
+        }
+        $this->dispatch('proceso-terminado', mensaje: ($ok ? "✅ Validadas: {$ok}" : 'Ninguna validada')
+            .($no ? "\n⚠️ Sin validar (ábrelas para revisarlas):\n".implode("\n", $no) : ''));
     }
 
     /** Arranca (si no está ya) el proceso que valida en segundo plano lo encolado. */

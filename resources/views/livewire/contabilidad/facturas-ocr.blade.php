@@ -444,6 +444,17 @@
                     @elseif ($vista === 'revisar')
                         @if ($cola)
                             <div class="flex items-center gap-2 p-2 border-b border-gray-200 text-xs text-gray-500">
+                                <button type="button" wire:click="marcarSeguras" class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.8rem"
+                                        title="Marca las que se leyeron con todo «ok», cuadran, tienen cuenta y contrapartida y no son duplicadas">☑ Marcar las seguras</button>
+                                @if ($marcadas)
+                                    <button type="button" wire:click="validarMarcadas" wire:loading.attr="disabled" wire:target="validarMarcadas"
+                                            wire:confirm="¿Validar las {{ count($marcadas) }} marcadas tal como están? Las que no cuadren o sean duplicadas se dejan sin validar."
+                                            class="focr-btn b-verde" style="padding:.15rem .7rem; font-size:.8rem">
+                                        <span wire:loading.remove wire:target="validarMarcadas">✅ Validar las {{ count($marcadas) }} marcadas</span>
+                                        <span wire:loading wire:target="validarMarcadas">Validando…</span>
+                                    </button>
+                                    <button type="button" wire:click="$set('marcadas', [])" class="focr-btn b-gris" style="padding:.15rem .5rem; font-size:.75rem">Desmarcar</button>
+                                @endif
                                 <button type="button" wire:click="revisarTodas" wire:loading.attr="disabled"
                                         wire:confirm="Volver a proponer todas las facturas por revisar con los ficheros base y las reglas de ahora? En las empezadas se conserva lo que has cambiado a mano."
                                         class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.8rem" title="Volver a proponer todas las pendientes (también las empezadas: lo tocado a mano se conserva)">
@@ -466,7 +477,13 @@
                             @forelse ($cola as $f)
                                 @php $d = $f['datos'] ?? []; $e = $etiqEstado[$f['estado']] ?? ['', $f['estado'], 'c-gris']; @endphp
                                 <tr class="clic" wire:click="abrir('{{ $f['id'] }}')" wire:key="c-{{ $f['id'] }}">
-                                    <td><span class="focr-chip {{ $e[2] }}" style="white-space:nowrap">{{ $e[0] }} {{ $e[1] }}</span></td>
+                                    <td style="white-space:nowrap"><span class="focr-chip {{ $e[2] }}">{{ $e[0] }} {{ $e[1] }}</span>
+                                        @if ($f['estado'] === 'pendiente')
+                                            <input type="checkbox" wire:model.live="marcadas" value="{{ $f['id'] }}" wire:click.stop title="Marcar para validar varias de una vez">
+                                            <button type="button" wire:click.stop="validarFila('{{ $f['id'] }}')" wire:loading.attr="disabled" wire:target="validarFila('{{ $f['id'] }}')"
+                                                    class="focr-btn b-verde" style="padding:.05rem .4rem; font-size:.75rem" title="Validarla tal como está, sin abrirla (si no cuadra o es duplicada, no lo hace y te lo dice)">✅</button>
+                                        @endif
+                                    </td>
                                     <td style="max-width:260px; word-break:break-all">{{ basename($f['ruta']) }} @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
                                         @if (collect($f['avisos'] ?? [])->contains(fn ($a) => str_starts_with($a, 'DUPLICADA'))) <span class="focr-chip c-falta">DUPLICADA</span> @endif
                                         @if (! empty($f['editada'])) <span class="focr-chip c-gris" title="Tocada a mano el {{ $f['editada'] }}; se guarda sola">✎ a medias</span> @endif</td>
