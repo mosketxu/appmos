@@ -58,6 +58,36 @@ class FacturasOcrController extends Controller
         return response()->file($jpg, ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, max-age=3600']);
     }
 
+    /**
+     * PDF de una carpeta del cliente que no es una factura de la lista (Chequeo mayor / Ordenar sueltas): la raíz de «_Facturas» ($carpeta = 'raiz'),
+     * la de un mes ('01'..'12', del año ?a=AAAA) o la entrada de la web ('entrada'). Solo ficheros PDF de esas carpetas.
+     */
+    public function archivo(string $cliente, string $carpeta, string $nombre)
+    {
+        $dir = rtrim(config('contabilidad.facturasocr_dir'), '/').'/'.basename($cliente);
+        $cfg = json_decode((string) @file_get_contents($dir.'/cliente.json'), true);
+        abort_unless(is_array($cfg), 404);
+        $permitidas = \App\Support\Accesos::entidadesPermitidas();
+        abort_if($permitidas !== null && ! in_array((int) ($cfg['entidad_id'] ?? 0), $permitidas, true), 403);
+        $anio = preg_match('/^\d{4}$/', (string) request()->query('a')) ? request()->query('a') : date('Y');
+        $plantilla = str_replace(['{OneDrive}', '{AAAA}'], [rtrim((string) config('contabilidad.facturasocr_onedrive'), '/'), $anio], (string) ($cfg['carpeta_recibidas'] ?? ''));
+        abort_unless($plantilla !== '' && str_contains($plantilla, '{MM}'), 404);
+        $raiz = dirname(str_replace('{MM}', '01', $plantilla));
+        if ($carpeta === 'raiz') {
+            $base = $raiz;
+        } elseif ($carpeta === 'entrada') {
+            $base = \App\Http\Livewire\Contabilidad\FacturasOcr::rutaDatos($dir).'/Entrada';
+        } elseif (preg_match('/^(0[1-9]|1[0-2])$/', $carpeta)) {
+            $base = str_replace('{MM}', $carpeta, $plantilla);
+        } else {
+            abort(404);
+        }
+        $ruta = realpath($base.'/'.basename($nombre));
+        abort_unless($ruta && is_file($ruta) && str_starts_with($ruta, (string) realpath($base).'/') && str_ends_with(strtolower($ruta), '.pdf'), 404);
+
+        return response()->file($ruta, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.addslashes(basename($ruta)).'"']);
+    }
+
     /** Excel para SAGE entregado en la web (Output/Entregados): enlace firmado que crea la pantalla al guardarlo. */
     public function excel(string $cliente, string $archivo)
     {

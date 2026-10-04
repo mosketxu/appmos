@@ -54,7 +54,7 @@
                                             @foreach ($chequeo['problemas'] as $x)
                                                 <tr>
                                                     <td><span class="focr-chip {{ in_array($x['estado'], ['DIVISA (probable)', 'PROBABLE']) ? 'c-revisar' : 'c-falta' }}" style="white-space:nowrap">{{ $x['estado'] }}</span></td>
-                                                    <td>{{ $x['mes'] }}</td><td style="max-width:260px; word-break:break-all">{{ $x['fichero'] }}</td>
+                                                    <td>{{ $x['mes'] }}</td><td style="max-width:260px; word-break:break-all"><a href="{{ route('contabilidad.facturas-ocr.archivo', [$cliente, $x['mes'], $x['fichero']]) }}?a={{ substr($chequeo['periodo'], 0, 4) }}" target="_blank" style="color:#1d4ed8; text-decoration:underline" title="Abrir la factura">{{ $x['fichero'] }}</a></td>
                                                     <td>{{ $x['cuenta'] }} {{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td>
                                                     <td style="text-align:right">{{ $x['total'] !== null ? number_format((float) $x['total'], 2, ',', '.') : '' }}</td>
                                                     <td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
@@ -109,34 +109,43 @@
                                         @foreach (($ordenar['aplicadas'] ?? []) as $k => $n) <span class="focr-chip c-ok">hecho: {{ $n }} {{ $k }}</span> @endforeach
                                     </div>
                                     @if (! $ordenar['aplicado'])
-                                        <p class="text-xs" style="color:#1e3a8a">✎ Puedes corregir la propuesta antes de aplicar: desmarca «Hacer» en las que no quieras tocar y cambia el mes de destino de las que se mueven. Se aplica solo lo que dejes marcado.</p>
+                                        <p class="text-xs" style="color:#1e3a8a">✎ Puedes cambiar lo que se hará con cada factura <b>pulsando sobre su acción</b> (va rotando entre las posibles: MOVER → A PROCESAR → NO TOCAR…). Si es MOVER, elige la carpeta (mes) en la lista. «Aplicar» hace solo lo que veas aquí.</p>
                                     @endif
+                                    @php $meses = ['01' => 'ene', '02' => 'feb', '03' => 'mar', '04' => 'abr', '05' => 'may', '06' => 'jun', '07' => 'jul', '08' => 'ago', '09' => 'sep', '10' => 'oct', '11' => 'nov', '12' => 'dic']; @endphp
                                     <table class="focr-tabla">
-                                        <thead><tr>@if (! $ordenar['aplicado'])<th>Hacer</th>@endif<th>Acción</th><th>Fichero</th><th>Proveedor</th><th>Nº</th><th style="text-align:right">Total</th><th>Destino (en _Facturas)</th><th>Detalle</th></tr></thead>
+                                        <thead><tr><th>Acción{{ ! $ordenar['aplicado'] ? ' (pulsa)' : '' }}</th><th>Fichero</th><th>Proveedor</th><th>Nº</th><th style="text-align:right">Total</th><th>Destino</th><th>Detalle</th></tr></thead>
                                         <tbody>
                                             @foreach ($ordenar['filas'] as $x)
+                                                @php
+                                                    $ef = $ordenar['aplicado'] ? $x['accion'] : ($ordenarAccion[$x['fichero']] ?? $x['accion']);
+                                                    $cambiable = ! $ordenar['aplicado'] && count($x['permitidas'] ?? []) > 1;
+                                                    $col = $ef === 'MOVER' ? 'c-ok' : ($ef === 'QUITAR' || $ef === 'NADA' ? 'c-gris' : 'c-revisar');
+                                                    $partes = explode('/', $x['destino']);
+                                                @endphp
                                                 <tr wire:key="ord-{{ md5($x['fichero']) }}">
-                                                    @if (! $ordenar['aplicado'])
-                                                        <td>
-                                                            @if (in_array($x['accion'], ['MOVER', 'QUITAR', 'A PROCESAR'], true))
-                                                                <input type="checkbox" @checked(empty($ordenarOmitir[$x['fichero']])) x-on:change="$wire.set('ordenarOmitir.' + @js($x['fichero']), ! $event.target.checked)" title="Desmarca para no tocar esta factura">
-                                                            @endif
-                                                        </td>
-                                                    @endif
-                                                    <td><span class="focr-chip {{ $x['accion'] === 'MOVER' ? 'c-ok' : ($x['accion'] === 'QUITAR' ? 'c-gris' : 'c-revisar') }}" style="white-space:nowrap">{{ $x['accion'] }}</span></td>
-                                                    <td style="max-width:240px; word-break:break-all">{{ $x['fichero'] }}</td>
+                                                    <td>
+                                                        @if ($cambiable)
+                                                            <button type="button" wire:click="ciclarAccion(@js($x['fichero']))" class="focr-chip {{ $col }}" style="white-space:nowrap; cursor:pointer" title="Pulsa para cambiar la acción ({{ implode(' → ', $x['permitidas']) }})">{{ $ef === 'NADA' ? 'NO TOCAR' : $ef }} ⟳</button>
+                                                        @else
+                                                            <span class="focr-chip {{ $col }}" style="white-space:nowrap">{{ $ef === 'NADA' ? 'NO TOCAR' : $ef }}</span>
+                                                        @endif
+                                                    </td>
+                                                    <td style="max-width:240px; word-break:break-all"><a href="{{ route('contabilidad.facturas-ocr.archivo', [$cliente, 'raiz', $x['fichero']]) }}?a={{ substr($chequeoPeriodo, 0, 4) }}" target="_blank" style="color:#1d4ed8; text-decoration:underline" title="Abrir la factura">{{ $x['fichero'] }}</a></td>
                                                     <td>{{ $x['cuenta'] }} {{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td>
                                                     <td style="text-align:right">{{ $x['total'] !== null ? number_format((float) $x['total'], 2, ',', '.') : '' }}</td>
                                                     <td class="text-xs" style="word-break:break-all">
-                                                        @if ($x['accion'] === 'MOVER' && ! $ordenar['aplicado'])
-                                                            @php $partes = explode('/', $x['destino']); $mesProp = $partes[0] ?? ''; @endphp
-                                                            Mes <select x-on:change="$wire.set('ordenarMes.' + @js($x['fichero']), $event.target.value)" class="py-0 text-xs border-gray-300 rounded" style="height:1.5rem">
-                                                                <option value="">{{ $mesProp }} (propuesto)</option>
-                                                                @foreach (range(1, 12) as $mm) <option value="{{ sprintf('%02d', $mm) }}" @selected(($ordenarMes[$x['fichero']] ?? '') === sprintf('%02d', $mm))>{{ sprintf('%02d', $mm) }}</option> @endforeach
+                                                        @if ($ef === 'MOVER' && ! $ordenar['aplicado'])
+                                                            @php $mesSel = $ordenarMes[$x['fichero']] ?? ''; $mesProp = $x['accion'] === 'MOVER' ? ($partes[0] ?? '') : ($x['mes_def'] ?? ''); @endphp
+                                                            <select x-on:change="$wire.set('ordenarMes.' + @js($x['fichero']), $event.target.value)" class="py-0 text-xs border-gray-300 rounded" style="height:1.5rem" title="Carpeta de destino">
+                                                                <option value="">{{ $mesProp }} · {{ $meses[$mesProp] ?? '' }} (propuesta)</option>
+                                                                @foreach ($meses as $mm => $nm) <option value="{{ $mm }}" @selected($mesSel === $mm)>{{ $mm }} · {{ $nm }}</option> @endforeach
                                                             </select>
-                                                            <span class="text-gray-500">/ {{ $partes[1] ?? '' }}</span>
+                                                            <span class="text-gray-500">/ {{ $x['accion'] === 'MOVER' ? ($partes[1] ?? '') : $x['fichero'] }}</span>
+                                                        @elseif ($ef === 'NADA') <span class="text-gray-400">se queda donde está</span>
+                                                        @elseif ($ef === 'A PROCESAR') <span class="text-gray-500">vuelve a «Por revisar»</span>
                                                         @else {{ $x['destino'] }} @endif
-                                                    </td><td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
+                                                    </td>
+                                                    <td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>

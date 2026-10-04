@@ -587,9 +587,23 @@ class FacturasOcr extends Component
 
     /** Facturas sueltas en la raíz de _Facturas: SIMULAR (no toca nada) o APLICAR (renombra y mueve al mes del asiento del mayor, quita duplicadas, devuelve a Por revisar). */
     /** Cambios de Alex a la simulación: fichero => true = no tocar esta; fichero => '01'..'12' = otra carpeta de mes para esta. */
-    public array $ordenarOmitir = [];
+    public array $ordenarAccion = [];
 
     public array $ordenarMes = [];
+
+    /** Pulsar sobre la acción de una fila la cambia cíclicamente entre las que admite (MOVER → A PROCESAR → NO TOCAR…). */
+    public function ciclarAccion(string $fichero): void
+    {
+        $fila = collect($this->ordenarResultado()['filas'] ?? [])->firstWhere('fichero', $fichero);
+        if (! $fila || empty($fila['permitidas'])) {
+            return;
+        }
+        $perm = $fila['permitidas'];
+        $actual = $this->ordenarAccion[$fichero] ?? $fila['accion'];
+        $i = array_search($actual, $perm, true);
+        $sig = $perm[($i === false ? 0 : $i + 1) % count($perm)];
+        $this->ordenarAccion[$fichero] = $sig;
+    }
 
     public function ordenarSueltas(bool $aplicar = false): void
     {
@@ -600,8 +614,10 @@ class FacturasOcr extends Component
         if ($aplicar) {
             $args[] = '--aplicar';
             $aj = [];
-            foreach (array_filter($this->ordenarOmitir) as $f => $_) {
-                $aj[basename((string) $f)]['omitir'] = true;
+            foreach ($this->ordenarAccion as $f => $acc) {
+                if (in_array($acc, ['MOVER', 'QUITAR', 'A PROCESAR', 'NADA'], true)) {
+                    $aj[basename((string) $f)]['accion'] = $acc;
+                }
             }
             foreach (array_filter($this->ordenarMes) as $f => $mm) {
                 if (preg_match('/^(0[1-9]|1[0-2])$/', (string) $mm)) {
@@ -612,7 +628,7 @@ class FacturasOcr extends Component
             file_put_contents($ruta = $this->dirDatos().'/Output/ordenar_ajustes.json', json_encode($aj, JSON_UNESCAPED_UNICODE));
             array_push($args, '--ajustes', $ruta);
         } else {
-            $this->ordenarOmitir = $this->ordenarMes = [];
+            $this->ordenarAccion = $this->ordenarMes = [];
         }
         $this->ejecutar($args, 900, $aplicar ? 'Ordenar facturas sueltas (aplicado)' : 'Ordenar facturas sueltas (simulación)');
     }
