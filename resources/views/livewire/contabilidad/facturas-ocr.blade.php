@@ -820,9 +820,9 @@
 
                         <div><label class="focr-lbl" style="font-size:.62rem">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in" style="font-size:.75rem; padding:.2rem .3rem"></div>
                         <div style="grid-column:span 3"><label class="focr-lbl">Nº factura</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
+                        <div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>
                         <div><label class="focr-lbl">F. expedición</label><input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}"></div>
                         <div><label class="focr-lbl">F. operación</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
-                        <div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>
 
                         <div></div>
                         <div><label class="focr-lbl">Clave operación (M)</label><input type="text" wire:model.blur="form.clave_operacion" class="focr-in" placeholder="vacía"></div>
