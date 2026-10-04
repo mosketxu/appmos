@@ -104,6 +104,50 @@ class Roles extends Component
         $this->dispatch('proceso-terminado', mensaje: "✅ Rol borrado: {$rol}");
     }
 
+    /**
+     * «Inicial. Apellido» para ganar sitio en la cabecera. Si dos salen iguales se van añadiendo letras del nombre hasta que dejan
+     * de coincidir (A. García / Al. García); si aun así coinciden (mismo nombre y apellido) se queda con el nombre entero.
+     * El primer palabra es el nombre y el resto el apellido.
+     */
+    protected function nombresCortos(array $nombres): array
+    {
+        $partes = [];
+        foreach ($nombres as $id => $n) {
+            $p = preg_split('/\s+/u', trim($n), 2);
+            $partes[$id] = [$p[0] ?? '', $p[1] ?? ''];
+        }
+        $largo = array_fill_keys(array_keys($partes), 1);
+        $etiqueta = function ($id) use (&$largo, $partes) {   // por referencia: $largo va creciendo
+            return $partes[$id][1] === '' ? $partes[$id][0] : mb_substr($partes[$id][0], 0, $largo[$id]).'. '.$partes[$id][1];
+        };
+        do {
+            $etq = array_combine(array_keys($partes), array_map(fn ($id) => $etiqueta($id), array_keys($partes)));
+            $grupos = [];
+            foreach ($etq as $id => $e) {
+                $grupos[mb_strtolower($e)][] = $id;
+            }
+            $cambio = false;
+            foreach ($grupos as $ids) {   // solo se alargan los que coinciden
+                if (count($ids) > 1) {
+                    foreach ($ids as $id) {
+                        if ($largo[$id] < mb_strlen($partes[$id][0])) {
+                            $largo[$id]++;
+                            $cambio = true;
+                        }
+                    }
+                }
+            }
+        } while ($cambio);
+        foreach ($grupos as $ids) {   // idénticos aun con el nombre entero: nombre completo
+            if (count($ids) > 1) {
+                foreach ($ids as $id) {
+                    $etq[$id] = $nombres[$id];
+                }
+            }
+        }
+        return $etq;
+    }
+
     public function render()
     {
         // Nº de usuarios por rol sin withCount('users'): esa relación de Spatie falla si el guard por defecto de la petición no es «web»
@@ -111,9 +155,11 @@ class Roles extends Component
         $roles = Role::with('permissions')->orderBy('id')->get()->each(fn ($r) => $r->users_count = (int) ($usuariosPorRol[$r->id] ?? 0));
         $cols = [];
         if ($this->vista === 'usuarios') {
-            foreach (User::with('roles', 'permissions')->where('activo', true)->orderBy('name')->get() as $u) {
+            $usuarios = User::with('roles', 'permissions')->where('activo', true)->orderBy('name')->get();
+            $cortos = $this->nombresCortos($usuarios->pluck('name', 'id')->all());
+            foreach ($usuarios as $u) {
                 $admin = $u->hasRole('Admin');
-                $cols[] = ['id' => $u->id, 'nombre' => $u->name, 'sub' => $u->getRoleNames()->first(), 'admin' => $admin,
+                $cols[] = ['id' => $u->id, 'nombre' => $cortos[$u->id], 'completo' => $u->name, 'sub' => $u->getRoleNames()->first(), 'admin' => $admin,
                     'rol' => $u->getPermissionsViaRoles()->pluck('name')->all(), 'directos' => $u->getDirectPermissions()->pluck('name')->all()];
             }
         } else {

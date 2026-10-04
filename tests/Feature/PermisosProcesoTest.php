@@ -108,4 +108,18 @@ class PermisosProcesoTest extends TestCase
         Livewire::test(Roles::class)->assertSee('Contabilidad')->assertSee('Seguimiento (checklist mensual)')->assertSee('Por roles')
             ->set('vista', 'usuarios')->assertSee('Usuario por usuario');
     }
+
+    public function test_cabecera_de_usuarios_con_inicial_y_apellido_y_mas_letras_si_coinciden(): void
+    {
+        $this->actingAs($this->adminUser(['name' => 'Zoe Quintana']));
+        User::factory()->create(['name' => 'Nuria Lopez', 'activo' => true]);
+        User::factory()->create(['name' => 'Nuno Lopez', 'activo' => true]);
+        User::factory()->create(['name' => 'Susana Gómez Pérez', 'activo' => true]);
+        $h = Livewire::test(Roles::class)->set('vista', 'usuarios')->html();
+        $this->assertStringContainsString('Z. Quintana', $h);
+        $this->assertStringContainsString('Nur. Lopez', $h);    // coinciden N. y Nu. Lopez: se van añadiendo letras al nombre
+        $this->assertStringContainsString('Nun. Lopez', $h);
+        $this->assertStringContainsString('S. Gómez Pérez', $h);
+        $this->assertStringNotContainsString('>Nuria Lopez<', $h);
+    }
 }

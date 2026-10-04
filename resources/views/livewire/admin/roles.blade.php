@@ -28,18 +28,21 @@
         </p>
 
         <div class="overflow-auto bg-white border rounded-lg shadow">
-            <table class="min-w-full text-sm">
+            <table class="text-sm {{ $vista === 'usuarios' ? 'min-w-full' : '' }}">
                 <thead class="text-xs text-gray-600 bg-gray-100">
                     <tr>
-                        <th class="px-3 py-2 text-left">Acceso</th>
+                        <th class="px-3 py-2 text-left" style="{{ $vista === 'usuarios' ? 'width:100%' : 'min-width:20rem' }}">Acceso</th>
                         @foreach ($cols as $c)
-                            <th class="px-3 py-2 text-center whitespace-nowrap" wire:key="th-{{ $vista }}-{{ $c['id'] }}">
-                                {{ $c['nombre'] }}
-                                <span class="font-normal text-gray-400">{{ $vista === 'roles' ? '('.$c['sub'].')' : '· '.$c['sub'] }}</span>
-                                @if ($vista === 'roles' && empty($c['fijo']) && ! $c['admin'])
-                                    <button type="button" class="ml-1 text-red-500 hover:text-red-700" title="Borrar rol"
-                                            x-on:click="confirm('¿Borrar el rol ' + @js($c['nombre']) + '?') && $wire.borrar(@js($c['nombre']))">&times;</button>
-                                @endif
+                            <th class="px-1 py-1 text-center leading-tight" style="width:{{ $vista === 'usuarios' ? '3.2rem' : '5rem' }}; min-width:3.2rem" wire:key="th-{{ $vista }}-{{ $c['id'] }}"
+                                title="{{ $c['completo'] ?? $c['nombre'] }}">
+                                <div class="font-semibold whitespace-nowrap">
+                                    {{ $c['nombre'] }}
+                                    @if ($vista === 'roles' && empty($c['fijo']) && ! $c['admin'])
+                                        <button type="button" class="ml-1 text-red-500 hover:text-red-700" title="Borrar rol"
+                                                x-on:click="confirm('¿Borrar el rol ' + @js($c['nombre']) + '?') && $wire.borrar(@js($c['nombre']))">&times;</button>
+                                    @endif
+                                </div>
+                                <div class="font-normal text-gray-400 whitespace-nowrap">{{ $vista === 'roles' ? '('.$c['sub'].')' : $c['sub'] }}</div>
                             </th>
                         @endforeach
                     </tr>
@@ -55,7 +58,7 @@
                         @foreach ($items as $it)
                             @php $kp = 'p:'.$it['clave']; @endphp
                             <tr class="border-t" x-show="! cerrado[@js($kb)]" wire:key="p-{{ $it['clave'] }}" data-nodo="{{ $kp }}">
-                                <td class="px-3 py-1.5 font-medium">
+                                <td class="px-3 py-1.5 font-medium" style="min-width:20rem">
                                     @if ($it['hijos'])
                                         <button type="button" class="mr-1 text-gray-500" x-on:click="alt(@js($kp))"><span x-text="cerrado[@js($kp)] ? '▸' : '▾'"></span></button>
                                     @else <span class="inline-block w-4"></span> @endif
@@ -68,7 +71,7 @@
                             </tr>
                             @foreach ($it['hijos'] as $hc => $ht)
                                 <tr class="border-t border-gray-100 bg-gray-50" x-show="! cerrado[@js($kb)] && ! cerrado[@js($kp)]" wire:key="h-{{ $hc }}">
-                                    <td class="py-1 pl-10 pr-3 text-xs text-gray-700">{{ $ht }}</td>
+                                    <td class="py-1 pl-10 pr-3 text-xs text-gray-700" style="min-width:20rem">{{ $ht }}</td>
                                     @foreach ($cols as $k => $c)
                                         @include('livewire.admin._casilla', ['clave' => $hc, 'k' => $k, 'c' => $c, 'est' => $estado[$k][$hc] ?? 0, 'vista' => $vista])
                                     @endforeach
