@@ -25,7 +25,7 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 whitespace-nowrap sm:-my-px sm:ml-10 sm:flex">
+                <div class="hidden whitespace-nowrap sm:-my-px sm:ml-10 sm:flex" style="column-gap:1.2rem; min-width:0">
                     @can('entidades.ver')
                         <x-jet-nav-link href="{{ route('entidades') }}" :active="request()->routeIs('entidades')">
                             {{ __('Entidades') }}
@@ -76,7 +76,7 @@
             </div>
 
             {{-- Campana del TO-DO: centrada en la barra --}}
-            <div class="hidden sm:flex sm:items-center">
+            <div class="hidden sm:flex sm:items-center" style="flex-shrink:0; margin:0 .4rem">
                 @livewire('todo-campana')
             </div>
 
