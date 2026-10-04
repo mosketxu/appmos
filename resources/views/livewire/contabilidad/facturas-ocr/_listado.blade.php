@@ -42,7 +42,7 @@
                                 <div style="display:flex; gap:.4rem; flex-wrap:wrap; align-items:center">
                                     <span class="focr-chip c-gris">{{ $chequeo['pdf'] }} PDF</span>
                                     @foreach ($chequeo['estados'] as $est => $n)
-                                        <span class="focr-chip {{ $est === 'OK' ? 'c-ok' : (in_array($est, ['DIVISA (probable)', 'PROBABLE']) ? 'c-revisar' : 'c-falta') }}">{{ $est }} {{ $n }}</span>
+                                        <span class="focr-chip {{ in_array($est, ['OK', 'DIVISA (cuadra)']) ? 'c-ok' : (in_array($est, ['DIVISA (probable)', 'PROBABLE']) ? 'c-revisar' : 'c-falta') }}">{{ $est }} {{ $n }}</span>
                                     @endforeach
                                     <span class="focr-chip {{ $chequeo['mayor_sin_pdf'] ? 'c-falta' : 'c-ok' }}">Mayor sin PDF {{ $chequeo['mayor_sin_pdf'] }}</span>
                                 </div>
