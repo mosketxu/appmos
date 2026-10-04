@@ -1,5 +1,5 @@
-@if (empty($oculta))
 <div wire:poll.30s class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
+@if (empty($oculta))
     <button type="button" @click="open = !open" title="{{ $total ? $total.' aviso(s) del TO-DO' : 'Sin avisos del TO-DO' }}"
         class="relative flex items-center p-2 rounded-full hover:bg-gray-100 focus:outline-none {{ $total ? 'text-red-600' : 'text-gray-400' }}">
         <svg class="w-6 h-6 {{ $total ? 'animate-pulse' : '' }}" fill="{{ $total ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -28,7 +28,5 @@
             <a href="{{ route('todo') }}" class="block px-3 py-2 text-xs text-center text-indigo-600 hover:bg-gray-50">Ir al TO-DO</a>
         </div>
     </div>
-</div>
-@else
-<div></div>
 @endif
+</div>
