@@ -554,6 +554,35 @@ class FacturasOcr extends Component
         if (preg_match('/^lineas\.([0-2])\.(base|pct)$/', (string) $clave, $m)) {
             $this->cuota((int) $m[1]);
         }
+        // Al cambiar el total (p. ej. facturas en dólares, donde hay que teclearlo en euros) se recalculan la base y la cuota
+        // de la única línea con % de IVA (0 % incluido); con varias líneas no se adivina el reparto.
+        if ($clave === 'total') {
+            $this->recalcularDesdeTotal();
+        }
+    }
+
+    protected function recalcularDesdeTotal(): void
+    {
+        $total = $this->num($this->form['total'] ?? '');
+        if ($total === null) {
+            return;
+        }
+        $con = [];
+        foreach ([0, 1, 2] as $i) {
+            if ($this->num($this->form['lineas'][$i]['pct'] ?? '') !== null) {
+                $con[] = $i;
+            }
+        }
+        if (count($con) !== 1) {
+            return;
+        }
+        $i = $con[0];
+        $pct = $this->esIsp() ? 0.0 : $this->num($this->form['lineas'][$i]['pct']);   // ISP: el total es la base
+        $ret = $this->num($this->form['cuota_retencion'] ?? '') ?? 0.0;
+        $bruto = $total + $ret;   // base + IVA = total + retención
+        $base = round($bruto / (1 + $pct / 100), 2);
+        $this->form['lineas'][$i]['base'] = number_format($base, 2, '.', '');
+        $this->form['lineas'][$i]['cuota'] = number_format(round($bruto - $base, 2), 2, '.', '');
     }
 
     /** Al final de cada petición: lo tocado en la factura abierta queda guardado (se puede cerrar Appmos). */

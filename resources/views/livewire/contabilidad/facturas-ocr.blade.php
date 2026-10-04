@@ -739,6 +739,16 @@
                             </div>
                         @endif
 
+                        <div><label class="focr-lbl" style="font-size:.62rem">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in" style="font-size:.75rem; padding:.2rem .3rem"></div>
+                        <div style="grid-column:span 3"><label class="focr-lbl">Nº factura</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
+                        <div><label class="focr-lbl">F. expedición</label><input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}"></div>
+                        <div><label class="focr-lbl">F. operación</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
+                        <div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>
+
+                        <div></div>
+                        <div><label class="focr-lbl">Clave operación (M)</label><input type="text" wire:model.blur="form.clave_operacion" class="focr-in" placeholder="vacía"></div>
+
+                        <div><label class="focr-lbl">Cód. transacción</label><input type="text" wire:model.blur="form.codigo_transaccion" class="focr-in"></div>
                         <div style="grid-column:span 2">
                             <label class="focr-lbl">Contrapartida</label>
                             <div class="focr-busc" wire:ignore wire:key="bcontrapartida-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)">
@@ -753,20 +763,11 @@
                                 </div>
                             </div>
                         </div>
-                        <div><label class="focr-lbl">Cód. transacción</label><input type="text" wire:model.blur="form.codigo_transaccion" class="focr-in"></div>
-                        <div><label class="focr-lbl">Clave operación (M)</label><input type="text" wire:model.blur="form.clave_operacion" class="focr-in" placeholder="vacía"></div>
-
-                        <div><label class="focr-lbl">Nº factura</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
-                        <div><label class="focr-lbl">F. expedición</label><input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}"></div>
-                        <div><label class="focr-lbl">F. operación</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
-                        <div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>
-
                         @if ($sii)
-                            <div style="grid-column:span 3"><label class="focr-lbl">Comentario SII</label><input type="text" wire:model.blur="form.comentario" maxlength="40" class="focr-in"></div>
+                            <div style="grid-column:span 4"><label class="focr-lbl">Comentario SII</label><input type="text" wire:model.blur="form.comentario" maxlength="40" class="focr-in"></div>
                         @else
-                            <div style="grid-column:span 3"></div>   {{-- sin SII el Comentario SII va vacío (cliente.json -> "sii") --}}
+                            <div style="grid-column:span 4"></div>   {{-- sin SII el Comentario SII va vacío (cliente.json -> "sii") --}}
                         @endif
-                        <div><label class="focr-lbl">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in"></div>
                     </div>
 
                     <div class="g4" style="margin-top:.45rem; padding-top:.4rem; border-top:1px solid #e5e7eb">

@@ -262,4 +262,23 @@ class FacturasOcrWebTest extends TestCase
         $c->updatedForm('5', 'lineas.2.cuota');
         $this->assertSame('5', $c->form['lineas'][2]['cuota']);
     }
+
+    public function test_al_cambiar_el_total_se_recalculan_base_y_cuota_de_la_unica_linea(): void
+    {
+        $c = $this->componente();
+        $c->form = ['total' => '121,00', 'lineas' => [['base' => '', 'pct' => '21', 'cuota' => ''], ['base' => '', 'pct' => '', 'cuota' => ''], ['base' => '', 'pct' => '', 'cuota' => '']]];
+        $c->updatedForm('121,00', 'total');
+        $this->assertSame('100.00', $c->form['lineas'][0]['base']);
+        $this->assertSame('21.00', $c->form['lineas'][0]['cuota']);
+        $c->form['lineas'][0]['pct'] = '0';   // factura de fuera sin IVA (p. ej. en dólares)
+        $c->form['total'] = '57,30';
+        $c->updatedForm('57,30', 'total');
+        $this->assertSame('57.30', $c->form['lineas'][0]['base']);
+        $this->assertSame('0.00', $c->form['lineas'][0]['cuota']);
+        // con dos líneas no se toca nada
+        $c->form['lineas'][1]['pct'] = '10';
+        $c->form['total'] = '999';
+        $c->updatedForm('999', 'total');
+        $this->assertSame('57.30', $c->form['lineas'][0]['base']);
+    }
 }
