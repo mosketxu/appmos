@@ -281,4 +281,27 @@ class FacturasOcrWebTest extends TestCase
         $c->updatedForm('999', 'total');
         $this->assertSame('57.30', $c->form['lineas'][0]['base']);
     }
+
+    public function test_el_cif_se_normaliza_y_avisa_si_no_es_valido(): void
+    {
+        $dir = '/mnt/f/Claude/Contabilidad/FacturasOcr';
+        if (! is_file($dir.'/cif_validar.py')) {
+            $this->markTestSkipped('No está cif_validar.py en esta máquina.');
+        }
+        config(['contabilidad.facturasocr_dir' => $dir, 'contabilidad.facturasocr_python' => trim((string) shell_exec('command -v python3'))]);
+        $c = $this->componente();
+        $c->form = ['cif' => 'ESA82009812'];
+        $c->updatedForm('ESA82009812', 'cif');
+        $this->assertSame('A82009812', $c->form['cif']);   // español: sin ES
+        $this->assertSame('', $c->cifAviso);
+        $c->form['cif'] = '12345678A';
+        $c->updatedForm('12345678A', 'cif');
+        $this->assertStringContainsString('debería ser Z', $c->cifAviso);
+        $c->form['cif'] = 'IE 9825613 N';
+        $c->updatedForm('IE 9825613 N', 'cif');
+        $this->assertSame('IE9825613N', $c->form['cif']);   // intracomunitario: con su país
+        $c->form['cif'] = 'DE12345678';
+        $c->updatedForm('DE12345678', 'cif');
+        $this->assertStringContainsString('9 dígitos', $c->cifAviso);
+    }
 }

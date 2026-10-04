@@ -550,6 +550,14 @@ class FacturasOcr extends Component
     public function updatedForm($valor = null, $clave = ''): void
     {
         $this->sucio = true;
+        // CIF: español sin «ES», intracomunitario con su prefijo; si no es válido se avisa debajo del campo
+        if ($clave === 'cif') {
+            $a = $this->analizarCif((string) $valor);
+            if (! empty($a['formato_ok']) && $a['normalizado'] !== '') {
+                $this->form['cif'] = $a['normalizado'];
+            }
+            $this->cifAviso = (string) ($a['mensaje'] ?? '');
+        }
         // Al cambiar la base o el % de IVA de una línea, su cuota se calcula sola (ya no hace falta el botón «=»)
         if (preg_match('/^lineas\.([0-2])\.(base|pct)$/', (string) $clave, $m)) {
             $this->cuota((int) $m[1]);
@@ -558,6 +566,24 @@ class FacturasOcr extends Component
         // de la única línea con % de IVA (0 % incluido); con varias líneas no se adivina el reparto.
         if ($clave === 'total') {
             $this->recalcularDesdeTotal();
+        }
+    }
+
+    /** Aviso de CIF no válido (cif_validar.py: longitud por país, letra de DNI/NIE, control del CIF). */
+    public string $cifAviso = '';
+
+    /** @return array{valido?: bool, formato_ok?: bool, normalizado?: string, mensaje?: string} */
+    protected function analizarCif(string $cif): array
+    {
+        if (trim($cif) === '') {
+            return [];
+        }
+        try {
+            $r = Process::timeout(15)->run([$this->pythonBin(), $this->baseDir().'/cif_validar.py', '--json', $cif]);
+
+            return $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            return [];
         }
     }
 
@@ -1098,6 +1124,7 @@ class FacturasOcr extends Component
             $d[$k] = isset($d[$k]) && $d[$k] !== null ? (string) $d[$k] : '';
         }
         $this->form = $d;
+        $this->cifAviso = $this->enLote ? '' : (string) ($this->analizarCif($d['cif'] ?? '')['mensaje'] ?? '');
         $this->avisarHistoria($id);
     }
 

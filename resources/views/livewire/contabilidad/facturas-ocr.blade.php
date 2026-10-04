@@ -787,7 +787,10 @@
                                     </button>
                                 @endif
                             </label>
-                            <input type="text" wire:model.blur="form.cif" class="focr-in">
+                            <input type="text" wire:model.blur="form.cif" class="focr-in {{ $cifAviso ? 'mal' : '' }}">
+                            @if ($cifAviso)
+                                <div style="font-size:.68rem; color:#b91c1c; line-height:1.2">⚠️ {{ $cifAviso }}</div>
+                            @endif
                             @if (($form['cp'] ?? '') !== '')
                                 <div style="font-size:.68rem; color:#6b7280">CP {{ $form['cp'] }} {{ $form['provincia'] ?? '' }}</div>
                             @endif
