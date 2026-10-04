@@ -10,6 +10,16 @@
         } }"
     x-on:proceso-terminado.window="avisos.push({ id: Date.now() + '-' + Math.random(), mensaje: $event.detail.mensaje })"
     x-on:focr-historia.window="historia($event.detail.id || '')"
+    {{-- Atajos con la factura abierta: Ctrl+Intro valida, Alt+Intro rechaza. Ninguno lo usan Chrome, Edge ni Firefox dentro de la página
+         (AltGr = Ctrl+Alt en teclado español: se ignora). Antes se sale del campo para que se guarde lo que se estaba escribiendo --}}
+    x-on:keydown.window="
+        if ($event.key !== 'Enter' || $event.shiftKey || $event.metaKey || ($event.ctrlKey === $event.altKey)) return;
+        const b = document.querySelector('[data-atajo=\'' + ($event.ctrlKey ? 'validar' : 'rechazar') + '\']');
+        if (! b) return;
+        $event.preventDefault();
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+        setTimeout(() => b.click(), 120);
+    "
     x-on:popstate.window="const e = $event.state; if (e && e.focr) { if ($wire.sel !== e.focr) $wire.abrir(e.focr) } else if ($wire.sel) { $wire.cerrar() }"
 >
     {{-- Estilos propios: el app.css de Tailwind 2 está compilado y purgado --}}
@@ -878,14 +888,14 @@
                             @endphp
                             {{-- La pregunta se lee del propio botón al pulsar (data-*): wire:confirm se quedaba con la de antes
                                  al cambiar los datos de la factura (p.ej. tras "Leer con OCR" ya cuadraba y seguía preguntando) --}}
-                            <button type="button" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde" style="flex:1; justify-content:center"
+                            <button type="button" data-atajo="validar" title="Validar (Ctrl + Intro)" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde" style="flex:1; justify-content:center"
                                     data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
                                     x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1')">
-                                <span wire:loading.remove wire:target="validar">✅ Validar</span>
+                                <span wire:loading.remove wire:target="validar">✅ Validar <small style="opacity:.75; font-weight:400">Ctrl+Intro</small></span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>
                             <input type="text" wire:model.blur="motivo" class="focr-in" style="flex:1" placeholder="Motivo del rechazo (opcional)">
-                            <button type="button" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo">✖ Rechazar</button>
+                            <button type="button" data-atajo="rechazar" title="Rechazar (Alt + Intro)" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo">✖ Rechazar <small style="opacity:.75; font-weight:400">Alt+Intro</small></button>
                         </div>
                         @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
                             <div style="margin-top:.35rem">
