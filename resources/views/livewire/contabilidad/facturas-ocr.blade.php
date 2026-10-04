@@ -68,9 +68,13 @@
         .textLayer span, .textLayer br { color:transparent; position:absolute; white-space:pre; cursor:text; transform-origin:0% 0%; }
         .textLayer ::selection { background:rgba(59,130,246,.35); }
         .focr-caja { position:absolute; border:2px solid #f59e0b; background:rgba(245,158,11,.15); pointer-events:none; }
-        .focr-rev-form { flex:0 0 45%; min-width:420px; background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
+        .focr-rev-form { flex:0 0 var(--focr-form-ancho, 45%); min-width:300px; background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
         /* Pantallas anchas (apaisadas): mitad y mitad; en las normales 55/45 */
-        @media (min-width:1600px) { .focr-rev-form { flex-basis:50%; } }
+        @media (min-width:1600px) { .focr-rev-form { flex-basis:var(--focr-form-ancho, 50%); } }
+        /* Barra para arrastrar y repartir el ancho entre el visor del PDF y los datos (se recuerda; doble clic = volver al reparto de siempre) */
+        .focr-divisor { flex:0 0 9px; cursor:col-resize; background:#4b5563; position:relative; touch-action:none; }
+        .focr-divisor::after { content:''; position:absolute; top:50%; left:2px; width:5px; height:44px; margin-top:-22px; border-left:1px solid #9ca3af; border-right:1px solid #9ca3af; box-sizing:border-box; }
+        .focr-divisor:hover, .focr-divisor.arrastrando { background:#6366f1; }
         .focr-rev-form .fila { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.5rem; }
         .focr-rev-form .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.35rem; margin-bottom:.35rem; align-items:end; }
         .focr-sec { font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; margin:.75rem 0 .35rem; }
@@ -625,6 +629,10 @@
                     <div class="focr-pags" x-ref="pags" x-on:wheel="if ($event.ctrlKey) { $event.preventDefault(); mas($event.deltaY < 0 ? 1 : -1) }"
                          :style="modo ? 'cursor:crosshair' : ''"></div>
                 </div>
+                <div class="focr-divisor" wire:ignore x-data="focrDivisor()" :class="{ arrastrando }" title="Arrastra para dar más o menos ancho al visor y a los datos (doble clic: restablecer)"
+                     x-on:mousedown="empezar($event)" x-on:touchstart.prevent="empezar($event)"
+                     x-on:mousemove.window="mover($event)" x-on:touchmove.window="mover($event)"
+                     x-on:mouseup.window="soltar()" x-on:touchend.window="soltar()" x-on:dblclick="restablecer()"></div>
                 <div class="focr-rev-form">
                     @if (! empty($actual['error_validar']))
                         <div class="focr-nocuadra" style="animation:none">⚠️ {{ $actual['error_validar'] }}</div>
@@ -829,6 +837,36 @@
     @endif
 
 <script>
+    // Barra que reparte el ancho entre el visor del PDF y los datos de la factura (arrastrar; se recuerda en este navegador; doble clic = restablecer)
+    window.focrDivisor = window.focrDivisor || function () {
+        const CLAVE = 'focr-form-ancho';
+        const raiz = document.documentElement;
+        try { const g = localStorage.getItem(CLAVE); if (g) raiz.style.setProperty('--focr-form-ancho', g); } catch (e) {}
+        const fin = () => window.dispatchEvent(new Event('resize'));   // el PDF «ajustado al ancho» se vuelve a pintar
+        return {
+            arrastrando: false,
+            empezar(e) { e.preventDefault(); this.arrastrando = true; document.body.style.userSelect = 'none'; document.body.style.cursor = 'col-resize'; },
+            mover(e) {
+                if (! this.arrastrando) return;
+                const x = e.touches ? e.touches[0].clientX : e.clientX;
+                const r = this.$el.parentElement.getBoundingClientRect();
+                const p = Math.max(22, Math.min(70, (r.right - x) / r.width * 100));
+                raiz.style.setProperty('--focr-form-ancho', p.toFixed(1) + '%');
+            },
+            soltar() {
+                if (! this.arrastrando) return;
+                this.arrastrando = false;
+                document.body.style.userSelect = ''; document.body.style.cursor = '';
+                try { localStorage.setItem(CLAVE, raiz.style.getPropertyValue('--focr-form-ancho').trim()); } catch (e) {}
+                fin();
+            },
+            restablecer() {
+                raiz.style.removeProperty('--focr-form-ancho');
+                try { localStorage.removeItem(CLAVE); } catch (e) {}
+                fin();
+            },
+        };
+    };
     // Subida de facturas en la web: huella SHA-1 en el navegador (los 12 primeros hex = id de la factura, como id_fichero() de Python)
     window.focrSubida = window.focrSubida || function () {
         const sha1 = async (file) => {
