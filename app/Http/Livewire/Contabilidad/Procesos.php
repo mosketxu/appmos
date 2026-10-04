@@ -349,6 +349,23 @@ class Procesos extends Component
         return 'file://' . $p;
     }
 
+    /** ¿Puede este usuario este proceso del checklist? (permiso `proceso.fiq.<id>`; sin permiso propio vale el de la pestaña). */
+    protected function permitido(string $id): bool
+    {
+        $u = auth()->user();
+        return ! $u || ! \Illuminate\Support\Facades\Schema::hasTable('permissions') || $u->can('proceso.fiq.'.$id);
+    }
+
+    /** Si no puede, lo dice y devuelve false. */
+    protected function autorizar(string $id): bool
+    {
+        if ($this->permitido($id)) {
+            return true;
+        }
+        $this->dispatch('proceso-terminado', mensaje: '⚠️ No tienes acceso a este proceso. Pídeselo a un administrador.');
+        return false;
+    }
+
     public function ejecutar(string $id): void
     {
         $this->ejecutarUno($id);
@@ -533,6 +550,9 @@ class Procesos extends Component
 
     protected function ejecutarUno(string $id): void
     {
+        if (! $this->autorizar($id)) {
+            return;
+        }
         $procesos = $this->procesos();
         if (! isset($procesos[$id])) {
             return;
@@ -615,6 +635,9 @@ class Procesos extends Component
      */
     public function ejecutarRvCalculosYDeclaracion(): void
     {
+        if (! $this->autorizar('rv_calculos')) {
+            return;
+        }
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
         $pasos = [[
             'script' => 'calculosRentasVariables.js', 'args' => [$mm, '--no-open', '--real'], 'timeout' => 180,
@@ -651,6 +674,9 @@ class Procesos extends Component
     /** Envío REAL a los destinatarios de UNA tienda (botón "Enviar" de su fila). */
     public function ejecutarRvEnvio(string $tienda): void
     {
+        if (! $this->autorizar('rv_envio')) {
+            return;
+        }
         if (! isset($this->rvTiendasArrendador()[$tienda])) {
             return;
         }
@@ -689,6 +715,9 @@ class Procesos extends Component
      */
     public function ejecutarRvEnvioPrueba(): void
     {
+        if (! $this->autorizar('rv_envio')) {
+            return;
+        }
         $email = trim($this->rvEmailPrueba);
         if ($email === '') {
             $this->salida .= "\n\n===== RentasVariables · Envío a correo de prueba =====\nERROR: pon un correo de prueba.\n";
@@ -715,6 +744,9 @@ class Procesos extends Component
     /** $modo: 'vista' (solo genera la vista previa), 'prueba' o 'real'. */
     public function ejecutarPagosFinMes(string $modo): void
     {
+        if (! $this->autorizar('pagos_fin_mes')) {
+            return;
+        }
         // VAT TAX / Social Security vacíos -> el script los busca solo (PDF del 303
         // del mes anterior / correo de Jordi en Outlook); a mano siempre se puede.
         foreach (['pfSaldo' => 'Saldo BBVA'] as $campo => $nombre) {
@@ -857,6 +889,9 @@ class Procesos extends Component
      */
     public function buscarImportesPagosFinMes(): void
     {
+        if (! $this->autorizar('pagos_fin_mes')) {
+            return;
+        }
         $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
         $etiqueta = "Pagos fin de mes {$mm} · buscar importes";
         $this->lanzar([['script' => 'pagosFinMes.py', 'args' => [(string) $this->pfMes, '--buscar'], 'timeout' => 240, 'etiqueta' => $etiqueta]],
@@ -900,6 +935,9 @@ class Procesos extends Component
     /** Lee de Outlook el correo de pagos de ese mes (y el último de su hilo) y carga sus filas. */
     public function leerEnviadoPagosFinMes(): void
     {
+        if (! $this->autorizar('pagos_fin_mes')) {
+            return;
+        }
         $mm = str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT);
         $etiqueta = "Pagos fin de mes {$mm} · cargar correo enviado";
         $this->lanzar([['script' => 'pagosFinMes.py', 'args' => [(string) $this->pfMes, '--leer-enviado'], 'timeout' => 240, 'etiqueta' => $etiqueta]],
@@ -930,6 +968,9 @@ class Procesos extends Component
     /** $modo: 'vista', 'prueba' (Graph al correo de prueba) o 'real' (borrador en Outlook). */
     public function ejecutarRecordatorioPagosFinMes(string $modo): void
     {
+        if (! $this->autorizar('pagos_fin_mes')) {
+            return;
+        }
         $etiqueta = 'Pagos fin de mes ' . str_pad((string) $this->pfMes, 2, '0', STR_PAD_LEFT) . ' · recordatorio · ' . match ($modo) {
             'real' => 'borrador en Outlook',
             'prueba' => 'prueba a ' . trim($this->pfEmailPrueba),
@@ -1033,6 +1074,9 @@ class Procesos extends Component
 
     public function buscarCashInStore(): void
     {
+        if (! $this->autorizar('cash_in_store')) {
+            return;
+        }
         $mm = $this->cisMm();
         $etiqueta = "Cash in store {$mm} · buscar en Outlook";
         $this->lanzar([['script' => 'CashInStore/cashInStore.py', 'args' => [(string) $this->mes, '--buscar'], 'timeout' => 300, 'etiqueta' => $etiqueta]],
@@ -1081,6 +1125,9 @@ class Procesos extends Component
     /** Correo de petición (Graph, envío directo) a las tiendas sin dato. */
     public function pedirCashInStore(): void
     {
+        if (! $this->autorizar('cash_in_store')) {
+            return;
+        }
         $faltan = $this->cisFaltan;
         $etiqueta = "Cash in store {$this->cisMm()} · pedir a " . implode(', ', $faltan);
         if (! $faltan) {
@@ -1093,6 +1140,9 @@ class Procesos extends Component
     /** Cash flow: manda el Cashflow del mes a Plein (Graph) y lo marca como hecho (enviado). */
     public function enviarCashflow(): void
     {
+        if (! $this->autorizar('cashflow')) {
+            return;
+        }
         $mm = $this->cisMm();
         $etiqueta = "Cash flow {$mm} · envío a Plein";
         $this->lanzar([['script' => 'CashFlow/cashflow.py', 'args' => [(string) $this->mes, '--enviar', '--real'], 'timeout' => 300, 'etiqueta' => $etiqueta]],
@@ -1110,6 +1160,9 @@ class Procesos extends Component
     /** Recordatorio a las que faltan: «Responder a todos» a la petición ya enviada, en Borradores de Outlook. */
     public function recordarCashInStore(): void
     {
+        if (! $this->autorizar('cash_in_store')) {
+            return;
+        }
         $faltan = $this->cisFaltan;
         $etiqueta = "Cash in store {$this->cisMm()} · recordatorio a " . implode(', ', $faltan);
         if (! $faltan) {
@@ -1122,6 +1175,9 @@ class Procesos extends Component
     /** Escribe la fila del mes en "Cash End Month" de Ctrol Dinamico. */
     public function grabarCashInStore(): void
     {
+        if (! $this->autorizar('cash_in_store')) {
+            return;
+        }
         $datos = [];
         foreach ($this->cisFilas as $tienda => $r) {
             $cash = $this->cisNum((string) $r['cash']);
@@ -1180,7 +1236,8 @@ class Procesos extends Component
             $conPos[] = [$pos($p, $i), $p];
         }
         usort($conPos, fn ($a, $b) => $a[0] <=> $b[0]);
-        return array_column($conPos, 1);
+        // Solo los procesos que este usuario puede ver (permisos de proceso del panel de control)
+        return array_values(array_filter(array_column($conPos, 1), fn ($p) => $this->permitido((string) $p['id'])));
     }
 
     /** Arrastrar ⠿: deja $id encima (o debajo) de $destino y guarda el orden. */
@@ -1287,6 +1344,9 @@ class Procesos extends Component
     /** Botón «Marcar» de los procesos manuales: ✓ (o lo quita) en el mes del título. */
     public function marcarMesActual(string $id): void
     {
+        if (! $this->autorizar($id)) {
+            return;
+        }
         if (! in_array($id, array_column($this->checklist, 'id'), true)) {
             return;
         }
@@ -1298,6 +1358,9 @@ class Procesos extends Component
     /** Clic en un check: vacío → ✓ → «no toca» → vacío. */
     public function alternarChecklist(string $id, string $mes): void
     {
+        if (! $this->autorizar($id)) {
+            return;
+        }
         if (! array_key_exists($mes, $this->checklistMeses) || ! in_array($id, array_column($this->checklist, 'id'), true)) {
             return;
         }

@@ -42,6 +42,22 @@ return [
         ],
     ],
 
+    /*
+    | Procesos dentro de una pestaña (4-oct-2026): permiso de la pestaña => sus procesos. Un permiso de proceso
+    | (`<prefijo><id>`) AFINA el de la pestaña: hace falta el de la pestaña Y el del proceso. Mientras el permiso de un
+    | proceso no exista en la BD vale el de su pestaña (así no cambia nada hasta que el Admin lo toque en el panel);
+    | al tocarlo por primera vez se crea y se da a quien ya tenía la pestaña (Accesos::asegurarProceso).
+    | 'fuente' => 'fiq': los procesos salen de checklist.json (Procesos FIQ); 'lista' => [id => texto] fija.
+    */
+    'procesos' => [
+        'contabilidad.procesos' => ['prefijo' => 'proceso.fiq.', 'fuente' => 'fiq'],
+        'contabilidad.procesosmensuales' => ['prefijo' => 'proceso.pm.', 'lista' => [
+            'petdocimpuestos' => 'Pet. Documentación Impuestos',
+            'certificados' => 'Certificados por caducar',
+            'seguimiento' => 'Seguimiento (checklist mensual)',
+        ]],
+    ],
+
     'roles' => [
         'Admin' => '*',
         'Suma' => '*',

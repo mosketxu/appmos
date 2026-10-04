@@ -9,45 +9,71 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'admin.roles'])
     @include('livewire.admin._subnav', ['activa' => 'admin.roles'])
 
-    <div class="p-4 space-y-4">
-        <h1 class="text-2xl font-semibold text-gray-900">Roles y permisos</h1>
+    <div class="p-4 space-y-4" x-data="{ cerrado: {}, alt(k) { this.cerrado[k] = ! this.cerrado[k] },
+            todo(c) { const k = {}; document.querySelectorAll('[data-nodo]').forEach(e => { if (c) k[e.dataset.nodo] = true }); this.cerrado = k } }">
+        <div class="flex flex-wrap items-center gap-3">
+            <h1 class="text-2xl font-semibold text-gray-900">Roles y permisos</h1>
+            <div class="inline-flex overflow-hidden text-xs border border-gray-300 rounded-md">
+                <button type="button" wire:click="$set('vista', 'roles')" class="px-3 py-1 {{ $vista === 'roles' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700' }}">Por roles</button>
+                <button type="button" wire:click="$set('vista', 'usuarios')" class="px-3 py-1 {{ $vista === 'usuarios' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700' }}">Usuario por usuario</button>
+            </div>
+            <button type="button" x-on:click="todo(true)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded">▸ Comprimir todo</button>
+            <button type="button" x-on:click="todo(false)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded">▾ Descomprimir todo</button>
+        </div>
         <p class="text-xs text-gray-500">
-            Marca qué acciones da cada rol; se guarda al hacer clic. <b>Admin</b> tiene siempre todo (y es el único que ve este panel).
-            A un usuario concreto se le pueden dar acciones de más desde su ficha en "Usuarios".
-            Sin "Ver TODAS las entidades", el usuario solo ve las suyas; sin "Crear, modificar y borrar", solo consulta.
+            Los accesos están ordenados por bloques de la aplicación: cada <b>pestaña</b> y, debajo, sus <b>procesos</b>. Marcar una pestaña marca también todos sus procesos;
+            puedes quitar procesos sueltos. Se guarda al hacer clic. <b>Admin</b> tiene siempre todo (y es el único que ve este panel).
+            En «Usuario por usuario» se dan accesos a una persona concreta, además de los de su rol (en gris: los da su rol).
+            Sin «Ver TODAS las entidades», el usuario solo ve las suyas; sin «Crear, modificar y borrar», solo consulta.
         </p>
 
         <div class="overflow-auto bg-white border rounded-lg shadow">
             <table class="min-w-full text-sm">
                 <thead class="text-xs text-gray-600 bg-gray-100">
                     <tr>
-                        <th class="px-3 py-2 text-left">Acción</th>
-                        @foreach ($roles as $r)
-                            <th class="px-3 py-2 text-center whitespace-nowrap">
-                                {{ $r->name }} <span class="font-normal text-gray-400">({{ $r->users_count }})</span>
-                                @unless (in_array($r->name, $fijos, true))
+                        <th class="px-3 py-2 text-left">Acceso</th>
+                        @foreach ($cols as $c)
+                            <th class="px-3 py-2 text-center whitespace-nowrap" wire:key="th-{{ $vista }}-{{ $c['id'] }}">
+                                {{ $c['nombre'] }}
+                                <span class="font-normal text-gray-400">{{ $vista === 'roles' ? '('.$c['sub'].')' : '· '.$c['sub'] }}</span>
+                                @if ($vista === 'roles' && empty($c['fijo']) && ! $c['admin'])
                                     <button type="button" class="ml-1 text-red-500 hover:text-red-700" title="Borrar rol"
-                                            x-on:click="confirm('¿Borrar el rol ' + @js($r->name) + '?') && $wire.borrar(@js($r->name))">&times;</button>
-                                @endunless
+                                            x-on:click="confirm('¿Borrar el rol ' + @js($c['nombre']) + '?') && $wire.borrar(@js($c['nombre']))">&times;</button>
+                                @endif
                             </th>
                         @endforeach
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($gruposPermisos as $grupo => $permisos)
-                        <tr class="bg-gray-50"><td colspan="{{ count($roles) + 1 }}" class="px-3 py-1 text-xs font-semibold text-gray-600">{{ $grupo }}</td></tr>
-                        @foreach ($permisos as $clave => $texto)
-                            <tr class="border-t" wire:key="p-{{ $clave }}">
-                                <td class="px-3 py-1.5">{{ $texto }} <span class="text-xs text-gray-400">{{ $clave }}</span></td>
-                                @foreach ($roles as $r)
-                                    @php $tiene = $r->name === 'Admin' || $r->permissions->contains('name', $clave); @endphp
-                                    <td class="px-3 py-1.5 text-center">
-                                        <input type="checkbox" @checked($tiene) @disabled($r->name === 'Admin')
-                                               wire:click="alternar(@js($r->name), @js($clave))"
-                                               class="border-gray-300 rounded {{ $r->name === 'Admin' ? 'opacity-50' : 'cursor-pointer' }}">
-                                    </td>
+                    @foreach ($arbol as $bloque => $items)
+                        @php $kb = 'b:'.$bloque; @endphp
+                        <tr class="bg-gray-100 cursor-pointer" data-nodo="{{ $kb }}" x-on:click="alt(@js($kb))" wire:key="b-{{ $bloque }}">
+                            <td colspan="{{ count($cols) + 1 }}" class="px-3 py-1.5 text-xs font-bold tracking-wide text-gray-700 uppercase">
+                                <span x-text="cerrado[@js($kb)] ? '▸' : '▾'"></span> {{ $bloque }}
+                            </td>
+                        </tr>
+                        @foreach ($items as $it)
+                            @php $kp = 'p:'.$it['clave']; @endphp
+                            <tr class="border-t" x-show="! cerrado[@js($kb)]" wire:key="p-{{ $it['clave'] }}" data-nodo="{{ $kp }}">
+                                <td class="px-3 py-1.5 font-medium">
+                                    @if ($it['hijos'])
+                                        <button type="button" class="mr-1 text-gray-500" x-on:click="alt(@js($kp))"><span x-text="cerrado[@js($kp)] ? '▸' : '▾'"></span></button>
+                                    @else <span class="inline-block w-4"></span> @endif
+                                    {{ $it['texto'] }}
+                                    @if ($it['hijos']) <span class="text-xs font-normal text-gray-400">· {{ count($it['hijos']) }} procesos</span> @endif
+                                </td>
+                                @foreach ($cols as $k => $c)
+                                    @include('livewire.admin._casilla', ['clave' => $it['clave'], 'k' => $k, 'c' => $c, 'est' => $estado[$k][$it['clave']] ?? 0, 'vista' => $vista])
                                 @endforeach
                             </tr>
+                            @foreach ($it['hijos'] as $hc => $ht)
+                                <tr class="border-t border-gray-100 bg-gray-50" x-show="! cerrado[@js($kb)] && ! cerrado[@js($kp)]" wire:key="h-{{ $hc }}">
+                                    <td class="py-1 pl-10 pr-3 text-xs text-gray-700">{{ $ht }}</td>
+                                    @foreach ($cols as $k => $c)
+                                        @include('livewire.admin._casilla', ['clave' => $hc, 'k' => $k, 'c' => $c, 'est' => $estado[$k][$hc] ?? 0, 'vista' => $vista])
+                                    @endforeach
+                                </tr>
+                            @endforeach
                         @endforeach
                     @endforeach
                 </tbody>

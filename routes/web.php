@@ -126,11 +126,11 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
             return redirect()->away(str_replace('procesos-mensuales', 'seguimiento-mensual', config('contabilidad.procesosmensuales_url')));
         }
         return view('contabilidad.seguimiento-mensual');
-    })->name('contabilidad.seguimiento-mensual')->middleware('can:contabilidad.procesosmensuales');
+    })->name('contabilidad.seguimiento-mensual')->middleware(['can:contabilidad.procesosmensuales', 'can:proceso.pm.seguimiento']);
     // Certificados por caducar: se ejecuta en LOCAL (los certificados están en los PCs)
     Route::get('/contabilidad/certificados', function () {
         return view('contabilidad.certificados');
-    })->name('contabilidad.certificados')->middleware('can:contabilidad.procesosmensuales');
+    })->name('contabilidad.certificados')->middleware(['can:contabilidad.procesosmensuales', 'can:proceso.pm.certificados']);
 
     // Entidades: consulta
     Route::middleware('can:entidades.ver')->group(function () {

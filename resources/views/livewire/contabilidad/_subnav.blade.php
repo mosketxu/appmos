@@ -9,7 +9,7 @@
     // [permiso, ruta, texto, url de la web si se usa desde allí]
     $pestanas = [
         ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', config('contabilidad.procesosmensuales_url')],
-        ['contabilidad.procesosmensuales', 'contabilidad.seguimiento-mensual', 'Seguimiento', config('contabilidad.procesosmensuales_url') ? str_replace('procesos-mensuales', 'seguimiento-mensual', config('contabilidad.procesosmensuales_url')) : null],
+        ['proceso.pm.seguimiento', 'contabilidad.seguimiento-mensual', 'Seguimiento', config('contabilidad.procesosmensuales_url') ? str_replace('procesos-mensuales', 'seguimiento-mensual', config('contabilidad.procesosmensuales_url')) : null],
         ['contabilidad.procesos', 'contabilidad.procesos', 'Procesos FIQ', null],
         ['contabilidad.facturacionpdf', 'contabilidad.facturacion-pdf', 'Facturación PDF', null],
         ['contabilidad.durcal', 'contabilidad.durcal', 'Durcal', null],

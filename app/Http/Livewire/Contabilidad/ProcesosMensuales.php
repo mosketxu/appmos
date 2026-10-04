@@ -571,6 +571,11 @@ class ProcesosMensuales extends Component
     public function render()
     {
         $propias = Accesos::entidadesPropias(auth()->user());
+        // Solo los procesos a los que tiene acceso (permisos de proceso del panel de control)
+        $permitidos = array_filter(self::PROCESOS, fn ($p, $k) => auth()->user()->can('proceso.pm.'.$k), ARRAY_FILTER_USE_BOTH);
+        if (! isset($permitidos[$this->proceso]) && $permitidos) {
+            $this->proceso = array_key_first($permitidos);
+        }
         $empresas = $this->empresas()
             ->filter(fn ($e) => in_array($e->id, $propias, true) || ($this->verSinResponsable && ($this->sumaIds[$e->id] ?? '') === ''))
             ->when(! $this->verBajas, fn ($c) => $c->filter(fn ($e) => $this->activas[$e->id] ?? false))
@@ -578,7 +583,7 @@ class ProcesosMensuales extends Component
             ->when($this->buscar !== '', fn ($c) => $c->filter(fn ($e) => stripos($e->entidad.' '.$e->alias, $this->buscar) !== false));
 
         return view('livewire.contabilidad.procesos-mensuales', [
-            'procesos' => self::PROCESOS,
+            'procesos' => $permitidos,
             'idiomasDisponibles' => self::IDIOMAS,
             'usuario' => auth()->user(),
             'empresas' => $empresas,

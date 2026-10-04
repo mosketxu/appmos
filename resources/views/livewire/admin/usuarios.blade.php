@@ -106,35 +106,67 @@
                     </div>
 
                     @if ($rol !== 'Admin')
-                        <div>
-                            <h3 class="text-sm font-semibold text-gray-700">Acciones</h3>
-                            <p class="mb-2 text-xs text-gray-500">Marcadas en gris: las da su rol (se cambian en "Roles y permisos"). Las demás se pueden dar solo a este usuario.</p>
-                            <div class="grid gap-3 md:grid-cols-3">
-                                @foreach ($gruposPermisos as $grupo => $permisos)
-                                    <div>
-                                        <div class="mb-1 text-xs font-semibold text-gray-600">{{ $grupo }}</div>
-                                        @foreach ($permisos as $clave => $texto)
-                                            @php $delRol = in_array($clave, $permisosDelRol, true); @endphp
-                                            <label class="flex items-start gap-2 text-xs {{ $delRol ? 'text-gray-400' : '' }}">
-                                                @if ($delRol)
-                                                    <input type="checkbox" checked disabled class="mt-0.5 border-gray-300 rounded">
-                                                @else
-                                                    <input type="checkbox" wire:model="permisosExtra" value="{{ $clave }}" class="mt-0.5 border-gray-300 rounded">
+                        <details open class="border rounded-md">
+                            <summary class="px-3 py-2 text-sm font-semibold text-gray-700 cursor-pointer select-none bg-gray-50">
+                                Acceso a pestañas y procesos
+                                <span class="text-xs font-normal text-gray-400">({{ count($permisosExtra) }} dados a este usuario además de su rol)</span>
+                            </summary>
+                            <div class="p-3 space-y-3">
+                            <p class="text-xs text-gray-500">En gris: lo da su rol (se cambia en «Roles y permisos»). Lo demás se da solo a este usuario. Marcar una pestaña marca todos sus procesos; abre su flecha para quitar alguno suelto.</p>
+                            @foreach ($arbol as $bloque => $items)
+                                <details open class="border border-gray-200 rounded">
+                                    <summary class="px-2 py-1 text-xs font-bold tracking-wide text-gray-600 uppercase cursor-pointer select-none bg-gray-100">{{ $bloque }}</summary>
+                                    <div class="p-2 space-y-1">
+                                        @foreach ($items as $it)
+                                            @php
+                                                $tiene = fn ($clave) => in_array($clave, $permisosDelRol, true)
+                                                    || (($pd = \App\Support\Accesos::padreDeProceso($clave)) && ! \App\Support\Accesos::existe($clave) && in_array($pd, $permisosDelRol, true));
+                                                $delRol = $tiene($it['clave']);
+                                                $marcada = $delRol || in_array($it['clave'], $permisosExtra, true);
+                                            @endphp
+                                            <div wire:key="pe-{{ $it['clave'] }}">
+                                                <div class="flex items-center gap-2 text-sm {{ $delRol ? 'text-gray-400' : '' }}">
+                                                    <input type="checkbox" @checked($marcada) @disabled($delRol) class="border-gray-300 rounded"
+                                                           wire:click="marcarPestana(@js($it['clave']), {{ $marcada ? 'false' : 'true' }})">
+                                                    <span class="font-medium">{{ $it['texto'] }}</span>
+                                                    @if ($it['hijos']) <span class="text-xs text-gray-400">· {{ count($it['hijos']) }} procesos</span> @endif
+                                                </div>
+                                                @if ($it['hijos'])
+                                                    <details class="ml-6">
+                                                        <summary class="text-xs text-gray-500 cursor-pointer select-none">procesos ({{ collect($it['hijos'])->keys()->filter(fn ($h) => $tiene($h) || in_array($h, $permisosExtra, true))->count() }}/{{ count($it['hijos']) }})</summary>
+                                                        <div class="grid gap-x-4 md:grid-cols-2">
+                                                            @foreach ($it['hijos'] as $hc => $ht)
+                                                                @php $hRol = $tiene($hc); @endphp
+                                                                <label class="flex items-start gap-2 text-xs {{ $hRol ? 'text-gray-400' : '' }}" wire:key="ph-{{ $hc }}">
+                                                                    @if ($hRol)
+                                                                        <input type="checkbox" checked disabled class="mt-0.5 border-gray-300 rounded">
+                                                                    @else
+                                                                        <input type="checkbox" wire:model="permisosExtra" value="{{ $hc }}" class="mt-0.5 border-gray-300 rounded">
+                                                                    @endif
+                                                                    <span>{{ $ht }}</span>
+                                                                </label>
+                                                            @endforeach
+                                                        </div>
+                                                    </details>
                                                 @endif
-                                                <span>{{ $texto }}</span>
-                                            </label>
+                                            </div>
                                         @endforeach
                                     </div>
-                                @endforeach
+                                </details>
+                            @endforeach
                             </div>
-                        </div>
+                        </details>
 
                     @else
                         <p class="text-sm text-red-700">Admin: acceso a todo, sin excepciones.</p>
                     @endif
 
-                        <div>
-                            <h3 class="text-sm font-semibold text-gray-700">Acceso a entidades</h3>
+                        <details open class="border rounded-md">
+                            <summary class="px-3 py-2 text-sm font-semibold text-gray-700 cursor-pointer select-none bg-gray-50">
+                                Acceso a entidades
+                                <span class="text-xs font-normal text-gray-400">({{ count($porResponsable) }} como responsable + {{ count($entidadesAsignadas) }} marcadas)</span>
+                            </summary>
+                            <div class="p-3">
                             {{-- Admin y quien tiene "Ver TODAS" ven todas en Entidades, pero las que gestiona (Responsable Suma +
                                  marcadas aquí) son las que le salen en Proc.Mensuales y en «Mis empresas» (pedido 1-oct-2026) --}}
                             @if ($rol === 'Admin' || in_array('entidades.todas', $permisosDelRol, true) || in_array('entidades.todas', $permisosExtra, true))
@@ -174,7 +206,8 @@
                                         <p class="p-2 text-xs text-gray-400">Sin resultados.</p>
                                     @endforelse
                                 </div>
-                        </div>
+                            </div>
+                        </details>
 
                     <div class="flex items-center gap-3">
                         <x-button.primary wire:click="guardar">Guardar</x-button.primary>

@@ -622,6 +622,45 @@
                     @endif
                 @endif
                 <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]) }}" target="_blank" class="focr-btn b-gris" style="padding:.2rem .6rem">↗ Abrir aparte</a>
+                {{-- Calculadora: se calcula en el navegador (no toca la factura). Enter = calcular; las flechas ↑ recuperan lo anterior --}}
+                <span wire:ignore style="position:relative; display:inline-block"
+                      x-data="{ abierta: false, expr: '', res: '', hist: [], k: -1,
+                          calc() {
+                              const e = this.expr.replace(/,/g, '.').replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+                              if (! e.trim()) return;
+                              if (! /^[0-9+\-*\/().\s]+$/.test(e)) { this.res = 'Solo números y + − × ÷ ( ) %'; return; }
+                              try {
+                                  const v = Function('\'use strict\'; return (' + e + ')')();
+                                  if (! isFinite(v)) throw 0;
+                                  this.res = (Math.round(v * 100) / 100).toFixed(2); this.hist.unshift(this.expr); this.k = -1;
+                              } catch (x) { this.res = 'Operación no válida'; }
+                          },
+                          tecla(t) { this.expr += t; this.$refs.q.focus() },
+                          copiar() { navigator.clipboard && navigator.clipboard.writeText(this.res.replace('.', ',')) },
+                          historia(d) { this.k = Math.max(-1, Math.min(this.hist.length - 1, this.k + d)); this.expr = this.k < 0 ? '' : this.hist[this.k] },
+                      }"
+                      x-on:keydown.escape.stop="abierta = false">
+                    <button type="button" class="focr-btn b-gris" style="padding:.2rem .6rem" title="Calculadora"
+                            x-on:click="abierta = ! abierta; if (abierta) $nextTick(() => $refs.q.focus())">🧮 Calculadora</button>
+                    <div x-show="abierta" x-cloak x-on:click.outside="abierta = false"
+                         style="position:absolute; right:0; top:110%; z-index:60; width:15rem; padding:.5rem; background:#fff; color:#111827; border:1px solid #9ca3af; border-radius:.5rem; box-shadow:0 8px 24px rgba(0,0,0,.3)">
+                        <input type="text" x-ref="q" x-model="expr" placeholder="p. ej. 121/1,21 o 100*(1+21%)"
+                               x-on:keydown.enter.prevent="calc()" x-on:keydown.arrow-up.prevent="historia(1)" x-on:keydown.arrow-down.prevent="historia(-1)"
+                               style="width:100%; padding:.25rem .4rem; border:1px solid #d1d5db; border-radius:.3rem; font-size:.9rem; text-align:right">
+                        <div style="min-height:1.6rem; margin:.25rem 0; text-align:right; font-weight:700; font-size:1.1rem" x-text="res"></div>
+                        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:.2rem">
+                            @foreach (['7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', '0', ',', '%', '+', '(', ')'] as $t)
+                                <button type="button" x-on:click="tecla(@js($t))" style="padding:.25rem 0; background:#f3f4f6; border:1px solid #d1d5db; border-radius:.3rem">{{ ['/' => '÷', '*' => '×'][$t] ?? $t }}</button>
+                            @endforeach
+                            <button type="button" x-on:click="expr = expr.slice(0, -1); $refs.q.focus()" style="padding:.25rem 0; background:#f3f4f6; border:1px solid #d1d5db; border-radius:.3rem">⌫</button>
+                            <button type="button" x-on:click="expr = ''; res = ''; $refs.q.focus()" style="padding:.25rem 0; background:#f3f4f6; border:1px solid #d1d5db; border-radius:.3rem">C</button>
+                        </div>
+                        <div style="display:flex; gap:.3rem; margin-top:.3rem">
+                            <button type="button" x-on:click="calc()" style="flex:1; padding:.3rem; background:#059669; color:#fff; border-radius:.3rem; font-weight:700">=</button>
+                            <button type="button" x-on:click="copiar()" x-show="res && ! isNaN(res)" style="padding:.3rem .6rem; background:#e5e7eb; border-radius:.3rem" title="Copiar el resultado">Copiar</button>
+                        </div>
+                    </div>
+                </span>
                 <button type="button" wire:click="cerrar" class="focr-btn b-gris" style="padding:.2rem .6rem">✕ Cerrar (Esc)</button>
             </div>
             <div class="focr-rev-body">

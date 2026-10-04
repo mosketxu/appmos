@@ -58,7 +58,26 @@ class Usuarios extends Component
         $this->activo = (bool) $u->activo;
         $this->sumaId = $u->suma ? (string) $u->suma->id : null;
         $this->permisosExtra = $u->permissions->pluck('name')->all();
+        // Procesos aún sin permiso propio: valen lo que su pestaña, así que se enseñan marcados si la pestaña es suya
+        foreach (config('accesos.procesos', []) as $pestana => $_) {
+            if (in_array($pestana, $this->permisosExtra, true)) {
+                foreach (array_keys(Accesos::procesosDe($pestana)) as $proc) {
+                    if (! Accesos::existe($proc)) {
+                        $this->permisosExtra[] = $proc;
+                    }
+                }
+            }
+        }
         $this->entidadesAsignadas = $u->entidadesAsignadas()->withoutGlobalScopes()->pluck('entidades.id')->map(fn ($i) => (string) $i)->all();
+    }
+
+    /** Marca o desmarca una pestaña entera (ella y todos sus procesos) en la ficha. */
+    public function marcarPestana(string $clave, bool $marcar): void
+    {
+        $claves = array_merge([$clave], array_keys(Accesos::procesosDe($clave)));
+        $this->permisosExtra = $marcar
+            ? array_values(array_unique(array_merge($this->permisosExtra, $claves)))
+            : array_values(array_diff($this->permisosExtra, $claves));
     }
 
     public function cancelar(): void
@@ -108,6 +127,14 @@ class Usuarios extends Component
             $u->save();
 
             $u->syncRoles([$this->rol]);
+            // Los permisos de proceso se crean al usarlos por primera vez: los de todas las pestañas que tiene (o va a tener) este
+            // usuario por su cuenta, para que quitar uno suelto no se quede en «vale lo que su pestaña»
+            foreach ($this->permisosExtra as $perm) {
+                Accesos::asegurarProceso($perm);
+                foreach (array_keys(Accesos::procesosDe($perm)) as $proc) {
+                    Accesos::asegurarProceso($proc);
+                }
+            }
             $u->syncPermissions($this->permisosExtra);
 
             // Enlace con el Responsable Suma (uno por usuario)
@@ -162,7 +189,7 @@ class Usuarios extends Component
             'gestiona' => $gestiona,
             'roles' => Role::orderBy('id')->pluck('name'),
             'sumas' => Suma::orderBy('nombre')->get(['id', 'nombre', 'user_id']),
-            'gruposPermisos' => config('accesos.permisos'),
+            'arbol' => Accesos::arbol(),
             'permisosDelRol' => $rolElegido ? $rolElegido->permissions->pluck('name')->all() : [],
             'entidades' => $entidades,
             'porResponsable' => $porResponsable,
