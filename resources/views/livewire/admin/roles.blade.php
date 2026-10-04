@@ -40,6 +40,11 @@
                                     @endif
                                 </div>
                                 <div class="font-normal whitespace-nowrap {{ ($c['activo'] ?? true) ? 'text-gray-400' : 'text-amber-600' }}">{{ $c['sub'] }}</div>
+                                @php $fija = $c['admin'] || ! ($c['activo'] ?? true); @endphp
+                                <input type="checkbox" @checked($c['todo']) @disabled($fija) x-effect="$el.indeterminate = {{ $c['algunos'] ? 'true' : 'false' }}"
+                                       @if (! $fija) wire:click="{{ $c['tipo'] === 'rol' ? 'marcarColumnaRol('.json_encode($c['nombre']).')' : 'marcarColumnaUsuario('.$c['id'].')' }}" @endif
+                                       class="mt-0.5 rounded border-gray-400 {{ $fija ? 'opacity-50' : 'cursor-pointer' }}"
+                                       title="{{ $fija ? '' : 'Marcar o desmarcar todos los accesos de '.($c['completo'] ?? $c['nombre']) }}" wire:key="todo-{{ $c['tipo'] }}-{{ $c['id'] }}-{{ (int) $c['todo'] }}{{ (int) $c['algunos'] }}">
                             </th>
                         @endforeach
                     </tr>

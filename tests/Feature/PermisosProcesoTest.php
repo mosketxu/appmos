@@ -152,4 +152,29 @@ class PermisosProcesoTest extends TestCase
         // sigue sin poder entrar
         $this->assertFalse((bool) $baja->fresh()->activo);
     }
+
+    public function test_el_check_de_la_cabecera_marca_o_desmarca_todos_los_accesos(): void
+    {
+        $this->actingAs($this->adminUser());
+        $c = Livewire::test(Roles::class);
+        // rol: marca todo (pestañas y procesos) y, estando todo, lo quita todo
+        $c->call('marcarColumnaRol', 'Gestoria');
+        $g = Role::findByName('Gestoria', 'web')->fresh();
+        $this->assertTrue($g->hasPermissionTo('contabilidad.procesosmensuales'));
+        $this->assertTrue($g->hasPermissionTo('entidades.ver'));
+        $this->assertTrue($g->hasPermissionTo('proceso.pm.seguimiento'));
+        $c->call('marcarColumnaRol', 'Gestoria');
+        $this->assertCount(0, Role::findByName('Gestoria', 'web')->fresh()->permissions);
+        // usuario con rol Suma: marcar todo da lo que le falta como directo; desmarcar todo le deniega lo del rol y quita lo directo
+        $s = $this->suma();
+        $c->call('marcarColumnaUsuario', $s->id);
+        $this->assertTrue($s->fresh()->can('entidades.ver'));
+        $this->assertTrue($s->fresh()->can('proceso.pm.certificados'));
+        $c->call('marcarColumnaUsuario', $s->id);
+        $this->assertFalse($s->fresh()->can('contabilidad.procesosmensuales'));
+        $this->assertFalse($s->fresh()->can('proceso.pm.certificados'));
+        $this->assertTrue(Role::findByName('Suma', 'web')->hasPermissionTo('contabilidad.procesosmensuales'));
+        $c->call('marcarColumnaUsuario', $s->id);
+        $this->assertTrue($s->fresh()->can('contabilidad.procesosmensuales'));
+    }
 }

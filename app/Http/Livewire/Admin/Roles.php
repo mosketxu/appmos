@@ -28,8 +28,11 @@ class Roles extends Component
             return;
         }
         $role = Role::findByName($rol, 'web');
-        $claves = $this->conHijos($permiso);
-        $dar = ! $this->tiene($role->permissions->pluck('name')->all(), $permiso);
+        $this->aplicarRol($role, $this->conHijos($permiso), ! $this->tiene($role->permissions->pluck('name')->all(), $permiso));
+    }
+
+    protected function aplicarRol(Role $role, array $claves, bool $dar): void
+    {
         foreach ($claves as $c) {
             Accesos::asegurarProceso($c);
             Permission::findOrCreate($c, 'web');
@@ -38,6 +41,56 @@ class Roles extends Component
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Accesos::olvidar();
+    }
+
+    /** Todos los accesos de la tabla: cada pestaña y cada uno de sus procesos. */
+    protected function todasClaves(): array
+    {
+        $out = [];
+        foreach (Accesos::arbol() as $items) {
+            foreach ($items as $it) {
+                $out = array_merge($out, [$it['clave']], array_keys($it['hijos']));
+            }
+        }
+
+        return $out;
+    }
+
+    /** Check bajo el nombre del rol: marca todo o, si ya lo tiene todo, lo quita todo. */
+    public function marcarColumnaRol(string $rol): void
+    {
+        if ($rol === 'Admin') {
+            return;
+        }
+        $role = Role::findByName($rol, 'web');
+        $tiene = $role->permissions->pluck('name')->all();
+        $todo = collect($this->todasClaves())->every(fn ($c) => $this->tiene($tiene, $c));
+        $this->aplicarRol($role, $this->todasClaves(), ! $todo);
+    }
+
+    /** Check bajo el nombre del usuario: marca todo (lo que no da su rol, como permiso directo; lo denegado, se vuelve a dar) o lo quita todo. */
+    public function marcarColumnaUsuario(int $id): void
+    {
+        $u = User::findOrFail($id);
+        if ($u->hasRole('Admin') || ! $u->activo) {
+            return;
+        }
+        $claves = $this->todasClaves();
+        $this->asegurarTodo($claves);
+        $u = User::with('roles', 'permissions')->findOrFail($id);
+        $delRol = $u->getPermissionsViaRoles()->pluck('name')->all();
+        $directos = $u->getDirectPermissions()->pluck('name')->all();
+        $denegados = DB::table('permisos_denegados')->where('user_id', $id)->pluck('permiso')->all();
+        $todo = collect($claves)->every(fn ($c) => ($this->tiene($delRol, $c) && ! in_array($c, $denegados, true)) || $this->tiene($directos, $c));
+        $this->aplicarUsuario($u, $claves, ! $todo);
+    }
+
+    protected function asegurarTodo(array $claves): void
+    {
+        foreach ($claves as $c) {   // primero existen todos los permisos (los de proceso se crean al tocarlos la primera vez)
+            Accesos::asegurarProceso($c);
+            Permission::findOrCreate($c, 'web');
+        }
     }
 
     /**
@@ -51,25 +104,29 @@ class Roles extends Component
             return;
         }
         $claves = $this->conHijos($permiso);
-        foreach ($claves as $c) {   // primero existen todos los permisos (los de proceso se crean al tocarlos la primera vez)
-            Accesos::asegurarProceso($c);
-            Permission::findOrCreate($c, 'web');
-        }
+        $this->asegurarTodo($claves);
         $u = User::with('roles', 'permissions')->findOrFail($id);
         $delRol = $u->getPermissionsViaRoles()->pluck('name')->all();
         $directos = $u->getDirectPermissions()->pluck('name')->all();
         $denegados = DB::table('permisos_denegados')->where('user_id', $id)->pluck('permiso')->all();
         $dar = ! (($this->tiene($delRol, $permiso) && ! in_array($permiso, $denegados, true)) || $this->tiene($directos, $permiso));
+        $this->aplicarUsuario($u, $claves, $dar);
+    }
+
+    /** Da o quita estos accesos a una persona: lo que da su rol se deniega/vuelve a dar; lo demás es permiso directo. */
+    protected function aplicarUsuario(User $u, array $claves, bool $dar): void
+    {
+        $delRol = $u->getPermissionsViaRoles()->pluck('name')->all();
         foreach ($claves as $c) {
             $porRol = in_array($c, $delRol, true);
             if ($dar) {
-                DB::table('permisos_denegados')->where('user_id', $id)->where('permiso', $c)->delete();
+                DB::table('permisos_denegados')->where('user_id', $u->id)->where('permiso', $c)->delete();
                 if (! $porRol) {
                     $u->givePermissionTo($c);
                 }
             } else {
                 if ($porRol) {
-                    DB::table('permisos_denegados')->updateOrInsert(['user_id' => $id, 'permiso' => $c], ['updated_at' => now(), 'created_at' => now()]);
+                    DB::table('permisos_denegados')->updateOrInsert(['user_id' => $u->id, 'permiso' => $c], ['updated_at' => now(), 'created_at' => now()]);
                 }
                 $u->revokePermissionTo($c);
             }
@@ -193,6 +250,11 @@ class Roles extends Component
                     }
                 }
             }
+        }
+        foreach ($cols as $k => $c) {   // estado del check bajo el nombre: todo / algo / nada
+            $n = count(array_filter($estado[$k] ?? [], fn ($e) => in_array($e, [1, 2, 3, 4], true)));
+            $cols[$k]['todo'] = $estado && $n === count($estado[$k]);
+            $cols[$k]['algunos'] = $n > 0 && ! $cols[$k]['todo'];
         }
         return view('livewire.admin.roles', [
             'roles' => $roles,
