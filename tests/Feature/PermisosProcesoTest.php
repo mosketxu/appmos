@@ -75,7 +75,7 @@ class PermisosProcesoTest extends TestCase
         $this->actingAs($this->adminUser());
         $u = User::factory()->create(['activo' => true]);
         $u->assignRole('Gestoria');
-        $c = Livewire::test(Roles::class)->set('vista', 'usuarios');
+        $c = Livewire::test(Roles::class);
         $c->call('alternarUsuario', $u->id, 'proceso.pm.certificados');
         $u->refresh();
         $this->assertTrue($u->hasDirectPermission('proceso.pm.certificados'));
@@ -102,11 +102,13 @@ class PermisosProcesoTest extends TestCase
         $this->assertFalse($u->hasDirectPermission('proceso.pm.seguimiento'));
     }
 
-    public function test_la_pantalla_de_roles_ordena_por_bloques_y_se_puede_ver_por_usuarios(): void
+    public function test_la_pantalla_de_roles_ordena_por_bloques_con_roles_y_usuarios_juntos(): void
     {
         $this->actingAs($this->adminUser());
-        Livewire::test(Roles::class)->assertSee('Contabilidad')->assertSee('Seguimiento (checklist mensual)')->assertSee('Por roles')
-            ->set('vista', 'usuarios')->assertSee('Usuario por usuario');
+        // roles y usuarios en la misma tabla, con una barra entre ambos
+        $h = Livewire::test(Roles::class)->assertSee('Contabilidad')->assertSee('Seguimiento (checklist mensual)')->html();
+        $this->assertStringContainsString('border-left:2px solid #9ca3af', $h);
+        $this->assertStringContainsString('Gestoria', $h);
     }
 
     public function test_cabecera_de_usuarios_con_inicial_y_apellido_y_mas_letras_si_coinciden(): void
@@ -115,7 +117,7 @@ class PermisosProcesoTest extends TestCase
         User::factory()->create(['name' => 'Nuria Lopez', 'activo' => true]);
         User::factory()->create(['name' => 'Nuno Lopez', 'activo' => true]);
         User::factory()->create(['name' => 'Susana Gómez Pérez', 'activo' => true]);
-        $h = Livewire::test(Roles::class)->set('vista', 'usuarios')->html();
+        $h = Livewire::test(Roles::class)->html();
         $this->assertStringContainsString('Z. Quintana', $h);
         $this->assertStringContainsString('Nur. Lopez', $h);    // coinciden N. y Nu. Lopez: se van añadiendo letras al nombre
         $this->assertStringContainsString('Nun. Lopez', $h);

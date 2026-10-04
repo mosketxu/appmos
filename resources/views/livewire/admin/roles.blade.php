@@ -13,36 +13,33 @@
             todo(c) { const k = {}; document.querySelectorAll('[data-nodo]').forEach(e => { if (c) k[e.dataset.nodo] = true }); this.cerrado = k } }">
         <div class="flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-semibold text-gray-900">Roles y permisos</h1>
-            <div class="inline-flex overflow-hidden text-xs border border-gray-300 rounded-md">
-                <button type="button" wire:click="$set('vista', 'roles')" class="px-3 py-1 {{ $vista === 'roles' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700' }}">Por roles</button>
-                <button type="button" wire:click="$set('vista', 'usuarios')" class="px-3 py-1 {{ $vista === 'usuarios' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700' }}">Usuario por usuario</button>
-            </div>
             <button type="button" x-on:click="todo(true)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded">▸ Comprimir todo</button>
             <button type="button" x-on:click="todo(false)" class="px-2 py-1 text-xs bg-white border border-gray-300 rounded">▾ Descomprimir todo</button>
         </div>
         <p class="text-xs text-gray-500">
             Los accesos están ordenados por bloques de la aplicación: cada <b>pestaña</b> y, debajo, sus <b>procesos</b>. Marcar una pestaña marca también todos sus procesos;
             puedes quitar procesos sueltos. Se guarda al hacer clic. <b>Admin</b> tiene siempre todo (y es el único que ve este panel).
-            En «Usuario por usuario» se dan accesos a una persona concreta, además de los de su rol (en gris: los da su rol).
+            A la izquierda de la barra, los <b>roles</b> (dar un acceso a un rol se lo da a todos sus usuarios); a la derecha, los <b>usuarios</b> uno por uno: sirven para dar un acceso a una persona
+            concreta además de los de su rol (en gris: lo da su rol; para quitárselo, quítalo al rol).
             Sin «Ver TODAS las entidades», el usuario solo ve las suyas; sin «Crear, modificar y borrar», solo consulta.
         </p>
 
         <div class="overflow-auto bg-white border rounded-lg shadow">
-            <table class="text-sm {{ $vista === 'usuarios' ? 'min-w-full' : '' }}">
+            <table class="text-sm">
                 <thead class="text-xs text-gray-600 bg-gray-100">
                     <tr>
-                        <th class="px-3 py-2 text-left" style="{{ $vista === 'usuarios' ? 'width:100%' : 'min-width:20rem' }}">Acceso</th>
+                        <th class="px-3 py-2 text-left" style="min-width:17rem">Acceso</th>
                         @foreach ($cols as $c)
-                            <th class="px-1 py-1 text-center leading-tight" style="width:{{ $vista === 'usuarios' ? '3.2rem' : '5rem' }}; min-width:3.2rem" wire:key="th-{{ $vista }}-{{ $c['id'] }}"
+                            <th class="px-1 py-1 text-center leading-tight" style="width:3.4rem; min-width:3.4rem; {{ ! empty($c['inicio']) ? 'border-left:2px solid #9ca3af' : '' }}" wire:key="th-{{ $c['tipo'] }}-{{ $c['id'] }}"
                                 title="{{ $c['completo'] ?? $c['nombre'] }}">
                                 <div class="font-semibold whitespace-nowrap">
                                     {{ $c['nombre'] }}
-                                    @if ($vista === 'roles' && empty($c['fijo']) && ! $c['admin'])
+                                    @if ($c['tipo'] === 'rol' && empty($c['fijo']) && ! $c['admin'])
                                         <button type="button" class="ml-1 text-red-500 hover:text-red-700" title="Borrar rol"
                                                 x-on:click="confirm('¿Borrar el rol ' + @js($c['nombre']) + '?') && $wire.borrar(@js($c['nombre']))">&times;</button>
                                     @endif
                                 </div>
-                                <div class="font-normal text-gray-400 whitespace-nowrap">{{ $vista === 'roles' ? '('.$c['sub'].')' : $c['sub'] }}</div>
+                                <div class="font-normal text-gray-400 whitespace-nowrap">{{ $c['sub'] }}</div>
                             </th>
                         @endforeach
                     </tr>
@@ -58,7 +55,7 @@
                         @foreach ($items as $it)
                             @php $kp = 'p:'.$it['clave']; @endphp
                             <tr class="border-t" x-show="! cerrado[@js($kb)]" wire:key="p-{{ $it['clave'] }}" data-nodo="{{ $kp }}">
-                                <td class="px-3 py-1.5 font-medium" style="min-width:20rem">
+                                <td class="px-3 py-1.5 font-medium" style="min-width:17rem">
                                     @if ($it['hijos'])
                                         <button type="button" class="mr-1 text-gray-500" x-on:click="alt(@js($kp))"><span x-text="cerrado[@js($kp)] ? '▸' : '▾'"></span></button>
                                     @else <span class="inline-block w-4"></span> @endif
@@ -66,14 +63,14 @@
                                     @if ($it['hijos']) <span class="text-xs font-normal text-gray-400">· {{ count($it['hijos']) }} procesos</span> @endif
                                 </td>
                                 @foreach ($cols as $k => $c)
-                                    @include('livewire.admin._casilla', ['clave' => $it['clave'], 'k' => $k, 'c' => $c, 'est' => $estado[$k][$it['clave']] ?? 0, 'vista' => $vista])
+                                    @include('livewire.admin._casilla', ['clave' => $it['clave'], 'k' => $k, 'c' => $c, 'est' => $estado[$k][$it['clave']] ?? 0, 'vista' => $c['tipo']])
                                 @endforeach
                             </tr>
                             @foreach ($it['hijos'] as $hc => $ht)
                                 <tr class="border-t border-gray-100 bg-gray-50" x-show="! cerrado[@js($kb)] && ! cerrado[@js($kp)]" wire:key="h-{{ $hc }}">
-                                    <td class="py-1 pl-10 pr-3 text-xs text-gray-700" style="min-width:20rem">{{ $ht }}</td>
+                                    <td class="py-1 pl-10 pr-3 text-xs text-gray-700" style="min-width:17rem">{{ $ht }}</td>
                                     @foreach ($cols as $k => $c)
-                                        @include('livewire.admin._casilla', ['clave' => $hc, 'k' => $k, 'c' => $c, 'est' => $estado[$k][$hc] ?? 0, 'vista' => $vista])
+                                        @include('livewire.admin._casilla', ['clave' => $hc, 'k' => $k, 'c' => $c, 'est' => $estado[$k][$hc] ?? 0, 'vista' => $c['tipo']])
                                     @endforeach
                                 </tr>
                             @endforeach

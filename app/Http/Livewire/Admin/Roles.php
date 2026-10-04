@@ -21,9 +21,6 @@ class Roles extends Component
 
     protected const FIJOS = ['Admin', 'Suma', 'Usuario'];
 
-    /** Columnas de la tabla: los roles o los usuarios (uno por uno). */
-    public string $vista = 'roles';
-
     /** Concede/quita un permiso a un rol. Una pestaña con procesos se lleva todos sus procesos. */
     public function alternar(string $rol, string $permiso): void
     {
@@ -153,20 +150,17 @@ class Roles extends Component
         // Nº de usuarios por rol sin withCount('users'): esa relación de Spatie falla si el guard por defecto de la petición no es «web»
         $usuariosPorRol = DB::table('model_has_roles')->selectRaw('role_id, count(*) as n')->groupBy('role_id')->pluck('n', 'role_id');
         $roles = Role::with('permissions')->orderBy('id')->get()->each(fn ($r) => $r->users_count = (int) ($usuariosPorRol[$r->id] ?? 0));
+        // Columnas: primero los roles y, tras una barra, los usuarios uno por uno (todo en la misma pantalla)
         $cols = [];
-        if ($this->vista === 'usuarios') {
-            $usuarios = User::with('roles', 'permissions')->where('activo', true)->orderBy('name')->get();
-            $cortos = $this->nombresCortos($usuarios->pluck('name', 'id')->all());
-            foreach ($usuarios as $u) {
-                $admin = $u->hasRole('Admin');
-                $cols[] = ['id' => $u->id, 'nombre' => $cortos[$u->id], 'completo' => $u->name, 'sub' => $u->getRoleNames()->first(), 'admin' => $admin,
-                    'rol' => $u->getPermissionsViaRoles()->pluck('name')->all(), 'directos' => $u->getDirectPermissions()->pluck('name')->all()];
-            }
-        } else {
-            foreach ($roles as $r) {
-                $cols[] = ['id' => $r->name, 'nombre' => $r->name, 'sub' => $r->users_count, 'admin' => $r->name === 'Admin',
-                    'rol' => [], 'directos' => $r->permissions->pluck('name')->all(), 'fijo' => in_array($r->name, self::FIJOS, true)];
-            }
+        foreach ($roles as $r) {
+            $cols[] = ['tipo' => 'rol', 'id' => $r->name, 'nombre' => $r->name, 'completo' => $r->name, 'sub' => '('.$r->users_count.')', 'admin' => $r->name === 'Admin',
+                'rol' => [], 'directos' => $r->permissions->pluck('name')->all(), 'fijo' => in_array($r->name, self::FIJOS, true)];
+        }
+        $usuarios = User::with('roles', 'permissions')->where('activo', true)->orderBy('name')->get();
+        $cortos = $this->nombresCortos($usuarios->pluck('name', 'id')->all());
+        foreach ($usuarios as $i => $u) {
+            $cols[] = ['tipo' => 'usuario', 'inicio' => $i === 0, 'id' => $u->id, 'nombre' => $cortos[$u->id], 'completo' => $u->name, 'sub' => $u->getRoleNames()->first(),
+                'admin' => $u->hasRole('Admin'), 'rol' => $u->getPermissionsViaRoles()->pluck('name')->all(), 'directos' => $u->getDirectPermissions()->pluck('name')->all()];
         }
         $arbol = Accesos::arbol();
         $estado = [];   // [columna][permiso] => 0 no · 1 sí · 2 sí, por su rol (solo vista usuarios)
