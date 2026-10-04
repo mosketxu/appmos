@@ -109,7 +109,26 @@ class FacturasOcrSyncController extends Controller
             }
         }
 
-        return response()->json(['raiz' => '{OneDrive}', 'ficheros' => $ficheros]);
+        // Para completar el «mover» en el PC: las validadas de este cliente con su nombre original y su huella. El PC borra el original que
+        // siga en la raíz de _Facturas solo si es idéntico (SHA-256) a la copia ya renombrada en su carpeta del mes.
+        $sha = [];
+        foreach ($ficheros as $f) {
+            $sha[$f['ruta']] = $f['sha256'];
+        }
+        $originales = [];
+        [, $dir] = $this->cliente($cliente);
+        $estado = json_decode((string) @file_get_contents(FacturasOcr::rutaDatos($dir).'/facturas.json'), true);
+        foreach ($estado['facturas'] ?? [] as $fa) {
+            if (($fa['estado'] ?? '') !== 'validada' || empty($fa['nombre_original']) || ! str_starts_with((string) ($fa['ruta'] ?? ''), $raiz.'/')) {
+                continue;
+            }
+            $rel = substr($fa['ruta'], strlen($raiz) + 1);
+            if (isset($sha[$rel]) && basename($rel) !== $fa['nombre_original']) {
+                $originales[] = ['nombre' => $fa['nombre_original'], 'destino' => $rel, 'sha256' => $sha[$rel]];
+            }
+        }
+
+        return response()->json(['raiz' => '{OneDrive}', 'ficheros' => $ficheros, 'originales' => $originales]);
     }
 
     public function archivo(Request $r, string $cliente)
