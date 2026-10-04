@@ -2175,7 +2175,7 @@ class FacturasOcr extends Component
             'conflictos' => $conflictos,
             'dirDatos' => $valido ? $this->dirDatos() : '',
             'chequeo' => $this->vista === 'chequeo' ? $this->chequeoResultado() : null,
-            'ordenar' => $this->vista === 'chequeo' ? $this->ordenarResultado() : null,
+            'ordenar' => in_array($this->vista, ['chequeo', 'ordenar'], true) ? $this->ordenarResultado() : null,
             'clientes' => $this->clientes(),
             'cola' => $cola,
             'cuenta' => array_count_values(array_column($todas, 'estado')),

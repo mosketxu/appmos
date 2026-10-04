@@ -53,9 +53,9 @@
     <div class="mt-1 text-xs" style="color:#b45309">⏳ Escaneo de calidad en un PC… (la factura se volverá a proponer sola al terminar)</div>
 @endif
 
-{{-- Lista con scroll: ocupa el alto que deje la columna de la izquierda --}}
-<div style="position:relative; flex:1 1 auto; min-height:8rem; margin-top:.5rem">
-    <div style="position:absolute; inset:0; overflow-y:auto; border:1px solid #e5e7eb; border-radius:.375rem">
+{{-- Todas las facturas subidas, sin scroll interno: el panel crece lo necesario y el listado de al lado se estrecha --}}
+<div style="margin-top:.5rem">
+    <div style="border:1px solid #e5e7eb; border-radius:.375rem">
         <table class="w-full text-xs">
             <tbody>
                 @php

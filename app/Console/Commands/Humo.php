@@ -40,6 +40,7 @@ class Humo extends Command
             'Facturas OCR · validadas' => [$c.'Contabilidad\\FacturasOcr', ['vista' => 'historico']],
             'Facturas OCR · proveedores' => [$c.'Contabilidad\\FacturasOcr', ['vista' => 'proveedores']],
             'Facturas OCR · chequeo mayor' => [$c.'Contabilidad\\FacturasOcr', ['vista' => 'chequeo']],
+            'Facturas OCR · ordenar sueltas' => [$c.'Contabilidad\\FacturasOcr', ['vista' => 'ordenar']],
             'Neteges' => [$c.'Contabilidad\\Neteges', []],
             'LeoyBra' => [$c.'Contabilidad\\LeoyBra', []],
             'Proc.Mensuales' => [$c.'Contabilidad\\ProcesosMensuales', []],
