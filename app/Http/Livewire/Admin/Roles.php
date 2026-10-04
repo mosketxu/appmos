@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Admin;
 
 use App\Models\User;
 use App\Support\Accesos;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -94,7 +95,7 @@ class Roles extends Component
     public function borrar(string $rol): void
     {
         $role = Role::findByName($rol, 'web');
-        if (in_array($rol, self::FIJOS, true) || $role->users()->exists()) {
+        if (in_array($rol, self::FIJOS, true) || DB::table('model_has_roles')->where('role_id', $role->id)->exists()) {
             $this->dispatch('proceso-terminado', mensaje: "⚠️ No se puede borrar {$rol}: es un rol fijo o tiene usuarios.");
             return;
         }
@@ -105,7 +106,9 @@ class Roles extends Component
 
     public function render()
     {
-        $roles = Role::with('permissions')->withCount('users')->orderBy('id')->get();
+        // Nº de usuarios por rol sin withCount('users'): esa relación de Spatie falla si el guard por defecto de la petición no es «web»
+        $usuariosPorRol = DB::table('model_has_roles')->selectRaw('role_id, count(*) as n')->groupBy('role_id')->pluck('n', 'role_id');
+        $roles = Role::with('permissions')->orderBy('id')->get()->each(fn ($r) => $r->users_count = (int) ($usuariosPorRol[$r->id] ?? 0));
         $cols = [];
         if ($this->vista === 'usuarios') {
             foreach (User::with('roles', 'permissions')->where('activo', true)->orderBy('name')->get() as $u) {

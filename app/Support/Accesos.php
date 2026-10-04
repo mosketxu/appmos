@@ -132,7 +132,9 @@ class Accesos
                 $rol->givePermissionTo($nuevo);
             }
         }
-        foreach (User::permission($padre)->get() as $u) {
+        $idPadre = Permission::where('name', $padre)->where('guard_name', 'web')->value('id');
+        $ids = DB::table('model_has_permissions')->where('permission_id', $idPadre)->where('model_type', User::class)->pluck('model_id');
+        foreach (User::whereIn('id', $ids)->get() as $u) {
             if (! $u->hasPermissionTo($nuevo)) {
                 $u->givePermissionTo($nuevo);
             }

@@ -20,6 +20,8 @@ class PermisosProcesoTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // En las peticiones web de Appmos el guard por defecto acaba siendo «sanctum» (sin proveedor de usuarios): el panel no debe depender de él
+        config(['auth.defaults.guard' => 'sanctum']);
         Permission::findOrCreate('contabilidad.procesosmensuales', 'web');
         Role::findOrCreate('Admin', 'web');
         Role::findOrCreate('Suma', 'web')->givePermissionTo('contabilidad.procesosmensuales');
