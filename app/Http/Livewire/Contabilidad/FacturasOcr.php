@@ -625,7 +625,7 @@ class FacturasOcr extends Component
                 }
             }
             @mkdir($this->dirDatos().'/Output', 0775, true);
-            file_put_contents($ruta = $this->dirDatos().'/Output/ordenar_ajustes.json', json_encode($aj, JSON_UNESCAPED_UNICODE));
+            file_put_contents($ruta = $this->dirDatos().'/Output/ordenar_ajustes.json', json_encode((object) $aj, JSON_UNESCAPED_UNICODE));
             array_push($args, '--ajustes', $ruta);
         } else {
             $this->ordenarAccion = $this->ordenarMes = [];
