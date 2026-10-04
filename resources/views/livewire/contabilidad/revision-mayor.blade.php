@@ -57,6 +57,8 @@
                 'p410000' => ['🏷 Pagos en 410000 con una factura abierta del mismo importe en otro proveedor', 'Quizá el pago es de ese proveedor: moverlo de cuenta y puntear.'],
                 'pago_factura' => ['💶 Pago y factura abiertos del mismo importe en la misma cuenta', 'Puntear o cancelar entre sí.'],
                 'pago_suma' => ['➕ Pago igual a la suma de 2-3 facturas abiertas', 'Puntear el pago con esas facturas.'],
+                'aproximados' => ['≈ Pago y factura que casi coinciden (±1 %)', 'Comisiones, redondeos o cambio de divisa: probablemente son el mismo. Conciliar y llevar la diferencia a su cuenta.'],
+                'cambios_cuenta' => ['🔁 Factura a una cuenta de gasto distinta de la habitual del proveedor', 'Por el histórico de ese proveedor: posible cambio de cuenta.'],
                 'prov_sin_factura' => ['⏳ Provisiones sin factura todavía', 'Esperan la factura.'],
                 'colgados' => ['📌 Abiertos sueltos (sin pareja)', 'Lo colgado: pagos o facturas sin cruzar.'],
             ];
@@ -100,6 +102,12 @@
                                                     @break
                                                 @case('pago_suma')
                                                     {{ $x['pago']['cuenta'] }} {{ $x['pago']['proveedor'] }} · pago {{ $eur($x['pago']['importe']) }} € ({{ $fecha($x['pago']['fecha']) }}) = @foreach ($x['facturas'] as $y) {{ $y['num'] ?: $y['asiento'] }} ({{ $eur($y['importe']) }}){{ ! $loop->last ? ' + ' : '' }} @endforeach
+                                                    @break
+                                                @case('aproximados')
+                                                    {{ $x['pago']['cuenta'] }} {{ $x['pago']['proveedor'] }} · pago {{ $eur($x['pago']['importe']) }} € ({{ $fecha($x['pago']['fecha']) }}, asiento {{ $x['pago']['asiento'] }}) ≈ factura {{ $x['factura']['num'] ?: $x['factura']['asiento'] }} de {{ $x['factura']['proveedor'] }} · {{ $eur($x['factura']['importe']) }} € ({{ $fecha($x['factura']['fecha']) }}) <span style="color:#b45309">dif. {{ $eur($x['dif']) }} €</span>
+                                                    @break
+                                                @case('cambios_cuenta')
+                                                    {{ $x['factura']['proveedor'] }} · {{ $eur($x['factura']['importe']) }} € ({{ $fecha($x['factura']['fecha']) }}, asiento {{ $x['factura']['asiento'] }}{{ $x['factura']['num'] ? ', fra '.$x['factura']['num'] : '' }}) → ahora en <b>{{ $x['actual'] }}</b>; lo habitual es <b>{{ $x['habitual'] }}</b> ({{ $x['veces'] }} de {{ $x['total'] }} facturas)
                                                     @break
                                                 @case('prov_sin_factura')
                                                     {{ $x['provision']['texto'] }} · {{ $eur($x['provision']['importe']) }} € ({{ $fecha($x['provision']['fecha']) }}, asiento {{ $x['provision']['asiento'] }})

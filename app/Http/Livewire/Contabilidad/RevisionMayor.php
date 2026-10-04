@@ -178,7 +178,7 @@ class RevisionMayor extends Component
         if (! is_array($d)) {
             return;
         }
-        foreach (['p410000', 'pago_factura', 'pago_suma', 'prov_aplicar', 'prov_puntear', 'prov_sin_factura', 'colgados'] as $sec) {
+        foreach (['p410000', 'pago_factura', 'pago_suma', 'aproximados', 'cambios_cuenta', 'prov_aplicar', 'prov_puntear', 'prov_sin_factura', 'colgados'] as $sec) {
             foreach ($d[$sec] ?? [] as $i => $x) {
                 if (($x['clave'] ?? '') === $clave) {
                     $d['revisadas'][$clave] = $this->revisados()[$clave] + ['seccion' => $sec] + $x;
