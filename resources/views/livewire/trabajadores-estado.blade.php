@@ -14,5 +14,17 @@
             <span>{{ $e['enlinea'] }}/{{ count($e['pcs']) }}</span>
             @if ($e['activas'])<span class="text-indigo-600">· ⏳ {{ $e['activas'] }}</span>@endif
         </span>
+        {{-- Selector «Ejecutar en»: el PC desde el que trabajas. Se recuerda en ESTE navegador (cookie appmos_pc, 1 año). Si ese PC no responde, el reparto vuelve a automático --}}
+        <span wire:ignore class="inline-flex items-center ml-1 text-xs text-gray-600 gap-x-1 whitespace-nowrap" data-sin-tema
+              x-data="{ pc: (document.cookie.match(/(?:^|; )appmos_pc=([^;]*)/) || [])[1] ? decodeURIComponent(document.cookie.match(/(?:^|; )appmos_pc=([^;]*)/)[1]) : '',
+                        guardar() { document.cookie = 'appmos_pc=' + encodeURIComponent(this.pc) + '; path=/; max-age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : ''); } }">
+            <span title="Los procesos que lances desde Appmos se ejecutan en este PC (con su Outlook, su OneDrive y sus ventanas). «Automático»: el PC de cada proceso o el que esté libre.">Ejecutar en</span>
+            <select x-model="pc" x-on:change="guardar()" class="py-0 pl-1 pr-6 text-xs border-gray-300 rounded-md" style="height:1.7rem">
+                <option value="">Automático</option>
+                @foreach ($e['pcs'] as $p)
+                    <option value="{{ $p['nombre'] }}">{{ $p['en_linea'] ? '🟢' : '⚪' }} {{ $p['nombre'] }}</option>
+                @endforeach
+            </select>
+        </span>
     @endif
 </div>

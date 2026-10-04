@@ -85,4 +85,28 @@ class RelevoTest extends TestCase
         $this->postJson("/api/trabajador/tareas/$t1/fin", ['ok' => true, 'resultado' => ['ok' => true]], ['X-Token' => $this->p])->assertOk();
         $this->assertSame($t2, $a(), 'terminada la 1.ª, ya puede ir la 2.ª');
     }
+
+    public function test_el_pc_elegido_en_el_selector_manda_si_esta_en_linea_y_si_cae_lo_coge_el_otro(): void
+    {
+        DB::table('trabajadores')->where('nombre', 'PortalExomen')->update(['ultimo_latido' => now()]);
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()]);
+        $this->app['request']->cookies->set('appmos_pc', 'PortalExomen');
+        $this->assertSame('PortalExomen', ColaTareas::pcElegido());
+        $this->app['request']->cookies->set('appmos_pc', 'AlexMiniPC');
+        $this->assertSame('AlexMiniPC', ColaTareas::pcElegido());
+        $this->app['request']->cookies->set('appmos_pc', 'Otro');
+        $this->assertNull(ColaTareas::pcElegido(), 'un nombre que no es un PC dado de alta se ignora');
+        $this->app['request']->cookies->set('appmos_pc', 'PortalExomen');
+        DB::table('trabajadores')->where('nombre', 'PortalExomen')->update(['ultimo_latido' => now()->subMinutes(10)]);
+        $this->assertNull(ColaTareas::pcElegido(), 'el elegido no da señales: vuelve a automático');
+
+        // relevo general: una tarea fijada a un PC que no responde la coge cualquier otro tras 3 min (aunque no esté en ninguna lista de relevo)
+        config(['contabilidad.facturasocr_relevo' => []]);
+        $id = ColaTareas::crear('pc.facturasocr', ['cliente' => 'Durcal'], 'PortalExomen');
+        $pide = fn () => $this->postJson('/api/trabajador/siguiente', ['capacidades' => ['pc.facturasocr']], ['X-Token' => $this->a])->json('tarea.id');
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()]);
+        $this->assertNull($pide(), 'recién creada: espera');
+        DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(5)]);
+        $this->assertSame($id, $pide());
+    }
 }

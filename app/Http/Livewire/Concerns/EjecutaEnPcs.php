@@ -33,7 +33,7 @@ trait EjecutaEnPcs
     /** PC al que van las tareas del grupo si se ha fijado uno (p. ej. el que guarda una base que viaja por git); null = cualquiera. */
     protected function destinoPc(): ?string
     {
-        return config('contabilidad.pc_grupos.'.$this->grupoPc.'.pc') ?: null;
+        return ColaTareas::pcElegido() ?: (config('contabilidad.pc_grupos.'.$this->grupoPc.'.pc') ?: null);
     }
 
     protected function colaLista(): bool

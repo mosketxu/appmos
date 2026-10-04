@@ -585,6 +585,26 @@ class FacturasOcr extends Component
         $this->ejecutar(['chequear', '--periodo', $p], 900, 'Chequeo contra el mayor '.$p);
     }
 
+    /** Facturas sueltas en la raíz de _Facturas: SIMULAR (no toca nada) o APLICAR (renombra y mueve al mes del asiento del mayor, quita duplicadas, devuelve a Por revisar). */
+    public function ordenarSueltas(bool $aplicar = false): void
+    {
+        if (! $this->clienteValido()) {
+            return;
+        }
+        $args = ['ordenar', '--periodo', preg_match('/^\d{4}/', $this->chequeoPeriodo) ? $this->chequeoPeriodo : date('Y').'-1T'];
+        if ($aplicar) {
+            $args[] = '--aplicar';
+        }
+        $this->ejecutar($args, 900, $aplicar ? 'Ordenar facturas sueltas (aplicado)' : 'Ordenar facturas sueltas (simulación)');
+    }
+
+    protected function ordenarResultado(): ?array
+    {
+        $f = $this->clienteValido() ? $this->dirDatos().'/Output/Ordenar_facturas.json' : '';
+
+        return $f !== '' && is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: null) : null;
+    }
+
     protected function chequeoResultado(): ?array
     {
         $p = trim($this->chequeoPeriodo);
@@ -693,6 +713,9 @@ class FacturasOcr extends Component
         }
         $estados = [];
         foreach ($this->estado()['facturas'] as $f) {
+            if (! empty($f['oculta']) && in_array($f['estado'], ['pendiente', 'rechazada', 'ilegible'], true)) {
+                continue;   // quitada de la lista y no contabilizada: si se vuelve a subir, se recupera (recibirPdfs)
+            }
             $estados[$f['id']] = ['validada' => 'ya validada', 'validando' => 'validándose', 'duplicada' => 'ya marcada como duplicada',
                 'rechazada' => 'ya rechazada'][$f['estado']] ?? 'ya está en la lista';
         }
@@ -713,7 +736,7 @@ class FacturasOcr extends Component
     /** Termina una subida: guarda en la carpeta de entrada los PDF nuevos y lanza su lectura. */
     public function recibirPdfs(): array
     {
-        $res = ['guardadas' => [], 'repetidas' => [], 'rechazadas' => []];
+        $res = ['guardadas' => [], 'repetidas' => [], 'rechazadas' => [], 'recuperadas' => []];
         if (! $this->web() || ! $this->clienteValido()) {
             return $res;
         }
@@ -727,6 +750,16 @@ class FacturasOcr extends Component
             $id = $this->idPdf($f->getRealPath());
             if (! preg_match('/\.pdf$/i', $nombre) || ! str_starts_with((string) @file_get_contents($f->getRealPath(), false, null, 0, 5), '%PDF')) {
                 $res['rechazadas'][] = $nombre;
+            } elseif (($oculta = $this->ocultaRecuperable($id)) && ! isset($enEntrada[$id])) {
+                // Estaba quitada de la lista sin contabilizar y la vuelves a subir: se procesa (antes se descartaba como «ya estaba»)
+                $destino = $this->dirEntrada().'/'.$nombre;
+                if (file_exists($destino)) {
+                    $destino = $this->dirEntrada().'/'.pathinfo($nombre, PATHINFO_FILENAME).'_'.$id.'.pdf';
+                }
+                copy($f->getRealPath(), $destino);
+                $enEntrada[$id] = basename($destino);
+                $this->ejecutar(['recuperar', $oculta, '--carpeta', $destino], 60, 'Recuperar '.$nombre, false);
+                $res['recuperadas'][] = basename($destino);
             } elseif (isset($conocidas[$id]) || isset($enEntrada[$id])) {
                 $res['repetidas'][] = $nombre;
             } else {
@@ -740,6 +773,7 @@ class FacturasOcr extends Component
             }
         }
         $this->salida = count($res['guardadas']).' factura(s) recibida(s) en el servidor'
+            .($res['recuperadas'] ? ', '.count($res['recuperadas']).' recuperada(s) (estaban quitadas de la lista: vuelven a Por revisar)' : '')
             .($res['repetidas'] ? ', '.count($res['repetidas']).' ya estaban (no se han vuelto a subir)' : '')
             .($res['rechazadas'] ? ', '.count($res['rechazadas']).' no son PDF: '.implode(', ', $res['rechazadas']) : '').'.';
         if ($res['guardadas']) {
@@ -747,6 +781,18 @@ class FacturasOcr extends Component
         }
 
         return $res;
+    }
+
+    /** Id de la factura si estaba quitada de la lista (oculta), sin contabilizar, y se vuelve a subir; si no, null. */
+    protected function ocultaRecuperable(string $id): ?string
+    {
+        foreach ($this->estado()['facturas'] as $f) {
+            if ($f['id'] === $id && ! empty($f['oculta']) && in_array($f['estado'], ['pendiente', 'rechazada', 'ilegible'], true)) {
+                return $f['id'];
+            }
+        }
+
+        return null;
     }
 
     /** Marcas de la lectura en segundo plano: [inicio (epoch), fin (epoch|null)] o null si no se ha lanzado nunca. */
@@ -957,7 +1003,7 @@ class FacturasOcr extends Component
         }
         if (! \Illuminate\Support\Facades\DB::table('tareas')->where('proceso', 'pc.facturasocr')->where('parametros', 'like', '%"cliente":"'.$this->cliente.'"%')
             ->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
-            \App\Support\ColaTareas::crear('pc.facturasocr', ['cliente' => $this->cliente], config('contabilidad.facturasocr_pc') ?: null, auth()->id());
+            \App\Support\ColaTareas::crear('pc.facturasocr', ['cliente' => $this->cliente], \App\Support\ColaTareas::pcElegido() ?: (config('contabilidad.facturasocr_pc') ?: null), auth()->id());
         }
         $this->sincronizando = true;
     }
@@ -2129,6 +2175,7 @@ class FacturasOcr extends Component
             'conflictos' => $conflictos,
             'dirDatos' => $valido ? $this->dirDatos() : '',
             'chequeo' => $this->vista === 'chequeo' ? $this->chequeoResultado() : null,
+            'ordenar' => $this->vista === 'chequeo' ? $this->ordenarResultado() : null,
             'clientes' => $this->clientes(),
             'cola' => $cola,
             'cuenta' => array_count_values(array_column($todas, 'estado')),

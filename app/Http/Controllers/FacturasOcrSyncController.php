@@ -128,6 +128,14 @@ class FacturasOcrSyncController extends Controller
             }
         }
 
+        // Lo que «Ordenar facturas sueltas» ha movido o quitado en el servidor: el PC quita también su copia suelta si es idéntica
+        $registro = json_decode((string) @file_get_contents($dir.'/originales_movidos.json'), true) ?: [];
+        foreach ($registro as $m) {
+            if (isset($m['nombre'], $m['destino'], $m['sha256']) && ($sha[$m['destino']] ?? null) === $m['sha256']) {
+                $originales[] = ['nombre' => $m['nombre'], 'destino' => $m['destino'], 'sha256' => $m['sha256']];
+            }
+        }
+
         return response()->json(['raiz' => '{OneDrive}', 'ficheros' => $ficheros, 'originales' => $originales]);
     }
 

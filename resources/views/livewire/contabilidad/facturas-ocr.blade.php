@@ -444,6 +444,47 @@
                             @else
                                 <p class="text-sm text-gray-500">Aún no hay resultado para ese periodo: pulsa «Chequear».</p>
                             @endif
+
+                            {{-- Facturas sueltas fuera de las carpetas de mes --}}
+                            <div style="border-top:1px solid #e5e7eb; padding-top:.7rem; display:flex; flex-direction:column; gap:.5rem">
+                                <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+                                    <b class="text-sm">Facturas sueltas en la raíz de «_Facturas»</b>
+                                    <button type="button" wire:click="ordenarSueltas(false)" wire:loading.attr="disabled" wire:target="ordenarSueltas" class="focr-btn b-gris" style="padding:.25rem .8rem">
+                                        <span wire:loading.remove wire:target="ordenarSueltas">🔎 Simular (no toca nada)</span><span wire:loading wire:target="ordenarSueltas">Trabajando…</span>
+                                    </button>
+                                    @if ($ordenar && ! $ordenar['aplicado'] && (($ordenar['acciones']['MOVER'] ?? 0) + ($ordenar['acciones']['QUITAR'] ?? 0) + ($ordenar['acciones']['A PROCESAR'] ?? 0)))
+                                        <button type="button" wire:click="ordenarSueltas(true)" wire:loading.attr="disabled" wire:target="ordenarSueltas"
+                                                wire:confirm="¿Aplicar lo que dice la simulación? Se renombran y mueven las del mayor, se quitan las duplicadas ya ordenadas y las que faltan vuelven a Por revisar. Después se llevarán al OneDrive de tu PC."
+                                                class="focr-btn b-verde" style="padding:.25rem .8rem">✅ Aplicar</button>
+                                    @endif
+                                    @if ($ordenar) <span class="text-xs text-gray-500">{{ $ordenar['aplicado'] ? 'aplicado' : 'simulación' }} del {{ $ordenar['fecha'] }}</span> @endif
+                                </div>
+                                <p class="text-xs text-gray-500">Mira los PDF sueltos: <b>MOVER</b> = está en el mayor (se renombra y va a la carpeta del mes del asiento del mayor) ·
+                                    <b>QUITAR</b> = ya está ordenada en su mes (mismo contenido) · <b>A PROCESAR</b> = el mayor no la tiene (vuelve a «Por revisar» si estaba quitada de la lista) · IMAGEN = escaneada, no se identifica.
+                                    Primero simula y revisa; «Aplicar» es lo único que toca ficheros.</p>
+                                @if ($ordenar)
+                                    <div style="display:flex; gap:.4rem; flex-wrap:wrap">
+                                        @foreach ($ordenar['acciones'] as $ac => $n)
+                                            <span class="focr-chip {{ $ac === 'MOVER' ? 'c-ok' : (in_array($ac, ['QUITAR']) ? 'c-gris' : 'c-revisar') }}">{{ $ac }} {{ $n }}</span>
+                                        @endforeach
+                                        @foreach (($ordenar['aplicadas'] ?? []) as $k => $n) <span class="focr-chip c-ok">hecho: {{ $n }} {{ $k }}</span> @endforeach
+                                    </div>
+                                    <table class="focr-tabla">
+                                        <thead><tr><th>Acción</th><th>Fichero</th><th>Proveedor</th><th>Nº</th><th style="text-align:right">Total</th><th>Destino (en _Facturas)</th><th>Detalle</th></tr></thead>
+                                        <tbody>
+                                            @foreach ($ordenar['filas'] as $x)
+                                                <tr>
+                                                    <td><span class="focr-chip {{ $x['accion'] === 'MOVER' ? 'c-ok' : ($x['accion'] === 'QUITAR' ? 'c-gris' : 'c-revisar') }}" style="white-space:nowrap">{{ $x['accion'] }}</span></td>
+                                                    <td style="max-width:240px; word-break:break-all">{{ $x['fichero'] }}</td>
+                                                    <td>{{ $x['cuenta'] }} {{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td>
+                                                    <td style="text-align:right">{{ $x['total'] !== null ? number_format((float) $x['total'], 2, ',', '.') : '' }}</td>
+                                                    <td class="text-xs" style="word-break:break-all">{{ $x['destino'] }}</td><td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @endif
+                            </div>
                         </div>
                     @elseif ($vista === 'proveedores')
                         <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200">

@@ -78,6 +78,27 @@ class ColaTareas
         return $t->nombre ?? null;
     }
 
+    /**
+     * PC elegido en el selector «Ejecutar en» de la barra de menú (cookie `appmos_pc` de ESTE navegador): lo que se lance desde Appmos se ejecuta ahí,
+     * con su Outlook, su OneDrive y sus ventanas. null = automático (el PC de cada proceso o el que esté libre). Solo vale si es un trabajador
+     * dado de alta y con señales recientes; si no, se ignora y manda el reparto normal (con su relevo).
+     */
+    public static function pcElegido(): ?string
+    {
+        try {
+            $n = trim((string) request()->cookie('appmos_pc'));
+            if ($n === '' || ! preg_match('/^[A-Za-z0-9 _.-]{1,60}$/', $n)) {
+                return null;
+            }
+            $vivo = DB::table('trabajadores')->where('nombre', $n)->where('activo', true)
+                ->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->exists();
+
+            return $vivo ? $n : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     public static function estado(string $clave): mixed
     {
         $v = DB::table('estado_procesos')->where('clave', $clave)->value('valor');
@@ -159,6 +180,12 @@ class ColaTareas
                 ->whereIn('proceso', $capacidades)
                 ->where(function ($q) use ($t) {
                     $q->whereNull('destino')->orWhere('destino', $t->nombre);
+                    // Relevo general (4-oct-2026): lo fijado a un PC (el de FACTURASOCR_PC, NETEGES_PC... o el elegido en el selector) que lleva ≥3 min sin señales
+                    // lo coge cualquier otro PC que sepa hacerlo (Alex no trabaja en los dos a la vez; Neteges ya hace pull/push de la base por git)
+                    $q->orWhere(fn ($r) => $r->whereNotNull('destino')
+                        ->where('parametros', 'not like', '%"grupo":"fiq"%')   // los de FIQ siguen sin relevo (decisión anterior); los demás sí
+                        ->where('created_at', '<=', now()->subMinutes(self::RELEVO_MIN))
+                        ->whereNotIn('destino', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')));
                     // Relevo del traspaso de Facturas OCR al OneDrive (fijado a FACTURASOCR_PC): si ese PC no da señales, lo hace el de relevo
                     if (in_array($t->nombre, (array) config('contabilidad.facturasocr_relevo', []), true)) {
                         $q->orWhere(fn ($r) => $r->where('proceso', 'pc.facturasocr')

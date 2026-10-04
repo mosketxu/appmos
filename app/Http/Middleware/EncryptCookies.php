@@ -12,6 +12,6 @@ class EncryptCookies extends Middleware
      * @var array
      */
     protected $except = [
-        //
+        'appmos_pc',   // PC desde el que trabaja este navegador (selector «Ejecutar en»); lo pone el JS de la barra de menú
     ];
 }
