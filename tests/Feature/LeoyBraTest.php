@@ -78,6 +78,10 @@ PY);
         $this->assertFileExists($this->dir.'/Output/2026-3T/PluginBancos.xlsx');
         $c->assertSee('mira esto')->assertSee('PluginBancos.xlsx');
         $c->call('descargar', 'Output/2026-3T/PluginBancos.xlsx')->assertFileDownloaded('PluginBancos.xlsx');
+        // al volver a abrir la pantalla sale el último trimestre con resultado, y al cambiar de trimestre cambia el resultado
+        $n = Livewire::test(LeoyBra::class)->assertSet('periodo', '2026-3T')->assertSee('mira esto')->assertSee('/contabilidad/leoybra/descargar/2026-3T/PluginBancos.xlsx');
+        $n->set('periodo', '2026-2T')->assertDontSee('mira esto');
+        $n->set('periodo', '2026-3T')->assertSee('mira esto');
         $c->call('descargar', '../etc/passwd')->assertSet('error', 'No se encuentra ../etc/passwd.');
     }
 

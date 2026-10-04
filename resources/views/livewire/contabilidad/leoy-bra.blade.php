@@ -140,7 +140,7 @@
                         </div>
                         <div style="display:flex; flex-direction:column; gap:.3rem">
                             @foreach ($res['archivos'] as $a)
-                                <button type="button" wire:click="descargar(@js($a))" class="{{ $btn }}" style="text-align:left">⬇ {{ basename($a) }}</button>
+                                <a href="{{ route('contabilidad.leoybra.descargar', [$res['periodo'], basename($a)]) }}" class="{{ $btn }}" style="text-align:left">⬇ {{ basename($a) }}</a>
                             @endforeach
                         </div>
                     </div>

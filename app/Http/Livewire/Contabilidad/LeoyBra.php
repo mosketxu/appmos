@@ -32,8 +32,14 @@ class LeoyBra extends Component
 
     public function mount(): void
     {
-        $this->periodo = $this->periodoPorDefecto();
+        // El trimestre que se estaba viendo (sesión); si no, el último con resultado; si no, el último terminado
+        $this->periodo = (string) session('leoybra.periodo', '');
         $this->cargar();
+        if (! preg_match('/^\d{4}-[1-4]T$/', $this->periodo)) {
+            $con = collect($this->estado['periodos'] ?? [])->filter(fn ($v) => isset($v['resumen']))->keys()->sort()->last();
+            $this->periodo = $con ?: $this->periodoPorDefecto();
+            $this->cargar();
+        }
     }
 
     /** El trimestre natural ya terminado (en octubre, el 3T). */
@@ -84,6 +90,7 @@ class LeoyBra extends Component
     public function updatedPeriodo(): void
     {
         $this->periodo = strtoupper(trim($this->periodo));
+        session(['leoybra.periodo' => $this->periodo]);
         $this->cargar();
     }
 
@@ -201,6 +208,7 @@ class LeoyBra extends Component
             $this->error = 'No se pudo generar: '.trim($r->errorOutput() ?: $r->output());
             return;
         }
+        session(['leoybra.periodo' => $this->periodo]);
         $this->cargar();
         $n = count($this->resultado['avisos'] ?? []);
         $this->dispatch('proceso-terminado', mensaje: "✅ LeoyBra {$this->periodo} generado".($n ? " con {$n} avisos para revisar." : '.'));
