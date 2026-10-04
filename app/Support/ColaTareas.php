@@ -126,6 +126,7 @@ class ColaTareas
     {
         DB::table('trabajadores')->where('id', $t->id)
             ->update(['ultimo_latido' => now(), 'capacidades' => json_encode(array_values($capacidades)), 'updated_at' => now()]);
+        VigilanciaTrabajadores::revisar();   // avisa si OTRO PC lleva rato sin dar señales (como mucho una vez por minuto)
     }
 
     /** Las tareas «en curso» de un trabajador que dejó de dar señales vuelven a la cola. */
@@ -158,6 +159,12 @@ class ColaTareas
                 ->whereIn('proceso', $capacidades)
                 ->where(function ($q) use ($t) {
                     $q->whereNull('destino')->orWhere('destino', $t->nombre);
+                    // Relevo del traspaso de Facturas OCR al OneDrive (fijado a FACTURASOCR_PC): si ese PC no da señales, lo hace el de relevo
+                    if (in_array($t->nombre, (array) config('contabilidad.facturasocr_relevo', []), true)) {
+                        $q->orWhere(fn ($r) => $r->where('proceso', 'pc.facturasocr')
+                            ->where('created_at', '<=', now()->subMinutes(self::RELEVO_MIN))
+                            ->whereNotIn('destino', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')));
+                    }
                     // Relevo: lo fijado a otro PC (p. ej. Neteges y Durcal a AlexMiniPC) lo hace este si ese PC no da señales y la tarea lleva esperando
                     foreach (config('contabilidad.pc_grupos', []) as $grupo => $g) {
                         if (in_array($t->nombre, (array) ($g['relevo'] ?? []), true)) {

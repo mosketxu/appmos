@@ -26,8 +26,12 @@ class TodoCampana extends Component
         if (config('contabilidad.todo_url')) {   // en un PC no hay avisos propios: están en la web
             return view('livewire.todo-campana', ['total' => 0, 'avisos' => collect(), 'oculta' => true]);
         }
+        \App\Support\VigilanciaTrabajadores::revisar();   // si ningún PC está vivo, avisa al abrir Appmos (la campana se refresca sola)
         $q = TodoAviso::where('user_id', auth()->id())->sinLeer();
+        $u = auth()->user();
+        $gestor = $u && ($u->hasRole('Admin') || in_array($u->email, config('contabilidad.claude_todo_gestores', []), true));
         return view('livewire.todo-campana', [
+            'caidos' => $gestor ? \App\Support\VigilanciaTrabajadores::caidos() : [],
             'total' => (clone $q)->count(),
             'avisos' => $q->with(['tarea:id,titulo', 'origen:id,name'])->latest('id')->limit(10)->get(),
         ]);

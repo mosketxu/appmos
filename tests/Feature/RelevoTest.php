@@ -41,6 +41,20 @@ class RelevoTest extends TestCase
         $this->assertSame($id, $this->pideP(), 'AlexMiniPC sin señales y tarea esperando: la coge PortalExomen');
     }
 
+    public function test_el_traspaso_de_facturas_ocr_al_onedrive_tambien_tiene_relevo(): void
+    {
+        config(['contabilidad.facturasocr_relevo' => ['PortalExomen']]);
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()->subMinutes(30)]);
+        $id = ColaTareas::crear('pc.facturasocr', ['cliente' => 'Durcal'], 'AlexMiniPC');
+        $pide = fn () => $this->postJson('/api/trabajador/siguiente', ['capacidades' => ['pc.facturasocr']], ['X-Token' => $this->p])->json('tarea.id');
+        $this->assertNull($pide(), 'recién creada: espera unos minutos a AlexMiniPC');
+        DB::table('tareas')->where('id', $id)->update(['created_at' => now()->subMinutes(5)]);
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()]);
+        $this->assertNull($pide(), 'AlexMiniPC está en línea: no hay relevo');
+        DB::table('trabajadores')->where('nombre', 'AlexMiniPC')->update(['ultimo_latido' => now()->subMinutes(30)]);
+        $this->assertSame($id, $pide(), 'AlexMiniPC sin señales y la tarea esperando: la coge PortalExomen');
+    }
+
     public function test_un_grupo_sin_relevo_no_se_coge(): void
     {
         $id = ColaTareas::crear('pc.script', ['grupo' => 'fiq', 'pasos' => [['script' => 'monthlyFIQ.js', 'args' => ['09']]]], 'AlexMiniPC');
