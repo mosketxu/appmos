@@ -40,23 +40,38 @@ class Roles extends Component
         Accesos::olvidar();
     }
 
-    /** Lo mismo para un usuario concreto (permiso directo, además de los de su rol). */
+    /**
+     * Lo mismo para un usuario concreto. Si el acceso lo da su rol, «quitarlo» lo deniega solo a esta persona (permisos_denegados)
+     * y volver a marcarlo quita esa denegación; si no, es un permiso directo.
+     */
     public function alternarUsuario(int $id, string $permiso): void
     {
-        $u = User::with('roles', 'permissions')->findOrFail($id);
-        if ($u->hasRole('Admin') || ! $u->activo) {   // un usuario inactivo no se toca: queda su historial
+        $u = User::findOrFail($id);
+        if ($u->hasRole('Admin') || ! $u->activo) {   // Admin lo tiene todo; un inactivo no se toca: queda su historial
             return;
         }
-        $delRol = $u->getPermissionsViaRoles()->pluck('name')->all();
-        if ($this->tiene($delRol, $permiso)) {
-            return;   // lo da su rol: se cambia en la vista de roles
-        }
-        $dar = ! $this->tiene($u->getDirectPermissions()->pluck('name')->all(), $permiso);
-        foreach ($this->conHijos($permiso) as $c) {
+        $claves = $this->conHijos($permiso);
+        foreach ($claves as $c) {   // primero existen todos los permisos (los de proceso se crean al tocarlos la primera vez)
             Accesos::asegurarProceso($c);
             Permission::findOrCreate($c, 'web');
-            if (! in_array($c, $delRol, true)) {
-                $dar ? $u->givePermissionTo($c) : $u->revokePermissionTo($c);
+        }
+        $u = User::with('roles', 'permissions')->findOrFail($id);
+        $delRol = $u->getPermissionsViaRoles()->pluck('name')->all();
+        $directos = $u->getDirectPermissions()->pluck('name')->all();
+        $denegados = DB::table('permisos_denegados')->where('user_id', $id)->pluck('permiso')->all();
+        $dar = ! (($this->tiene($delRol, $permiso) && ! in_array($permiso, $denegados, true)) || $this->tiene($directos, $permiso));
+        foreach ($claves as $c) {
+            $porRol = in_array($c, $delRol, true);
+            if ($dar) {
+                DB::table('permisos_denegados')->where('user_id', $id)->where('permiso', $c)->delete();
+                if (! $porRol) {
+                    $u->givePermissionTo($c);
+                }
+            } else {
+                if ($porRol) {
+                    DB::table('permisos_denegados')->updateOrInsert(['user_id' => $id, 'permiso' => $c], ['updated_at' => now(), 'created_at' => now()]);
+                }
+                $u->revokePermissionTo($c);
             }
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -160,7 +175,7 @@ class Roles extends Component
         $cortos = $this->nombresCortos($usuarios->pluck('name', 'id')->all());
         foreach ($usuarios as $i => $u) {
             $cols[] = ['tipo' => 'usuario', 'inicio' => $i === 0, 'id' => $u->id, 'nombre' => $cortos[$u->id], 'completo' => $u->name, 'sub' => $u->activo ? $u->getRoleNames()->first() : 'inactivo',
-                'activo' => (bool) $u->activo, 'admin' => $u->hasRole('Admin'), 'rol' => $u->getPermissionsViaRoles()->pluck('name')->all(), 'directos' => $u->getDirectPermissions()->pluck('name')->all()];
+                'activo' => (bool) $u->activo, 'denegados' => Accesos::denegados($u->id), 'admin' => $u->hasRole('Admin'), 'rol' => $u->getPermissionsViaRoles()->pluck('name')->all(), 'directos' => $u->getDirectPermissions()->pluck('name')->all()];
         }
         $arbol = Accesos::arbol();
         $estado = [];   // [columna][permiso] => 0 no · 1 sí · 2 sí, por su rol (solo vista usuarios)
@@ -170,7 +185,11 @@ class Roles extends Component
                     foreach (array_merge([$it['clave'] => 1], array_fill_keys(array_keys($it['hijos']), 1)) as $clave => $_) {
                         $tenia = $c['admin'] || $this->tiene($c['rol'], $clave) || $this->tiene($c['directos'], $clave);
                         // 3 = usuario inactivo que tenía este acceso (no puede entrar, pero se conserva su historial)
-                        $estado[$k][$clave] = ($c['activo'] ?? true) ? ($c['admin'] ? 2 : ($this->tiene($c['rol'], $clave) ? 2 : ($this->tiene($c['directos'], $clave) ? 1 : 0))) : ($tenia ? 3 : 0);
+                        // 0 no · 1 directo · 2 admin (fijo) · 3 inactivo que lo tenía · 4 lo da el rol (se puede quitar a esta persona) · 5 el rol lo da pero está denegado a esta persona
+                        $porRol = $this->tiene($c['rol'], $clave);
+                        $estado[$k][$clave] = ($c['activo'] ?? true)
+                            ? ($c['admin'] ? 2 : ($porRol ? (in_array($clave, $c['denegados'] ?? [], true) ? 5 : 4) : ($this->tiene($c['directos'], $clave) ? 1 : 0)))
+                            : ($tenia ? 3 : 0);
                     }
                 }
             }

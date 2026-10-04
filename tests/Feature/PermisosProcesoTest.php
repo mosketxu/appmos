@@ -81,10 +81,23 @@ class PermisosProcesoTest extends TestCase
         $this->assertTrue($u->hasDirectPermission('proceso.pm.certificados'));
         $c->call('alternarUsuario', $u->id, 'proceso.pm.certificados');
         $this->assertFalse($u->fresh()->hasDirectPermission('proceso.pm.certificados'));
-        // lo que da su rol no se puede quitar desde aquí
+        // lo que da su rol se le puede quitar solo a esta persona (denegación) y volver a darlo; el rol y los demás usuarios no cambian
         $s = $this->suma();
+        $otro = $this->suma();
+        $c->call('alternarUsuario', $s->id, 'contabilidad.procesosmensuales');
+        $this->assertFalse($s->fresh()->can('contabilidad.procesosmensuales'));
+        $this->assertFalse($s->fresh()->can('proceso.pm.seguimiento'), 'la pestaña se lleva sus procesos');
+        $this->assertTrue($otro->fresh()->can('contabilidad.procesosmensuales'));
+        $this->assertTrue(Role::findByName('Suma', 'web')->hasPermissionTo('contabilidad.procesosmensuales'));
         $c->call('alternarUsuario', $s->id, 'contabilidad.procesosmensuales');
         $this->assertTrue($s->fresh()->can('contabilidad.procesosmensuales'));
+        $this->assertTrue($s->fresh()->can('proceso.pm.seguimiento'));
+        // un solo proceso
+        $c->call('alternarUsuario', $s->id, 'proceso.pm.certificados');
+        $this->assertFalse($s->fresh()->can('proceso.pm.certificados'));
+        $this->assertTrue($s->fresh()->can('proceso.pm.seguimiento'));
+        $h = $c->html();
+        $this->assertStringContainsString('Denegado a esta persona aunque su rol lo da', $h);
     }
 
     public function test_la_ficha_del_usuario_enseña_pestanas_y_procesos_y_los_guarda(): void

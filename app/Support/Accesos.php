@@ -142,8 +142,30 @@ class Accesos
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
+    /** @var array<int, array<string>> */
+    protected static array $denegados = [];
+
+    /** Permisos que se le han quitado a este usuario aunque su rol los dé. */
+    public static function denegados(?int $userId): array
+    {
+        if (! $userId) {
+            return [];
+        }
+        if (! array_key_exists($userId, static::$denegados)) {
+            try {
+                static::$denegados[$userId] = \Illuminate\Support\Facades\Schema::hasTable('permisos_denegados')
+                    ? DB::table('permisos_denegados')->where('user_id', $userId)->pluck('permiso')->all() : [];
+            } catch (\Throwable $e) {
+                static::$denegados[$userId] = [];
+            }
+        }
+
+        return static::$denegados[$userId];
+    }
+
     public static function olvidar(): void
     {
         static::$cache = [];
+        static::$denegados = [];
     }
 }

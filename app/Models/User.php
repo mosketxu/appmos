@@ -18,7 +18,9 @@ class User extends Authenticatable
     use HasProfilePhoto;
     use Notifiable;
     use TwoFactorAuthenticatable;
-    use HasRoles;
+    use HasRoles {
+        hasPermissionTo as protected traitHasPermissionTo;
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -53,6 +55,20 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'activo' => 'boolean',
     ];
+
+    /**
+     * Accesos denegados a esta persona aunque su rol los dé (tabla permisos_denegados). Admin no se ve afectado (Gate::before).
+     * Spatie llama a hasPermissionTo desde Gate/can(): aquí se corta.
+     */
+    public function hasPermissionTo($permission, $guardName = null): bool
+    {
+        $nombre = is_string($permission) ? $permission : ($permission->name ?? null);
+        if ($nombre !== null && in_array($nombre, \App\Support\Accesos::denegados($this->id), true)) {
+            return false;
+        }
+
+        return $this->traitHasPermissionTo($permission, $guardName);
+    }
 
     /** Responsable Suma (combo de Entidades) que es este usuario, si lo es. */
     public function suma()
