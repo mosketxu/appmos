@@ -246,4 +246,20 @@ class FacturasOcrWebTest extends TestCase
         $this->assertContains('--forzar', $p['pasos'][0]['args']);
         $this->assertSame($id.'.pdf', $p['entradas'][0]['nombre']);
     }
+
+    public function test_al_cambiar_base_o_porcentaje_la_cuota_se_calcula_sola(): void
+    {
+        $c = $this->componente();
+        $c->form = ['lineas' => [['base' => '100,50', 'pct' => '21', 'cuota' => '0.00'], ['base' => '', 'pct' => '10', 'cuota' => ''], ['base' => '10', 'pct' => '', 'cuota' => '5']]];
+        $c->updatedForm('100,50', 'lineas.0.base');
+        $this->assertSame('21.11', $c->form['lineas'][0]['cuota']);   // 100,50 × 21 % = 21,105 → 21,11
+        $c->form['lineas'][0]['pct'] = '10';
+        $c->updatedForm('10', 'lineas.0.pct');
+        $this->assertSame('10.05', $c->form['lineas'][0]['cuota']);
+        // sin base o sin % no se inventa nada, y editar la cuota a mano no la recalcula
+        $c->updatedForm('', 'lineas.1.pct');
+        $this->assertSame('', $c->form['lineas'][1]['cuota']);
+        $c->updatedForm('5', 'lineas.2.cuota');
+        $this->assertSame('5', $c->form['lineas'][2]['cuota']);
+    }
 }

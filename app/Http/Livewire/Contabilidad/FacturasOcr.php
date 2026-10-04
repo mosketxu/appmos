@@ -547,9 +547,13 @@ class FacturasOcr extends Component
         fclose($fh);
     }
 
-    public function updatedForm(): void
+    public function updatedForm($valor = null, $clave = ''): void
     {
         $this->sucio = true;
+        // Al cambiar la base o el % de IVA de una línea, su cuota se calcula sola (ya no hace falta el botón «=»)
+        if (preg_match('/^lineas\.([0-2])\.(base|pct)$/', (string) $clave, $m)) {
+            $this->cuota((int) $m[1]);
+        }
     }
 
     /** Al final de cada petición: lo tocado en la factura abierta queda guardado (se puede cerrar Appmos). */

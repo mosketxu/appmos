@@ -68,6 +68,10 @@
         .textLayer span, .textLayer br { color:transparent; position:absolute; white-space:pre; cursor:text; transform-origin:0% 0%; }
         .textLayer ::selection { background:rgba(59,130,246,.35); }
         .focr-caja { position:absolute; border:2px solid #f59e0b; background:rgba(245,158,11,.15); pointer-events:none; }
+        /* La barra Validar/Rechazar queda pegada abajo: si al corregir un importe desaparece el aviso «no cuadra», no se mueve y el clic no se pierde */
+        .focr-rev-form { display:flex; flex-direction:column; }
+        .focr-rev-form > * { flex-shrink:0; }
+        .focr-acciones { margin-top:auto; position:sticky; bottom:-.75rem; padding:.55rem 0 .75rem; background:#f9fafb; box-shadow:0 -6px 8px -6px rgba(0,0,0,.18); }
         .focr-rev-form { flex:0 0 var(--focr-form-ancho, 45%); min-width:300px; background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
         /* Pantallas anchas (apaisadas): mitad y mitad; en las normales 55/45 */
         @media (min-width:1600px) { .focr-rev-form { flex-basis:var(--focr-form-ancho, 50%); } }
@@ -788,7 +792,7 @@
                                 <td><input type="text" wire:model.blur="form.lineas.{{ $i }}.base" class="focr-in {{ isset($lineasMal[$i]) ? 'mal' : '' }}"></td>
                                 <td><input type="text" wire:model.blur="form.lineas.{{ $i }}.pct" class="focr-in {{ isset($lineasMal[$i]) ? 'mal' : '' }}"></td>
                                 <td><input type="text" wire:model.blur="form.lineas.{{ $i }}.cuota" class="focr-in {{ isset($lineasMal[$i]) ? 'mal' : '' }}"></td>
-                                <td><button type="button" wire:click="cuota({{ $i }})" class="focr-btn b-gris" style="padding:.1rem .4rem" title="Calcular la cuota con base y %">=</button></td>
+                                <td title="La cuota se calcula sola al cambiar la base o el %"></td>
                             </tr>
                         @endforeach
                         <tr>
@@ -801,20 +805,20 @@
                     </table>
 
                     @if ($actual['estado'] !== 'validada')
-                        <div class="flex gap-2" style="margin-top:.55rem; align-items:center">
+                        <div class="flex gap-2 focr-acciones" style="align-items:center">
                             @php
                                 $pregunta = trim(($duplicados ? 'Parece DUPLICADA. ' : '').($noCuadra ? 'La factura NO CUADRA. ' : ''));
                             @endphp
                             {{-- La pregunta se lee del propio botón al pulsar (data-*): wire:confirm se quedaba con la de antes
                                  al cambiar los datos de la factura (p.ej. tras "Leer con OCR" ya cuadraba y seguía preguntando) --}}
-                            <button type="button" wire:loading.attr="disabled" class="focr-btn b-verde" style="flex:1; justify-content:center"
+                            <button type="button" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde" style="flex:1; justify-content:center"
                                     data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
                                     x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1')">
                                 <span wire:loading.remove wire:target="validar">✅ Validar</span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>
                             <input type="text" wire:model.blur="motivo" class="focr-in" style="flex:1" placeholder="Motivo del rechazo (opcional)">
-                            <button type="button" wire:click="rechazar" wire:loading.attr="disabled" class="focr-btn b-rojo">✖ Rechazar</button>
+                            <button type="button" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo">✖ Rechazar</button>
                         </div>
                         @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
                             <div style="margin-top:.35rem">
