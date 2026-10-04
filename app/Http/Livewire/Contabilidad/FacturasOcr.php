@@ -279,6 +279,15 @@ class FacturasOcr extends Component
             $this->cierre = '';
         }
         $this->recalcularFechas();
+        $this->leerSiHaySinLeer();
+    }
+
+    /** Web: al elegir IVA/periodo se leen solas las facturas que ya estaban subidas esperando (sin botón). */
+    protected function leerSiHaySinLeer(): void
+    {
+        if ($this->web() && in_array($this->ciclo, ['M', 'T'], true) && $this->sinLeerEnEntrada() > 0) {
+            $this->leerEnSegundoPlano();
+        }
     }
 
     public function updatedPeriodo(): void
@@ -663,8 +672,38 @@ class FacturasOcr extends Component
             return null;
         }
         $fin = (int) @file_get_contents($dir.'/lectura.fin');
-        // sin «fin» tras 40 min se da por muerta (el servidor se reinició, etc.)
-        return ($fin >= $ini || time() - $ini > 2400) ? null : [$ini, null];
+        if ($fin >= $ini) {
+            return null;
+        }
+        // Sin «fin»: sigue en marcha solo si algo la está haciendo (arrancando, esperando el OCR de un PC o Python trabajando).
+        // Si no, es una marca vieja de una lectura que murió (error, reinicio...) y no debe bloquear las siguientes.
+        if (time() - $ini < 20 || $this->pendientes || $this->pythonActivo()) {
+            return [$ini, null];
+        }
+
+        return null;
+    }
+
+    /** ¿Hay un facturas_ocr.py de este cliente en marcha? (el propio Python guarda un bloqueo en /tmp mientras trabaja) */
+    protected function pythonActivo(): bool
+    {
+        $f = @fopen('/tmp/facturasocr-'.strtolower(preg_replace('/[^A-Za-z0-9]/', '', $this->cliente)).'.lock', 'c');
+        if (! $f) {
+            return false;
+        }
+        $libre = flock($f, LOCK_EX | LOCK_NB);
+        if ($libre) {
+            flock($f, LOCK_UN);
+        }
+        fclose($f);
+
+        return ! $libre;
+    }
+
+    /** Facturas de la entrada que aún no están en la lista (sin leer). */
+    protected function sinLeerEnEntrada(): int
+    {
+        return count(array_filter($this->estadoEntrada(), fn ($e) => in_array($e[1], ['en el servidor', 'leyendo'], true)));
     }
 
     /**
@@ -689,9 +728,44 @@ class FacturasOcr extends Component
         file_put_contents($dir.'/lectura.inicio', (string) time());
         @unlink($dir.'/lectura.fin');
         $this->leyendo = true;
-        if (! $this->pedirOcrDeWindows()) {
+        // Por defecto se lee con el OCR del servidor (Tesseract): rápido y sin depender de que haya un PC encendido. El OCR de Windows,
+        // que lee mejor NIF y fechas, se pide por factura con «Escaneo de calidad» (o para todas con FACTURASOCR_OCR_WINDOWS_AUTO=true).
+        if (! (config('contabilidad.facturasocr_ocr_windows_auto') && $this->pedirOcrDeWindows())) {
             $this->lanzarAnalisis();
         }
+    }
+
+    /**
+     * «Escaneo de calidad» de la factura abierta: la manda a un PC, que la pasa por el OCR de Windows (todas las páginas y las zonas del NIF),
+     * y al volver se vuelve a proponer con ese texto. Para las facturas que Tesseract no ha leído bien.
+     */
+    public function escaneoDeCalidad(): void
+    {
+        $f = $this->sel ? $this->factura($this->sel) : null;
+        if (! $this->web() || ! $f || ! is_file($f['ruta'])) {
+            return;
+        }
+        if (! $this->colaLista() || $this->pcsConectados() === 0) {
+            $this->addError('validar', 'No hay ningún PC de trabajo conectado ahora mismo: no se puede hacer el escaneo de calidad. Inténtalo más tarde o usa «Leer con OCR» (servidor).');
+            return;
+        }
+        $this->lanzarEnCola([['script' => 'ocr_previo.py', 'args' => ['--salida', '{DIR}/_tmp/ocr_out', '--forzar', '{E0}'], 'timeout' => 600,
+            'etiqueta' => 'Escaneo de calidad (OCR de Windows) de '.basename($f['ruta'])]],
+            ['entradas' => [['ruta' => $f['ruta'], 'nombre' => $f['id'].'.pdf', 'dir' => '_tmp/ocr_in', 'unico' => true]],
+                'post' => 'postEscaneoCalidad', 'ctx' => ['id' => $f['id']]]);
+    }
+
+    /** Llegó el OCR de Windows de una factura: a la caché, y se vuelve a proponer con ese texto (comando «ocr», que usa la caché). */
+    protected function postEscaneoCalidad(array $ctx, int $desde, array $oks): void
+    {
+        $this->ingerirOcr((int) ($ctx['tarea'] ?? 0));
+        $antes = $this->salida;
+        $ok = $this->ejecutar(array_merge(['ocr', $ctx['id']], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 300, 'Escaneo de calidad', false);
+        $this->salida = $antes;
+        if ($ok && $this->sel === $ctx['id']) {
+            $this->abrir($ctx['id']);
+        }
+        $this->dispatch('proceso-terminado', mensaje: $ok ? '✅ Escaneo de calidad hecho: factura propuesta de nuevo con el OCR de Windows.' : '⚠️ El escaneo de calidad no ha sacado texto de esta factura.');
     }
 
     /** Pide a un PC el OCR de Windows de las facturas escaneadas de la entrada que aún no lo tienen. true si ha quedado pedido. */
@@ -700,8 +774,14 @@ class FacturasOcr extends Component
         if (! $this->colaLista() || $this->pcsConectados() === 0) {
             return false;
         }
-        $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(120)
-            ->run([$this->pythonBin(), 'ocr_previo.py', '--listar', $this->dirEntrada(), '--cliente', $this->cliente]);
+        try {
+            $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(60)
+                ->run([$this->pythonBin(), 'ocr_previo.py', '--listar', $this->dirEntrada(), '--cliente', $this->cliente]);
+        } catch (\Throwable $e) {
+            // si ni siquiera se puede mirar qué necesita OCR, no se bloquea la lectura: se lee ya con Tesseract
+            $this->salida .= "\n⚠️ No he podido preparar el OCR de Windows (".class_basename($e).'): se lee con el OCR del servidor.';
+            return false;
+        }
         $lista = $r->successful() ? (json_decode(trim($r->output()), true) ?: []) : [];
         $entradas = [];
         foreach ($lista as $f) {
@@ -1886,6 +1966,8 @@ class FacturasOcr extends Component
             'mesesCierre' => $this->mesesCierre(),
             'pdfs' => $valido ? $this->pdfsEnCarpeta() : 0,
             'web' => $this->web(),
+            'sinLeer' => $this->web() ? $this->sinLeerEnEntrada() : 0,
+            'esperandoOcr' => (bool) $this->pendientes,
             'sync' => $this->estadoSync(),
             'entrada' => $this->estadoEntrada(),
             'lecturaDesde' => $this->web() && $valido ? ($this->lecturaEnCurso()[0] ?? null) : null,

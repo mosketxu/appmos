@@ -160,6 +160,8 @@ return [
     */
     'facturasocr_web' => env('FACTURASOCR_WEB', false),
     'facturasocr_onedrive' => env('FACTURASOCR_ONEDRIVE'),
+    // false (por defecto): se lee con Tesseract en el servidor; el OCR de Windows se pide por factura («Escaneo de calidad»). true: se pide antes de leer toda tanda.
+    'facturasocr_ocr_windows_auto' => (bool) env('FACTURASOCR_OCR_WINDOWS_AUTO', false),
     'facturasocr_pc' => env('FACTURASOCR_PC'),   // PC (nombre del trabajador) cuyo OneDrive recibe lo validado; vacío = cualquiera
 
     /*

@@ -323,11 +323,15 @@
                         <div class="mt-2 text-xs text-gray-600" x-data="{ t0: {{ (int) $lecturaDesde }}, ahora: Math.floor(Date.now() / 1000) }" x-init="setInterval(() => ahora = Math.floor(Date.now() / 1000), 1000)">
                             {{ count($entrada) }} PDF en la carpeta de entrada · {{ $nLeidas }} leídos
                             @if ($lecturaDesde)
-                                · <b style="color:#b45309">⏳ leyendo… <span x-text="Math.max(0, ahora - t0) + ' s'"></span></b> (no hace falta esperar: puedes seguir con otras)
+                                · <b style="color:#b45309">⏳ {{ $esperandoOcr ? 'esperando el OCR de Windows de un PC (si tarda más de 3 min se lee con el servidor)' : 'leyendo en el servidor' }}… <span x-text="Math.max(0, ahora - t0) + ' s'"></span></b> (no hace falta esperar: puedes seguir con otras)
                             @endif
                         </div>
                         @if ($leyendo)
                             <div wire:poll.3s="revisarLectura"></div>
+                        @endif
+                        @if ($esperandoOcr && ! $leyendo)
+                            <div wire:poll.3s="revisarTareas"></div>
+                            <div class="mt-1 text-xs" style="color:#b45309">⏳ Escaneo de calidad en un PC… (la factura se volverá a proponer sola al terminar)</div>
                         @endif
                         {{-- Archivo: lo contabilizado se lleva al OneDrive de un PC, comprobando huellas --}}
                         <div class="mt-2 text-xs text-gray-600" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
@@ -408,10 +412,18 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3 mt-4">
+                    @if (! $web)
                     <button type="button" wire:click="analizar" wire:loading.attr="disabled" class="focr-btn b-indigo" @disabled($ciclo === '')>
-                        <span wire:loading.remove wire:target="analizar">📄 {{ $web ? 'Leer las facturas de entrada' : 'Leer las facturas de la carpeta' }}</span>
+                        <span wire:loading.remove wire:target="analizar">📄 Leer las facturas de la carpeta</span>
                         <span wire:loading wire:target="analizar">Leyendo… (las que son imagen pasan por OCR)</span>
                     </button>
+                    @elseif ($sinLeer > 0 && ! $leyendo)
+                        {{-- Web: al subirlas se leen solas; este botón solo sale si quedan facturas sin leer (p. ej. se subieron antes de elegir el IVA) --}}
+                        <button type="button" wire:click="analizar" wire:loading.attr="disabled" class="focr-btn b-indigo" @disabled($ciclo === '')>
+                            📄 Leer ahora las {{ $sinLeer }} facturas sin leer
+                        </button>
+                        @if ($ciclo === '') <span class="text-xs text-red-600">Elige antes el IVA del cliente.</span> @endif
+                    @endif
                     @if ($primeraAbierta)
                         <span class="text-sm">Fecha de registro = fecha de la factura; si es anterior, el <b>{{ $primeraAbierta->format('d/m/Y') }}</b></span>
                     @endif
@@ -724,6 +736,13 @@
                         <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
                         <span wire:loading wire:target="releerOcr">Leyendo con OCR…</span>
                     </button>
+                    @if ($web)
+                        <button type="button" wire:click="escaneoDeCalidad" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
+                                title="La manda a un PC con el OCR de Windows (lee mejor NIF y fechas que el del servidor) y la propone de nuevo. Tarda unos segundos.">
+                            <span wire:loading.remove wire:target="escaneoDeCalidad">✨ Escaneo de calidad</span>
+                            <span wire:loading wire:target="escaneoDeCalidad">Pidiéndolo a un PC…</span>
+                        </button>
+                    @endif
                 @endif
                 <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $actual['id']]) }}" target="_blank" class="focr-btn b-gris" style="padding:.2rem .6rem">↗ Abrir aparte</a>
                 <button type="button" wire:click="cerrar" class="focr-btn b-gris" style="padding:.2rem .6rem">✕ Cerrar (Esc)</button>

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Livewire\Contabilidad\FacturasOcr;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /** Facturas OCR en la web (VPS): las facturas se suben con huella y no se vuelven a subir las que ya se conocen. */
@@ -147,7 +148,7 @@ class FacturasOcrWebTest extends TestCase
         if (! is_executable($py)) {
             $this->markTestSkipped('No hay venv de Facturas OCR en este PC');
         }
-        config(['contabilidad.facturasocr_python' => $py, 'contabilidad.facturasocr_dir' => '/mnt/f/Claude/Contabilidad/FacturasOcr']);
+        config(['contabilidad.facturasocr_python' => $py, 'contabilidad.facturasocr_dir' => '/mnt/f/Claude/Contabilidad/FacturasOcr', 'contabilidad.facturasocr_ocr_windows_auto' => true]);
         @mkdir('/mnt/f/Claude/Contabilidad/FacturasOcr', 0777, true);
         if (! is_file('/mnt/f/Claude/Contabilidad/FacturasOcr/ocr_previo.py')) {
             $this->markTestSkipped('No está ocr_previo.py');
@@ -212,5 +213,37 @@ class FacturasOcrWebTest extends TestCase
         $c->pdfsSubidos = [$this->pdf('Z')];
         $c->recibirPdfs();
         $this->assertSame(1, $c->analisis);
+    }
+
+    public function test_por_defecto_se_lee_con_tesseract_sin_esperar_a_ningun_pc_y_el_escaneo_de_calidad_es_por_factura(): void
+    {
+        \App\Support\ColaTareas::crearTrabajador('PC');
+        DB::table('trabajadores')->update(['ultimo_latido' => now()]);
+        $c = new class extends FacturasOcr {
+            public int $analisis = 0;
+            protected function lanzarAnalisis(): void
+            {
+                $this->analisis++;
+            }
+        };
+        $c->cliente = 'Durcal';
+        $c->ciclo = 'T';
+        $c->pdfsSubidos = [$this->pdfEscaneado('B')];
+        $c->recibirPdfs();
+        $this->assertSame(1, $c->analisis, 'con un PC conectado, por defecto no espera al OCR de Windows');
+        $this->assertSame(0, DB::table('tareas')->where('proceso', 'pc.script')->count());
+
+        // «Escaneo de calidad» de una factura concreta: tarea para un PC con --forzar y su PDF como entrada
+        $pdf = glob($this->raiz.'/OneDrive/_Clientes/_FacturasOCR/Durcal/Entrada/*.pdf')[0];
+        $id = substr(sha1_file($pdf), 0, 12);
+        file_put_contents($this->raiz.'/OneDrive/_Clientes/_FacturasOCR/Durcal/facturas.json', json_encode(['facturas' => [['id' => $id, 'estado' => 'pendiente', 'ruta' => $pdf]]]));
+        $c->sel = $id;
+        $c->escaneoDeCalidad();
+        $t = DB::table('tareas')->where('proceso', 'pc.script')->first();
+        $this->assertNotNull($t);
+        $p = json_decode($t->parametros, true);
+        $this->assertSame('facturasocr', $p['grupo']);
+        $this->assertContains('--forzar', $p['pasos'][0]['args']);
+        $this->assertSame($id.'.pdf', $p['entradas'][0]['nombre']);
     }
 }

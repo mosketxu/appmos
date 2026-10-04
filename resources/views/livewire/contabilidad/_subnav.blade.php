@@ -56,7 +56,8 @@
     $enPm = in_array($activa ?? null, ['contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual'], true) || request()->routeIs('contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual');
     // Bancos, IS y Proc.Mensuales van por su cuenta: operativos en la web aunque el resto esté bloqueado
     $web = $enBancos ? ['Bancos', 'bancos'] : ($enIs ? ['IS', 'is'] : ($enPm ? ['Proc.Mensuales', 'procesosmensuales'] : null));
-    $bloqueado = $web ? ! config("contabilidad.{$web[1]}_ejecucion") : ! config('contabilidad.ejecucion_local');
+    // 4-oct-2026: todas las pantallas de Contabilidad funcionan ya desde la web (los PCs trabajadores ejecutan por la cola de tareas): no hay bloqueo ni marca de agua
+    $bloqueado = false;
 @endphp
 @if ($web && ! config("contabilidad.{$web[1]}_ejecucion") && config("contabilidad.{$web[1]}_url"))
     <div class="px-4 py-3 mx-4 mt-3 text-sm font-semibold text-center text-indigo-900 border border-indigo-300 rounded-md bg-indigo-50">
