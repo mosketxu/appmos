@@ -108,16 +108,35 @@
                                         @endforeach
                                         @foreach (($ordenar['aplicadas'] ?? []) as $k => $n) <span class="focr-chip c-ok">hecho: {{ $n }} {{ $k }}</span> @endforeach
                                     </div>
+                                    @if (! $ordenar['aplicado'])
+                                        <p class="text-xs" style="color:#1e3a8a">✎ Puedes corregir la propuesta antes de aplicar: desmarca «Hacer» en las que no quieras tocar y cambia el mes de destino de las que se mueven. Se aplica solo lo que dejes marcado.</p>
+                                    @endif
                                     <table class="focr-tabla">
-                                        <thead><tr><th>Acción</th><th>Fichero</th><th>Proveedor</th><th>Nº</th><th style="text-align:right">Total</th><th>Destino (en _Facturas)</th><th>Detalle</th></tr></thead>
+                                        <thead><tr>@if (! $ordenar['aplicado'])<th>Hacer</th>@endif<th>Acción</th><th>Fichero</th><th>Proveedor</th><th>Nº</th><th style="text-align:right">Total</th><th>Destino (en _Facturas)</th><th>Detalle</th></tr></thead>
                                         <tbody>
                                             @foreach ($ordenar['filas'] as $x)
-                                                <tr>
+                                                <tr wire:key="ord-{{ md5($x['fichero']) }}">
+                                                    @if (! $ordenar['aplicado'])
+                                                        <td>
+                                                            @if (in_array($x['accion'], ['MOVER', 'QUITAR', 'A PROCESAR'], true))
+                                                                <input type="checkbox" @checked(empty($ordenarOmitir[$x['fichero']])) x-on:change="$wire.set('ordenarOmitir.' + @js($x['fichero']), ! $event.target.checked)" title="Desmarca para no tocar esta factura">
+                                                            @endif
+                                                        </td>
+                                                    @endif
                                                     <td><span class="focr-chip {{ $x['accion'] === 'MOVER' ? 'c-ok' : ($x['accion'] === 'QUITAR' ? 'c-gris' : 'c-revisar') }}" style="white-space:nowrap">{{ $x['accion'] }}</span></td>
                                                     <td style="max-width:240px; word-break:break-all">{{ $x['fichero'] }}</td>
                                                     <td>{{ $x['cuenta'] }} {{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td>
                                                     <td style="text-align:right">{{ $x['total'] !== null ? number_format((float) $x['total'], 2, ',', '.') : '' }}</td>
-                                                    <td class="text-xs" style="word-break:break-all">{{ $x['destino'] }}</td><td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
+                                                    <td class="text-xs" style="word-break:break-all">
+                                                        @if ($x['accion'] === 'MOVER' && ! $ordenar['aplicado'])
+                                                            @php $partes = explode('/', $x['destino']); $mesProp = $partes[0] ?? ''; @endphp
+                                                            Mes <select x-on:change="$wire.set('ordenarMes.' + @js($x['fichero']), $event.target.value)" class="py-0 text-xs border-gray-300 rounded" style="height:1.5rem">
+                                                                <option value="">{{ $mesProp }} (propuesto)</option>
+                                                                @foreach (range(1, 12) as $mm) <option value="{{ sprintf('%02d', $mm) }}" @selected(($ordenarMes[$x['fichero']] ?? '') === sprintf('%02d', $mm))>{{ sprintf('%02d', $mm) }}</option> @endforeach
+                                                            </select>
+                                                            <span class="text-gray-500">/ {{ $partes[1] ?? '' }}</span>
+                                                        @else {{ $x['destino'] }} @endif
+                                                    </td><td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
                                                 </tr>
                                             @endforeach
                                         </tbody>

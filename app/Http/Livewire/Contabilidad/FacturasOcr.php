@@ -586,6 +586,11 @@ class FacturasOcr extends Component
     }
 
     /** Facturas sueltas en la raíz de _Facturas: SIMULAR (no toca nada) o APLICAR (renombra y mueve al mes del asiento del mayor, quita duplicadas, devuelve a Por revisar). */
+    /** Cambios de Alex a la simulación: fichero => true = no tocar esta; fichero => '01'..'12' = otra carpeta de mes para esta. */
+    public array $ordenarOmitir = [];
+
+    public array $ordenarMes = [];
+
     public function ordenarSueltas(bool $aplicar = false): void
     {
         if (! $this->clienteValido()) {
@@ -594,6 +599,20 @@ class FacturasOcr extends Component
         $args = ['ordenar', '--periodo', preg_match('/^\d{4}/', $this->chequeoPeriodo) ? $this->chequeoPeriodo : date('Y').'-1T'];
         if ($aplicar) {
             $args[] = '--aplicar';
+            $aj = [];
+            foreach (array_filter($this->ordenarOmitir) as $f => $_) {
+                $aj[basename((string) $f)]['omitir'] = true;
+            }
+            foreach (array_filter($this->ordenarMes) as $f => $mm) {
+                if (preg_match('/^(0[1-9]|1[0-2])$/', (string) $mm)) {
+                    $aj[basename((string) $f)]['mes'] = (string) $mm;
+                }
+            }
+            @mkdir($this->dirDatos().'/Output', 0775, true);
+            file_put_contents($ruta = $this->dirDatos().'/Output/ordenar_ajustes.json', json_encode($aj, JSON_UNESCAPED_UNICODE));
+            array_push($args, '--ajustes', $ruta);
+        } else {
+            $this->ordenarOmitir = $this->ordenarMes = [];
         }
         $this->ejecutar($args, 900, $aplicar ? 'Ordenar facturas sueltas (aplicado)' : 'Ordenar facturas sueltas (simulación)');
     }
