@@ -5,6 +5,11 @@
     {{-- Estilos propios: el app.css de Tailwind 2 está compilado y purgado --}}
     <style>
         .focr-card { background:#fff; border:1px solid #e5e7eb; border-radius:.5rem; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+        /* Web: arriba, dos columnas: IVA/periodo/ficheros base a la izquierda y las facturas subidas (con scroll) a la derecha */
+        .focr-dos { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,27rem); gap:1rem; align-items:stretch; }
+        .focr-izq { display:flex; flex-direction:column; gap:.75rem; min-width:0; }
+        .focr-der { display:flex; flex-direction:column; min-height:21rem; min-width:0; }
+        @media (max-width:1100px) { .focr-dos { grid-template-columns:minmax(0,1fr); } }
         .focr-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:.75rem 1rem; }
         .focr-lbl { display:block; font-size:.75rem; font-weight:600; color:#4b5563; margin-bottom:.15rem; }
         .focr-in { width:100%; font-size:.875rem; border:1px solid #d1d5db; border-radius:.375rem; padding:.3rem .5rem; background:#fff; }
@@ -290,68 +295,25 @@
             </div>
         @endif
         @if ($cliente !== '')
-            {{-- 1. Parámetros y lectura de la carpeta --}}
-            <div class="p-4 focr-card">
-                <div class="focr-grid">
-                    <div style="grid-column:1/-1">
-                    @if ($web)
-                        {{-- Web (VPS): las facturas se suben SIEMPRE aquí (no dependen de OneDrive). El navegador calcula la
-                             huella SHA-1 de cada PDF y solo sube las que el servidor no conoce; al llegar se leen solas. --}}
-                        <label class="focr-lbl">Facturas (PDF): arrástralas aquí o haz clic. Se suben al servidor y se leen solas.</label>
-                        <div x-data="focrSubida()" wire:key="subida">
-                            <input type="file" multiple accept="application/pdf,.pdf" x-ref="f" style="display:none" x-on:change="elegir($event.target.files); $event.target.value = ''">
-                            <div x-on:click="$refs.f.click()" x-on:dragover.prevent="encima = true" x-on:dragleave.prevent="encima = false" x-on:drop.prevent="encima = false; elegir($event.dataTransfer.files)"
-                                 :style="encima ? 'background:#eef2ff;border-color:#6366f1' : ''"
-                                 style="border:2px dashed #cbd5e1; border-radius:.5rem; padding:1.1rem; text-align:center; cursor:pointer; color:#475569">
-                                📥 Arrastra aquí los PDF de las facturas o haz clic para elegirlos
-                            </div>
-                            <template x-if="archivos.length">
-                                <div class="mt-2 text-xs" style="max-height:11rem; overflow:auto">
-                                    <template x-for="a in archivos" :key="a.clave">
-                                        <div style="display:flex; gap:.5rem; align-items:center; padding:.1rem 0">
-                                            <span style="min-width:7.5rem" x-text="a.estado === 'huella' ? '🔎 comprobando…' : a.estado === 'ya' ? '✔ ya la tengo' : a.estado === 'subiendo' ? '⏫ subiendo ' + a.pct + ' %' : a.estado === 'subida' ? '✅ en el servidor' : '⚠️ error'"></span>
-                                            <span x-text="a.nombre" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap"></span>
-                                            <span style="color:#64748b" x-text="a.texto || ''"></span>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
+            {{-- 1. Parámetros y facturas. Web: dos columnas (izquierda: IVA, periodo y ficheros base; derecha: facturas subidas con su estado y scroll).
+                 PC: la tarjeta de siempre con la carpeta de entrada. --}}
+            @if ($web)
+                <div class="focr-dos">
+                    <div class="focr-izq">
+                        <div class="p-4 focr-card">
+                            @include('livewire.contabilidad.facturas-ocr._parametros')
                         </div>
-                        @php
-                            $nLeidas = collect($entrada)->filter(fn ($e) => ! in_array($e[1], ['en el servidor', 'leyendo'], true))->count();
-                        @endphp
-                        <div class="mt-2 text-xs text-gray-600" x-data="{ t0: {{ (int) $lecturaDesde }}, ahora: Math.floor(Date.now() / 1000) }" x-init="setInterval(() => ahora = Math.floor(Date.now() / 1000), 1000)">
-                            {{ count($entrada) }} PDF en la carpeta de entrada · {{ $nLeidas }} leídos
-                            @if ($lecturaDesde)
-                                · <b style="color:#b45309">⏳ {{ $esperandoOcr ? 'esperando el OCR de Windows de un PC (si tarda más de 3 min se lee con el servidor)' : 'leyendo en el servidor' }}… <span x-text="Math.max(0, ahora - t0) + ' s'"></span></b> (no hace falta esperar: puedes seguir con otras)
-                            @endif
-                        </div>
-                        @if ($leyendo)
-                            <div wire:poll.3s="revisarLectura"></div>
-                        @endif
-                        @if ($esperandoOcr && ! $leyendo)
-                            <div wire:poll.3s="revisarTareas"></div>
-                            <div class="mt-1 text-xs" style="color:#b45309">⏳ Escaneo de calidad en un PC… (la factura se volverá a proponer sola al terminar)</div>
-                        @endif
-                        {{-- Archivo: lo contabilizado se lleva al OneDrive de un PC, comprobando huellas --}}
-                        <div class="mt-2 text-xs text-gray-600" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
-                            <span>📦 Archivo en OneDrive del PC:
-                                @if ($sync)
-                                    último envío {{ $sync['fecha'] }} ({{ $sync['pc'] }}) · {{ $sync['total'] }} ficheros comprobados, {{ $sync['nuevos'] }} nuevos
-                                    @if (! empty($sync['conflictos'])) · <b style="color:#b45309">⚠ {{ count($sync['conflictos']) }} cambiados en el PC (el del servidor queda como «.vps»)</b>@endif
-                                    @if (! empty($sync['fallidos'])) · <b style="color:#b91c1c">❌ {{ count($sync['fallidos']) }} sin llegar bien: {{ implode(', ', array_slice($sync['fallidos'], 0, 3)) }}</b>@endif
-                                @else
-                                    todavía no se ha enviado
-                                @endif
-                            </span>
-                            <button type="button" wire:click="enviarAlPc" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.75rem" @disabled($sincronizando)>
-                                {{ $sincronizando ? '⏳ enviando al PC…' : '↻ Enviar ahora al PC' }}
-                            </button>
-                            @if ($sincronizando)
-                                <span wire:poll.3s="revisarSync"></span>
-                            @endif
-                        </div>
-                    @else
+                        @include('livewire.contabilidad.facturas-ocr._ficheros-base')
+                    </div>
+                    <div class="focr-der p-3 focr-card">
+                        @include('livewire.contabilidad.facturas-ocr._subida')
+                    </div>
+                </div>
+            @else
+                <div class="p-4 focr-card">
+                    <div class="focr-grid">
+                        <div style="grid-column:1/-1">
+
                         <label class="focr-lbl">Carpeta con las facturas (solo los PDF de esa carpeta, sin subcarpetas)</label>
                         <div class="flex gap-2" style="align-items:center">
                             <input type="text" wire:model.live.debounce.500ms="carpeta" class="focr-in" style="font-family:monospace">
@@ -362,125 +324,12 @@
                         </div>
                         @error('carpeta') <div class="mt-1 text-xs text-red-600">{{ $message }}</div> @enderror
                         <div class="mt-1 text-xs text-gray-500">{{ $pdfs }} PDF en la carpeta.</div>
-                    @endif
-                    </div>
-                    <div>
-                        <label class="focr-lbl">IVA del cliente</label>
-                        <select wire:model.live="ciclo" class="focr-in {{ $ciclo === '' ? 'falta' : '' }}">
-                            <option value="">— elegir —</option>
-                            <option value="M">Mensual</option>
-                            <option value="T">Trimestral</option>
-                        </select>
-                        <div class="mt-1 text-xs text-gray-500">
-                            @if ($entidad && (int) $entidad->cicloimpuesto_id === 0)
-                                La entidad no lo tiene: se grabará en Entidades al elegirlo.
-                            @else
-                                De Entidades (Ciclo Impuesto).
-                            @endif
                         </div>
-                        @error('ciclo') <div class="mt-1 text-xs text-red-600">{{ $message }}</div> @enderror
                     </div>
-                    <div>
-                        <label class="focr-lbl">Periodo fiscal en el que entran</label>
-                        <select wire:model.live="periodo" class="focr-in" @disabled($ciclo === '')>
-                            @foreach ($periodos as $k => $v)
-                                <option value="{{ $k }}">{{ $v }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    @if ($ciclo === 'T')
-                        <div>
-                            <label class="focr-lbl">Cierre mensual</label>
-                            <select wire:model.live="cierre" class="focr-in">
-                                <option value="">Sin cierre mensual</option>
-                                @foreach ($mesesCierre as $k => $v)
-                                    <option value="{{ $k }}">Registrar desde {{ $v }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @endif
-                    <div>
-                        <label class="focr-lbl">Contabilidad analítica</label>
-                        <label class="flex items-center gap-2 mt-1 text-sm">
-                            <input type="checkbox" wire:model.live="analitica" class="rounded">
-                            Poner el código de canal del proveedor
-                        </label>
-                        @unless ($hayAnalitica)
-                            <div class="mt-1 text-xs" style="color:#b45309">Falta la migración en la base de datos: de momento no se guarda en la entidad.</div>
-                        @endunless
-                    </div>
+                    @include('livewire.contabilidad.facturas-ocr._parametros')
                 </div>
-
-                <div class="flex flex-wrap items-center gap-3 mt-4">
-                    @if (! $web)
-                    <button type="button" wire:click="analizar" wire:loading.attr="disabled" class="focr-btn b-indigo" @disabled($ciclo === '')>
-                        <span wire:loading.remove wire:target="analizar">📄 Leer las facturas de la carpeta</span>
-                        <span wire:loading wire:target="analizar">Leyendo… (las que son imagen pasan por OCR)</span>
-                    </button>
-                    @elseif ($sinLeer > 0 && ! $leyendo)
-                        {{-- Web: al subirlas se leen solas; este botón solo sale si quedan facturas sin leer (p. ej. se subieron antes de elegir el IVA) --}}
-                        <button type="button" wire:click="analizar" wire:loading.attr="disabled" class="focr-btn b-indigo" @disabled($ciclo === '')>
-                            📄 Leer ahora las {{ $sinLeer }} facturas sin leer
-                        </button>
-                        @if ($ciclo === '') <span class="text-xs text-red-600">Elige antes el IVA del cliente.</span> @endif
-                    @endif
-                    @if ($primeraAbierta)
-                        <span class="text-sm">Fecha de registro = fecha de la factura; si es anterior, el <b>{{ $primeraAbierta->format('d/m/Y') }}</b></span>
-                    @endif
-                </div>
-                @if (trim($salida) !== '')
-                    <pre class="p-2 mt-3 text-xs text-gray-700 whitespace-pre-wrap border border-gray-200 rounded bg-gray-50">{{ trim($salida) }}</pre>
-                @endif
-            </div>
-
-            {{-- Ficheros base --}}
-            <details class="p-3 focr-card">
-                <summary class="text-sm font-semibold text-gray-700 cursor-pointer">
-                    Ficheros base: listado de proveedores, mayor y plan de cuentas de SAGE
-                    @if ($base)
-                        <span class="font-normal text-gray-500">— {{ $base['n'] }} proveedores, actualizado {{ $base['generado'] }}</span>
-                    @endif
-                </summary>
-                <div class="mt-2 text-xs text-gray-600">
-                    <p>El <b>listado de proveedores</b> (…lisProveedores….xlsx) da cuenta, CIF, contrapartida, código de IVA (910/921 CEE, 810/821 extranjero:
-                        inversión del sujeto pasivo), transacción, retención, canal y nación. El <b>mayor</b> (Mayor….xlsx) sirve para comprobar las
-                        contrapartidas (manda la más usada el último año; distinta del listado en {{ $base['difieren'] ?? 0 }} proveedores),
-                        reconocer el formato del nº de factura y avisar de facturas ya contabilizadas. El <b>plan de cuentas</b>
-                        (…Plan….xlsx, exportado de SAGE con "Código cuenta" y "Descripción") llena el combo de contrapartida con todas las cuentas.</p>
-                    <table class="mt-2 focr-tabla" style="font-size:.78rem">
-                        @foreach ([
-                            'prov' => ['Listado de proveedores', 'subidaProv', 'Vale el último que subes; el anterior pasa a Base/OLD. Lo puesto a mano aquí (●, proveedores nuevos) no se toca.'],
-                            'mayor' => ['Mayor', 'subidaMayor', 'El anterior pasa a Base/OLD pero se sigue sumando: uno de los últimos meses completa al de años anteriores (un asiento que esté en los dos se toma del más reciente).'],
-                            'plan' => ['Plan de cuentas', 'subidaPlan', 'Vale el último que subes; el anterior pasa a Base/OLD.'],
-                        ] as $tipo => [$titulo, $prop, $ayuda])
-                            <tr>
-                                <td style="width:11rem; vertical-align:top"><b>{{ $titulo }}</b></td>
-                                <td style="vertical-align:top">
-                                    @forelse ($ficherosBase[$tipo] ?? [] as $k => $fb)
-                                        <div class="{{ $k && $tipo === 'plan' ? 'text-gray-400' : '' }}">
-                                            <a href="#" wire:click.prevent="descargar(@js('Base/'.$fb['nombre']))" class="text-indigo-600 underline" title="Abrir (se descarga una copia)">📄 {{ $fb['nombre'] }}</a> <span class="text-gray-500">· {{ $fb['fecha'] }} · {{ $fb['mb'] }} MB</span>
-                                            <button type="button" wire:click="quitarBase(@js($fb['nombre']))" wire:confirm="¿Quitar {{ $fb['nombre'] }}? Se borra y vuelve el anterior de Base/OLD (si hay)."
-                                                    class="text-gray-400 hover:text-red-600" title="Quitar este fichero">✕</button>
-                                        </div>
-                                    @empty
-                                        <span class="text-gray-400">(ninguno)</span>
-                                    @endforelse
-                                    <div class="text-gray-500" style="font-size:.7rem">{{ $ayuda }}
-                                        @if ($ficherosBase['old_'.$tipo] ?? 0) ({{ $ficherosBase['old_'.$tipo] }} en OLD{{ $tipo === 'mayor' ? ', sumándose' : '' }}.) @endif
-                                        ✕ = quitar el de arriba (vuelve el anterior de OLD).</div>
-                                </td>
-                                <td style="width:15rem; vertical-align:top">
-                                    <label class="focr-btn b-gris" style="padding:.2rem .6rem; font-size:.75rem; cursor:pointer">
-                                        <span wire:loading.remove wire:target="{{ $prop }}">📂 Elegir uno nuevo…</span>
-                                        <span wire:loading wire:target="{{ $prop }}">Subiendo y rehaciendo…</span>
-                                        <input type="file" wire:model="{{ $prop }}" accept=".xlsx" style="display:none">
-                                    </label>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </table>
-                </div>
-            </details>
+                @include('livewire.contabilidad.facturas-ocr._ficheros-base')
+            @endif
 
             {{-- Revisión / histórico --}}
             <div>
