@@ -603,6 +603,23 @@ class FacturasOcr extends Component
         $i = array_search($actual, $perm, true);
         $sig = $perm[($i === false ? 0 : $i + 1) % count($perm)];
         $this->ordenarAccion[$fichero] = $sig;
+        $this->recordarNoTocar((string) ($fila['sha'] ?? ''), $fichero, $sig === 'NADA');
+    }
+
+    /** «No tocar» se recuerda (por el contenido del PDF) para las próximas simulaciones: ordenar_no_tocar.json {sha: {fichero, fecha}}. */
+    protected function recordarNoTocar(string $sha, string $fichero, bool $si): void
+    {
+        if ($sha === '' || ! $this->clienteValido()) {
+            return;
+        }
+        $f = $this->dirDatos().'/ordenar_no_tocar.json';
+        $d = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: []) : [];
+        if ($si) {
+            $d[$sha] = ['fichero' => $fichero, 'fecha' => now()->format('Y-m-d H:i')];
+        } else {
+            unset($d[$sha]);
+        }
+        file_put_contents($f, json_encode((object) $d, JSON_UNESCAPED_UNICODE));
     }
 
     public function ordenarSueltas(bool $aplicar = false): void
