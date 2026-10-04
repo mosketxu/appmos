@@ -44,7 +44,7 @@ class Roles extends Component
     public function alternarUsuario(int $id, string $permiso): void
     {
         $u = User::with('roles', 'permissions')->findOrFail($id);
-        if ($u->hasRole('Admin')) {
+        if ($u->hasRole('Admin') || ! $u->activo) {   // un usuario inactivo no se toca: queda su historial
             return;
         }
         $delRol = $u->getPermissionsViaRoles()->pluck('name')->all();
@@ -156,11 +156,11 @@ class Roles extends Component
             $cols[] = ['tipo' => 'rol', 'id' => $r->name, 'nombre' => $r->name, 'completo' => $r->name, 'sub' => '('.$r->users_count.')', 'admin' => $r->name === 'Admin',
                 'rol' => [], 'directos' => $r->permissions->pluck('name')->all(), 'fijo' => in_array($r->name, self::FIJOS, true)];
         }
-        $usuarios = User::with('roles', 'permissions')->where('activo', true)->orderBy('name')->get();
+        $usuarios = User::with('roles', 'permissions')->orderByDesc('activo')->orderBy('name')->get();   // los inactivos al final, con su historial de accesos
         $cortos = $this->nombresCortos($usuarios->pluck('name', 'id')->all());
         foreach ($usuarios as $i => $u) {
-            $cols[] = ['tipo' => 'usuario', 'inicio' => $i === 0, 'id' => $u->id, 'nombre' => $cortos[$u->id], 'completo' => $u->name, 'sub' => $u->getRoleNames()->first(),
-                'admin' => $u->hasRole('Admin'), 'rol' => $u->getPermissionsViaRoles()->pluck('name')->all(), 'directos' => $u->getDirectPermissions()->pluck('name')->all()];
+            $cols[] = ['tipo' => 'usuario', 'inicio' => $i === 0, 'id' => $u->id, 'nombre' => $cortos[$u->id], 'completo' => $u->name, 'sub' => $u->activo ? $u->getRoleNames()->first() : 'inactivo',
+                'activo' => (bool) $u->activo, 'admin' => $u->hasRole('Admin'), 'rol' => $u->getPermissionsViaRoles()->pluck('name')->all(), 'directos' => $u->getDirectPermissions()->pluck('name')->all()];
         }
         $arbol = Accesos::arbol();
         $estado = [];   // [columna][permiso] => 0 no · 1 sí · 2 sí, por su rol (solo vista usuarios)
@@ -168,7 +168,9 @@ class Roles extends Component
             foreach ($arbol as $items) {
                 foreach ($items as $it) {
                     foreach (array_merge([$it['clave'] => 1], array_fill_keys(array_keys($it['hijos']), 1)) as $clave => $_) {
-                        $estado[$k][$clave] = $c['admin'] ? 2 : ($this->tiene($c['rol'], $clave) ? 2 : ($this->tiene($c['directos'], $clave) ? 1 : 0));
+                        $tenia = $c['admin'] || $this->tiene($c['rol'], $clave) || $this->tiene($c['directos'], $clave);
+                        // 3 = usuario inactivo que tenía este acceso (no puede entrar, pero se conserva su historial)
+                        $estado[$k][$clave] = ($c['activo'] ?? true) ? ($c['admin'] ? 2 : ($this->tiene($c['rol'], $clave) ? 2 : ($this->tiene($c['directos'], $clave) ? 1 : 0))) : ($tenia ? 3 : 0);
                     }
                 }
             }

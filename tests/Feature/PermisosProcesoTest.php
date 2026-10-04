@@ -124,4 +124,19 @@ class PermisosProcesoTest extends TestCase
         $this->assertStringContainsString('S. Gómez Pérez', $h);
         $this->assertStringNotContainsString('>Nuria Lopez<', $h);
     }
+
+    public function test_los_usuarios_inactivos_salen_al_final_con_su_historial_y_no_se_tocan(): void
+    {
+        $this->actingAs($this->adminUser());
+        $baja = User::factory()->create(['name' => 'Ines Baja', 'activo' => false]);
+        $baja->assignRole('Suma');
+        $c = Livewire::test(Roles::class);
+        $h = $c->html();
+        $this->assertStringContainsString('inactivo', $h);
+        $this->assertStringContainsString('Usuario inactivo: tenía este acceso', $h);
+        $c->call('alternarUsuario', $baja->id, 'proceso.pm.certificados');
+        $this->assertCount(0, $baja->fresh()->getDirectPermissions());
+        // sigue sin poder entrar
+        $this->assertFalse((bool) $baja->fresh()->activo);
+    }
 }

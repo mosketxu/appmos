@@ -20,7 +20,7 @@
             Los accesos están ordenados por bloques de la aplicación: cada <b>pestaña</b> y, debajo, sus <b>procesos</b>. Marcar una pestaña marca también todos sus procesos;
             puedes quitar procesos sueltos. Se guarda al hacer clic. <b>Admin</b> tiene siempre todo (y es el único que ve este panel).
             A la izquierda de la barra, los <b>roles</b> (dar un acceso a un rol se lo da a todos sus usuarios); a la derecha, los <b>usuarios</b> uno por uno: sirven para dar un acceso a una persona
-            concreta además de los de su rol (en gris: lo da su rol; para quitárselo, quítalo al rol).
+            concreta además de los de su rol (en gris: lo da su rol; para quitárselo, quítalo al rol). Los usuarios <b>inactivos</b> (no pueden entrar) salen al final, tachados y en gris claro: conservan su historial de accesos (casilla gris = tenía ese acceso) y no se tocan.
             Sin «Ver TODAS las entidades», el usuario solo ve las suyas; sin «Crear, modificar y borrar», solo consulta.
         </p>
 
@@ -32,14 +32,14 @@
                         @foreach ($cols as $c)
                             <th class="px-1 py-1 text-center leading-tight" style="width:3.4rem; min-width:3.4rem; {{ ! empty($c['inicio']) ? 'border-left:2px solid #9ca3af' : '' }}" wire:key="th-{{ $c['tipo'] }}-{{ $c['id'] }}"
                                 title="{{ $c['completo'] ?? $c['nombre'] }}">
-                                <div class="font-semibold whitespace-nowrap">
+                                <div class="font-semibold whitespace-nowrap {{ ($c['activo'] ?? true) ? '' : 'text-gray-400 line-through' }}">
                                     {{ $c['nombre'] }}
                                     @if ($c['tipo'] === 'rol' && empty($c['fijo']) && ! $c['admin'])
                                         <button type="button" class="ml-1 text-red-500 hover:text-red-700" title="Borrar rol"
                                                 x-on:click="confirm('¿Borrar el rol ' + @js($c['nombre']) + '?') && $wire.borrar(@js($c['nombre']))">&times;</button>
                                     @endif
                                 </div>
-                                <div class="font-normal text-gray-400 whitespace-nowrap">{{ $c['sub'] }}</div>
+                                <div class="font-normal whitespace-nowrap {{ ($c['activo'] ?? true) ? 'text-gray-400' : 'text-amber-600' }}">{{ $c['sub'] }}</div>
                             </th>
                         @endforeach
                     </tr>
