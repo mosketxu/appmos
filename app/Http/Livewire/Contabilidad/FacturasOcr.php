@@ -84,6 +84,8 @@ class FacturasOcr extends Component
     public function mount(): void
     {
         $this->cliente = $this->clientes()[0] ?? '';
+        $t = intdiv((int) date('n') - 1, 3);   // trimestre natural anterior, para el chequeo contra el mayor
+        $this->chequeoPeriodo = $t === 0 ? (date('Y') - 1).'-4T' : date('Y').'-'.$t.'T';
         $this->cargarCliente();
         $this->retomarTareas();
     }
@@ -567,6 +569,31 @@ class FacturasOcr extends Component
         if ($clave === 'total') {
             $this->recalcularDesdeTotal();
         }
+    }
+
+    /** Chequeo contra el mayor (pestaña «Chequeo mayor»): periodo 2026-3T o 2026-09 y el resultado de la última comprobación de ese periodo. */
+    public string $chequeoPeriodo = '';
+
+    public function chequearMayor(): void
+    {
+        $p = trim($this->chequeoPeriodo);
+        if (! $this->clienteValido() || ! preg_match('/^\d{4}-([1-4]T|(0[1-9]|1[0-2]))$/', $p)) {
+            $this->addError('chequeo', 'Pon el periodo como 2026-3T (trimestre) o 2026-09 (mes).');
+            return;
+        }
+        $this->resetErrorBag('chequeo');
+        $this->ejecutar(['chequear', '--periodo', $p], 900, 'Chequeo contra el mayor '.$p);
+    }
+
+    protected function chequeoResultado(): ?array
+    {
+        $p = trim($this->chequeoPeriodo);
+        if (! $this->clienteValido() || ! preg_match('/^\d{4}-([1-4]T|(0[1-9]|1[0-2]))$/', $p)) {
+            return null;
+        }
+        $f = $this->dirDatos().'/Output/Chequeo_mayor_'.$p.'.json';
+
+        return is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: null) : null;
     }
 
     /** Aviso de CIF no válido (cif_validar.py: longitud por país, letra de DNI/NIE, control del CIF). */
@@ -2101,6 +2128,7 @@ class FacturasOcr extends Component
             'fallidas' => array_values(array_filter($todas, fn ($f) => ! empty($f['error_validar']) && $f['estado'] === 'pendiente')),
             'conflictos' => $conflictos,
             'dirDatos' => $valido ? $this->dirDatos() : '',
+            'chequeo' => $this->vista === 'chequeo' ? $this->chequeoResultado() : null,
             'clientes' => $this->clientes(),
             'cola' => $cola,
             'cuenta' => array_count_values(array_column($todas, 'estado')),

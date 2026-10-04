@@ -373,6 +373,7 @@
                         @if ($guardando) <span class="focr-chip c-gris" title="Excel, mover el PDF y aprender, en segundo plano">💾 {{ $guardando }}…</span> @endif
                     </button>
                     <button type="button" wire:click="$set('vista','proveedores')" class="{{ $vista === 'proveedores' ? 'on' : '' }}">Proveedores</button>
+                    <button type="button" wire:click="$set('vista','chequeo')" class="{{ $vista === 'chequeo' ? 'on' : '' }}" title="Comprueba que las facturas de las carpetas de un periodo están en el mayor, y al revés">Chequeo mayor</button>
                     @if ($cuenta['duplicada'] ?? 0)
                         <button type="button" wire:click="$set('vista','duplicadas')" class="{{ $vista === 'duplicadas' ? 'on' : '' }}">
                             Duplicadas ({{ $cuenta['duplicada'] }})
@@ -381,7 +382,70 @@
                 </div>
 
                 <div class="overflow-auto focr-card" style="border-top-left-radius:0; max-height:70vh">
-                    @if ($vista === 'proveedores')
+                    @if ($vista === 'chequeo')
+                        <div class="p-3" style="display:flex; flex-direction:column; gap:.6rem">
+                            <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+                                <b class="text-sm">Chequeo contra el mayor</b>
+                                <input type="text" wire:model="chequeoPeriodo" wire:keydown.enter="chequearMayor" placeholder="2026-3T o 2026-09" class="focr-in" style="max-width:9rem">
+                                <button type="button" wire:click="chequearMayor" wire:loading.attr="disabled" wire:target="chequearMayor" class="focr-btn b-verde" style="padding:.25rem .8rem">
+                                    <span wire:loading.remove wire:target="chequearMayor">▶ Chequear</span><span wire:loading wire:target="chequearMayor">Comprobando…</span>
+                                </button>
+                                @if ($chequeo)
+                                    <a wire:click.prevent="descargar('Output/Chequeo_mayor_{{ $chequeo['periodo'] }}.xlsx')" href="#" class="focr-btn b-gris" style="padding:.2rem .6rem">⬇ Excel</a>
+                                    <span class="text-xs text-gray-500">hecho el {{ $chequeo['fecha'] }}</span>
+                                @endif
+                            </div>
+                            @error('chequeo') <div class="text-xs" style="color:#b91c1c">{{ $message }}</div> @enderror
+                            <p class="text-xs text-gray-500">Mira los PDF de las carpetas del periodo (las de «Registro», sin subcarpetas) y comprueba que cada una está en el mayor de SAGE por su nº de factura
+                                (y que el importe coincide); y al revés, que cada factura de proveedor del mayor del periodo tiene su PDF. Solo lee: no cambia nada. Usa el último mayor que hayas subido en «Ficheros base».</p>
+                            @if ($chequeo)
+                                @if ($chequeo['aviso_mayor'])
+                                    <div style="padding:.4rem .6rem; border:2px solid #f59e0b; background:#fffbeb; border-radius:.4rem; color:#78350f; font-size:.8rem">⚠️ {{ $chequeo['aviso_mayor'] }} Sube un mayor más reciente y vuelve a chequear.</div>
+                                @endif
+                                <div style="display:flex; gap:.4rem; flex-wrap:wrap; align-items:center">
+                                    <span class="focr-chip c-gris">{{ $chequeo['pdf'] }} PDF</span>
+                                    @foreach ($chequeo['estados'] as $est => $n)
+                                        <span class="focr-chip {{ $est === 'OK' ? 'c-ok' : (in_array($est, ['DIVISA (probable)', 'PROBABLE']) ? 'c-revisar' : 'c-falta') }}">{{ $est }} {{ $n }}</span>
+                                    @endforeach
+                                    <span class="focr-chip {{ $chequeo['mayor_sin_pdf'] ? 'c-falta' : 'c-ok' }}">Mayor sin PDF {{ $chequeo['mayor_sin_pdf'] }}</span>
+                                </div>
+                                @if ($chequeo['problemas'])
+                                    <div class="text-sm font-semibold">Para revisar ({{ count($chequeo['problemas']) }})</div>
+                                    <table class="focr-tabla">
+                                        <thead><tr><th>Estado</th><th>Mes</th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th style="text-align:right">Total</th><th>Detalle</th></tr></thead>
+                                        <tbody>
+                                            @foreach ($chequeo['problemas'] as $x)
+                                                <tr>
+                                                    <td><span class="focr-chip {{ in_array($x['estado'], ['DIVISA (probable)', 'PROBABLE']) ? 'c-revisar' : 'c-falta' }}" style="white-space:nowrap">{{ $x['estado'] }}</span></td>
+                                                    <td>{{ $x['mes'] }}</td><td style="max-width:260px; word-break:break-all">{{ $x['fichero'] }}</td>
+                                                    <td>{{ $x['cuenta'] }} {{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td>
+                                                    <td style="text-align:right">{{ $x['total'] !== null ? number_format((float) $x['total'], 2, ',', '.') : '' }}</td>
+                                                    <td class="text-xs text-gray-600">{{ $x['detalle'] }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                @else
+                                    <div class="text-sm" style="color:#047857">✔ Todas las facturas de las carpetas están en el mayor.</div>
+                                @endif
+                                @if ($chequeo['sin_pdf'])
+                                    <details>
+                                        <summary class="text-sm font-semibold cursor-pointer">En el mayor sin PDF en las carpetas ({{ $chequeo['mayor_sin_pdf'] }})</summary>
+                                        <table class="focr-tabla">
+                                            <thead><tr><th>Cuenta</th><th>Proveedor</th><th>Nº factura</th><th>Fecha asiento</th><th style="text-align:right">Total</th></tr></thead>
+                                            <tbody>
+                                                @foreach ($chequeo['sin_pdf'] as $x)
+                                                    <tr><td>{{ $x['cuenta'] }}</td><td>{{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td><td>{{ $x['fecha'] }}</td><td style="text-align:right">{{ number_format((float) $x['total'], 2, ',', '.') }}</td></tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </details>
+                                @endif
+                            @else
+                                <p class="text-sm text-gray-500">Aún no hay resultado para ese periodo: pulsa «Chequear».</p>
+                            @endif
+                        </div>
+                    @elseif ($vista === 'proveedores')
                         <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200">
                             <input type="search" wire:model.live.debounce.300ms="filtroProv" placeholder="Buscar cuenta, nombre, CIF o contrapartida…" class="focr-in" style="max-width:340px">
                             <span class="text-xs text-gray-500">{{ count($provs) }} proveedores · <b>●</b> = puesto aquí (manda sobre la ficha de SAGE). Clic en uno para editarlo.</span>

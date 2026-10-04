@@ -304,4 +304,13 @@ class FacturasOcrWebTest extends TestCase
         $c->updatedForm('DE12345678', 'cif');
         $this->assertStringContainsString('9 dígitos', $c->cifAviso);
     }
+
+    public function test_el_chequeo_contra_el_mayor_valida_el_periodo_y_lee_el_resultado(): void
+    {
+        $c = $this->componente();
+        $c->cliente = 'Durcal';
+        $c->chequeoPeriodo = 'mal';
+        $c->chequearMayor();
+        $this->assertTrue($c->getErrorBag()->has('chequeo'));
+    }
 }
