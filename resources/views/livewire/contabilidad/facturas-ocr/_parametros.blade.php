@@ -38,11 +38,10 @@
                     @endif
                     <div>
                         <label class="focr-lbl">Analítica
-                            <x-neteges-info>Contabilidad analítica: si la marcas, cada factura lleva el código de canal que el proveedor tenga por defecto en su ficha. Se guarda en la entidad.</x-neteges-info>
+                            <x-neteges-info>Contabilidad analítica: marca la casilla para que cada factura lleve el canal del proveedor por defecto (el código de canal que tenga en su ficha). Se guarda en la entidad.</x-neteges-info>
                         </label>
                         <label class="flex items-center gap-2 mt-1 text-sm">
-                            <input type="checkbox" wire:model.live="analitica" class="rounded">
-                            Canal del proveedor por defecto
+                            <input type="checkbox" wire:model.live="analitica" class="rounded" aria-label="Analítica: canal del proveedor por defecto" title="Canal del proveedor por defecto">
                         </label>
                         @unless ($hayAnalitica)
                             <div class="mt-1 text-xs" style="color:#b45309">Falta la migración en la base de datos: de momento no se guarda en la entidad.</div>
