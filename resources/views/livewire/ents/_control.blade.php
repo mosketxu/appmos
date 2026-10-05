@@ -38,6 +38,3 @@
         title="Estado{{ $puede ? ': clic para pasar a «'.\App\Models\Entidad::ESTADOS[$sig].'» (activo → baja → inactivo → liquidada)' : '' }}"
         style="display:inline-block;padding:1px 10px;border-radius:9999px;font-size:.75rem;font-weight:600;border:1px solid {{ $col[1] }};background:{{ $col[0] }};color:{{ $col[2] }}">{{ \App\Models\Entidad::ESTADOS[$est] ?? '—' }}</{{ $tag }}>
 @endif
-        title="Estado{{ $puede ? ' (clic para cambiar)' : '' }}"
-        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 {{ $e->estado == 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">{{ $e->estado == 1 ? 'Activo' : 'Baja' }}</{{ $tag }}>
-@endif
