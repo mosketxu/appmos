@@ -760,17 +760,25 @@ class FacturacionPdf extends Component
             return;
         }
         $nombre = null;
-        foreach (($this->destinatarios[$cliente]['filas'] ?? []) as $f) {
-            if ((int) $f['fila'] === $fila) {
-                $nombre = $f['cliente'];
-                $actual = $campo === 'mail' ? $f['mail'] : ($f['enviar'] ? '1' : '');
+        $valor = trim((string) $valor);   // Laravel convierte '' en null en las peticiones
+        foreach (($this->destinatarios[$cliente]['filas'] ?? []) as $i => $f) {
+            if ((int) $f['fila'] !== $fila) {
+                continue;
+            }
+            $nombre = $f['cliente'];
+            $actual = $campo === 'mail' ? $f['mail'] : ($f['enviar'] ? '1' : '');
+            if ($valor === $actual) {
+                return;
+            }
+            // Se ve el cambio al instante; el Excel se escribe después en un PC (si falla, se recarga la lista con lo real).
+            if ($campo === 'mail') {
+                $this->destinatarios[$cliente]['filas'][$i]['mail'] = $valor;
+            } else {
+                $this->destinatarios[$cliente]['filas'][$i]['enviar'] = $valor === '1';
+                $this->destinatarios[$cliente]['filas'][$i]['enviar_raw'] = $valor;
             }
         }
         if ($nombre === null) {
-            return;
-        }
-        $valor = trim((string) $valor);   // Laravel convierte '' en null en las peticiones
-        if ($valor === ($actual ?? null)) {
             return;
         }
         $args = ['--client', $cliente, '--fila', $fila, '--cliente', $nombre, '--campo', $campo, '--valor', $valor];
@@ -790,10 +798,12 @@ class FacturacionPdf extends Component
         $this->cargarDestinatarios($cliente);
     }
 
-    /** Fin de editarDestinatario en el PC: se recarga la lista para ver el cambio (si falló, el motivo queda en la Salida). */
+    /** Fin de editarDestinatario en el PC: si fue bien no hay nada que hacer (ya se ve); si falló, el motivo queda en la Salida y se recarga la lista real. */
     protected function postEdicionDestinatario(array $ctx, int $desde, array $oks): void
     {
-        $this->cargarDestinatarios($ctx['cliente']);
+        if (! ($oks[0] ?? false)) {
+            $this->cargarDestinatarios($ctx['cliente']);
+        }
     }
 
     public function getDestinatariosFiltradosProperty(): array
