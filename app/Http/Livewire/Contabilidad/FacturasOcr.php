@@ -1150,14 +1150,22 @@ class FacturasOcr extends Component
         return $out;
     }
 
-    /** Nº de PDF de la entrada que ya no hacen falta ahí (validadas o duplicadas): las únicas que quita «Vaciar entrada». */
+    /**
+     * PDF de la entrada que ya no hacen falta ahí: [ruta del PDF en Entrada => id de la factura cuya ruta es esa (o null si es una copia)].
+     * Son los de facturas validadas, duplicadas o rechazadas; también las copias de ellas (misma huella, otra ruta).
+     */
     protected function vaciablesEntrada(): array
     {
-        $out = [];
+        $estados = ['validada', 'duplicada', 'rechazada'];
+        $porId = [];
         foreach ($this->estado()['facturas'] as $f) {
-            if (in_array($f['estado'], ['validada', 'duplicada'], true) && is_file($f['ruta'])
-                    && dirname($f['ruta']) === $this->dirEntrada()) {
-                $out[$f['id']] = $f['ruta'];
+            $porId[$f['id']] = $f;
+        }
+        $out = [];
+        foreach (glob($this->dirEntrada().'/*.{pdf,PDF}', GLOB_BRACE) ?: [] as $ruta) {
+            $f = $porId[$this->idPdfCache($ruta)] ?? null;
+            if ($f && in_array($f['estado'], $estados, true)) {
+                $out[$ruta] = realpath($f['ruta']) === realpath($ruta) ? $f['id'] : null;
             }
         }
 
@@ -1165,8 +1173,8 @@ class FacturasOcr extends Component
     }
 
     /**
-     * Limpia la lista «Facturas subidas»: los PDF ya contabilizados (validada / duplicada) que siguen en Entrada se apartan a
-     * Entrada/_vaciadas-<fecha> (no se borran). Rechazadas, no legibles, por revisar y sin leer se quedan donde están.
+     * Limpia la lista «Facturas subidas»: los PDF de Entrada de facturas ya contabilizadas, duplicadas o rechazadas se apartan a
+     * Entrada/_vaciadas-<fecha> (no se borran). Por revisar, no legibles y sin leer se quedan donde están.
      */
     public function vaciarEntrada(): void
     {
@@ -1180,13 +1188,17 @@ class FacturasOcr extends Component
         $dir = $this->dirEntrada().'/_vaciadas-'.date('Y-m-d');
         @mkdir($dir, 0775, true);
         $nuevas = [];
-        foreach ($mover as $id => $ruta) {
+        $n = 0;
+        foreach ($mover as $ruta => $id) {
             $destino = $dir.'/'.basename($ruta);
             for ($i = 2; file_exists($destino); $i++) {
                 $destino = $dir.'/'.pathinfo($ruta, PATHINFO_FILENAME)." ($i).pdf";
             }
             if (@rename($ruta, $destino)) {
-                $nuevas[$id] = $destino;
+                $n++;
+                if ($id) {
+                    $nuevas[$id] = $destino;
+                }
             }
         }
         $this->modificarEstado(function (array $e) use ($nuevas) {
@@ -1198,7 +1210,7 @@ class FacturasOcr extends Component
 
             return $e;
         });
-        $this->dispatch('proceso-terminado', mensaje: '✅ Entrada vaciada: '.count($nuevas).' PDF apartados a '.basename($dir).'. Las rechazadas y las no leídas se quedan.');
+        $this->dispatch('proceso-terminado', mensaje: '✅ Entrada vaciada: '.$n.' PDF apartados a '.basename($dir).' (dentro de Entrada; no se ha borrado ninguno).');
     }
 
     // ------------------------------------------------------------ procesos

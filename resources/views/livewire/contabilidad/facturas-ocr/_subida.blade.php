@@ -79,9 +79,9 @@
 @if (count($entrada))
     <div class="mt-1 text-xs" style="text-align:right">
         <button type="button" wire:click="vaciarEntrada" @disabled($vaciables < 1 || $sinLeer > 0 || $lecturaDesde)
-                wire:confirm="¿Apartar de la entrada las {{ $vaciables }} ya contabilizadas o duplicadas? Se mueven a una subcarpeta (no se borran). Las rechazadas y las no leídas se quedan."
+                wire:confirm="¿Apartar de la entrada las {{ $vaciables }} ya contabilizadas, duplicadas o rechazadas? Se mueven a la subcarpeta Entrada/_vaciadas-<fecha> (no se borran). Las por revisar y las no leídas se quedan."
                 class="focr-btn b-gris" style="padding:.1rem .5rem; font-size:.7rem; {{ $vaciables < 1 || $sinLeer > 0 || $lecturaDesde ? 'opacity:.5' : '' }}"
-                title="Quita de la lista las ya contabilizadas o duplicadas; las rechazadas se quedan hasta que las muevas a mano">🧹 Vaciar entrada ({{ $vaciables }})</button>
+                title="Quita de la lista las ya contabilizadas, duplicadas y rechazadas (se apartan a una subcarpeta, no se borran)">🧹 Vaciar entrada ({{ $vaciables }})</button>
     </div>
 @endif
 

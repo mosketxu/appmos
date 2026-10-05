@@ -85,25 +85,31 @@ class FacturasOcrWebTest extends TestCase
         $this->assertCount(3, glob($this->raiz.'/OneDrive/_Clientes/_FacturasOCR/Durcal/Entrada/*.pdf'));
     }
 
-    public function test_vaciar_entrada_aparta_las_contabilizadas_y_deja_las_rechazadas(): void
+    public function test_vaciar_entrada_aparta_contabilizadas_y_rechazadas_y_deja_las_pendientes(): void
     {
         $d = $this->raiz.'/OneDrive/_Clientes/_FacturasOCR/Durcal';
         @mkdir($d.'/Entrada', 0777, true);
         file_put_contents($d.'/Entrada/ok.pdf', '%PDF ok');
         file_put_contents($d.'/Entrada/mala ISP.pdf', '%PDF mala');
+        file_put_contents($d.'/Entrada/pend.pdf', '%PDF pend');
         file_put_contents($d.'/facturas.json', json_encode(['facturas' => [
             ['id' => 'aaa', 'estado' => 'validada', 'ruta' => $d.'/Entrada/ok.pdf'],
-            ['id' => 'bbb', 'estado' => 'rechazada', 'ruta' => $d.'/Entrada/mala ISP.pdf'],
+            ['id' => substr(sha1_file($d.'/Entrada/mala ISP.pdf'), 0, 12), 'estado' => 'rechazada', 'ruta' => $d.'/Entrada/mala ISP.pdf'],
+            ['id' => substr(sha1_file($d.'/Entrada/pend.pdf'), 0, 12), 'estado' => 'pendiente', 'ruta' => $d.'/Entrada/pend.pdf'],
         ]]));
+        file_put_contents($d.'/facturas.json', str_replace('aaa', substr(sha1_file($d.'/Entrada/ok.pdf'), 0, 12), file_get_contents($d.'/facturas.json')));
         $c = $this->componente();
         $c->vaciarEntrada();
 
         $this->assertFileDoesNotExist($d.'/Entrada/ok.pdf');
-        $this->assertFileExists($d.'/Entrada/mala ISP.pdf');
+        $this->assertFileDoesNotExist($d.'/Entrada/mala ISP.pdf');
+        $this->assertFileExists($d.'/Entrada/pend.pdf');
+        $this->assertFileExists($d.'/Entrada/_vaciadas-'.date('Y-m-d').'/mala ISP.pdf');
         $this->assertFileExists($d.'/Entrada/_vaciadas-'.date('Y-m-d').'/ok.pdf');
         $f = json_decode(file_get_contents($d.'/facturas.json'), true)['facturas'];
         $this->assertSame($d.'/Entrada/_vaciadas-'.date('Y-m-d').'/ok.pdf', $f[0]['ruta']);
-        $this->assertSame($d.'/Entrada/mala ISP.pdf', $f[1]['ruta']);
+        $this->assertSame($d.'/Entrada/_vaciadas-'.date('Y-m-d').'/mala ISP.pdf', $f[1]['ruta']);
+        $this->assertSame($d.'/Entrada/pend.pdf', $f[2]['ruta']);
     }
 
     public function test_un_pdf_de_la_entrada_se_reconoce_por_su_huella_aunque_conste_con_otro_nombre(): void
