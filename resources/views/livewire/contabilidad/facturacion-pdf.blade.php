@@ -321,8 +321,6 @@
                             </button>
                         </div>
                     </div>
-                        @endif
-                    </div>
 
                     @if ($d && isset($d['error']))
                         <p class="text-xs text-red-600">⚠️ {{ $d['error'] }}</p>
