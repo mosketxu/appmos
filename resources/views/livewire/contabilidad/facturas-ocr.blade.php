@@ -747,10 +747,14 @@
                     else { vistos.add(a.id); a.estado = 'subiendo'; subir.push(a); }
                 }
                 if (!subir.length) return;
-                await new Promise((fin, fallo) => this.$wire.uploadMultiple('pdfsSubidos', subir.map(a => a.file), fin, fallo,
-                    (e) => subir.forEach(a => a.pct = e.detail.progress)));
-                subir.forEach(a => { a.estado = 'subida'; });
-                await this.$wire.recibirPdfs();
+                // De 10 en 10: PHP descarta en silencio los ficheros que pasan de max_file_uploads (20) en una misma petición
+                for (let i = 0; i < subir.length; i += 10) {
+                    const lote = subir.slice(i, i + 10);
+                    await new Promise((fin, fallo) => this.$wire.uploadMultiple('pdfsSubidos', lote.map(a => a.file), fin, fallo,
+                        (e) => lote.forEach(a => a.pct = e.detail.progress)));
+                    lote.forEach(a => { a.estado = 'subida'; });
+                    await this.$wire.recibirPdfs();
+                }
             },
         };
     };
