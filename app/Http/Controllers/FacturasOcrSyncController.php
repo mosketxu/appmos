@@ -136,7 +136,17 @@ class FacturasOcrSyncController extends Controller
             }
         }
 
-        return response()->json(['raiz' => '{OneDrive}', 'ficheros' => $ficheros, 'originales' => $originales]);
+        // Rechazadas que solo existen en la Entrada del servidor (con su sufijo ISP / ADC): el PC renombra su copia con el mismo contenido
+        $entrada = [];
+        $datos = realpath(FacturasOcr::rutaDatos($dir).'/Entrada');
+        foreach ($estado['facturas'] ?? [] as $fa) {
+            $ruta = realpath((string) ($fa['ruta'] ?? ''));
+            if (($fa['estado'] ?? '') === 'rechazada' && $datos && $ruta && str_starts_with($ruta, $datos.'/') && is_file($ruta)) {
+                $entrada[] = ['nombre' => basename($ruta), 'sha256' => hash_file('sha256', $ruta), 'tam' => filesize($ruta)];
+            }
+        }
+
+        return response()->json(['raiz' => '{OneDrive}', 'ficheros' => $ficheros, 'originales' => $originales, 'entrada' => $entrada]);
     }
 
     public function archivo(Request $r, string $cliente)
