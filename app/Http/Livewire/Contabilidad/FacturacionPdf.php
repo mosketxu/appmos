@@ -78,6 +78,9 @@ class FacturacionPdf extends Component
     /** Cambios de destinatarios aún sin guardar en el Excel: [cliente => [fila => ['cliente', 'mail'?, 'enviar'?, 'orig']]]. */
     public array $cambios = [];
 
+    /** Solo los clientes con factura en el último lote separado: [cliente => bool]. */
+    public array $soloLote = [];
+
     /** Enseñar también los clientes con Estado (baja, inactivo, liquidada...): [cliente => bool]. */
     public array $verInactivas = [];
 
@@ -758,6 +761,8 @@ class FacturacionPdf extends Component
                 'xlsxPathWindows' => $this->rutaWindows($data['xlsx_path'] ?? ''),
                 'xlsxUrl' => $this->fileUrl($data['xlsx_path'] ?? ''),
                 'avisos' => $data['avisos'] ?? [],
+            'lote' => $data['lote'] ?? null,
+                'lote' => $data['lote'] ?? null,
             ];
         } catch (\Throwable $e) {
             $this->destinatarios[$cliente] = ['error' => $e->getMessage()];
@@ -781,6 +786,7 @@ class FacturacionPdf extends Component
             'xlsxPathWindows' => $this->rutaWindows($data['xlsx_path'] ?? ''),
             'xlsxUrl' => $this->fileUrl($data['xlsx_path'] ?? ''),
             'avisos' => $data['avisos'] ?? [],
+            'lote' => $data['lote'] ?? null,
         ];
     }
 
@@ -891,6 +897,9 @@ class FacturacionPdf extends Component
             $filas = (! $d || isset($d['error'])) ? [] : $d['filas'];
             if (empty($this->verInactivas[$id])) {
                 $filas = array_values(array_filter($filas, fn ($f) => in_array(mb_strtolower(trim($f['estado'] ?? '')), ['', 'activo', 'activa'], true) || isset($this->cambios[$id][$f['fila']])));
+            }
+            if (! empty($this->soloLote[$id])) {
+                $filas = array_values(array_filter($filas, fn ($f) => ! empty($f['en_lote'])));
             }
             $out[$id] = $filas;
         }

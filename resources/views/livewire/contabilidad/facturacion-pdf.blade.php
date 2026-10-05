@@ -339,11 +339,19 @@
                             <label class="flex items-center gap-1">
                                 <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="no"> Enviar = no ({{ count(array_filter($this->destinatariosVisibles[$id], fn($f) => ! $f['enviar'])) }})
                             </label>
+                            @if (! empty($d['lote']['dir']))
+                                <label class="flex items-center gap-1 font-semibold text-indigo-700" title="Enseña solo los clientes que tienen alguna factura en el último lote separado ({{ $d['lote']['dir'] }}: {{ $d['lote']['pdfs'] }} facturas), para comprobar a quién va a llegar este envío.">
+                                    <input type="checkbox" wire:model.live="soloLote.{{ $id }}"> Solo con factura en este envío ({{ count(array_filter($d['filas'], fn($f) => ! empty($f['en_lote']))) }})
+                                </label>
+                            @endif
                             @php($nInact = count(array_filter($d['filas'], fn($f) => ! in_array(mb_strtolower(trim($f['estado'] ?? '')), ['', 'activo', 'activa'], true))))
                             <label class="flex items-center gap-1 ml-auto text-gray-500" title="Clientes con Estado en el Excel (baja, inactivo, liquidada...). Por defecto no se enseñan.">
                                 <input type="checkbox" wire:model.live="verInactivas.{{ $id }}"> Ver inactivas ({{ $nInact }})
                             </label>
                         </div>
+                        @if (! empty($d['lote']['sin_cliente']))
+                            <p class="mb-1 text-xs text-red-600">⚠️ {{ count($d['lote']['sin_cliente']) }} factura(s) del lote {{ $d['lote']['dir'] }} no casan con ningún cliente del Excel y NO se enviarían: {{ implode(' · ', $d['lote']['sin_cliente']) }}</p>
+                        @endif
                         @if (! empty($d['xlsxPathWindows']))
                             <div class="mb-2">
                                 <x-contabilidad.resultado-fichero :r="['ruta' => $d['xlsxPathWindows']]" />
