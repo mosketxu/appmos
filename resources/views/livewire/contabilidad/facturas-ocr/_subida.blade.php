@@ -76,6 +76,15 @@
     </div>
 </div>
 
+@if (count($entrada))
+    <div class="mt-1 text-xs" style="text-align:right">
+        <button type="button" wire:click="vaciarEntrada" @disabled($vaciables < 1 || $sinLeer > 0 || $lecturaDesde)
+                wire:confirm="¿Apartar de la entrada las {{ $vaciables }} ya contabilizadas o duplicadas? Se mueven a una subcarpeta (no se borran). Las rechazadas y las no leídas se quedan."
+                class="focr-btn b-gris" style="padding:.1rem .5rem; font-size:.7rem; {{ $vaciables < 1 || $sinLeer > 0 || $lecturaDesde ? 'opacity:.5' : '' }}"
+                title="Quita de la lista las ya contabilizadas o duplicadas; las rechazadas se quedan hasta que las muevas a mano">🧹 Vaciar entrada ({{ $vaciables }})</button>
+    </div>
+@endif
+
 <div class="pt-2 mt-2 border-t border-gray-100" style="font-size:.7rem">
     @include('livewire.contabilidad.facturas-ocr._archivo-pc')
 </div>

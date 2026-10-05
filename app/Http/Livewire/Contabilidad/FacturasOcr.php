@@ -1140,6 +1140,57 @@ class FacturasOcr extends Component
         return $out;
     }
 
+    /** Nº de PDF de la entrada que ya no hacen falta ahí (validadas o duplicadas): las únicas que quita «Vaciar entrada». */
+    protected function vaciablesEntrada(): array
+    {
+        $out = [];
+        foreach ($this->estado()['facturas'] as $f) {
+            if (in_array($f['estado'], ['validada', 'duplicada'], true) && is_file($f['ruta'])
+                    && dirname($f['ruta']) === $this->dirEntrada()) {
+                $out[$f['id']] = $f['ruta'];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Limpia la lista «Facturas subidas»: los PDF ya contabilizados (validada / duplicada) que siguen en Entrada se apartan a
+     * Entrada/_vaciadas-<fecha> (no se borran). Rechazadas, no legibles, por revisar y sin leer se quedan donde están.
+     */
+    public function vaciarEntrada(): void
+    {
+        if (! $this->web() || ! $this->clienteValido() || $this->leyendo || $this->sinLeerEnEntrada() > 0) {
+            return;
+        }
+        $mover = $this->vaciablesEntrada();
+        if (! $mover) {
+            return;
+        }
+        $dir = $this->dirEntrada().'/_vaciadas-'.date('Y-m-d');
+        @mkdir($dir, 0775, true);
+        $nuevas = [];
+        foreach ($mover as $id => $ruta) {
+            $destino = $dir.'/'.basename($ruta);
+            for ($i = 2; file_exists($destino); $i++) {
+                $destino = $dir.'/'.pathinfo($ruta, PATHINFO_FILENAME)." ($i).pdf";
+            }
+            if (@rename($ruta, $destino)) {
+                $nuevas[$id] = $destino;
+            }
+        }
+        $this->modificarEstado(function (array $e) use ($nuevas) {
+            foreach ($e['facturas'] as &$f) {
+                if (isset($nuevas[$f['id']])) {
+                    $f['ruta'] = $nuevas[$f['id']];   // el visor del PDF sigue encontrándola
+                }
+            }
+
+            return $e;
+        });
+        $this->dispatch('proceso-terminado', mensaje: '✅ Entrada vaciada: '.count($nuevas).' PDF apartados a '.basename($dir).'. Las rechazadas y las no leídas se quedan.');
+    }
+
     // ------------------------------------------------------------ procesos
 
     public function analizar(): void
@@ -1974,14 +2025,20 @@ class FacturasOcr extends Component
         }
     }
 
-    public function rechazar(): void
+    /** Rechaza la factura abierta. Con $sufijo (ISP / ADC) además lo añade al final del nombre del PDF y al motivo. */
+    public function rechazar(?string $sufijo = null): void
     {
         if (! $this->sel) {
             return;
         }
         $this->salida = '';
         $antes = array_column($this->cola(), 'id');
-        if ($this->ejecutar(['rechazar', $this->sel, '--motivo', $this->motivo], 60, 'Rechazar', false)) {
+        $args = ['rechazar', $this->sel, '--motivo', $this->motivo];
+        if (in_array($sufijo, ['ISP', 'ADC'], true)) {
+            $args[3] = trim($sufijo.' '.trim(preg_replace('/^'.$sufijo.'\b\s*/u', '', $this->motivo)));
+            array_push($args, '--sufijo', $sufijo);
+        }
+        if ($this->ejecutar($args, 60, 'Rechazar', false)) {
             $this->siguiente($antes);
         }
     }
@@ -2350,6 +2407,7 @@ class FacturasOcr extends Component
             'esperandoOcr' => (bool) $this->pendientes,
             'sync' => $this->estadoSync(),
             'entrada' => $this->estadoEntrada(),
+            'vaciables' => $this->web() && $valido ? count($this->vaciablesEntrada()) : 0,
             'lecturaDesde' => $this->web() && $valido ? ($this->lecturaEnCurso()[0] ?? null) : null,
             'procesos' => $procesos,
             'enExcel' => count(array_filter($todas, fn ($f) => ($f['excel'] ?? '') === self::EXCEL && in_array($f['estado'], ['validada', 'validando'], true))),

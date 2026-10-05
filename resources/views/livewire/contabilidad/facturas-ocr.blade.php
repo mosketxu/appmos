@@ -664,6 +664,8 @@
                             </button>
                             <input type="text" wire:model.blur="motivo" class="focr-in" style="flex:1" placeholder="Motivo del rechazo (opcional)">
                             <button type="button" data-atajo="rechazar" title="Rechazar (Alt + Intro)" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo">✖ Rechazar <small style="opacity:.75; font-weight:400">Alt+Intro</small></button>
+                            <button type="button" wire:click="rechazar('ISP')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.15rem .45rem; font-size:.7rem" title="Rechazar por inversión del sujeto pasivo: añade ISP al final del nombre del PDF">ISP</button>
+                            <button type="button" wire:click="rechazar('ADC')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.15rem .45rem; font-size:.7rem" title="Rechazar por ADC (adquisición intracomunitaria): añade ADC al final del nombre del PDF">ADC</button>
                         </div>
                         @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
                             <div style="margin-top:.35rem">

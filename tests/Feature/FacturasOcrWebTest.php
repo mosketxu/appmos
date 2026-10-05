@@ -85,6 +85,27 @@ class FacturasOcrWebTest extends TestCase
         $this->assertCount(3, glob($this->raiz.'/OneDrive/_Clientes/_FacturasOCR/Durcal/Entrada/*.pdf'));
     }
 
+    public function test_vaciar_entrada_aparta_las_contabilizadas_y_deja_las_rechazadas(): void
+    {
+        $d = $this->raiz.'/OneDrive/_Clientes/_FacturasOCR/Durcal';
+        @mkdir($d.'/Entrada', 0777, true);
+        file_put_contents($d.'/Entrada/ok.pdf', '%PDF ok');
+        file_put_contents($d.'/Entrada/mala ISP.pdf', '%PDF mala');
+        file_put_contents($d.'/facturas.json', json_encode(['facturas' => [
+            ['id' => 'aaa', 'estado' => 'validada', 'ruta' => $d.'/Entrada/ok.pdf'],
+            ['id' => 'bbb', 'estado' => 'rechazada', 'ruta' => $d.'/Entrada/mala ISP.pdf'],
+        ]]));
+        $c = $this->componente();
+        $c->vaciarEntrada();
+
+        $this->assertFileDoesNotExist($d.'/Entrada/ok.pdf');
+        $this->assertFileExists($d.'/Entrada/mala ISP.pdf');
+        $this->assertFileExists($d.'/Entrada/_vaciadas-'.date('Y-m-d').'/ok.pdf');
+        $f = json_decode(file_get_contents($d.'/facturas.json'), true)['facturas'];
+        $this->assertSame($d.'/Entrada/_vaciadas-'.date('Y-m-d').'/ok.pdf', $f[0]['ruta']);
+        $this->assertSame($d.'/Entrada/mala ISP.pdf', $f[1]['ruta']);
+    }
+
     public function test_una_factura_ya_validada_no_se_vuelve_a_subir_y_lo_que_no_es_pdf_se_rechaza(): void
     {
         $c = $this->componente();
