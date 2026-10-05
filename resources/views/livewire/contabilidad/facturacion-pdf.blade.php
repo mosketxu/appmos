@@ -380,7 +380,7 @@
                                                 @php($activa = in_array(mb_strtolower(trim($fila['estado'] ?? '')), ['', 'activo', 'activa'], true))
                                                 <button type="button" wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, {{ $activa ? 'true' : 'false' }})"
                                                     title="{{ $activa ? 'Pulsa para dar de baja' : 'Pulsa para activar' }}"
-                                                    class="px-2 rounded hover:bg-gray-100 {{ $activa ? 'text-green-700' : 'text-gray-500' }}">{{ $activa ? 'activo ✓' : $fila['estado'] }}</button>
+                                                    style="display:inline-block;padding:1px 10px;border-radius:9999px;font-size:.75rem;font-weight:600;border:1px solid {{ $activa ? '#86efac' : '#fca5a5' }};background:{{ $activa ? '#dcfce7' : '#fee2e2' }};color:{{ $activa ? '#166534' : '#991b1b' }}">{{ $activa ? 'activo' : $fila['estado'] }}</button>
                                             </td>
                                         </tr>
                                     @empty
