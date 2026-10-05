@@ -314,7 +314,7 @@
                                     class="text-xs text-gray-500 underline hover:text-gray-700">Descartar</button>
                             @endif
                             <button type="button" wire:click="guardarCambios('{{ $id }}')" wire:loading.attr="disabled" @disabled(! $nCambios)
-                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla) o se le da de baja (✕). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
+                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla) o se le da de baja («dar de baja»). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
                                 class="px-3 py-1.5 text-sm font-semibold rounded-md shadow"
                                 style="{{ $nCambios ? 'background:#f59e0b;color:#fff' : 'background:#e5e7eb;color:#9ca3af;cursor:default' }}">
                                 💾 Guardar en TODO{{ $nCambios ? " ({$nCambios})" : '' }}
@@ -382,8 +382,9 @@
                                                     <button type="button" title="Quitar la baja: deja el estado vacío (la fila vuelve a ser un cliente activo)"
                                                         wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, false)" class="ml-1 text-indigo-700 underline">reactivar</button>
                                                 @else
+                                                    <span class="text-green-700">activa</span>
                                                     <button type="button" title="Dar de baja a este cliente: pone Estado = baja en el Excel y Enviar = no (al pulsar «Guardar en TODO»)"
-                                                        wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, true)" class="text-red-600 hover:underline">✕ baja</button>
+                                                        wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, true)" class="ml-1 text-xs text-gray-400 hover:text-red-600 hover:underline">dar de baja</button>
                                                 @endif
                                             </td>
                                         </tr>
