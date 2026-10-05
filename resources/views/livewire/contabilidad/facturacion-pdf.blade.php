@@ -291,11 +291,13 @@
                     </div>
                 @endif
 
-                {{-- Destinatarios de este cliente: solo lectura, con filtro y enlace al Excel real --}}
-                <div class="pt-4 mt-4 border-t">
+            </div>{{-- /col-izq --}}
+            <div class="col-der" style="position:static">
+                {{-- Destinatarios de este cliente: lista editable (cambios en lote), con filtro y enlace al Excel real --}}
+                <div class="p-3 bg-white border rounded-lg">
                     <div class="flex flex-wrap items-center gap-2 mb-2">
                         <h3 class="text-sm font-semibold text-gray-800">Destinatarios</h3>
-                        <x-button.secondary
+                        <x-button.primary
                             class="!py-1 !px-2 text-xs"
                             wire:click="cargarDestinatarios('{{ $id }}')"
                             wire:loading.attr="disabled"
@@ -303,24 +305,24 @@
                         >
                             <span wire:loading.remove wire:target="cargarDestinatarios('{{ $id }}')">{{ $d ? 'Recargar' : 'Cargar lista' }}</span>
                             <span wire:loading wire:target="cargarDestinatarios('{{ $id }}')">⏳ Cargando…</span>
-                        </x-button.secondary>
+                        </x-button.primary>
                         @php($nCambios = count($cambios[$id] ?? []))
-                        @if ($nCambios)
-                            <div class="flex items-center gap-2 ml-auto">
+                        <div class="flex items-center gap-2 ml-auto">
+                            @if ($nCambios)
                                 <button type="button" wire:click="descartarCambios('{{ $id }}')" wire:loading.attr="disabled"
                                     title="Deshace los cambios marcados en amarillo y vuelve a leer la lista tal como está en el Excel. No toca el Excel."
                                     class="text-xs text-gray-500 underline hover:text-gray-700">Descartar</button>
-                                <button type="button" wire:click="guardarCambios('{{ $id }}')" wire:loading.attr="disabled"
-                                    title="Escribe en el Excel ToDO Alex los {{ $nCambios }} cambio(s) de correo / Enviar marcados en amarillo, todos de una vez (un PC abre el Excel, los aplica y lo guarda). Hasta que lo pulses, el envío de correos NO usa estos cambios."
-                                    class="px-3 py-1.5 text-sm font-semibold text-white rounded-md shadow" style="background:#f59e0b">
-                                    💾 Guardar en TODO ({{ $nCambios }})
-                                </button>
-                            </div>
+                            @endif
+                            <button type="button" wire:click="guardarCambios('{{ $id }}')" wire:loading.attr="disabled" @disabled(! $nCambios)
+                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla) o se le da de baja (✕). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
+                                class="px-3 py-1.5 text-sm font-semibold rounded-md shadow"
+                                style="{{ $nCambios ? 'background:#f59e0b;color:#fff' : 'background:#e5e7eb;color:#9ca3af;cursor:default' }}">
+                                💾 Guardar en TODO{{ $nCambios ? " ({$nCambios})" : '' }}
+                            </button>
+                        </div>
+                    </div>
                         @endif
                     </div>
-                    <p class="mb-2 text-xs text-gray-500">
-                        Pulsa «sí/no» para cambiar si se envía, o edita el correo y sal de la casilla. Los cambios quedan marcados en amarillo y no se escriben en el Excel (ToDO Alex) hasta que pulses «Guardar en TODO». Para otros datos, abre el Excel (enlace de abajo).
-                    </p>
 
                     @if ($d && isset($d['error']))
                         <p class="text-xs text-red-600">⚠️ {{ $d['error'] }}</p>
@@ -331,13 +333,17 @@
 
                         <div class="flex flex-wrap items-center gap-3 my-2 text-xs">
                             <label class="flex items-center gap-1">
-                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="todos"> Todos ({{ count($d['filas']) }})
+                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="todos"> Todos ({{ count($this->destinatariosVisibles[$id]) }})
                             </label>
                             <label class="flex items-center gap-1">
-                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="si"> Enviar = sí ({{ count(array_filter($d['filas'], fn($f) => $f['enviar'])) }})
+                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="si"> Enviar = sí ({{ count(array_filter($this->destinatariosVisibles[$id], fn($f) => $f['enviar'])) }})
                             </label>
                             <label class="flex items-center gap-1">
-                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="no"> Enviar = no ({{ count(array_filter($d['filas'], fn($f) => ! $f['enviar'])) }})
+                                <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="no"> Enviar = no ({{ count(array_filter($this->destinatariosVisibles[$id], fn($f) => ! $f['enviar'])) }})
+                            </label>
+                            @php($nInact = count(array_filter($d['filas'], fn($f) => trim($f['estado'] ?? '') !== '')))
+                            <label class="flex items-center gap-1 ml-auto text-gray-500" title="Clientes con Estado en el Excel (baja, inactivo, liquidada...). Por defecto no se enseñan.">
+                                <input type="checkbox" wire:model.live="verInactivas.{{ $id }}"> Ver inactivas ({{ $nInact }})
                             </label>
                         </div>
                         @if (! empty($d['xlsxPathWindows']))
@@ -346,7 +352,7 @@
                             </div>
                         @endif
 
-                        <div class="overflow-auto border rounded" style="max-height:22rem">
+                        <div class="overflow-auto border rounded" style="max-height:calc(100vh - 17rem)">
                             <table class="min-w-full text-xs divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
@@ -354,11 +360,12 @@
                                         <th class="px-2 py-1 text-left">Mail</th>
                                         <th class="px-2 py-1 text-left">Idioma</th>
                                         <th class="px-2 py-1 text-left">Enviar</th>
+                                        <th class="px-2 py-1 text-left">Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     @forelse ($this->destinatariosFiltrados[$id] as $fila)
-                                        <tr @if (isset($cambios[$id][$fila['fila']])) style="background:#fef3c7" @endif>
+                                        <tr @if (isset($cambios[$id][$fila['fila']])) style="background:#fef3c7" @elseif (stripos($fila['estado'] ?? '', 'baja') !== false) style="opacity:.55" @endif>
                                             <td class="px-2 py-1">{{ $fila['cliente'] }}</td>
                                             <td class="px-2 py-1">
                                                 <input type="text" value="{{ $fila['mail'] }}" wire:key="mail-{{ $id }}-{{ $fila['fila'] }}-{{ md5($fila['mail']) }}"
@@ -371,29 +378,33 @@
                                                     wire:click="editarDestinatario('{{ $id }}', {{ $fila['fila'] }}, 'enviar', '{{ $fila['enviar'] ? '' : '1' }}')"
                                                     class="px-2 rounded hover:bg-gray-100 {{ $fila['enviar'] ? 'text-green-700 font-semibold' : 'text-gray-400' }}">{{ $fila['enviar'] ? 'sí' : 'no' }}</button>
                                             </td>
+                                            <td class="px-2 py-1 whitespace-nowrap">
+                                                @if (($fila['estado'] ?? '') !== '')
+                                                    <span class="text-gray-500">{{ $fila['estado'] }}</span>
+                                                    <button type="button" title="Quitar la baja: deja el estado vacío (la fila vuelve a ser un cliente activo)"
+                                                        wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, false)" class="ml-1 text-indigo-700 underline">reactivar</button>
+                                                @else
+                                                    <button type="button" title="Dar de baja a este cliente: pone Estado = baja en el Excel y Enviar = no (al pulsar «Guardar en TODO»)"
+                                                        wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, true)" class="text-red-600 hover:underline">✕ baja</button>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="4" class="px-2 py-3 text-center text-gray-400">Sin filas para este filtro.</td></tr>
+                                        <tr><td colspan="5" class="px-2 py-3 text-center text-gray-400">Sin filas para este filtro.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
                     @endif
                 </div>
-            </div>{{-- /col-izq --}}
-            @if ($suSalida === '')
-                <div class="col-der">
-                    <div class="p-4 text-sm text-gray-400 border border-dashed rounded-lg">Aquí saldrá el resultado de cada fase de {{ $c['label'] }}.</div>
-                </div>
-            @else
-                @php($est = \App\Support\EstadoSalida::de($suSalida))
-                <div class="col-der">
-                    <div class="p-4 bg-gray-900 rounded-lg shadow" style="border-left:6px solid {{ $est['color'] }}">
+                @if ($suSalida !== '')
+                    @php($est = \App\Support\EstadoSalida::de($suSalida))
+                    <div class="p-4 mt-4 bg-gray-900 rounded-lg shadow" style="border-left:6px solid {{ $est['color'] }}">
                         <h3 class="mb-2 text-sm font-semibold text-gray-300">{{ $est['icono'] }} Salida de {{ $c['label'] }}</h3>
-                        <pre class="overflow-auto text-xs text-green-400 whitespace-pre-wrap" style="max-height:calc(100vh - 6rem)">{{ $suSalida }}</pre>
+                        <pre class="overflow-auto text-xs text-green-400 whitespace-pre-wrap" style="max-height:30vh">{{ $suSalida }}</pre>
                     </div>
-                </div>
-            @endif
+                @endif
+            </div>
             </div>{{-- /fila-tarjeta --}}
             </div>
         @endforeach

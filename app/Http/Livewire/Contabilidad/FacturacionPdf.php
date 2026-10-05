@@ -78,6 +78,9 @@ class FacturacionPdf extends Component
     /** Cambios de destinatarios aún sin guardar en el Excel: [cliente => [fila => ['cliente', 'mail'?, 'enviar'?, 'orig']]]. */
     public array $cambios = [];
 
+    /** Enseñar también los clientes con Estado (baja, inactivo, liquidada...): [cliente => bool]. */
+    public array $verInactivas = [];
+
     /** Filtro de la lista de destinatarios por cliente: 'todos' | 'si' | 'no'. */
     public array $filtroEnviar = [];
 
@@ -763,7 +766,7 @@ class FacturacionPdf extends Component
      */
     public function editarDestinatario(string $cliente, int $fila, string $campo, ?string $valor = ''): void
     {
-        if (! isset($this->clientes()[$cliente]) || ! in_array($campo, ['enviar', 'mail'], true)) {
+        if (! isset($this->clientes()[$cliente]) || ! in_array($campo, ['enviar', 'mail', 'estado'], true)) {
             return;
         }
         $valor = trim((string) $valor);   // Laravel convierte '' en null en las peticiones
@@ -771,9 +774,9 @@ class FacturacionPdf extends Component
             if ((int) $f['fila'] !== $fila) {
                 continue;
             }
-            $c = $this->cambios[$cliente][$fila] ?? ['cliente' => $f['cliente'], 'orig' => ['mail' => $f['mail'], 'enviar' => $f['enviar'] ? '1' : '']];
-            if ($campo === 'mail') {
-                $this->destinatarios[$cliente]['filas'][$i]['mail'] = $valor;
+            $c = $this->cambios[$cliente][$fila] ?? ['cliente' => $f['cliente'], 'orig' => ['mail' => $f['mail'], 'enviar' => $f['enviar'] ? '1' : '', 'estado' => $f['estado'] ?? '']];
+            if ($campo === 'mail' || $campo === 'estado') {
+                $this->destinatarios[$cliente]['filas'][$i][$campo] = $valor;
             } else {
                 $this->destinatarios[$cliente]['filas'][$i]['enviar'] = $valor === '1';
                 $this->destinatarios[$cliente]['filas'][$i]['enviar_raw'] = $valor;
@@ -783,12 +786,21 @@ class FacturacionPdf extends Component
             } else {
                 $c[$campo] = $valor;
             }
-            if (isset($c['mail']) || isset($c['enviar'])) {
+            if (isset($c['mail']) || isset($c['enviar']) || isset($c['estado'])) {
                 $this->cambios[$cliente][$fila] = $c;
             } else {
                 unset($this->cambios[$cliente][$fila]);
             }
             return;
+        }
+    }
+
+    /** Dar de baja (Estado = baja y Enviar = no) o reactivar (Estado vacío) a un cliente de la lista; queda como cambio pendiente. */
+    public function bajaDestinatario(string $cliente, int $fila, bool $baja): void
+    {
+        $this->editarDestinatario($cliente, $fila, 'estado', $baja ? 'baja' : '');
+        if ($baja) {
+            $this->editarDestinatario($cliente, $fila, 'enviar', '');
         }
     }
 
@@ -803,7 +815,7 @@ class FacturacionPdf extends Component
     {
         $lista = [];
         foreach (($this->cambios[$cliente] ?? []) as $fila => $c) {
-            $lista[] = ['fila' => (int) $fila, 'cliente' => $c['cliente']] + array_intersect_key($c, ['mail' => 1, 'enviar' => 1]);
+            $lista[] = ['fila' => (int) $fila, 'cliente' => $c['cliente']] + array_intersect_key($c, ['mail' => 1, 'enviar' => 1, 'estado' => 1]);
         }
         if (! isset($this->clientes()[$cliente]) || ! $lista) {
             return;
@@ -843,12 +855,25 @@ class FacturacionPdf extends Component
         }
     }
 
-    public function getDestinatariosFiltradosProperty(): array
+    /** Filas que se enseñan por cliente: solo las activas (Estado vacío) + las que tienen un cambio sin guardar + todas si se marca «ver inactivas». */
+    public function getDestinatariosVisiblesProperty(): array
     {
         $out = [];
         foreach (array_keys($this->clientes()) as $id) {
             $d = $this->destinatarios[$id] ?? null;
             $filas = (! $d || isset($d['error'])) ? [] : $d['filas'];
+            if (empty($this->verInactivas[$id])) {
+                $filas = array_values(array_filter($filas, fn ($f) => trim($f['estado'] ?? '') === '' || isset($this->cambios[$id][$f['fila']])));
+            }
+            $out[$id] = $filas;
+        }
+        return $out;
+    }
+
+    public function getDestinatariosFiltradosProperty(): array
+    {
+        $out = [];
+        foreach ($this->destinatariosVisibles as $id => $filas) {
             $filtro = $this->filtroEnviar[$id] ?? 'todos';
             if ($filtro === 'si') {
                 $filas = array_values(array_filter($filas, fn ($f) => $f['enviar']));
