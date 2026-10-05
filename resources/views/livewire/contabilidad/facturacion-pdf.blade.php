@@ -314,7 +314,7 @@
                                     class="text-xs text-gray-500 underline hover:text-gray-700">Descartar</button>
                             @endif
                             <button type="button" wire:click="guardarCambios('{{ $id }}')" wire:loading.attr="disabled" @disabled(! $nCambios)
-                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla) o se le da de baja («dar de baja»). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
+                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla) o se le da de baja (pulsa sobre «activo ✓»). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
                                 class="px-3 py-1.5 text-sm font-semibold rounded-md shadow"
                                 style="{{ $nCambios ? 'background:#f59e0b;color:#fff' : 'background:#e5e7eb;color:#9ca3af;cursor:default' }}">
                                 💾 Guardar en TODO{{ $nCambios ? " ({$nCambios})" : '' }}
@@ -339,7 +339,7 @@
                             <label class="flex items-center gap-1">
                                 <input type="radio" wire:model.live="filtroEnviar.{{ $id }}" value="no"> Enviar = no ({{ count(array_filter($this->destinatariosVisibles[$id], fn($f) => ! $f['enviar'])) }})
                             </label>
-                            @php($nInact = count(array_filter($d['filas'], fn($f) => trim($f['estado'] ?? '') !== '')))
+                            @php($nInact = count(array_filter($d['filas'], fn($f) => ! in_array(mb_strtolower(trim($f['estado'] ?? '')), ['', 'activo', 'activa'], true))))
                             <label class="flex items-center gap-1 ml-auto text-gray-500" title="Clientes con Estado en el Excel (baja, inactivo, liquidada...). Por defecto no se enseñan.">
                                 <input type="checkbox" wire:model.live="verInactivas.{{ $id }}"> Ver inactivas ({{ $nInact }})
                             </label>
@@ -363,7 +363,7 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     @forelse ($this->destinatariosFiltrados[$id] as $fila)
-                                        <tr @if (isset($cambios[$id][$fila['fila']])) style="background:#fef3c7" @elseif (stripos($fila['estado'] ?? '', 'baja') !== false) style="opacity:.55" @endif>
+                                        <tr @if (isset($cambios[$id][$fila['fila']])) style="background:#fef3c7" @elseif (! in_array(mb_strtolower(trim($fila['estado'] ?? '')), ['', 'activo', 'activa'], true)) style="opacity:.55" @endif>
                                             <td class="px-2 py-1">{{ $fila['cliente'] }}</td>
                                             <td class="px-2 py-1">
                                                 <input type="text" value="{{ $fila['mail'] }}" wire:key="mail-{{ $id }}-{{ $fila['fila'] }}-{{ md5($fila['mail']) }}"
@@ -377,15 +377,10 @@
                                                     class="px-2 rounded hover:bg-gray-100 {{ $fila['enviar'] ? 'text-green-700 font-semibold' : 'text-gray-400' }}">{{ $fila['enviar'] ? 'sí' : 'no' }}</button>
                                             </td>
                                             <td class="px-2 py-1 whitespace-nowrap">
-                                                @if (($fila['estado'] ?? '') !== '')
-                                                    <span class="text-gray-500">{{ $fila['estado'] }}</span>
-                                                    <button type="button" title="Quitar la baja: deja el estado vacío (la fila vuelve a ser un cliente activo)"
-                                                        wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, false)" class="ml-1 text-indigo-700 underline">reactivar</button>
-                                                @else
-                                                    <span class="text-green-700">activa</span>
-                                                    <button type="button" title="Dar de baja a este cliente: pone Estado = baja en el Excel y Enviar = no (al pulsar «Guardar en TODO»)"
-                                                        wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, true)" class="ml-1 text-xs text-gray-400 hover:text-red-600 hover:underline">dar de baja</button>
-                                                @endif
+                                                @php($activa = in_array(mb_strtolower(trim($fila['estado'] ?? '')), ['', 'activo', 'activa'], true))
+                                                <button type="button" wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, {{ $activa ? 'true' : 'false' }})"
+                                                    title="{{ $activa ? 'Pulsa para dar de baja' : 'Pulsa para activar' }}"
+                                                    class="px-2 rounded hover:bg-gray-100 {{ $activa ? 'text-green-700' : 'text-gray-500' }}">{{ $activa ? 'activo ✓' : $fila['estado'] }}</button>
                                             </td>
                                         </tr>
                                     @empty

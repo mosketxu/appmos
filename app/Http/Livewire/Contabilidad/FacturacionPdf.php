@@ -819,10 +819,10 @@ class FacturacionPdf extends Component
         }
     }
 
-    /** Dar de baja (Estado = baja y Enviar = no) o reactivar (Estado vacío) a un cliente de la lista; queda como cambio pendiente. */
+    /** Dar de baja (Estado = baja y Enviar = no) o activar (Estado = activo; el Estado nunca queda vacío) a un cliente de la lista; queda como cambio pendiente. */
     public function bajaDestinatario(string $cliente, int $fila, bool $baja): void
     {
-        $this->editarDestinatario($cliente, $fila, 'estado', $baja ? 'baja' : '');
+        $this->editarDestinatario($cliente, $fila, 'estado', $baja ? 'baja' : 'activo');
         if ($baja) {
             $this->editarDestinatario($cliente, $fila, 'enviar', '');
         }
@@ -887,7 +887,7 @@ class FacturacionPdf extends Component
             $d = $this->destinatarios[$id] ?? null;
             $filas = (! $d || isset($d['error'])) ? [] : $d['filas'];
             if (empty($this->verInactivas[$id])) {
-                $filas = array_values(array_filter($filas, fn ($f) => trim($f['estado'] ?? '') === '' || isset($this->cambios[$id][$f['fila']])));
+                $filas = array_values(array_filter($filas, fn ($f) => in_array(mb_strtolower(trim($f['estado'] ?? '')), ['', 'activo', 'activa'], true) || isset($this->cambios[$id][$f['fila']])));
             }
             $out[$id] = $filas;
         }
