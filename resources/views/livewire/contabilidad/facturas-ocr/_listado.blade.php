@@ -316,7 +316,10 @@
                                         @endforeach
                                     </td>
                                     <td class="text-xs text-gray-600">{{ implode(' · ', $f['avisos'] ?? []) }}
-                                        @if (! empty($f['motivo_rechazo'])) <b>Rechazo:</b> {{ $f['motivo_rechazo'] }} @endif
+                                        @if ($f['estado'] === 'rechazada')
+                                            @php $mr = trim((string) ($f['motivo_rechazo'] ?? '')); $tipoR = preg_match('/^(ISP|ADC)\b/u', $mr, $mm) ? $mm[1] : 'Otros'; @endphp
+                                            <span class="focr-chip {{ $tipoR === 'Otros' ? 'c-gris' : 'c-revisar' }}" title="{{ $mr !== '' ? $mr : 'Sin motivo indicado' }}" style="cursor:help">Rechazo: {{ $tipoR }}</span>
+                                        @elseif (! empty($f['motivo_rechazo'])) <b>Rechazo:</b> {{ $f['motivo_rechazo'] }} @endif
                                         <button type="button" wire:click.stop="quitarDeLista('{{ $f['id'] }}')"
                                                 @if ($f['estado'] === 'pendiente') wire:confirm="¿Quitar {{ basename($f['ruta']) }} de la lista? (p.ej. si la contabilizas a mano en SAGE). El PDF no se toca." @endif
                                                 class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.7rem" title="Quitarla de la lista (el PDF no se toca)">✕ Quitar</button>
