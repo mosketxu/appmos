@@ -314,7 +314,7 @@
                                     class="text-xs text-gray-500 underline hover:text-gray-700">Descartar</button>
                             @endif
                             <button type="button" wire:click="guardarCambios('{{ $id }}')" wire:loading.attr="disabled" @disabled(! $nCambios)
-                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla) o se le da de baja (pulsa sobre «activo ✓»). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
+                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla), su idioma (ES/EN), o se le da de baja (pulsa sobre «activo»). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
                                 class="px-3 py-1.5 text-sm font-semibold rounded-md shadow"
                                 style="{{ $nCambios ? 'background:#f59e0b;color:#fff' : 'background:#e5e7eb;color:#9ca3af;cursor:default' }}">
                                 💾 Guardar en TODO{{ $nCambios ? " ({$nCambios})" : '' }}
@@ -370,7 +370,11 @@
                                                     wire:change="editarDestinatario('{{ $id }}', {{ $fila['fila'] }}, 'mail', $event.target.value)"
                                                     class="w-full px-1 py-0.5 text-xs border border-transparent rounded hover:border-gray-300 focus:border-indigo-400" style="min-width:12rem" placeholder="(sin correo)">
                                             </td>
-                                            <td class="px-2 py-1">{{ $fila['idioma'] ?: 'ES' }}</td>
+                                            <td class="px-2 py-1">
+                                                @php($idi = strtoupper($fila['idioma'] ?: 'ES'))
+                                                <button type="button" wire:click="editarDestinatario('{{ $id }}', {{ $fila['fila'] }}, 'idioma', '{{ $idi === 'EN' ? 'ES' : 'EN' }}')"
+                                                    title="Pulsa para cambiar el idioma del correo ({{ $idi === 'EN' ? 'a ES' : 'a EN' }})" class="px-2 rounded hover:bg-gray-100">{{ $idi }}</button>
+                                            </td>
                                             <td class="px-2 py-1">
                                                 <button type="button" title="Pulsa para cambiar"
                                                     wire:click="editarDestinatario('{{ $id }}', {{ $fila['fila'] }}, 'enviar', '{{ $fila['enviar'] ? '' : '1' }}')"

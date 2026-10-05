@@ -790,7 +790,7 @@ class FacturacionPdf extends Component
      */
     public function editarDestinatario(string $cliente, int $fila, string $campo, ?string $valor = ''): void
     {
-        if (! isset($this->clientes()[$cliente]) || ! in_array($campo, ['enviar', 'mail', 'estado'], true)) {
+        if (! isset($this->clientes()[$cliente]) || ! in_array($campo, ['enviar', 'mail', 'estado', 'idioma'], true)) {
             return;
         }
         $valor = trim((string) $valor);   // Laravel convierte '' en null en las peticiones
@@ -798,8 +798,8 @@ class FacturacionPdf extends Component
             if ((int) $f['fila'] !== $fila) {
                 continue;
             }
-            $c = $this->cambios[$cliente][$fila] ?? ['cliente' => $f['cliente'], 'orig' => ['mail' => $f['mail'], 'enviar' => $f['enviar'] ? '1' : '', 'estado' => $f['estado'] ?? '']];
-            if ($campo === 'mail' || $campo === 'estado') {
+            $c = $this->cambios[$cliente][$fila] ?? ['cliente' => $f['cliente'], 'orig' => ['mail' => $f['mail'], 'enviar' => $f['enviar'] ? '1' : '', 'estado' => $f['estado'] ?? '', 'idioma' => $f['idioma'] ?? '']];
+            if (in_array($campo, ['mail', 'estado', 'idioma'], true)) {
                 $this->destinatarios[$cliente]['filas'][$i][$campo] = $valor;
             } else {
                 $this->destinatarios[$cliente]['filas'][$i]['enviar'] = $valor === '1';
@@ -810,7 +810,7 @@ class FacturacionPdf extends Component
             } else {
                 $c[$campo] = $valor;
             }
-            if (isset($c['mail']) || isset($c['enviar']) || isset($c['estado'])) {
+            if (isset($c['mail']) || isset($c['enviar']) || isset($c['estado']) || isset($c['idioma'])) {
                 $this->cambios[$cliente][$fila] = $c;
             } else {
                 unset($this->cambios[$cliente][$fila]);
@@ -839,7 +839,7 @@ class FacturacionPdf extends Component
     {
         $lista = [];
         foreach (($this->cambios[$cliente] ?? []) as $fila => $c) {
-            $lista[] = ['fila' => (int) $fila, 'cliente' => $c['cliente']] + array_intersect_key($c, ['mail' => 1, 'enviar' => 1, 'estado' => 1]);
+            $lista[] = ['fila' => (int) $fila, 'cliente' => $c['cliente']] + array_intersect_key($c, ['mail' => 1, 'enviar' => 1, 'estado' => 1, 'idioma' => 1]);
         }
         if (! isset($this->clientes()[$cliente]) || ! $lista) {
             return;
