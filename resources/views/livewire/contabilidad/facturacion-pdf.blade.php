@@ -306,7 +306,7 @@
                         </x-button.secondary>
                     </div>
                     <p class="mb-2 text-xs text-gray-500">
-                        Solo lectura -- para corregir un dato se abre el Excel real (enlace tras cargar la lista).
+                        Pulsa «sí/no» para cambiar si se envía, o edita el correo y sal de la casilla: se escribe en el Excel (ToDO Alex) en un PC y la lista se recarga sola. Para otros datos, abre el Excel (enlace de abajo).
                     </p>
 
                     @if ($d && isset($d['error']))
@@ -347,14 +347,16 @@
                                     @forelse ($this->destinatariosFiltrados[$id] as $fila)
                                         <tr>
                                             <td class="px-2 py-1">{{ $fila['cliente'] }}</td>
-                                            <td class="px-2 py-1 break-all">{{ $fila['mail'] }}</td>
+                                            <td class="px-2 py-1">
+                                                <input type="text" value="{{ $fila['mail'] }}" wire:key="mail-{{ $id }}-{{ $fila['fila'] }}-{{ md5($fila['mail']) }}"
+                                                    wire:change="editarDestinatario('{{ $id }}', {{ $fila['fila'] }}, 'mail', $event.target.value)"
+                                                    class="w-full px-1 py-0.5 text-xs border border-transparent rounded hover:border-gray-300 focus:border-indigo-400" style="min-width:12rem" placeholder="(sin correo)">
+                                            </td>
                                             <td class="px-2 py-1">{{ $fila['idioma'] ?: 'ES' }}</td>
                                             <td class="px-2 py-1">
-                                                @if ($fila['enviar'])
-                                                    <span class="text-green-700">sí</span>
-                                                @else
-                                                    <span class="text-gray-400">no</span>
-                                                @endif
+                                                <button type="button" title="Pulsa para cambiar"
+                                                    wire:click="editarDestinatario('{{ $id }}', {{ $fila['fila'] }}, 'enviar', '{{ $fila['enviar'] ? '' : '1' }}')"
+                                                    class="px-2 rounded hover:bg-gray-100 {{ $fila['enviar'] ? 'text-green-700 font-semibold' : 'text-gray-400' }}">{{ $fila['enviar'] ? 'sí' : 'no' }}</button>
                                             </td>
                                         </tr>
                                     @empty

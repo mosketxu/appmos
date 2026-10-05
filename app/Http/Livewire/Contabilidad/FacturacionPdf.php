@@ -749,6 +749,53 @@ class FacturacionPdf extends Component
         ];
     }
 
+    /**
+     * Cambia 'enviar' o 'mail' de una fila del Excel de destinatarios (ToDO Alex), en el PC con el propio Excel.
+     * La fila se identifica por su número en la hoja; el nombre del cliente se saca de la lista ya cargada (el script
+     * comprueba que sigue siendo el mismo antes de escribir).
+     */
+    public function editarDestinatario(string $cliente, int $fila, string $campo, string $valor = ''): void
+    {
+        if (! isset($this->clientes()[$cliente]) || ! in_array($campo, ['enviar', 'mail'], true)) {
+            return;
+        }
+        $nombre = null;
+        foreach (($this->destinatarios[$cliente]['filas'] ?? []) as $f) {
+            if ((int) $f['fila'] === $fila) {
+                $nombre = $f['cliente'];
+                $actual = $campo === 'mail' ? $f['mail'] : ($f['enviar'] ? '1' : '');
+            }
+        }
+        if ($nombre === null) {
+            return;
+        }
+        $valor = trim($valor);
+        if ($valor === ($actual ?? null)) {
+            return;
+        }
+        $args = ['--client', $cliente, '--fila', $fila, '--cliente', $nombre, '--campo', $campo, '--valor', $valor];
+        if ($this->remoto()) {
+            $this->lanzarEnCola([['script' => 'herramientas/editar_destinatario.py', 'args' => $args, 'timeout' => 120,
+                'etiqueta' => "Facturación PDF · {$cliente} · {$campo} de «{$nombre}»"]],
+                ['post' => 'postEdicionDestinatario', 'ctx' => ['cliente' => $cliente]]);
+            return;
+        }
+        if (! config('contabilidad.ejecucion_local')) {
+            return;
+        }
+        $result = Process::path($this->scriptDir())->timeout(120)->run([$this->pythonBin(), 'herramientas/editar_destinatario.py', ...array_map('strval', $args)]);
+        if (! $result->successful()) {
+            $this->salida .= "\n\n⚠️ ".trim($result->output()."\n".$result->errorOutput());
+        }
+        $this->cargarDestinatarios($cliente);
+    }
+
+    /** Fin de editarDestinatario en el PC: se recarga la lista para ver el cambio (si falló, el motivo queda en la Salida). */
+    protected function postEdicionDestinatario(array $ctx, int $desde, array $oks): void
+    {
+        $this->cargarDestinatarios($ctx['cliente']);
+    }
+
     public function getDestinatariosFiltradosProperty(): array
     {
         $out = [];
