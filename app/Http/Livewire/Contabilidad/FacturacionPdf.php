@@ -486,6 +486,7 @@ class FacturacionPdf extends Component
         $salieron = $ctx['enviar'] && preg_match('/(\d+) correo\(s\) enviado\(s\)/', $texto, $m) && (int) $m[1] > 0;
         if (! in_array(false, $oks, true) || $salieron) {
             $this->estado[$ctx['cliente']]['fase'] = $ctx['enviar'] ? 'enviado' : 'separado';
+            $this->estado[$ctx['cliente']]['errores'] = $ctx['enviar'] && (in_array(false, $oks, true) || preg_match('/correo\(s\) fallaron/', $texto) === 1);
             $this->guardarEstado($ctx['cliente']);
         }
     }

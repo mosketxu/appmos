@@ -257,7 +257,11 @@
                             @if ($e['fase'] === 'separado')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Separado, sin enviar</span>
                             @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">Enviado</span>
+                                @if (! empty($e['errores']))
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full" style="background:#fef3c7;color:#92400e" title="Salieron correos pero alguno falló: mira la Salida / _envios.csv">Enviado con errores</span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">Enviado</span>
+                                @endif
                             @endif
                         </div>
                         @if (! empty($resultados[$id]))
