@@ -36,7 +36,7 @@ class Ents extends Component
         }
         $entidad = Entidad::find($entidadId);
         if ($entidad) {
-            $entidad->{$campo} = $campo === 'estado' ? ($entidad->estado == 1 ? 0 : 1) : ! $entidad->{$campo};
+            $entidad->{$campo} = $campo === 'estado' ? (Entidad::ESTADO_SIGUIENTE[(int) $entidad->estado] ?? 1) : ! $entidad->{$campo};
             $entidad->save();
         }
     }

@@ -191,7 +191,7 @@
                                 </p>
                                 <div class="overflow-auto border rounded-md" style="max-height:18rem">
                                     @forelse ($entidades as $e)
-                                        <label wire:key="e-{{ $e->id }}" class="flex items-center gap-2 px-2 py-1 text-xs border-b hover:bg-gray-50 {{ $e->estado == 0 ? 'text-gray-400' : '' }}">
+                                        <label wire:key="e-{{ $e->id }}" class="flex items-center gap-2 px-2 py-1 text-xs border-b hover:bg-gray-50 {{ $e->estado != 1 ? 'text-gray-400' : '' }}">
                                             @if (array_key_exists($e->id, $porResponsable))
                                                 <input type="checkbox" checked disabled class="border-gray-300 rounded" title="Es su Responsable Suma">
                                             @else
@@ -200,7 +200,7 @@
                                             <span>{{ $e->entidad }}</span>
                                             @if ($e->alias) <span class="text-gray-400">({{ $e->alias }})</span> @endif
                                             @if (array_key_exists($e->id, $porResponsable)) <span class="text-indigo-600">· responsable</span> @endif
-                                            @if ($e->estado == 0) <span class="text-red-400">· baja</span> @endif
+                                            @if ($e->estado != 1) <span class="text-red-400">· {{ strtolower(\App\Models\Entidad::ESTADOS[(int) $e->estado] ?? 'baja') }}</span> @endif
                                         </label>
                                     @empty
                                         <p class="p-2 text-xs text-gray-400">Sin resultados.</p>

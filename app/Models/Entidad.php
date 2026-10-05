@@ -54,7 +54,12 @@ class Entidad extends Model
     public function conceptos(){return $this->hasMany(FacturacionConcepto::class);}
     public function mailsEnviados(){return $this->hasMany(MailEnviado::class);}
 
-    public function getStatusColorAttribute(){return ['0'=>['red','Baja'],'1'=>['green','Activo']][$this->estado] ?? ['gray',''];}
+    /** Estados de la entidad (columna estado): 1 activo, 0 baja, 2 inactivo, 3 liquidada. Mismos que la columna Estado del Excel de destinatarios. */
+    public const ESTADOS = [1 => 'Activo', 0 => 'Baja', 2 => 'Inactivo', 3 => 'Liquidada'];
+    /** Orden en que pasa con cada clic: activo → baja → inactivo → liquidada → activo. */
+    public const ESTADO_SIGUIENTE = [1 => 0, 0 => 2, 2 => 3, 3 => 1];
+
+    public function getStatusColorAttribute(){return ['0'=>['red','Baja'],'1'=>['green','Activo'],'2'=>['yellow','Inactivo'],'3'=>['gray','Liquidada']][$this->estado] ?? ['gray',''];}
     public function getFacColorAttribute(){return ['0'=>['red','Baja'],'1'=>['green','Activo']][$this->facturar] ?? ['gray',''];}
     public function getFavColorAttribute(){return ['0'=>['gray','x2606'],'1'=>['yellow','x2605']][$this->favorito] ?? 'gray';}
     public function getDateForHumansAttribute(){if ($this->created_at) {return $this->created_at->format('d/m/Y');}}

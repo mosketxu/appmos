@@ -225,7 +225,7 @@ class FacturacionPdf extends Component
     public function getEntidadesClienteProperty(): array
     {
         $out = [];
-        foreach (Entidad::where('estado', '!=', 0)->orderBy('entidad')->get(['entidad', 'nif']) as $e) {
+        foreach (Entidad::where('estado', 1)->orderBy('entidad')->get(['entidad', 'nif']) as $e) {
             $nombre = trim((string) $e->entidad);
             $nif = trim((string) $e->nif);
             if ($nombre !== '') {

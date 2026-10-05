@@ -24,13 +24,15 @@
                     <div class="px-1 text-xs">
                         <label class="px-1 text-gray-600">Clientes</label>
                         <select wire:model.live="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
-                            <option value="0">No</option>
-                            <option value="1">Sí</option>
+                            <option value="1">Activo</option>
+                            <option value="0">Baja</option>
+                            <option value="2">Inactivo</option>
+                            <option value="3">Liquidada</option>
                             <option value="">Todos</option>
                         </select>
                     </div>
                     <div class="px-1 text-xs">
-                        <label class="px-1 text-gray-600">Activos</label>
+                        <label class="px-1 text-gray-600">Estado</label>
                         <select wire:model.live="filtroactivo" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
                             <option value="1">Sí</option>

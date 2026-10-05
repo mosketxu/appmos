@@ -29,7 +29,15 @@
         <span class="text-xs {{ $e->suma_id ? 'text-gray-600' : 'text-purple-700' }}">{{ $sumas->firstWhere('id', $e->suma_id)->nombre ?? '— sin resp. —' }}</span>
     @endif
 @elseif ($c === 'estado')
+    @php
+        $est = (int) $e->estado;
+        $sig = \App\Models\Entidad::ESTADO_SIGUIENTE[$est] ?? 1;
+        $col = [1 => ['#dcfce7', '#86efac', '#166534'], 0 => ['#fee2e2', '#fca5a5', '#991b1b'], 2 => ['#fef3c7', '#fcd34d', '#92400e'], 3 => ['#e5e7eb', '#9ca3af', '#374151']][$est] ?? ['#e5e7eb', '#9ca3af', '#374151'];
+    @endphp
     <{{ $tag }} @if ($puede) type="button" wire:click="alternar({{ $e->id }}, 'estado')" @endif
+        title="Estado{{ $puede ? ': clic para pasar a «'.\App\Models\Entidad::ESTADOS[$sig].'» (activo → baja → inactivo → liquidada)' : '' }}"
+        style="display:inline-block;padding:1px 10px;border-radius:9999px;font-size:.75rem;font-weight:600;border:1px solid {{ $col[1] }};background:{{ $col[0] }};color:{{ $col[2] }}">{{ \App\Models\Entidad::ESTADOS[$est] ?? '—' }}</{{ $tag }}>
+@endif
         title="Estado{{ $puede ? ' (clic para cambiar)' : '' }}"
         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs leading-4 {{ $e->estado == 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">{{ $e->estado == 1 ? 'Activo' : 'Baja' }}</{{ $tag }}>
 @endif

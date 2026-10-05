@@ -96,7 +96,12 @@
                         <x-input.checkbox wire:model.defer="entidad.favorito" class="w-4 h-4 text-yellow-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Favorito') }}</span>
                     </x-jet-label>
                     <x-jet-label class="inline-flex items-center mt-3">
-                        <x-input.checkbox wire:model.defer="entidad.estado" class="w-4 h-4 text-blue-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Activo') }}</span>
+                        <span class="mr-2 text-gray-700">{{ __('Estado') }}</span>
+                        <select wire:model.defer="entidad.estado" class="py-1 text-sm border-gray-300 rounded-md">
+                            @foreach (\App\Models\Entidad::ESTADOS as $k => $l)
+                                <option value="{{ $k }}">{{ $l }}</option>
+                            @endforeach
+                        </select>
                     </x-jet-label>
                     <x-jet-label class="inline-flex items-center mt-3">
                         <x-input.checkbox wire:model.defer="entidad.facturar" class="w-4 h-4 text-pink-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Facturar') }}</span>
