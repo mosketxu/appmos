@@ -754,7 +754,7 @@ class FacturacionPdf extends Component
      * La fila se identifica por su número en la hoja; el nombre del cliente se saca de la lista ya cargada (el script
      * comprueba que sigue siendo el mismo antes de escribir).
      */
-    public function editarDestinatario(string $cliente, int $fila, string $campo, string $valor = ''): void
+    public function editarDestinatario(string $cliente, int $fila, string $campo, ?string $valor = ''): void
     {
         if (! isset($this->clientes()[$cliente]) || ! in_array($campo, ['enviar', 'mail'], true)) {
             return;
@@ -769,7 +769,7 @@ class FacturacionPdf extends Component
         if ($nombre === null) {
             return;
         }
-        $valor = trim($valor);
+        $valor = trim((string) $valor);   // Laravel convierte '' en null en las peticiones
         if ($valor === ($actual ?? null)) {
             return;
         }
