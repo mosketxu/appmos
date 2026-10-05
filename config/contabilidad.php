@@ -207,7 +207,7 @@ return [
             'CashInStore/cashInStore.py',
         ]],
         // Facturación PDF (Suma/Balerga): el PDF subido viaja como entrada y el PC lo procesa con su OneDrive.
-        'facturacion' => ['scripts' => ['procesar_facturas.py', 'herramientas/listar_destinatarios.py']],
+        'facturacion' => ['scripts' => ['procesar_facturas.py', 'herramientas/listar_destinatarios.py', 'herramientas/editar_destinatario.py']],
         // Facturas OCR (web): OCR de Windows por adelantado de las facturas escaneadas (ocr_previo.py)
         'facturasocr' => ['scripts' => ['ocr_previo.py']],
         // Durcal: el .XLS de nóminas y el Amortizacion (.xlsm, con Excel por COM) están en el OneDrive del PC; un solo PC para no escribir
