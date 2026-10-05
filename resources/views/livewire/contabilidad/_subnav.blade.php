@@ -27,6 +27,16 @@
     .hojas a:hover { background:#fff; color:#111827; }
     .hojas a.activa { margin-bottom:-1px; padding-bottom:7px; background:#f9fafb; color:#047857; font-weight:700;
                       border-color:#9ca3af; box-shadow:inset 0 3px 0 #059669; }
+    .hojas-movil { display:none; }
+    @media (max-width:767px) {
+        .hojas { display:none; }
+        .hojas-movil { display:block; position:relative; padding:8px 16px; background:#e5e7eb; border-bottom:1px solid #9ca3af; }
+        .hojas-movil button { width:100%; display:flex; justify-content:space-between; align-items:center; padding:8px 12px; font-size:.9rem; font-weight:600;
+                              color:#047857; background:#fff; border:1px solid #9ca3af; border-radius:6px; }
+        .hojas-movil .lista { position:absolute; left:16px; right:16px; top:calc(100% - 4px); z-index:50; background:#fff; border:1px solid #9ca3af; border-radius:6px; box-shadow:0 6px 20px rgba(0,0,0,.2); max-height:70vh; overflow-y:auto; }
+        .hojas-movil .lista a { display:block; padding:10px 14px; font-size:.9rem; color:#374151; border-bottom:1px solid #f3f4f6; }
+        .hojas-movil .lista a.activa { color:#047857; font-weight:700; background:#ecfdf5; }
+    }
 </style>
 <script>
     function avisoOtraPestana(texto) {
@@ -38,6 +48,20 @@
         setTimeout(function () { d.remove(); }, 5000);
     }
 </script>
+{{-- Móvil (<768 px): las pestañas pasan a un desplegable para no ocupar media pantalla --}}
+@php
+    $visibles = collect($pestanas)->filter(fn ($t) => auth()->user()->can($t[0]));
+    $actual = $visibles->first(fn ($t) => ($activa ?? null) === $t[1] || request()->routeIs($t[1]));
+@endphp
+<div class="hojas-movil" x-data="{ abierto: false }" x-on:click.outside="abierto = false">
+    <button type="button" x-on:click="abierto = !abierto"><span>{{ $actual[2] ?? 'Contabilidad' }}</span><span x-text="abierto ? '▲' : '▼'">▼</span></button>
+    <div class="lista" x-show="abierto" x-cloak style="display:none">
+        @foreach ($visibles as [$permiso, $ruta, $texto, $url])
+            <a href="{{ $url ?: route($ruta) }}" @if ($url) target="_blank" rel="noopener" @endif
+               class="{{ (($activa ?? null) === $ruta || request()->routeIs($ruta)) ? 'activa' : '' }}">{{ $texto }}{{ $url ? ' ↗' : '' }}</a>
+        @endforeach
+    </div>
+</div>
 <nav class="hojas">
     @foreach ($pestanas as [$permiso, $ruta, $texto, $url])
         @can($permiso)

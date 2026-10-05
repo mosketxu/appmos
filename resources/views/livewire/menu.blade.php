@@ -14,9 +14,19 @@
 @endphp
 <nav x-data="{ open: false }" class="relative bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
+    {{-- Pantalla mediana (640-1599 px): la barra no cabe en una línea, así que pasa a dos (enlaces arriba, campana/Claude/PCs/usuario debajo) en vez de solaparse --}}
+    <style>
+        @media (min-width:640px) and (max-width:1599px) {
+            .barra-sup { flex-wrap:wrap; height:auto !important; min-height:3.5rem; row-gap:.25rem; padding-bottom:.35rem }
+            .barra-sup > .barra-izq { min-width:0; flex-wrap:wrap }
+            .barra-sup > .barra-der { margin-left:auto; flex-wrap:wrap; row-gap:.25rem; justify-content:flex-end }
+            .barra-sup > .barra-campana { order:2 }
+            .barra-sup > .barra-der { order:3 }
+        }
+    </style>
     <div class="max-w-full px-4 mx-auto">
-        <div class="flex justify-between h-14">
-            <div class="flex">
+        <div class="flex justify-between h-14 barra-sup">
+            <div class="flex barra-izq">
                 <!-- Logo -->
                 <div class="flex items-center flex-shrink-0">
                     <a href="{{ route('entidades') }}">
@@ -76,11 +86,11 @@
             </div>
 
             {{-- Campana del TO-DO: centrada en la barra --}}
-            <div class="hidden sm:flex sm:items-center" style="flex-shrink:0; margin:0 .4rem">
+            <div class="hidden sm:flex sm:items-center barra-campana" style="flex-shrink:0; margin:0 .4rem">
                 @livewire('todo-campana')
             </div>
 
-            <div class="hidden sm:flex sm:items-center sm:ml-6">
+            <div class="hidden sm:flex sm:items-center sm:ml-6 barra-der">
                 @if($entmenu->id)
                     <div class="hidden p-2 space-x-8 bg-gray-100 rounded-lg sm:-my-px sm:ml-10 sm:flex">
                         <div class="">
@@ -235,6 +245,12 @@
                     {{ __('Entidades') }}
                 </x-jet-responsive-nav-link>
             @endcan
+            <x-jet-responsive-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
+                TO-DO
+            </x-jet-responsive-nav-link>
+            <x-jet-responsive-nav-link href="{{ route('todo', ['nueva' => 'mejora']) }}">
+                💡 Pedir mejora
+            </x-jet-responsive-nav-link>
             @if ($rutaContabilidad)
                 <x-jet-responsive-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*')">
                     {{ __('Contabilidad') }}
