@@ -480,7 +480,11 @@ class FacturacionPdf extends Component
     protected function postProcesarFacturas(array $ctx, int $desde, array $oks): void
     {
         $this->salidaCliente[$ctx['cliente']] = trim(substr($this->salida, $desde));
-        if (! in_array(false, $oks, true)) {
+        $texto = substr($this->salida, $desde);
+        // Un envío real que haya mandado aunque sea 1 correo cuenta como ENVIADO aunque otro fallara (código de salida 2):
+        // si no, la pantalla seguía diciendo «sin enviar» y dejaba repetir la Fase 2 (duplicando correos a clientes).
+        $salieron = $ctx['enviar'] && preg_match('/(\d+) correo\(s\) enviado\(s\)/', $texto, $m) && (int) $m[1] > 0;
+        if (! in_array(false, $oks, true) || $salieron) {
             $this->estado[$ctx['cliente']]['fase'] = $ctx['enviar'] ? 'enviado' : 'separado';
             $this->guardarEstado($ctx['cliente']);
         }
