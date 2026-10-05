@@ -12,6 +12,9 @@ class Entidad extends Model
     use \App\Models\Concerns\SoloEntidadesPermitidas;
     use HasFactory;
     protected $table = 'entidades';
+    /** Una entidad nueva NO recibe facturas por correo hasta que se marque «Enviar» (antes la columna tenía por defecto true). */
+    protected $attributes = ['enviar' => false];
+
     protected $fillable=['entidad','alias','favorito',
                         'entidadtipo_id','direccion','codpostal',
                         'localidad','provincia_id','pais_id',
