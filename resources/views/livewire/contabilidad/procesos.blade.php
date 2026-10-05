@@ -94,7 +94,7 @@
                                         wire:click="ejecutar('{{ $id }}')"
                                         wire:loading.attr="disabled"
                                         wire:target="ejecutar('{{ $id }}')"
-                                        onclick="return confirm('Esto escribe sobre los ficheros reales. ¿Seguro?')"
+                                        wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
                                     >
                                         <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">▶ Ejecutar</span>
                                         <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
@@ -102,7 +102,7 @@
                                     @if ($id === 'cashflow')
                                         @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
                                         <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"
-                                            onclick="return confirm('¿Mandar YA a Plein el «Cashflow 2026 {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)')"
+                                            wire:confirm="¿Mandar YA a Plein el «Cashflow 2026 {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)"
                                             class="inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded shadow-sm disabled:opacity-50 {{ $estCf === 'ok' ? 'text-gray-500 bg-white border-gray-300' : 'text-white bg-indigo-600 border-indigo-600 hover:bg-indigo-700' }}">
                                             <span wire:loading.remove wire:target="enviarCashflow">{{ $estCf === 'ok' ? '✉ Reenviar' : '✉ Enviar a Plein' }}</span>
                                             <span wire:loading wire:target="enviarCashflow">⏳…</span>
@@ -124,7 +124,7 @@
                                     </button>
                                     @if ($this->cisFaltan)
                                         <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="pedirCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
-                                            onclick="return confirm('¿Mandar YA el correo pidiendo el efectivo a {{ implode(', ', $this->cisFaltan) }}?')">
+                                            wire:confirm="¿Mandar YA el correo pidiendo el efectivo a {{ implode(', ', $this->cisFaltan) }}?">
                                             ✉ Pedir ({{ implode(', ', $this->cisFaltan) }})
                                         </button>
                                         <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="recordarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
@@ -134,7 +134,7 @@
                                     @endif
                                     @if ($cisFilas)
                                         <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50" wire:click="grabarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore"
-                                            onclick="return confirm('¿Escribir estos importes en Cash End Month de Ctrol Dinamico? (cierra antes el Excel si lo tienes abierto)')">
+                                            wire:confirm="¿Escribir estos importes en Cash End Month de Ctrol Dinamico? (cierra antes el Excel si lo tienes abierto)">
                                             💾 Grabar
                                         </button>
                                     @endif
@@ -241,7 +241,7 @@
                         wire:click="ejecutarRvCalculosYDeclaracion"
                         wire:loading.attr="disabled"
                         wire:target="ejecutarRvCalculosYDeclaracion"
-                        onclick="return confirm('Cálculos (4 tiendas) + Turnover de las tiendas marcadas, para el mes seleccionado. Escribe sobre los ficheros reales. ¿Seguro?')"
+                        wire:confirm="Cálculos (4 tiendas) + Turnover de las tiendas marcadas, para el mes seleccionado. Escribe sobre los ficheros reales. ¿Seguro?"
                     >
                         <span wire:loading.remove wire:target="ejecutarRvCalculosYDeclaracion">Cálculos + Turnover</span>
                         <span wire:loading wire:target="ejecutarRvCalculosYDeclaracion">⏳ Ejecutando…</span>
@@ -278,7 +278,7 @@
                                 wire:click="ejecutarRvEnvio('{{ $k }}')"
                                 wire:loading.attr="disabled"
                                 wire:target="ejecutarRvEnvio('{{ $k }}')"
-                                onclick="return confirm('¿Mandar el correo de {{ $label }} a sus destinatarios REALES?')"
+                                wire:confirm="¿Mandar el correo de {{ $label }} a sus destinatarios REALES?"
                             >
                                 <span wire:loading.remove wire:target="ejecutarRvEnvio('{{ $k }}')">Enviar</span>
                                 <span wire:loading wire:target="ejecutarRvEnvio('{{ $k }}')">⏳ Enviando…</span>
@@ -298,7 +298,7 @@
                         wire:click="ejecutarRvEnvioPrueba"
                         wire:loading.attr="disabled"
                         wire:target="ejecutarRvEnvioPrueba"
-                        onclick="return confirm('¿Mandar los ficheros de Barcelona y Málaga al correo de prueba?')"
+                        wire:confirm="¿Mandar los ficheros de Barcelona y Málaga al correo de prueba?"
                     >
                         <span wire:loading.remove wire:target="ejecutarRvEnvioPrueba">Enviar a correo de prueba</span>
                         <span wire:loading wire:target="ejecutarRvEnvioPrueba">⏳ Enviando…</span>
@@ -376,7 +376,7 @@
                 wire:click="ejecutarPagosFinMes('real')"
                 wire:loading.attr="disabled"
                 wire:target="ejecutarPagosFinMes"
-                onclick="return confirm('¿Mandar el correo de pagos a los destinatarios REALES (To/CC de arriba)?')"
+                wire:confirm="¿Mandar el correo de pagos a los destinatarios REALES (To/CC de arriba)?"
             >
                 Enviar a Plein
             </x-button.primary>

@@ -117,7 +117,7 @@
                         <div class="flex items-center justify-end gap-2 p-4 border-t">
                             <button type="button" wire:click="cancelarEnvio" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50">Cancelar</button>
                             <button type="button" wire:click="enviarTodos" wire:loading.attr="disabled" @disabled(! $validos || ! $graphOk)
-                                    onclick="return confirm('¿Enviar {{ $validos }} correos ahora?')"
+                                    wire:confirm="¿Enviar {{ $validos }} correos ahora?"
                                     class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50">
                                 <span wire:loading.remove wire:target="enviarTodos">✉ Enviar {{ $validos }}</span>
                                 <span wire:loading wire:target="enviarTodos">⏳ Enviando…</span>

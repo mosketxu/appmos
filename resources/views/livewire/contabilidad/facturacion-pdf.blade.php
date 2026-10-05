@@ -276,20 +276,23 @@
                                 wire:loading.attr="disabled"
                                 wire:target="enviarPrueba('{{ $id }}')"
                                 title="Manda de verdad solo los 5 primeros correos que tocan, todos a TU dirección ({{ auth()->user()->email }}) y con [PRUEBA] en el asunto. No copia nada a OneDrive ni archiva la entrada, y no cuenta como enviado: después sigue disponible la Fase 2 real."
-                                onclick="return confirm('Prueba: se mandarán 5 correos (los 5 primeros) SOLO a {{ auth()->user()->email }}, con [PRUEBA] en el asunto. No llegan a ningún cliente. ¿Seguir?')"
+                                wire:confirm="Prueba: se mandarán 5 correos (los 5 primeros) SOLO a {{ auth()->user()->email }}, con [PRUEBA] en el asunto. No llegan a ningún cliente. ¿Seguir?"
                             >
                                 <span wire:loading.remove wire:target="enviarPrueba('{{ $id }}')">Prueba · 5 correos a mí</span>
                                 <span wire:loading wire:target="enviarPrueba('{{ $id }}')">⏳ Probando…</span>
                             </x-button.secondary>
-                            <x-button.primary
-                                wire:click="enviarCorreos('{{ $id }}')"
-                                wire:loading.attr="disabled"
-                                wire:target="enviarCorreos('{{ $id }}')"
-                                onclick="return confirm('Esto manda los correos de {{ $c['label'] }} de verdad a los destinatarios reales. ¿Seguro?')"
-                            >
-                                <span wire:loading.remove wire:target="enviarCorreos('{{ $id }}')">Fase 2 · Enviar correos (REAL)</span>
-                                <span wire:loading wire:target="enviarCorreos('{{ $id }}')">⏳ Enviando…</span>
-                            </x-button.primary>
+                            @if (($envioArmado[$id] ?? 0) > time() - 120)
+                                <button type="button" wire:click="enviarCorreos('{{ $id }}')" wire:loading.attr="disabled"
+                                    class="px-4 py-2 text-sm font-semibold text-white rounded-md shadow" style="background:#dc2626">
+                                    ⚠️ Confirmar envío REAL a clientes
+                                </button>
+                                <x-button.secondary wire:click="cancelarEnvio('{{ $id }}')">Cancelar</x-button.secondary>
+                            @else
+                                <x-button.primary wire:click="enviarCorreos('{{ $id }}')" wire:loading.attr="disabled" wire:target="enviarCorreos('{{ $id }}')">
+                                    <span wire:loading.remove wire:target="enviarCorreos('{{ $id }}')">Fase 2 · Enviar correos (REAL)</span>
+                                    <span wire:loading wire:target="enviarCorreos('{{ $id }}')">⏳ Enviando…</span>
+                                </x-button.primary>
+                            @endif
                         @endif
                         <x-button.secondary
                             wire:click="empezarDeNuevo('{{ $id }}')"

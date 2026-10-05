@@ -78,6 +78,9 @@ class FacturacionPdf extends Component
     /** Cambios de destinatarios aún sin guardar en el Excel: [cliente => [fila => ['cliente', 'mail'?, 'enviar'?, 'orig']]]. */
     public array $cambios = [];
 
+    /** Envío real armado (2 pasos): [cliente => hora en que se pulsó el primer botón]. El segundo clic, en menos de 2 minutos, envía. */
+    public array $envioArmado = [];
+
     /** Solo los clientes con factura en el último lote separado: [cliente => bool]. */
     public array $soloLote = [];
 
@@ -362,11 +365,26 @@ class FacturacionPdf extends Component
             $this->salida .= "\n\n⚠️ {$cliente}: hay cambios de destinatarios sin guardar en el TODO. Pulsa «Guardar en TODO» (o descártalos) antes de enviar: el envío lee el Excel.";
             return;
         }
+        // Doble paso en el servidor (el confirm() del navegador no basta: wire:click se ejecuta aunque se cancele).
+        $armado = (int) ($this->envioArmado[$cliente] ?? 0);
+        if ($armado < time() - 120) {
+            $this->envioArmado[$cliente] = time();
+            $n = count(array_filter($this->destinatarios[$cliente]['filas'] ?? [], fn ($f) => ! empty($f['en_lote']) && $f['enviar']));
+            $this->salida .= "\n\n[".date('H:i:s')."] ⚠️ {$cliente}: envío REAL pendiente de confirmar ({$n} cliente(s) con factura y «sí» en la lista cargada). Pulsa «Confirmar envío REAL» para mandarlos, o «Cancelar».";
+            return;
+        }
+        unset($this->envioArmado[$cliente]);
         $ok = $this->ejecutarConCopiaFresca($cliente, enviar: true, etiquetaSufijo: 'Fase 2 · Enviar correos (REAL)');
         if ($ok) {
             $this->estado[$cliente]['fase'] = 'enviado';
         }
         $this->guardarEstado($cliente);
+    }
+
+    public function cancelarEnvio(string $cliente): void
+    {
+        unset($this->envioArmado[$cliente]);
+        $this->salida .= "\n\n[".date('H:i:s')."] Envío real de {$cliente} cancelado.";
     }
 
     /** PRUEBA de la Fase 2: manda de verdad los 5 primeros correos, todos a la dirección de quien pulsa, con [PRUEBA] en el asunto; sin copiar a OneDrive ni archivar. La fase no avanza. */
@@ -451,7 +469,7 @@ class FacturacionPdf extends Component
         $args = array_merge($args, $extra);
 
         $inicio = strlen($this->salida);
-        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $this->salida .= "\n\n===== ".date('H:i:s')." {$etiqueta} =====\n";
         $res = $this->ejecutarScript($args, 180, $etiqueta);
         $this->salidaCliente[$cliente] = trim(substr($this->salida, $inicio));
         $this->anexarResultados($cliente, $res['archivos']);

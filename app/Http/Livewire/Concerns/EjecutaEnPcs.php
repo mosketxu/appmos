@@ -75,7 +75,7 @@ trait EjecutaEnPcs
         // Mismo botón pulsado dos veces: no se duplica (sobre todo importante en los envíos de correo).
         if (! $entradas && DB::table('tareas')->where('proceso', 'pc.script')->whereIn('estado', ['pendiente', 'en_curso'])
             ->where('parametros', json_encode($params, JSON_UNESCAPED_UNICODE))->exists()) {
-            $this->salida .= "\n\n⚠️ {$titulo}: ya está pedido y sin terminar (mira «Tareas en los PCs»).";
+            $this->salida .= "\n\n⚠️ [".date('H:i:s')."] {$titulo}: ya está pedido y sin terminar (mira «Tareas en los PCs»).";
             return null;
         }
         $this->podarFicherosViejos();
@@ -96,7 +96,7 @@ trait EjecutaEnPcs
             'ctx' => $opc['ctx'] ?? [], 'resultados' => $opc['resultados'] ?? null];
         // Se guarda también en la tarea: si se recarga la página (o se cierra y se vuelve), retomarTareas() la recoge.
         DB::table('tareas')->where('id', $tid)->update(['web' => json_encode(['pantalla' => static::class] + $this->pendientes[$tid], JSON_UNESCAPED_UNICODE)]);
-        $this->salida .= "\n\n⏳ {$titulo} · pedido a los PCs (tarea #{$tid}); el resultado saldrá aquí en cuanto lo terminen.";
+        $this->salida .= "\n\n⏳ [".date('H:i:s')."] {$titulo} · pedido a los PCs (tarea #{$tid}); el resultado saldrá aquí en cuanto lo terminen.";
         if ($this->pcsConectados() === 0) {
             $this->salida .= "\n⚠️ Ahora mismo no hay ningún PC conectado: esperará hasta que alguno arranque (puedes cancelarla en «Tareas en los PCs»).";
         }
@@ -116,7 +116,7 @@ trait EjecutaEnPcs
         }
         $tid = ColaTareas::crear('pc.fichero', ['grupo' => $this->grupoPc, 'relativa' => $relativa], $this->destinoPc(), auth()->id(), null, ColaTareas::preferido($this->grupoPc));
         $this->pendientes[$tid] = ['tipo' => 'fichero', 'etiquetas' => ['Descargar '.basename($relativa)], 'post' => null, 'ctx' => [], 'resultados' => null];
-        $this->salida .= "\n\n⏳ Pidiendo ".basename($relativa).' al PC (tarea #'.$tid.'); en cuanto llegue se descargará.';
+        $this->salida .= "\n\n⏳ [".date('H:i:s')."] Pidiendo ".basename($relativa).' al PC (tarea #'.$tid.'); en cuanto llegue se descargará.';
     }
 
     /** Ficheros que subieron los PCs de tareas con más de 30 días. */
@@ -200,7 +200,7 @@ trait EjecutaEnPcs
         $desde = strlen($this->salida);
         if (! $pasos) {
             // el trabajador falló antes de ejecutar nada (script no permitido, falta playwright...)
-            $this->salida .= "\n\n===== ".implode(' + ', $etiquetas)." =====\n⚠️ ".trim((string) $t->log);
+            $this->salida .= "\n\n===== ".date('H:i:s').' '.implode(' + ', $etiquetas)." =====\n⚠️ ".trim((string) $t->log);
             $this->dispatch('proceso-terminado', mensaje: '⚠️ '.implode(' + ', $etiquetas)."\nNo se pudo ejecutar en el PC. Mira la caja de Salida.");
             $this->ultimoOk = false;
             return;
@@ -212,7 +212,7 @@ trait EjecutaEnPcs
                 continue;
             }
             $etiqueta = $etiquetas[$i] ?? ($paso['script'] ?? 'Proceso');
-            $this->salida .= "\n\n===== {$etiqueta}".($pc ? " · en {$pc}" : '')." =====\n";
+            $this->salida .= "\n\n===== ".date('H:i:s')." {$etiqueta}".($pc ? " · en {$pc}" : '')." =====\n";
             $desde = strlen($this->salida);
             $this->salida .= (string) ($paso['salida'] ?? '');
             $ok = ! empty($paso['ok']);

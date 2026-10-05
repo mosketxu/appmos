@@ -87,7 +87,7 @@
                 wire:loading.attr="disabled"
                 wire:target="ejecutar"
                 :disabled="! $n || ! empty($am['abierto'])"
-                onclick="return confirm('Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsm reales, en el OneDrive del PC. ¿Seguro?')"
+                wire:confirm="Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsm reales, en el OneDrive del PC. ¿Seguro?"
             >
                 <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar en el PC</span>
                 <span wire:loading wire:target="ejecutar">⏳ Pidiendo…</span>

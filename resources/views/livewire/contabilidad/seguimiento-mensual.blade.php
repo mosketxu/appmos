@@ -108,7 +108,7 @@
                             @if ($puede)
                                 <button type="button" wire:click="mover({{ $p->id }}, -1)" class="hover:text-gray-800" title="Subir">▲</button>
                                 <button type="button" wire:click="mover({{ $p->id }}, 1)" class="hover:text-gray-800" title="Bajar">▼</button>
-                                <button type="button" wire:click="quitar({{ $p->id }})" onclick="return confirm('¿Quitar «{{ addslashes($p->nombre) }}» del seguimiento? (las marcas se conservan)')" class="ml-1 hover:text-red-600" title="Quitar">✕</button>
+                                <button type="button" wire:click="quitar({{ $p->id }})" wire:confirm="¿Quitar «{{ addslashes($p->nombre) }}» del seguimiento? (las marcas se conservan)" class="ml-1 hover:text-red-600" title="Quitar">✕</button>
                             @endif
                         </td>
                     </tr>
