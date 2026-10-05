@@ -304,9 +304,22 @@
                             <span wire:loading.remove wire:target="cargarDestinatarios('{{ $id }}')">{{ $d ? 'Recargar' : 'Cargar lista' }}</span>
                             <span wire:loading wire:target="cargarDestinatarios('{{ $id }}')">⏳ Cargando…</span>
                         </x-button.secondary>
+                        @php($nCambios = count($cambios[$id] ?? []))
+                        @if ($nCambios)
+                            <div class="flex items-center gap-2 ml-auto">
+                                <button type="button" wire:click="descartarCambios('{{ $id }}')" wire:loading.attr="disabled"
+                                    title="Deshace los cambios marcados en amarillo y vuelve a leer la lista tal como está en el Excel. No toca el Excel."
+                                    class="text-xs text-gray-500 underline hover:text-gray-700">Descartar</button>
+                                <button type="button" wire:click="guardarCambios('{{ $id }}')" wire:loading.attr="disabled"
+                                    title="Escribe en el Excel ToDO Alex los {{ $nCambios }} cambio(s) de correo / Enviar marcados en amarillo, todos de una vez (un PC abre el Excel, los aplica y lo guarda). Hasta que lo pulses, el envío de correos NO usa estos cambios."
+                                    class="px-3 py-1.5 text-sm font-semibold text-white rounded-md shadow" style="background:#f59e0b">
+                                    💾 Guardar en TODO ({{ $nCambios }})
+                                </button>
+                            </div>
+                        @endif
                     </div>
                     <p class="mb-2 text-xs text-gray-500">
-                        Pulsa «sí/no» para cambiar si se envía, o edita el correo y sal de la casilla: se escribe en el Excel (ToDO Alex) en un PC y la lista se recarga sola. Para otros datos, abre el Excel (enlace de abajo).
+                        Pulsa «sí/no» para cambiar si se envía, o edita el correo y sal de la casilla. Los cambios quedan marcados en amarillo y no se escriben en el Excel (ToDO Alex) hasta que pulses «Guardar en TODO». Para otros datos, abre el Excel (enlace de abajo).
                     </p>
 
                     @if ($d && isset($d['error']))
@@ -345,7 +358,7 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     @forelse ($this->destinatariosFiltrados[$id] as $fila)
-                                        <tr>
+                                        <tr @if (isset($cambios[$id][$fila['fila']])) style="background:#fef3c7" @endif>
                                             <td class="px-2 py-1">{{ $fila['cliente'] }}</td>
                                             <td class="px-2 py-1">
                                                 <input type="text" value="{{ $fila['mail'] }}" wire:key="mail-{{ $id }}-{{ $fila['fila'] }}-{{ md5($fila['mail']) }}"

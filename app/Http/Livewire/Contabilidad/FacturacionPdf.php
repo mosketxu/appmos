@@ -75,6 +75,9 @@ class FacturacionPdf extends Component
     /** Destinatarios cargados por cliente (ver cargarDestinatarios). */
     public array $destinatarios = [];
 
+    /** Cambios de destinatarios aún sin guardar en el Excel: [cliente => [fila => ['cliente', 'mail'?, 'enviar'?, 'orig']]]. */
+    public array $cambios = [];
+
     /** Filtro de la lista de destinatarios por cliente: 'todos' | 'si' | 'no'. */
     public array $filtroEnviar = [];
 
@@ -326,6 +329,10 @@ class FacturacionPdf extends Component
     public function enviarCorreos(string $cliente): void
     {
         if (($this->estado[$cliente]['fase'] ?? '') !== 'separado') {
+            return;
+        }
+        if (! empty($this->cambios[$cliente])) {
+            $this->salida .= "\n\n⚠️ {$cliente}: hay cambios de destinatarios sin guardar en el TODO. Pulsa «Guardar en TODO» (o descártalos) antes de enviar: el envío lee el Excel.";
             return;
         }
         $ok = $this->ejecutarConCopiaFresca($cliente, enviar: true, etiquetaSufijo: 'Fase 2 · Enviar correos (REAL)');
@@ -689,6 +696,7 @@ class FacturacionPdf extends Component
 
     public function cargarDestinatarios(string $cliente): void
     {
+        unset($this->cambios[$cliente]);   // la lista vuelve a ser la del Excel
         if (! isset($this->clientes()[$cliente])) {
             return;
         }
@@ -750,59 +758,88 @@ class FacturacionPdf extends Component
     }
 
     /**
-     * Cambia 'enviar' o 'mail' de una fila del Excel de destinatarios (ToDO Alex), en el PC con el propio Excel.
-     * La fila se identifica por su número en la hoja; el nombre del cliente se saca de la lista ya cargada (el script
-     * comprueba que sigue siendo el mismo antes de escribir).
+     * Cambia 'enviar' o 'mail' de una fila SOLO en pantalla y lo apunta en $cambios; no toca el Excel hasta que se pulsa
+     * «Guardar en TODO» (guardarCambios), que aplica todos los cambios de golpe en un PC abriendo el Excel una sola vez.
      */
     public function editarDestinatario(string $cliente, int $fila, string $campo, ?string $valor = ''): void
     {
         if (! isset($this->clientes()[$cliente]) || ! in_array($campo, ['enviar', 'mail'], true)) {
             return;
         }
-        $nombre = null;
         $valor = trim((string) $valor);   // Laravel convierte '' en null en las peticiones
         foreach (($this->destinatarios[$cliente]['filas'] ?? []) as $i => $f) {
             if ((int) $f['fila'] !== $fila) {
                 continue;
             }
-            $nombre = $f['cliente'];
-            $actual = $campo === 'mail' ? $f['mail'] : ($f['enviar'] ? '1' : '');
-            if ($valor === $actual) {
-                return;
-            }
-            // Se ve el cambio al instante; el Excel se escribe después en un PC (si falla, se recarga la lista con lo real).
+            $c = $this->cambios[$cliente][$fila] ?? ['cliente' => $f['cliente'], 'orig' => ['mail' => $f['mail'], 'enviar' => $f['enviar'] ? '1' : '']];
             if ($campo === 'mail') {
                 $this->destinatarios[$cliente]['filas'][$i]['mail'] = $valor;
             } else {
                 $this->destinatarios[$cliente]['filas'][$i]['enviar'] = $valor === '1';
                 $this->destinatarios[$cliente]['filas'][$i]['enviar_raw'] = $valor;
             }
-        }
-        if ($nombre === null) {
+            if ($valor === $c['orig'][$campo]) {
+                unset($c[$campo]);   // vuelve a lo que había: ya no es un cambio
+            } else {
+                $c[$campo] = $valor;
+            }
+            if (isset($c['mail']) || isset($c['enviar'])) {
+                $this->cambios[$cliente][$fila] = $c;
+            } else {
+                unset($this->cambios[$cliente][$fila]);
+            }
             return;
         }
-        $args = ['--client', $cliente, '--fila', $fila, '--cliente', $nombre, '--campo', $campo, '--valor', $valor];
+    }
+
+    public function descartarCambios(string $cliente): void
+    {
+        unset($this->cambios[$cliente]);
+        $this->cargarDestinatarios($cliente);
+    }
+
+    /** Un solo trabajo en un PC: abre el Excel (ToDO Alex), aplica todos los cambios apuntados y guarda. */
+    public function guardarCambios(string $cliente): void
+    {
+        $lista = [];
+        foreach (($this->cambios[$cliente] ?? []) as $fila => $c) {
+            $lista[] = ['fila' => (int) $fila, 'cliente' => $c['cliente']] + array_intersect_key($c, ['mail' => 1, 'enviar' => 1]);
+        }
+        if (! isset($this->clientes()[$cliente]) || ! $lista) {
+            return;
+        }
+        $args = ['--client', $cliente, '--cambios', json_encode($lista, JSON_UNESCAPED_UNICODE)];
+        $etiqueta = "Facturación PDF · {$cliente} · guardar ".count($lista).' cambio(s) en TODO';
         if ($this->remoto()) {
-            $this->lanzarEnCola([['script' => 'herramientas/editar_destinatario.py', 'args' => $args, 'timeout' => 120,
-                'etiqueta' => "Facturación PDF · {$cliente} · {$campo} de «{$nombre}»"]],
-                ['post' => 'postEdicionDestinatario', 'ctx' => ['cliente' => $cliente]]);
+            $this->lanzarEnCola([['script' => 'herramientas/editar_destinatario.py', 'args' => $args, 'timeout' => 170, 'etiqueta' => $etiqueta]],
+                ['post' => 'postGuardarCambios', 'ctx' => ['cliente' => $cliente, 'enviados' => $this->cambios[$cliente]]]);
             return;
         }
         if (! config('contabilidad.ejecucion_local')) {
             return;
         }
-        $result = Process::path($this->scriptDir())->timeout(120)->run([$this->pythonBin(), 'herramientas/editar_destinatario.py', ...array_map('strval', $args)]);
-        if (! $result->successful()) {
+        $result = Process::path($this->scriptDir())->timeout(170)->run([$this->pythonBin(), 'herramientas/editar_destinatario.py', ...$args]);
+        if ($result->successful()) {
+            unset($this->cambios[$cliente]);
+        } else {
             $this->salida .= "\n\n⚠️ ".trim($result->output()."\n".$result->errorOutput());
         }
-        $this->cargarDestinatarios($cliente);
     }
 
-    /** Fin de editarDestinatario en el PC: si fue bien no hay nada que hacer (ya se ve); si falló, el motivo queda en la Salida y se recarga la lista real. */
-    protected function postEdicionDestinatario(array $ctx, int $desde, array $oks): void
+    /** Fin de guardarCambios en el PC: si fue bien se quitan los cambios guardados (los hechos mientras tanto se conservan); si no, quedan apuntados y el motivo está en la Salida. */
+    protected function postGuardarCambios(array $ctx, int $desde, array $oks): void
     {
         if (! ($oks[0] ?? false)) {
-            $this->cargarDestinatarios($ctx['cliente']);
+            return;
+        }
+        $cliente = $ctx['cliente'];
+        foreach ($ctx['enviados'] as $fila => $c) {
+            if (($this->cambios[$cliente][$fila] ?? null) === $c) {
+                unset($this->cambios[$cliente][$fila]);
+            }
+        }
+        if (empty($this->cambios[$cliente])) {
+            unset($this->cambios[$cliente]);
         }
     }
 
