@@ -780,6 +780,14 @@ class FacturasOcr extends Component
         return substr(sha1_file($ruta), 0, 12);
     }
 
+    /** Como idPdf(), pero recordando el resultado mientras el fichero no cambie (se llama en cada pintado de la pantalla). */
+    protected function idPdfCache(string $ruta): string
+    {
+        clearstatcache(true, $ruta);
+
+        return \Illuminate\Support\Facades\Cache::remember('focr-id-'.sha1($ruta.'|'.filesize($ruta).'|'.filemtime($ruta)), 86400, fn () => $this->idPdf($ruta));
+    }
+
     /** [id => nombre] de los PDF que hay ahora en la carpeta de entrada. */
     protected function pdfsDeEntrada(): array
     {
@@ -1125,14 +1133,16 @@ class FacturasOcr extends Component
         if (! $this->web() || ! $this->clienteValido()) {
             return [];
         }
-        $porRuta = [];
+        $porRuta = $porId = [];
         foreach ($this->estado()['facturas'] as $f) {
             $porRuta[basename($f['ruta'])] = $f['estado'];
+            $porId[$f['id']] = $f['estado'];
         }
         $out = [];
         foreach (glob($this->dirEntrada().'/*.{pdf,PDF}', GLOB_BRACE) ?: [] as $f) {
             $n = basename($f);
-            $e = $porRuta[$n] ?? null;
+            // Por nombre y, si no, por huella: la misma factura puede constar con otro nombre (renombrada o en la carpeta de su mes)
+            $e = $porRuta[$n] ?? $porId[$this->idPdfCache($f)] ?? null;
             $out[] = [$n, $e === null ? ($this->leyendo ? 'leyendo' : 'en el servidor') : $e];
         }
         usort($out, fn ($a, $b) => strnatcasecmp($a[0], $b[0]));

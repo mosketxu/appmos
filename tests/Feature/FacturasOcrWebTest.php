@@ -106,6 +106,22 @@ class FacturasOcrWebTest extends TestCase
         $this->assertSame($d.'/Entrada/mala ISP.pdf', $f[1]['ruta']);
     }
 
+    public function test_un_pdf_de_la_entrada_se_reconoce_por_su_huella_aunque_conste_con_otro_nombre(): void
+    {
+        $d = $this->raiz.'/OneDrive/_Clientes/_FacturasOCR/Durcal';
+        @mkdir($d.'/Entrada', 0777, true);
+        file_put_contents($d.'/Entrada/original.pdf', "%PDF-1.4\nX");
+        $id = substr(sha1_file($d.'/Entrada/original.pdf'), 0, 12);
+        file_put_contents($d.'/facturas.json', json_encode(['facturas' => [['id' => $id, 'estado' => 'rechazada', 'ruta' => $d.'/otra/PROVEEDOR_original.pdf']]]));
+        $c = $this->componente();
+        $m = new \ReflectionMethod($c, 'estadoEntrada');
+        $m->setAccessible(true);
+        $this->assertSame([['original.pdf', 'rechazada']], $m->invoke($c));
+        $s = new \ReflectionMethod($c, 'sinLeerEnEntrada');
+        $s->setAccessible(true);
+        $this->assertSame(0, $s->invoke($c));
+    }
+
     public function test_una_factura_ya_validada_no_se_vuelve_a_subir_y_lo_que_no_es_pdf_se_rechaza(): void
     {
         $c = $this->componente();
