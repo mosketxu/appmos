@@ -369,6 +369,25 @@ class FacturacionPdf extends Component
         $this->guardarEstado($cliente);
     }
 
+    /** PRUEBA de la Fase 2: manda de verdad los 5 primeros correos, todos a la dirección de quien pulsa, con [PRUEBA] en el asunto; sin copiar a OneDrive ni archivar. La fase no avanza. */
+    public function enviarPrueba(string $cliente, int $max = 5): void
+    {
+        if (($this->estado[$cliente]['fase'] ?? '') !== 'separado') {
+            return;
+        }
+        if (! empty($this->cambios[$cliente])) {
+            $this->salida .= "\n\n⚠️ {$cliente}: hay cambios de destinatarios sin guardar en el TODO. Guárdalos o descártalos antes de la prueba: usa el Excel.";
+            return;
+        }
+        $correo = (string) auth()->user()?->email;
+        if (! filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            $this->salida .= "\n\n⚠️ No tengo tu correo para la prueba.";
+            return;
+        }
+        $max = max(1, min($max, 20));
+        $this->ejecutarConCopiaFresca($cliente, enviar: true, etiquetaSufijo: "PRUEBA · {$max} correos a {$correo}", extra: ['--prueba', $correo, '--max', (string) $max]);
+    }
+
     public function empezarDeNuevo(string $cliente): void
     {
         $ruta = $this->estado[$cliente]['rutaMaster'] ?? null;
@@ -387,7 +406,7 @@ class FacturacionPdf extends Component
      * procesar_facturas.py la archive sin tocar la master) y lanza el script
      * con esa copia como --input.
      */
-    protected function ejecutarConCopiaFresca(string $cliente, bool $enviar, string $etiquetaSufijo): bool
+    protected function ejecutarConCopiaFresca(string $cliente, bool $enviar, string $etiquetaSufijo, array $extra = []): bool
     {
         $rutaMasterAbs = $this->estado[$cliente]['rutaMaster'] ?? null;
         if (! $rutaMasterAbs || ! is_file($rutaMasterAbs)) {
@@ -400,11 +419,11 @@ class FacturacionPdf extends Component
             // El PDF viaja como entrada de la tarea: el PC lo deja en <Cliente>\Entrada con nombre nuevo (el script lo archiva)
             $this->resultados[$cliente] = [];
             $this->lanzarEnCola([[
-                'script' => 'procesar_facturas.py', 'args' => ['--client', $cliente, '--input', '{E0}', $enviar ? '--send' : '--no-mail'],
+                'script' => 'procesar_facturas.py', 'args' => array_merge(['--client', $cliente, '--input', '{E0}', $enviar ? '--send' : '--no-mail'], $extra),
                 'timeout' => 180, 'etiqueta' => $etiqueta,
             ]], [
                 'entradas' => [['ruta' => $rutaMasterAbs, 'nombre' => date('Ymd_His').'_'.basename($rutaMasterAbs), 'dir' => "{$cliente}/Entrada"]],
-                'resultados' => $cliente, 'post' => 'postProcesarFacturas', 'ctx' => ['cliente' => $cliente, 'enviar' => $enviar],
+                'resultados' => $cliente, 'post' => 'postProcesarFacturas', 'ctx' => ['cliente' => $cliente, 'enviar' => $enviar && ! $extra],   // con --prueba la fase no avanza
             ]);
             return false;   // la fase avanza cuando el PC termina (postProcesarFacturas)
         }
@@ -429,6 +448,7 @@ class FacturacionPdf extends Component
 
         $args = [$this->pythonBin(), 'procesar_facturas.py', '--client', $cliente, '--input', $rutaCopia];
         $args[] = $enviar ? '--send' : '--no-mail';
+        $args = array_merge($args, $extra);
 
         $inicio = strlen($this->salida);
         $this->salida .= "\n\n===== {$etiqueta} =====\n";

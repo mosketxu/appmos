@@ -271,6 +271,16 @@
 
                     <div class="flex flex-wrap gap-2">
                         @if ($e['fase'] === 'separado')
+                            <x-button.secondary
+                                wire:click="enviarPrueba('{{ $id }}')"
+                                wire:loading.attr="disabled"
+                                wire:target="enviarPrueba('{{ $id }}')"
+                                title="Manda de verdad solo los 5 primeros correos que tocan, todos a TU dirección ({{ auth()->user()->email }}) y con [PRUEBA] en el asunto. No copia nada a OneDrive ni archiva la entrada, y no cuenta como enviado: después sigue disponible la Fase 2 real."
+                                onclick="return confirm('Prueba: se mandarán 5 correos (los 5 primeros) SOLO a {{ auth()->user()->email }}, con [PRUEBA] en el asunto. No llegan a ningún cliente. ¿Seguir?')"
+                            >
+                                <span wire:loading.remove wire:target="enviarPrueba('{{ $id }}')">Prueba · 5 correos a mí</span>
+                                <span wire:loading wire:target="enviarPrueba('{{ $id }}')">⏳ Probando…</span>
+                            </x-button.secondary>
                             <x-button.primary
                                 wire:click="enviarCorreos('{{ $id }}')"
                                 wire:loading.attr="disabled"
