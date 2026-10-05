@@ -180,7 +180,7 @@ class FacturacionPdf extends Component
     public function mount(): void
     {
         foreach (array_keys($this->clientes()) as $id) {
-            $this->estado[$id] = ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null];
+            $this->estado[$id] = $this->estadoGuardado($id) ?? ['fase' => 'vacio', 'nombreOriginal' => null, 'rutaMaster' => null];
             $this->filtroEnviar[$id] = 'todos';
         }
         $this->generico = $this->genericoVacio();
@@ -188,6 +188,26 @@ class FacturacionPdf extends Component
         $proceso = (string) session('facturacion-pdf.proceso', 'Suma');
         $this->proceso = in_array($proceso, ['Suma', 'Balerga', 'Generico'], true) ? $proceso : 'Suma';
         $this->retomarTareas();
+    }
+
+    /**
+     * La fase de cada cliente (separado / enviado) se recuerda entre recargas de la página: sin esto, al refrescar
+     * desaparecía el botón de la Fase 2 aunque la Fase 1 ya estuviera hecha. Solo se restaura si el PDF subido sigue en Appmos.
+     */
+    protected function estadoGuardado(string $cliente): ?array
+    {
+        $e = \Illuminate\Support\Facades\Cache::get("facturacion-pdf.estado.{$cliente}");
+        return is_array($e) && ! empty($e['rutaMaster']) && is_file($e['rutaMaster']) ? $e : null;
+    }
+
+    protected function guardarEstado(string $cliente): void
+    {
+        $e = $this->estado[$cliente] ?? null;
+        if ($e && ($e['fase'] ?? 'vacio') !== 'vacio') {
+            \Illuminate\Support\Facades\Cache::put("facturacion-pdf.estado.{$cliente}", $e, now()->addDays(14));
+        } else {
+            \Illuminate\Support\Facades\Cache::forget("facturacion-pdf.estado.{$cliente}");
+        }
     }
 
     public function updatedProceso(string $valor): void
@@ -325,6 +345,7 @@ class FacturacionPdf extends Component
         if ($ok) {
             $this->estado[$cliente]['fase'] = 'separado';
         }
+        $this->guardarEstado($cliente);
     }
 
     // -- Fase 2: enviar correos ------------------------------------------
@@ -342,6 +363,7 @@ class FacturacionPdf extends Component
         if ($ok) {
             $this->estado[$cliente]['fase'] = 'enviado';
         }
+        $this->guardarEstado($cliente);
     }
 
     public function empezarDeNuevo(string $cliente): void
@@ -354,6 +376,7 @@ class FacturacionPdf extends Component
         $this->archivo[$cliente] = null;
         $this->resultados[$cliente] = [];
         $this->salidaCliente[$cliente] = '';
+        $this->guardarEstado($cliente);
     }
 
     /**
@@ -418,6 +441,7 @@ class FacturacionPdf extends Component
         $this->salidaCliente[$ctx['cliente']] = trim(substr($this->salida, $desde));
         if (! in_array(false, $oks, true)) {
             $this->estado[$ctx['cliente']]['fase'] = $ctx['enviar'] ? 'enviado' : 'separado';
+            $this->guardarEstado($ctx['cliente']);
         }
     }
 
