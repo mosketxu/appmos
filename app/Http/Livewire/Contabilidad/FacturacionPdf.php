@@ -819,11 +819,14 @@ class FacturacionPdf extends Component
         }
     }
 
-    /** Dar de baja (Estado = baja y Enviar = no) o activar (Estado = activo; el Estado nunca queda vacío) a un cliente de la lista; queda como cambio pendiente. */
-    public function bajaDestinatario(string $cliente, int $fila, bool $baja): void
+    /** Cambia el Estado de un cliente (activo, baja, inactivo, liquidada; nunca vacío). Si deja de estar activo, Enviar pasa a no. */
+    public function cambiarEstado(string $cliente, int $fila, string $estado): void
     {
-        $this->editarDestinatario($cliente, $fila, 'estado', $baja ? 'baja' : 'activo');
-        if ($baja) {
+        if (! in_array($estado, ['activo', 'baja', 'inactivo', 'liquidada'], true)) {
+            return;
+        }
+        $this->editarDestinatario($cliente, $fila, 'estado', $estado);
+        if ($estado !== 'activo') {
             $this->editarDestinatario($cliente, $fila, 'enviar', '');
         }
     }

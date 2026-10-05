@@ -314,7 +314,7 @@
                                     class="text-xs text-gray-500 underline hover:text-gray-700">Descartar</button>
                             @endif
                             <button type="button" wire:click="guardarCambios('{{ $id }}')" wire:loading.attr="disabled" @disabled(! $nCambios)
-                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla), su idioma (ES/EN), o se le da de baja (pulsa sobre «activo»). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
+                                title="Aquí se cambia si se envía a cada cliente (pulsa «sí/no»), su correo (escríbelo en la casilla), su idioma (ES/EN), o se le da de baja (pulsa sobre su estado: va rotando activo, baja, inactivo, liquidada). Los cambios quedan marcados en amarillo y NO se escriben en el Excel ToDO Alex hasta que pulses este botón: entonces un PC abre el Excel, aplica todos los cambios de una vez y lo guarda. Hasta guardarlos, el envío de correos no los usa{{ $nCambios ? ' (ahora hay '.$nCambios.' pendiente(s))' : ' (ahora no hay nada pendiente)' }}."
                                 class="px-3 py-1.5 text-sm font-semibold rounded-md shadow"
                                 style="{{ $nCambios ? 'background:#f59e0b;color:#fff' : 'background:#e5e7eb;color:#9ca3af;cursor:default' }}">
                                 💾 Guardar en TODO{{ $nCambios ? " ({$nCambios})" : '' }}
@@ -381,10 +381,14 @@
                                                     class="px-2 rounded hover:bg-gray-100 {{ $fila['enviar'] ? 'text-green-700 font-semibold' : 'text-gray-400' }}">{{ $fila['enviar'] ? 'sí' : 'no' }}</button>
                                             </td>
                                             <td class="px-2 py-1 whitespace-nowrap">
-                                                @php($activa = in_array(mb_strtolower(trim($fila['estado'] ?? '')), ['', 'activo', 'activa'], true))
-                                                <button type="button" wire:click="bajaDestinatario('{{ $id }}', {{ $fila['fila'] }}, {{ $activa ? 'true' : 'false' }})"
-                                                    title="{{ $activa ? 'Pulsa para dar de baja' : 'Pulsa para activar' }}"
-                                                    style="display:inline-block;padding:1px 10px;border-radius:9999px;font-size:.75rem;font-weight:600;border:1px solid {{ $activa ? '#86efac' : '#fca5a5' }};background:{{ $activa ? '#dcfce7' : '#fee2e2' }};color:{{ $activa ? '#166534' : '#991b1b' }}">{{ $activa ? 'activo' : $fila['estado'] }}</button>
+                                                @php($est = mb_strtolower(trim($fila['estado'] ?? '')))
+                                                @php($activa = in_array($est, ['', 'activo', 'activa'], true))
+                                                @php($ciclo = ['activo' => 'baja', 'baja' => 'inactivo', 'inactivo' => 'liquidada'])
+                                                @php($sig = $activa ? 'baja' : ($ciclo[$est] ?? 'activo'))
+                                                @php($col = $activa ? ['#dcfce7', '#86efac', '#166534'] : (str_starts_with($est, 'baja') ? ['#fee2e2', '#fca5a5', '#991b1b'] : (str_starts_with($est, 'liquid') ? ['#e5e7eb', '#9ca3af', '#374151'] : ['#fef3c7', '#fcd34d', '#92400e'])))
+                                                <button type="button" wire:click="cambiarEstado('{{ $id }}', {{ $fila['fila'] }}, '{{ $sig }}')"
+                                                    title="Pulsa para cambiar a «{{ $sig }}» (activo → baja → inactivo → liquidada → activo)"
+                                                    style="display:inline-block;padding:1px 10px;border-radius:9999px;font-size:.75rem;font-weight:600;border:1px solid {{ $col[1] }};background:{{ $col[0] }};color:{{ $col[2] }}">{{ $activa ? 'activo' : $fila['estado'] }}</button>
                                             </td>
                                         </tr>
                                     @empty
