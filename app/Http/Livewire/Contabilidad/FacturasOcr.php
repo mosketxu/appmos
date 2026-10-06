@@ -64,7 +64,6 @@ class FacturasOcr extends Component
     // Pestaña Proveedores: buscar y editar lo contable de cada proveedor (va a patrones.json)
     public string $filtroProv = '';
     public string $provSel = '';
-    public array $provOriginal = [];
     public array $provForm = [];
 
     /** Hay cambios en el formulario de la factura abierta: se guardan al final de la petición. */
@@ -1717,13 +1716,9 @@ class FacturasOcr extends Component
         }
         $this->resetErrorBag('proveedor');
         $nuevoForm = array_intersect_key($p, array_flip(['nombre', 'cif', 'contrapartida', 'codigo_transaccion', 'clave_operacion', 'codigo_retencion']));
-        // Con otro abierto: si no se ha tocado nada se cierra y se abre este; si hay cambios, no se pierden.
-        if ($this->provSel !== '' && $this->provSel !== $cta && $this->provForm != $this->provOriginal) {
-            $this->addError('proveedor', "Tienes cambios sin guardar en {$this->provSel}: guárdalos o cancela antes de abrir otro.");
-            return;
-        }
+        // El cuadro de edición siempre pasa al último proveedor pulsado (lo no guardado del anterior se descarta).
         $this->provSel = $cta;
-        $this->provForm = $this->provOriginal = $nuevoForm;
+        $this->provForm = $nuevoForm;
     }
 
     public function guardarProveedor(): void
