@@ -177,7 +177,7 @@
                     @elseif ($vista === 'proveedores')
                         <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200">
                             <input type="search" wire:model.live.debounce.300ms="filtroProv" placeholder="Buscar cuenta, nombre, CIF o contrapartida…" class="focr-in" style="max-width:340px">
-                            <span class="text-xs text-gray-500">{{ count($provs) }} proveedores · <b>●</b> = puesto aquí (manda sobre la ficha de SAGE). Clic en uno para editarlo.</span>
+                            <span class="text-xs text-gray-500">{{ count($provs) }} proveedores · <b>●</b> = puesto aquí (manda sobre la ficha de SAGE). Pulsa el ✏️ de uno para editarlo.</span>
                             <button type="button" wire:click="descargarProveedores" class="focr-btn b-gris ml-auto" style="padding:.2rem .5rem; font-size:.75rem" title="El listado tal cual se ve (con el filtro), para abrir en Excel">💾 Listado (CSV)</button>
                         </div>
                         @if ($provSel !== '')
@@ -215,9 +215,9 @@
                             <thead><tr><th>Cuenta</th><th>Proveedor</th><th>CIF</th><th>Contrapartida</th><th>Cód. trans.</th><th>Clave op.</th><th>Cód. ret.</th><th style="text-align:right">Validadas aquí</th><th>Última</th></tr></thead>
                             <tbody>
                             @forelse (array_slice($provs, 0, 300, true) as $p)
-                                <tr class="clic" wire:click="abrirProveedor('{{ $p['cuenta'] }}')" wire:key="p-{{ $p['cuenta'] }}" @if ($provSel === $p['cuenta']) style="background:#eef2ff" @endif>
+                                <tr wire:key="p-{{ $p['cuenta'] }}" @if ($provSel === $p['cuenta']) style="background:#eef2ff" @endif>
                                     <td>{{ $p['cuenta'] }}</td>
-                                    <td>{{ $p['nombre'] }} @if ($p['nuevo']) <span class="focr-chip c-revisar">nuevo</span> @endif</td>
+                                    <td><button type="button" wire:click="abrirProveedor('{{ $p['cuenta'] }}')" title="Modificar este proveedor" style="cursor:pointer;margin-right:.35rem;background:none;border:0;padding:0">✏️</button>{{ $p['nombre'] }} @if ($p['nuevo']) <span class="focr-chip c-revisar">nuevo</span> @endif</td>
                                     <td>{{ $p['cif'] }}</td>
                                     <td title="{{ $nombresCuentas[$p['contrapartida']] ?? '' }}{{ $p['contrapartida_sage'] !== '' ? ' · en SAGE: '.$p['contrapartida_sage'] : '' }}">{{ $p['contrapartida'] }} <span class="text-xs text-gray-500">{{ \Illuminate\Support\Str::limit($nombresCuentas[$p['contrapartida']] ?? '', 22) }}</span>@if ($p['contrapartida_aqui']) <b title="Puesto aquí">●</b>@endif</td>
                                     <td title="{{ $p['transaccion_sage'] !== '' ? 'En SAGE: '.$p['transaccion_sage'] : '' }}">{{ $p['codigo_transaccion'] }}@if ($p['transaccion_aqui']) <b title="Puesto aquí">●</b>@endif</td>
