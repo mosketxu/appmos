@@ -24,6 +24,8 @@ class Ent extends Component
     public $cambioMotivo='';
     public $histFecha='';
     public $histTexto='';
+    public $histImporte='';
+    public $histPeriodo='';
 
     /** A dónde vuelve «Volver»: el listado de Entidades con la búsqueda y filtros con que se salió. */
     public $volver='';
@@ -55,8 +57,6 @@ class Ent extends Component
             'entidad.contacto'=>'nullable',
             'entidad.cicloimpuesto_id'=>'nullable',
             'entidad.ciclofacturacion_id'=>'nullable',
-            'entidad.importe_facturacion'=>'numeric|nullable',
-            'entidad.periodo_facturacion'=>'nullable',
             'entidad.metodopago_id'=>'nullable',
             'entidad.estado'=>'nullable',
             'entidad.facturar'=>'nullable',
@@ -165,8 +165,6 @@ class Ent extends Component
             'contacto'=>(bool) ($this->entidad['contacto'] ?? false),
             'cicloimpuesto_id'=>$this->entidad['cicloimpuesto_id'],
             'ciclofacturacion_id'=>$this->entidad['ciclofacturacion_id'],
-            'importe_facturacion'=>($this->entidad['importe_facturacion'] ?? '') === '' ? null : $this->entidad['importe_facturacion'],
-            'periodo_facturacion'=>($this->entidad['periodo_facturacion'] ?? '') === '' ? null : $this->entidad['periodo_facturacion'],
             'metodopago_id'=>$this->entidad['metodopago_id'],
             'estado'=>$this->entidad['estado'],
             'facturar'=>$this->entidad['facturar'],
@@ -224,12 +222,20 @@ class Ent extends Component
         if (! ($this->entidad['id'] ?? null) || ! auth()->user()->can('entidades.editar')) {
             return;
         }
-        $this->validate(['histFecha' => 'required|date', 'histTexto' => 'required|string|max:2000']);
+        $this->validate(['histFecha' => 'required|date', 'histTexto' => 'nullable|string|max:2000', 'histImporte' => 'nullable|numeric', 'histPeriodo' => 'nullable']);
+        if (trim((string) $this->histTexto) === '' && (string) $this->histImporte === '') {
+            $this->addError('histTexto', 'Escribe un comentario o un importe.');
+            return;
+        }
         \App\Models\EntidadHistorico::create([
             'entidad_id' => $this->entidad['id'], 'tipo' => 'comentario', 'fecha' => $this->histFecha,
-            'comentario' => trim($this->histTexto), 'user_id' => auth()->id(),
+            'comentario' => trim($this->histTexto) ?: null, 'user_id' => auth()->id(),
+            'importe_facturacion' => (string) $this->histImporte === '' ? null : $this->histImporte,
+            'periodo_facturacion' => (string) $this->histPeriodo === '' ? null : $this->histPeriodo,
         ]);
         $this->histTexto = '';
+        $this->histImporte = '';
+        $this->histPeriodo = '';
         $this->histFecha = now()->toDateString();
     }
 
