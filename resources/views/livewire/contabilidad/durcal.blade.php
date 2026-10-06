@@ -52,7 +52,8 @@
         <div class="p-4 space-y-1 text-sm border-b border-gray-200 bg-gray-50">
             <div class="flex flex-wrap items-center gap-x-3">
                 <span class="font-medium text-gray-700">Lo que ve el PC{{ ! empty($estadoPc['pc']) ? ' ('.$estadoPc['pc'].')' : '' }} en el OneDrive:</span>
-                <button type="button" wire:click="sincronizarAhora" class="text-xs text-indigo-700 hover:underline">↻ Comprobar en el PC</button>
+                <button type="button" wire:click="sincronizarAhora" wire:loading.attr="disabled" wire:target="sincronizarAhora" class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md shadow hover:bg-indigo-700">
+                    <span wire:loading.remove wire:target="sincronizarAhora">↻ Comprobar en el PC</span><span wire:loading wire:target="sincronizarAhora">⏳ Pidiendo al PC…</span></button>
             </div>
             @if (! $sabeEstado)
                 <p class="text-amber-700">Todavía no hay datos del PC (se están pidiendo). Pulsa «Comprobar en el PC» si tarda.</p>
@@ -92,6 +93,10 @@
                 <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar en el PC</span>
                 <span wire:loading wire:target="ejecutar">⏳ Pidiendo…</span>
             </x-button.primary>
+
+            <button type="button" wire:click="sincronizarAhora" wire:loading.attr="disabled" wire:target="sincronizarAhora" title="Pide al PC que vuelva a mirar OneDrive (nóminas, Amortizacion abierto…)"
+                    class="px-3 py-1.5 text-sm font-semibold {{ ! $n || ! empty($am['abierto']) ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-indigo-700 bg-white border border-indigo-300 hover:bg-indigo-50' }} rounded-md shadow">
+                <span wire:loading.remove wire:target="sincronizarAhora">↻ Comprobar en el PC</span><span wire:loading wire:target="sincronizarAhora">⏳ Pidiendo al PC…</span></button>
 
             @if (! $n)
                 <span class="text-sm text-red-600">No se puede ejecutar: el PC no ve la nómina del mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} en OneDrive (Durcal 2026\Laboral). Elige otro mes o deja ahí el fichero y pulsa «Comprobar en el PC».</span>
