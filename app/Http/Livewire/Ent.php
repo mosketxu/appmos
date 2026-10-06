@@ -73,6 +73,8 @@ class Ent extends Component
             'entidad.mail_peticion_cc'=>'nullable|max:500',
             'entidad.cuentacontable'=>'numeric|nullable',
             'entidad.codigo_cliente'=>'nullable|max:20',
+            'entidad.cnae'=>'nullable|string|max:255',
+            'entidad.epigrafe_iae'=>'nullable|string|max:255',
         ];
     }
 
@@ -176,6 +178,8 @@ class Ent extends Component
             'mail_peticion_cc'=>$this->entidad['mail_peticion_cc'],
             'cuentacontable'=>$this->entidad['cuentacontable'],
             'codigo_cliente'=>$this->entidad['codigo_cliente'] ?? null,
+            'cnae'=>$this->entidad['cnae'] ?? null,
+            'epigrafe_iae'=>$this->entidad['epigrafe_iae'] ?? null,
             ]
         );
         if(!($this->entidad['id'] ?? null)){

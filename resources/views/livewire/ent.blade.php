@@ -233,6 +233,16 @@
                     <x-jet-input-error for="codigo_cliente" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
+                    <x-jet-label for="cnae" >{{ __('CNAE') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.cnae" type="text" id="cnae" class="w-full" title="Uno o varios códigos CNAE"/>
+                    <x-jet-input-error for="cnae" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
+                    <x-jet-label for="epigrafe_iae" >{{ __('Epígrafe IAE') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.epigrafe_iae" type="text" id="epigrafe_iae" class="w-full" title="Uno o varios epígrafes del IAE"/>
+                    <x-jet-input-error for="epigrafe_iae" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="referenciacliente" >{{ __('Ref.Cli') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.referenciacliente" type="text" id="referenciacliente" name="referenciacliente" :value="old('referenciacliente')" class="w-full"/>
                     <x-jet-input-error for="referenciacliente" class="mt-2" />
