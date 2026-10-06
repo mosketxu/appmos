@@ -3,6 +3,12 @@
 
 define('LARAVEL_START', microtime(true));
 
+// PsySH (tinker) escribe su historial en ~/.config; con www-data (HOME=/var/www) no es escribible.
+if (! getenv('XDG_CONFIG_HOME') && ! is_writable(getenv('HOME') ?: '/nonexistent')) {
+    putenv('XDG_CONFIG_HOME='.__DIR__.'/storage/psysh');
+    @mkdir(__DIR__.'/storage/psysh', 0775, true);
+}
+
 /*
 |--------------------------------------------------------------------------
 | Register The Auto Loader
