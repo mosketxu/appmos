@@ -23,6 +23,7 @@ class VigilanciaTrabajadores
 
     public static function revisar(): void
     {
+        ErroresApp::cerrarResueltos();   // de paso: cierra las tareas de error que ya no se repiten
         try {
             if (! Schema::hasTable('trabajadores') || ! Schema::hasTable('todo_tareas') || ! Cache::add('vigilancia.trabajadores', 1, 60)) {
                 return;
