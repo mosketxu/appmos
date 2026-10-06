@@ -93,6 +93,12 @@
                 <span wire:loading wire:target="ejecutar">⏳ Pidiendo…</span>
             </x-button.primary>
 
+            @if (! $n)
+                <span class="text-sm text-red-600">No se puede ejecutar: el PC no ve la nómina del mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} en OneDrive (Durcal 2026\Laboral). Elige otro mes o deja ahí el fichero y pulsa «Comprobar en el PC».</span>
+            @elseif (! empty($am['abierto']))
+                <span class="text-sm text-red-600">No se puede ejecutar: Amortizacion Alpify 2026.xlsm está abierto en Excel en el PC. Ciérralo y pulsa «Comprobar en el PC».</span>
+            @endif
+
             @if (! empty($resultados['durcal']))
                 <div class="flex flex-col min-w-0 gap-y-1 text-sm">
                     <span class="text-xs text-gray-500">Ficheros escritos (en el PC):</span>
