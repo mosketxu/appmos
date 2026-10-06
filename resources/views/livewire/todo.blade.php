@@ -247,6 +247,9 @@
                                                     @endif
                                                 </div>
                                             @endif
+                                            @if ($detalle->abierta())
+                                                <button type="button" wire:click="cambiarEstado({{ $detalle->id }}, 'hecha')" wire:confirm="¿Dar la tarea por finalizada (sin responder)?" class="px-2 py-0.5 text-xs text-green-800 bg-green-100 border border-green-300 rounded hover:bg-green-200" title="Cierra la tarea sin escribir respuesta, aunque Claude esté esperando una">✅ Finalizar tarea</button>
+                                            @endif
                                             @if ($esAdmin || $detalle->creador_id === auth()->id())
                                                 <button type="button" wire:click="borrar({{ $detalle->id }})" wire:confirm="¿Borrar esta tarea y sus comentarios?" class="text-xs text-red-600 underline">Borrar tarea</button>
                                             @endif
