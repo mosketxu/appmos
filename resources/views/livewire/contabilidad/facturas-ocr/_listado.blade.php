@@ -208,6 +208,7 @@
                                     Contrapartida vacía = la de la ficha de SAGE o la más usada en el mayor; cód. de transacción/retención igual al de la ficha = el de la ficha.
                                     En SAGE no se cambia nada.
                                 </div>
+                                @if ($provAviso !== '') <div class="text-sm" style="margin-top:.4rem; padding:.3rem .6rem; background:#fefce8; border:1px solid #facc15; color:#854d0e; border-radius:.25rem">⚠ {{ $provAviso }}</div> @endif
                                 @error('proveedor') <pre class="focr-avisos" style="white-space:pre-wrap; background:#fef2f2; border-color:#fca5a5; color:#991b1b; margin-top:.4rem">{{ $message }}</pre> @enderror
                             </div>
                         @endif
