@@ -226,6 +226,20 @@
                     </x-select>
                 </div>
                 <div class="w-full form-item">
+                    <x-jet-label for="importe_facturacion">{{ __('Importe facturación') }}</x-jet-label>
+                    <x-jet-input wire:model.defer="entidad.importe_facturacion" type="number" step="0.01" id="importe_facturacion" name="importe_facturacion" class="w-full"/>
+                    <x-jet-input-error for="entidad.importe_facturacion" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
+                    <x-jet-label for="periodo_facturacion">{{ __('Periodo') }}</x-jet-label>
+                    <x-select wire:model.defer="entidad.periodo_facturacion" class="w-full" selectname="periodo_facturacion">
+                        <option value="">-- choose --</option>
+                        @foreach (App\Models\Entidad::CICLOS as $value=>$label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </x-select>
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="metodopago_id">{{ __('Método Pago') }}</x-jet-label>
                     <x-select wire:model.defer="entidad.metodopago_id" class="w-full" selectname="metodopago_id">
                         <option value="">-- choose --</option>
