@@ -276,6 +276,11 @@
                                     <span wire:loading.remove wire:target="revisarTodas">↻ Revisar todas</span>
                                     <span wire:loading wire:target="revisarTodas">↻ Revisando…</span>
                                 </button>
+                                <div wire:loading.flex wire:target="revisarTodas" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,.75);align-items:center;justify-content:center;flex-direction:column;gap:1rem">
+                                    <div style="width:64px;height:64px;border:7px solid #c7d2fe;border-top-color:#4f46e5;border-radius:50%;animation:focr-giro 1s linear infinite"></div>
+                                    <div style="font-weight:600;color:#3730a3;font-size:1.1rem">Revisando todas las facturas… puede tardar un minuto</div>
+                                    <style>@keyframes focr-giro{to{transform:rotate(360deg)}}</style>
+                                </div>
                                 @if ($quitables)
                                     <span class="ml-auto">Rechazadas, no legibles y duplicadas ya vistas:</span>
                                     <button type="button" wire:click="quitarDeLista" wire:confirm="¿Quitar de la lista todas las rechazadas, no legibles y duplicadas ({{ $quitables }})? No se borra ningún PDF." class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.75rem">✕ Quitarlas de la lista ({{ $quitables }})</button>
