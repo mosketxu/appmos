@@ -26,6 +26,12 @@ class Ents extends Component
     #[Url(except: '')]
     public $filtroresponsable='';
     public Entidad $entidad;
+
+    // Cambio de estado desde el listado: pregunta fecha y motivo (queda en entidad_historico)
+    public $cambioId = null;
+    public $cambioEstado = 1;
+    public $cambioFecha = '';
+    public $cambioMotivo = '';
     public $ruta;
 
     /** Clic en Cliente / Proveedor / Contacto / Facturar / Estado del listado: cambia y se guarda al momento. */
@@ -34,11 +40,43 @@ class Ents extends Component
         if (! in_array($campo, ['cliente', 'proveedor', 'contacto', 'facturar', 'estado'], true) || ! auth()->user()->can('entidades.editar')) {
             return;
         }
+        if ($campo === 'estado') {
+            $this->pedirCambioEstado($entidadId);
+            return;
+        }
         $entidad = Entidad::find($entidadId);
         if ($entidad) {
             $entidad->{$campo} = $campo === 'estado' ? (Entidad::ESTADO_SIGUIENTE[(int) $entidad->estado] ?? 1) : ! $entidad->{$campo};
             $entidad->save();
         }
+    }
+
+    public function pedirCambioEstado(int $entidadId)
+    {
+        $e = auth()->user()->can('entidades.editar') ? Entidad::find($entidadId) : null;
+        if (! $e) {
+            return;
+        }
+        $this->cambioId = $e->id;
+        $this->cambioEstado = Entidad::ESTADO_SIGUIENTE[(int) $e->estado] ?? 1;
+        $this->cambioFecha = now()->toDateString();
+        $this->cambioMotivo = '';
+    }
+
+    public function confirmarCambioEstado()
+    {
+        $this->validate(['cambioFecha' => 'required|date', 'cambioMotivo' => 'nullable|string|max:2000']);
+        $e = auth()->user()->can('entidades.editar') && $this->cambioId ? Entidad::find($this->cambioId) : null;
+        if ($e && isset(Entidad::ESTADOS[(int) $this->cambioEstado])) {
+            $e->cambiarEstado((int) $this->cambioEstado, $this->cambioFecha, $this->cambioMotivo);
+        }
+        $this->cancelarCambioEstado();
+    }
+
+    public function cancelarCambioEstado()
+    {
+        $this->reset(['cambioId', 'cambioFecha', 'cambioMotivo']);
+        $this->resetErrorBag();
     }
 
     /** Responsable Suma desde el listado (se guarda al momento). */

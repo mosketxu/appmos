@@ -49,6 +49,38 @@
                     <x-jet-label for="emailadm">{{ __('Email Adm') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.emailadm" type="text" id="emailadm" name="emailadm" :value="old('emailadm')" class="w-full" maxlength="500" placeholder="uno@x.com; otro@x.com" title="Varios separados por ; (a ellos va la petición de documentación)"/>
                 </div>
+                @if ($entidad['id'] ?? null)
+                <div class="w-full form-item">
+                    <x-jet-label>Historial y comentarios</x-jet-label>
+                    <div class="p-2 border border-gray-300 rounded-md" style="background:#fafafa">
+                        @if (auth()->user()->can('entidades.editar'))
+                            <div class="flex flex-wrap items-end gap-2 mb-2">
+                                <input type="date" wire:model="histFecha" class="py-1 text-xs border-gray-300 rounded-md">
+                                <input type="text" wire:model="histTexto" wire:keydown.enter.prevent="anadirHistorico" class="grow py-1 text-xs border-gray-300 rounded-md" placeholder="Añadir un comentario sobre este cliente…">
+                                <button type="button" wire:click="anadirHistorico" class="px-2 py-1 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">＋ Añadir</button>
+                            </div>
+                            @error('histTexto') <div class="text-xs text-red-600">Escribe el comentario.</div> @enderror
+                        @endif
+                        @forelse ($historico as $h)
+                            <div class="flex items-start gap-2 py-1 text-xs border-t border-gray-200" wire:key="hist-{{ $h->id }}">
+                                <span class="text-gray-500 whitespace-nowrap">{{ $h->fecha->format('d/m/Y') }}</span>
+                                <span class="grow">
+                                    @if ($h->tipo === 'estado')
+                                        <b>{{ \App\Models\Entidad::ESTADOS[$h->estado_anterior] ?? '—' }} → {{ \App\Models\Entidad::ESTADOS[$h->estado_nuevo] ?? '—' }}</b>
+                                    @endif
+                                    {{ $h->comentario }}
+                                    @if ($h->user) <span class="text-gray-400">· {{ $h->user->name }}</span> @endif
+                                </span>
+                                @if (auth()->user()->can('entidades.editar'))
+                                    <button type="button" wire:click="borrarHistorico({{ $h->id }})" wire:confirm="¿Borrar esta línea del historial?" class="text-gray-400 hover:text-red-600">✕</button>
+                                @endif
+                            </div>
+                        @empty
+                            <div class="text-xs italic text-gray-400">Sin historial todavía.</div>
+                        @endforelse
+                    </div>
+                </div>
+                @endif
                 <div class="w-full form-item">
                     <x-jet-label for="web">{{ __('Web') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.web" type="text" id="web" name="web" :value="old('web')" class="w-full"/>
@@ -97,12 +129,22 @@
                     </x-jet-label>
                     <x-jet-label class="inline-flex items-center mt-3">
                         <span class="mr-2 text-gray-700">{{ __('Estado') }}</span>
-                        <select wire:model.defer="entidad.estado" class="py-1 text-sm border-gray-300 rounded-md">
+                        <select wire:model.live="entidad.estado" class="py-1 text-sm border-gray-300 rounded-md">
                             @foreach (\App\Models\Entidad::ESTADOS as $k => $l)
                                 <option value="{{ $k }}">{{ $l }}</option>
                             @endforeach
                         </select>
                     </x-jet-label>
+                    @if ($estadoOriginal !== null && (string) ($entidad['estado'] ?? '') !== $estadoOriginal)
+                        <div class="p-2 mt-2 text-xs border border-yellow-300 rounded-md bg-yellow-50" style="max-width:34rem">
+                            Cambio de estado: «{{ \App\Models\Entidad::ESTADOS[(int) $estadoOriginal] ?? '—' }}» → «{{ \App\Models\Entidad::ESTADOS[(int) ($entidad['estado'] ?? 0)] ?? '—' }}».
+                            Se anotará en el historial al guardar.
+                            <div class="flex flex-wrap items-end gap-2 mt-1">
+                                <label>Fecha<br><input type="date" wire:model="cambioFecha" class="py-1 text-sm border-gray-300 rounded-md"></label>
+                                <label class="grow">Motivo<br><input type="text" wire:model="cambioMotivo" class="w-full py-1 text-sm border-gray-300 rounded-md" placeholder="motivo del cambio"></label>
+                            </div>
+                        </div>
+                    @endif
                     <x-jet-label class="inline-flex items-center mt-3">
                         <x-input.checkbox wire:model.defer="entidad.facturar" class="w-4 h-4 text-pink-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Facturar') }}</span>
                     </x-jet-label>

@@ -56,6 +56,27 @@ class Entidad extends Model
     public function ciclofac(){return $this->belongsTo(Ciclo::class, 'ciclofacturacion_id','id');}
     public function conceptos(){return $this->hasMany(FacturacionConcepto::class);}
     public function mailsEnviados(){return $this->hasMany(MailEnviado::class);}
+    public function historico(){return $this->hasMany(EntidadHistorico::class)->orderByDesc('fecha')->orderByDesc('id');}
+
+    /** Cambia el estado y deja constancia en el historial (fecha y motivo). */
+    public function cambiarEstado(int $nuevo, ?string $fecha = null, ?string $motivo = null): void
+    {
+        $antes = $this->estado === null ? null : (int) $this->estado;
+        $this->estado = $nuevo;
+        $this->save();
+        if ($antes !== $nuevo) {
+            $this->registrarEstado($antes, $nuevo, $fecha, $motivo);
+        }
+    }
+
+    /** Solo la línea del historial (cuando el estado ya se ha guardado por otro camino). */
+    public function registrarEstado(?int $antes, int $nuevo, ?string $fecha = null, ?string $motivo = null): void
+    {
+        EntidadHistorico::create([
+            'entidad_id' => $this->id, 'tipo' => 'estado', 'estado_anterior' => $antes, 'estado_nuevo' => $nuevo,
+            'fecha' => $fecha ?: now()->toDateString(), 'comentario' => trim((string) $motivo) ?: null, 'user_id' => auth()->id(),
+        ]);
+    }
 
     /** Estados de la entidad (columna estado): 1 activo, 0 baja, 2 inactivo, 3 liquidada. Mismos que la columna Estado del Excel de destinatarios. */
     public const ESTADOS = [1 => 'Activo', 0 => 'Baja', 2 => 'Inactivo', 3 => 'Liquidada'];

@@ -18,6 +18,13 @@ class Ent extends Component
 
     public $showPlanModal=false;
 
+    // Historial (entidad_historico): estado de partida, fecha/motivo del cambio de estado y comentario nuevo
+    public $estadoOriginal=null;
+    public $cambioFecha='';
+    public $cambioMotivo='';
+    public $histFecha='';
+    public $histTexto='';
+
     /** A dónde vuelve «Volver»: el listado de Entidades con la búsqueda y filtros con que se salió. */
     public $volver='';
 
@@ -87,6 +94,8 @@ class Ent extends Component
         );
         $this->contacto=$contacto;
         $this->ruta=$ruta;
+        $this->estadoOriginal = $entidad->id ? (string) $entidad->estado : null;
+        $this->cambioFecha = $this->histFecha = now()->toDateString();
         $anterior = url()->previous();
         $this->volver = str_starts_with($anterior, route('entidades')) ? $anterior : route('entidades');
     }
@@ -102,7 +111,8 @@ class Ent extends Component
         $sumas=Suma::all();
         $provincias=Provincia::all();
         $paises=Pais::all();
-        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises','entidadModel'));
+        $historico = ($this->entidad['id'] ?? null) ? $entidadModel->historico()->with('user')->get() : collect();
+        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises','entidadModel','historico'));
     }
 
     public function save()
@@ -184,7 +194,12 @@ class Ent extends Component
         );
         if(!($this->entidad['id'] ?? null)){
             $this->entidad['id']=$ent->id;
+        } elseif ($this->estadoOriginal !== null && (string) $this->entidad['estado'] !== $this->estadoOriginal && $this->entidad['estado'] !== null && $this->entidad['estado'] !== '') {
+            $ent->registrarEstado((int) $this->estadoOriginal, (int) $this->entidad['estado'], $this->cambioFecha ?: null, $this->cambioMotivo);
+            $this->cambioFecha = now()->toDateString();
+            $this->cambioMotivo = '';
         }
+        $this->estadoOriginal = (string) $ent->estado;
 
         if($this->contactoId){
             ContactoEntidad::create([
@@ -198,5 +213,27 @@ class Ent extends Component
         $this->dispatch('notify-saved');
     }
 
+
+    /** Comentario suelto en el historial de la entidad (se guarda al momento). */
+    public function anadirHistorico()
+    {
+        if (! ($this->entidad['id'] ?? null) || ! auth()->user()->can('entidades.editar')) {
+            return;
+        }
+        $this->validate(['histFecha' => 'required|date', 'histTexto' => 'required|string|max:2000']);
+        \App\Models\EntidadHistorico::create([
+            'entidad_id' => $this->entidad['id'], 'tipo' => 'comentario', 'fecha' => $this->histFecha,
+            'comentario' => trim($this->histTexto), 'user_id' => auth()->id(),
+        ]);
+        $this->histTexto = '';
+        $this->histFecha = now()->toDateString();
+    }
+
+    public function borrarHistorico(int $id)
+    {
+        if (auth()->user()->can('entidades.editar')) {
+            \App\Models\EntidadHistorico::where('entidad_id', $this->entidad['id'])->whereKey($id)->delete();
+        }
+    }
 
 }

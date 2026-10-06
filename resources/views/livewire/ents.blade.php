@@ -136,6 +136,7 @@
                 {{ $entidades->links() }}
             </div>
             @include('livewire.ents._coresp', ['modo' => 'modal'])
+            @include('livewire.ents._cambio_estado')
         </div>
     </div>
 </div>
