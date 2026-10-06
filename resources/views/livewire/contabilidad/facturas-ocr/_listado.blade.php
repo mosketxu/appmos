@@ -188,6 +188,8 @@
                                     @if ($esNuevoProv)
                                         <label class="text-xs">Nombre<br><input type="text" wire:model="provForm.nombre" class="focr-in" style="width:220px"></label>
                                         <label class="text-xs">CIF<br><input type="text" wire:model="provForm.cif" class="focr-in" style="width:130px"></label>
+                                    @else
+                                        <label class="text-xs">Nombre (vacío = el de SAGE)<br><input type="text" wire:model="provForm.nombre" class="focr-in" style="width:260px"></label>
                                     @endif
                                     <label class="text-xs">Contrapartida<br><input type="text" wire:model="provForm.contrapartida" list="focr-cuentas-prov" class="focr-in" style="width:110px"></label>
                                     <label class="text-xs">Cód. transacción<br><input type="text" wire:model="provForm.codigo_transaccion" class="focr-in" style="width:80px"></label>

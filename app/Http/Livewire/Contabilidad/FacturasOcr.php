@@ -1681,7 +1681,9 @@ class FacturasOcr extends Component
             $ret = (string) (($pat['codigo_retencion'] ?? '') !== '' ? $pat['codigo_retencion'] : ($p['retencion'] ?? ''));
             return [
                 'cuenta' => $cta, 'nuevo' => $nuevo,
-                'nombre' => $nuevo ? ($pat['proveedor'] ?? '') : ($p['razon'] ?? ''),
+                'nombre' => $nuevo ? ($pat['proveedor'] ?? '') : (($pat['nombre_propio'] ?? '') ?: ($p['razon_base'] ?? $p['razon'] ?? '')),
+                'nombre_aqui' => ! $nuevo && ($pat['nombre_propio'] ?? '') !== '',
+                'nombre_sage' => (string) ($p['razon_base'] ?? $p['razon'] ?? ''),
                 'cif' => $nuevo ? ($pat['cif'] ?? '') : ((($p['cif_europeo'] ?? '') ?: (($p['sigla'] ?? '').($p['nif'] ?? '')))),
                 'contrapartida' => (string) (($pat['contrapartida'] ?? '') ?: ($p['contrapartida'] ?? '')),
                 'contrapartida_aqui' => ($pat['contrapartida'] ?? '') !== '',
