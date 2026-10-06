@@ -316,6 +316,15 @@ class Todo extends Component
         }
     }
 
+    /** Clic en la etiqueta de estado de la lista: pasa al siguiente (cíclico; «Cancelada» solo desde el desplegable). */
+    public function siguienteEstado(int $id): void
+    {
+        $t = TodoTarea::findOrFail($id);
+        $ciclo = ['pendiente', 'en_curso', 'bloqueada', 'hecha'];
+        $i = array_search($t->estado, $ciclo, true);
+        $this->cambiarEstado($id, $ciclo[$i === false ? 0 : ($i + 1) % count($ciclo)]);
+    }
+
     /** Añade o quita a una persona de la tarea (siempre queda al menos una). */
     public function alternarAsignado(int $id, int $user): void
     {

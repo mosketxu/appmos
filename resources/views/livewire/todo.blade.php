@@ -178,7 +178,7 @@
                                 @if ($t->prioridad_pedida_at && $t->abierta())
                                     <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-yellow-900 bg-yellow-200 border border-yellow-400 rounded" title="{{ $t->prioridadPedidaPor?->name }} pide que se priorice esta tarea ({{ $t->prioridad_pedida_at->format('d/m H:i') }})">⚑ {{ $t->prioridadPedidaPor?->name }} pide prioridad</span>
                                 @endif</td>
-                            <td class="px-2 py-2"><span class="px-2 py-0.5 text-xs border rounded-full {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</span></td>
+                            <td class="px-2 py-2"><button type="button" wire:click.stop="siguienteEstado({{ $t->id }})" title="Clic para pasar al siguiente estado (Pendiente → En curso → Bloqueada → Hecha → Pendiente)" class="px-2 py-0.5 text-xs border rounded-full cursor-pointer hover:opacity-75 {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</button></td>
                             <td class="px-2 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
                             <td class="px-2 py-2 {{ $vencida ? 'text-red-600 font-semibold' : '' }}">{{ $t->fecha_limite?->format('d/m/Y') ?? '—' }}{{ $vencida ? ' ⚠' : '' }}</td>
                             <td class="px-2 py-2 text-center">{{ $t->comentarios_count ?: '' }}</td>
