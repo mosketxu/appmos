@@ -74,6 +74,7 @@ class FacturasOcr extends Component
     /** Web (VPS): PDF que acaba de subir el navegador (ver recibirPdfs) y lectura en segundo plano en curso. */
     public $pdfsSubidos = [];
     public bool $leyendo = false;
+    public int $sinLeerAntes = 0;
     /** Web: hay una tarea pidiendo a un PC que lleve lo validado a su OneDrive. */
     public bool $sincronizando = false;
 
@@ -1086,6 +1087,15 @@ class FacturasOcr extends Component
             }
         }
         if ($this->lecturaEnCurso() === null) {
+            // Las que se subieron mientras se leía no entran en esa pasada (lee la carpeta tal como estaba al empezar): otra pasada
+            // mientras queden sin leer y la anterior haya avanzado (si no avanza, algo falla y no se repite en bucle).
+            $quedan = $this->sinLeerEnEntrada();
+            if ($quedan > 0 && ($this->sinLeerAntes === 0 || $quedan < $this->sinLeerAntes)) {
+                $this->sinLeerAntes = $quedan;
+                $this->leerEnSegundoPlano();
+                return;
+            }
+            $this->sinLeerAntes = 0;
             $this->leyendo = false;
             $log = trim((string) @file_get_contents($this->dirDatos().'/_cola/lectura.log'));
             $this->salida = $log !== '' ? $log : 'Lectura terminada.';
