@@ -13,6 +13,7 @@ contradice, manda aquel. Mapa y memoria de Appmos: `.claude/memoria/appmos/appmo
 |---|---|
 | Rutas | `routes/web.php` (todo detrás de `auth:sanctum`, `verified`, `activo`), `routes/api.php` (API de los PCs trabajadores, cabecera `X-Token`) |
 | Menú | `resources/views/livewire/menu.blade.php` (componente Livewire que cada página incluye con `@livewire('menu', …)`); NO es `navigation-menu` |
+| Entidades: CNAE / Epígrafe IAE | columnas `entidades.cnae` y `entidades.epigrafe_iae` (texto libre, nulos, sin límite de 4 caracteres: puede haber varios; 6-oct-2026); `Ent.php` + `ent.blade.php` |
 | Permisos y roles | `config/accesos.php` (lista única de permisos; Admin / Suma / Usuario). Seeder: `php artisan db:seed --class=AccesosSeeder` (no pisa lo cambiado a mano) |
 | Entidades visibles por usuario | `App\Support\Accesos` (Responsable Suma + `entidad_user`); scope global en los modelos |
 | Componentes | `app/Http/Livewire/` (`Contabilidad/*` = pestañas de Contabilidad; `Admin/*` = panel de control; `Todo*` = TO-DO) |
@@ -33,6 +34,7 @@ Cada sitio tiene su **propia BD** (la buena es la del VPS; para copiarla a un PC
 - **PortalExomen:** un único clon `~/appmos` (editar = desplegar; `localhost`).
 - **VPS:** `ssh mosketxu@100.110.4.69`, `/var/www/appmos` (git de root): `sudo git pull` → `chown mosketxu` **solo de los ficheros tocados** (nunca `-R`: rompe `storage/` y `bootstrap/cache/`, que son de `www-data`) → `sudo -u www-data php artisan migrate --force` (si hay migraciones) → `sudo -u www-data php artisan view:clear` (+ `config:clear` si cambió config). Para `tinker`: `sudo -u www-data env HOME=/tmp php artisan tinker`.
 - Push a GitHub por SSH (`git@github.com:…`); HTTPS no tiene credenciales en WSL.
+- **Si el modo automático deniega el `ssh` al VPS («Production Deploy»):** no es un fallo del servidor; no buscar rodeos. Terminar lo demás y pedir a Alex `! ssh …`, una regla `Bash(ssh mosketxu@100.110.4.69:*)` o la orden explícita «ejecútalo tú». Antes de `pull`, mirar el VPS en solo lectura (otra sesión puede haber desplegado ya) y avisar si suben commits ajenos. Detalle: memoria `appmos-deploy`.
 - Los commits llevan la línea `Co-Authored-By` que indique la sesión. Desplegar al VPS cuando Alex lo pida o lo haya pedido para ese trabajo; no subir cambios a producción por iniciativa propia.
 
 ## Tests y convenciones
