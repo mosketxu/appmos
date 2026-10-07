@@ -148,6 +148,7 @@
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
                 @if ($tarea)
+                    @if (in_array($tarea->estado, ['pendiente', 'en_curso']))<span wire:poll.5s class="text-xs text-indigo-700">⏳ buscando…</span>@endif
                     <x-neteges-info>
                 Última búsqueda de PDF en OneDrive: {{ \Illuminate\Support\Carbon::parse($tarea->terminada_at ?? $tarea->created_at)->diffForHumans() }} ·
                 {{ ['pendiente' => 'en cola', 'en_curso' => 'en marcha…', 'ok' => 'terminada', 'error' => 'con error'][$tarea->estado] ?? $tarea->estado }}
