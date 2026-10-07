@@ -24,8 +24,8 @@
         .imp-cel { display: inline-flex; align-items: center; gap: 1px; justify-content: center; min-width: 38px; }
         .imp-m { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; border: 1px solid transparent;
                  color: #fff; font-weight: 700; font-size: 13px; line-height: 1; cursor: pointer; padding: 0; }
-        .imp-m.no { background: #fff; border: 1px dashed #d1d5db; }
-        .imp-m.no:hover { border-color: #6b7280; }
+        .imp-m.no { background: #fff; border: 1px dashed transparent; }
+        .imp-cel:hover .imp-m.no { border-color: #9ca3af; }
         .imp-m:hover { filter: brightness(1.12); }
         .imp-pdf { display: inline-flex; padding: 0; margin: 0; background: none; border: 0; cursor: pointer; line-height: 0; }
         .imp-pdf svg { width: 16px; height: 16px; }
@@ -42,7 +42,7 @@
         .imp-btn.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
         @page { size: A4 landscape; margin: 8mm; }
         @media print {
-            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-com:not(.tiene), #imp-fichero { display: none !important; }
+            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-com:not(.tiene), #imp-fichero, button[title="Información"] { display: none !important; }
             body { background: #fff !important; }
             .imp-solo-print { display: block !important; }
             #imp-pagina { padding: 0 !important; }
@@ -90,6 +90,10 @@
                         title="{{ $cierra ? 'Mes '.$t.' y, como cierra el trimestre, también los trimestrales T'.(($i + 1) / 3).' y los pagos del 202 que toquen' : 'Solo los impuestos mensuales de '.$t }}">{{ $t }}@if ($cierra) <span style="opacity:.75">+T{{ ($i + 1) / 3 }}</span>@endif</button>
                 @endforeach
             </div>
+            @if ($this->puedeTodos() && $sinAsignar->count())
+                <button type="button" wire:click="$toggle('mostrarSinAsignar')" class="imp-btn {{ $mostrarSinAsignar ? 'on' : '' }}" style="border-radius:6px; border-color:#f59e0b; margin-left:auto"
+                    title="PDF de OneDrive que no se han podido atribuir a ningún cliente">📄 {{ $sinAsignar->sum('n') }} PDF sin cliente</button>
+            @endif
         </div>
 
         <div class="flex flex-wrap items-center gap-3 text-sm imp-noprint">
@@ -102,27 +106,29 @@
             </select>
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="soloPendientes" class="border-gray-300 rounded"> Solo con pendientes</label>
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="incluirBajas" class="border-gray-300 rounded"> Incluir bajas e inactivos</label>
+            <button type="button" onclick="window.print()" class="imp-btn" style="border-radius:6px" title="Imprime la lista tal como está en pantalla (A4 apaisado)">🖨 Imprimir</button>
+            <button type="button" wire:click="exportarExcel" wire:loading.attr="disabled" wire:target="exportarExcel" class="imp-btn" style="border-radius:6px" title="Descarga en Excel la lista tal como está filtrada, con colores y comentarios">📊 Excel</button>
             @if ($this->puedeTodos())
                 <button type="button" wire:click="$toggle('verTodos')" class="imp-btn {{ $verTodos ? 'on' : '' }}" style="border-radius:6px"
                     title="Por defecto solo ves tus impuestos (los de tus clientes o asignados a ti)">{{ $verTodos ? '👥 Viendo los de todos' : '👤 Solo los míos · ver todos' }}</button>
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
-                <button type="button" onclick="window.print()" class="imp-btn" style="border-radius:6px" title="Imprime la lista tal como está en pantalla (apaisado)">🖨 Imprimir</button>
-                @if ($sinAsignar->count())
-                    <button type="button" wire:click="$toggle('mostrarSinAsignar')" class="imp-btn {{ $mostrarSinAsignar ? 'on' : '' }}" style="border-radius:6px; border-color:#f59e0b">
-                        📄 {{ $sinAsignar->sum('n') }} PDF sin cliente</button>
-                @endif
             @endif
         </div>
 
         {{-- Leyenda de las marcas (con su letra) y cuántas hay en la vista --}}
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 bg-white border border-gray-200 rounded-md">
+            <x-neteges-info>
+                Un clic en la casilla pasa al siguiente estado: vacío → pendiente → listo para revisión → revisado → presentado → visto por Marta (este último solo lo marca ella).
+                La casilla vacía (no tiene que presentarlo) solo se dibuja al pasar el ratón por encima, para poder activarla.<br>
+                Icono PDF: de color = hay PDF; gris = pulsa para subirlo (el borrador en revisión/revisado, el presentado después). Hojas apiladas = varios documentos.
+                💬 = comentarios de la casilla.
+            </x-neteges-info>
             <b class="text-xs text-gray-500">LEYENDA</b>
-            <span class="imp-chip"><i class="imp-m no" style="width:18px; height:18px"></i>sin marcar = no tiene que presentarlo</span>
+            <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; border:1px dashed #9ca3af; background:#fff"></i>vacío = no tiene que presentarlo</span>
             @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto'] as $e)
                 <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; font-size:11px; background:{{ $color[$e] }}">{{ $letra[$e] }}</i>{{ $etq[$e] }} <b>({{ $cuenta[$e] }})</b></span>
             @endforeach
-            <span class="text-xs text-gray-500">Un clic en la casilla pasa al siguiente estado; «visto por Marta» solo lo marca ella. Icono PDF: color = hay PDF; gris = pulsa para subirlo (borrador en revisión/revisado, el presentado después).</span>
         </div>
 
         @if ($aviso)

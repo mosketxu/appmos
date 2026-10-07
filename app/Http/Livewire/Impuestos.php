@@ -149,7 +149,7 @@ class Impuestos extends Component
             }
             foreach ($anuales as $cod => $mod) {
                 if ($mod->despues_de === 'T'.$q) {
-                    $out[] = ['k' => 'D'.$cod, 'titulo' => $cod, 'plegable' => false, 'cols' => [['ps' => ['A' => 'A'], 'g' => 'Anual', 'cod' => $cod]]];
+                    $out[] = ['k' => 'D'.$cod, 'titulo' => $cod, 'plegable' => false, 'cols' => [['ps' => ['A' => 'A'], 'g' => 'Anual', 'cod' => (string) $cod]]];
                 }
             }
         }
@@ -157,7 +157,7 @@ class Impuestos extends Component
         foreach ($anuales as $cod => $mod) {
             $enSuTrimestre = in_array($mod->despues_de, ['T1', 'T2', 'T3', 'T4'], true) && in_array((int) substr($mod->despues_de, 1), $qs, true);
             if (! $enSuTrimestre) {
-                $cols[] = ['ps' => ['A' => 'A'], 'g' => 'Anual', 'cod' => $cod];
+                $cols[] = ['ps' => ['A' => 'A'], 'g' => 'Anual', 'cod' => (string) $cod];
             }
         }
         if ($cols) {
@@ -379,7 +379,8 @@ class Impuestos extends Component
         $this->asignarEtiqueta = '';
     }
 
-    public function render()
+    /** Todo lo que pintan la pantalla y el Excel (según vista, filtros y permisos). */
+    protected function datos(): array
     {
         $obs = $this->consulta()->get();
         $ids = $obs->pluck('id')->all();
@@ -461,6 +462,111 @@ class Impuestos extends Component
         }
         $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
 
-        return view('livewire.impuestos', ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos]);
+        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos];
+    }
+
+    public function render()
+    {
+        return view('livewire.impuestos', $this->datos());
+    }
+
+    /** Excel con la lista tal como está filtrada (vista, buscador, filtros), con todos los bloques desplegados, los colores de las marcas y los comentarios. */
+    public function exportarExcel()
+    {
+        abort_unless(auth()->user()?->can('impuestos.ver'), 403);
+        $d = $this->datos();
+        $hoja = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ws = $hoja->getActiveSheet()->setTitle('Impuestos '.$this->ejercicio);
+        $fila0 = 1;
+        $ws->setCellValue([1, 1], 'Impuestos '.$this->ejercicio.' · vista '.($this->vista === 'anio' ? 'año' : $this->vista).' · '.($this->verTodos ? 'todos los clientes' : 'mis clientes').' · '.now()->format('d/m/Y H:i'));
+        $ws->getStyle([1, 1])->getFont()->setBold(true)->setSize(12);
+        $h1 = 3; $h2 = 4; $h3 = 5; $primeraDatos = 6;
+        $ws->setCellValue([1, $h3], 'Cliente');
+        $ws->setCellValue([2, $h3], 'Resp.');
+        $gris = 'FFE5E7EB';
+        $col = 3;
+        $mapa = [];   // [bloque][ci] => columna del Excel
+        foreach ($d['bloques'] as $bl) {
+            $ini = $col;
+            $gAnt = null; $gIni = $col;
+            foreach ($bl['cols'] as $ci => $c) {
+                if ($gAnt !== null && $c['g'] !== $gAnt) {
+                    $ws->setCellValue([$gIni, $h2], $gAnt);
+                    $ws->mergeCells([$gIni, $h2, $col - 1, $h2]);
+                    $gIni = $col;
+                }
+                $gAnt = $c['g'];
+                $ws->setCellValue([$col, $h3], (ctype_digit((string) $c['cod']) ? 'M' : '').$c['cod']);
+                $mapa[$bl['k']][$ci] = $col;
+                $col++;
+            }
+            if ($gAnt !== null) {
+                $ws->setCellValue([$gIni, $h2], $gAnt);
+                $ws->mergeCells([$gIni, $h2, $col - 1, $h2]);
+            }
+            $ws->setCellValue([$ini, $h1], $bl['titulo']);
+            $ws->mergeCells([$ini, $h1, $col - 1, $h1]);
+            // barra gruesa a la izquierda de cada bloque
+            $ws->getStyle([$ini, $h1, $ini, $primeraDatos + count($d['filas'])])->getBorders()->getLeft()->setBorderStyle('medium');
+        }
+        $ult = max($col - 1, 2);
+        $ws->getStyle([1, $h1, $ult, $h3])->applyFromArray(['font' => ['bold' => true], 'alignment' => ['horizontal' => 'center'],
+            'fill' => ['fillType' => 'solid', 'startColor' => ['argb' => $gris]]]);
+        $r = $primeraDatos;
+        foreach ($d['filas'] as $f) {
+            $ws->setCellValue([1, $r], $f['ent']->entidad.($f['ent']->estado_ent != 1 ? ' (baja)' : ''));
+            $ws->setCellValue([2, $r], $f['ent']->resp);
+            foreach ($f['matriz'] as $bk => $cols) {
+                foreach ($cols as $ci => $lista) {
+                    $c = $mapa[$bk][$ci] ?? null;
+                    if (! $c) {
+                        continue;
+                    }
+                    $txt = [];
+                    $coms = [];
+                    foreach ($lista as [$ob, $per, $e]) {
+                        $txt[] = ($ob->etiqueta !== '' ? mb_substr($ob->etiqueta, 0, 3).' ' : '').($e === 'no' ? '' : Imp::LETRA[$e]);
+                        foreach ($d['coment'][$ob->id.'|'.$per] ?? [] as $cm) {
+                            $coms[] = ($cm[1] ? $cm[1].': ' : '').$cm[0];
+                        }
+                    }
+                    $ws->setCellValue([$c, $r], trim(implode(' ', $txt)));
+                    $estado = $lista[0][2];
+                    if ($estado !== 'no') {
+                        $ws->getStyle([$c, $r])->applyFromArray(['font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+                            'fill' => ['fillType' => 'solid', 'startColor' => ['argb' => 'FF'.strtoupper(ltrim(Imp::COLOR[$estado], '#'))]]]);
+                    }
+                    $ws->getStyle([$c, $r])->getAlignment()->setHorizontal('center');
+                    if ($coms) {
+                        $ws->getComment([$c, $r])->getText()->createTextRun(implode("\n", $coms));
+                    }
+                }
+            }
+            $r++;
+        }
+        $ws->getColumnDimension('A')->setWidth(38);
+        $ws->getColumnDimension('B')->setWidth(14);
+        for ($i = 3; $i <= $ult; $i++) {
+            $ws->getColumnDimensionByColumn($i)->setWidth(6.5);
+        }
+        $ws->freezePane([3, $primeraDatos]);
+        // Leyenda en otra hoja
+        $ley = $hoja->createSheet()->setTitle('Leyenda');
+        $i = 1;
+        foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto'] as $e) {
+            $ley->setCellValue([1, $i], Imp::LETRA[$e]);
+            $ley->setCellValue([2, $i], Imp::ESTADOS[$e]);
+            $ley->getStyle([1, $i])->applyFromArray(['font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']], 'alignment' => ['horizontal' => 'center'],
+                'fill' => ['fillType' => 'solid', 'startColor' => ['argb' => 'FF'.strtoupper(ltrim(Imp::COLOR[$e], '#'))]]]);
+            $i++;
+        }
+        $ley->setCellValue([2, $i], 'Casilla vacía: no tiene que presentarlo');
+        $ley->getColumnDimension('B')->setWidth(42);
+        $hoja->setActiveSheetIndex(0);
+        $nombre = 'Impuestos_'.$this->ejercicio.'_'.($this->vista === 'anio' ? 'año' : $this->vista).'.xlsx';
+
+        return response()->streamDownload(function () use ($hoja) {
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($hoja))->save('php://output');
+        }, $nombre, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 }
