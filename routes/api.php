@@ -39,7 +39,8 @@ Route::prefix('trabajador')->group(function () {
     Route::get('/facturasocr/{cliente}/archivo', [\App\Http\Controllers\FacturasOcrSyncController::class, 'archivo']);
     Route::get('/impuestos/raices', [\App\Http\Controllers\ImpuestosSyncController::class, 'raices']);
     Route::post('/impuestos/manifest', [\App\Http\Controllers\ImpuestosSyncController::class, 'manifest']);
-    Route::post('/impuestos/subir', [\App\Http\Controllers\ImpuestosSyncController::class, 'subir']);
+    // Subida masiva de PDF (cientos seguidos): sin el límite de 60 peticiones/minuto del grupo api (el X-Token ya autentica)
+    Route::post('/impuestos/subir', [\App\Http\Controllers\ImpuestosSyncController::class, 'subir'])->withoutMiddleware('throttle:api');
     Route::post('/tareas/{id}/fichero', [\App\Http\Controllers\TrabajadorApiController::class, 'fichero']);
     Route::post('/tareas/{id}/fin', [\App\Http\Controllers\TrabajadorApiController::class, 'fin']);
 });
