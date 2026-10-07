@@ -531,7 +531,7 @@ class Impuestos extends Component
                     foreach ($lista as [$ob, $per, $e]) {
                         $txt[] = ($ob->etiqueta !== '' ? mb_substr($ob->etiqueta, 0, 3).' ' : '').($e === 'no' ? '' : Imp::LETRA[$e]);
                         foreach ($d['coment'][$ob->id.'|'.$per] ?? [] as $cm) {
-                            $coms[] = ($cm[1] ? $cm[1].': ' : '').$cm[0];
+                            $coms[] = ($cm[1] ?: '—').' · '.\Illuminate\Support\Carbon::parse($cm[2])->format('d/m/Y H:i').': '.$cm[0];
                         }
                     }
                     $ws->setCellValue([$c, $r], trim(implode(' ', $txt)));
