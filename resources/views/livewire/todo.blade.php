@@ -1,5 +1,6 @@
 <div>
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
+    @include('livewire._subnav_todo', ['activa' => 'todo'])
 
     @php
         $badge = [
@@ -15,7 +16,7 @@
 
     <div class="p-3 space-y-3">
         <div class="flex flex-wrap items-center gap-3 lg:flex-nowrap">
-            <h1 class="text-2xl font-semibold text-gray-900">TO-DO</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">Tareas</h1>
             <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">＋ Nueva tarea</button>
 
             @if ($this->personas->count() > 1)

@@ -54,6 +54,15 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return view('todo.index');
     })->name('todo');
 
+    // Impuestos (pestaña del TO-DO): qué tiene pendiente cada cliente; datos en la BD de Appmos (en un PC redirige a la web)
+    Route::get('/impuestos', function () {
+        if (config('contabilidad.todo_url')) {
+            return redirect()->away(preg_replace('#/todo$#', '/impuestos', rtrim(config('contabilidad.todo_url'), '/')));
+        }
+        return view('impuestos.index');
+    })->name('impuestos')->middleware('can:impuestos.ver');
+    Route::get('/impuestos/documento/{documento}', [\App\Http\Controllers\ImpuestosDocumentoController::class, 'ver'])->name('impuestos.documento')->middleware('can:impuestos.ver');
+
     // Contabilidad (Fashion IQ): lanzar los scripts Node/Python de monthlyFIQ
     Route::get('/contabilidad/procesos', function () {return view('contabilidad.procesos');})->name('contabilidad.procesos')->middleware('can:contabilidad.procesos');
 

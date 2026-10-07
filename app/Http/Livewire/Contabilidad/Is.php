@@ -10,7 +10,7 @@ use Livewire\WithFileUploads;
 
 /**
  * Impuesto sobre Sociedades: genera el fichero .200 que se importa en Sociedades WEB.
- * El motor está en Contabilidad/IS/motor (construye.py); ver Contabilidad/IS/PLAN.md.
+ * El motor está en Contabilidad/Impuestos/IS/motor (construye.py); ver Contabilidad/Impuestos/IS/PLAN.md.
  *
  * Por cliente (entidad de Appmos con NIF) y ejercicio, en <IS_DIR>/clientes/<NIF>/<AAAA>:
  *   fuentes/   un fichero por cada entrada de FUENTES (se sube uno a uno; el anterior

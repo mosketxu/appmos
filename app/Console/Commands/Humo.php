@@ -31,6 +31,7 @@ class Humo extends Command
             'Roles y permisos' => [$c.'Admin\\Roles', []],
             'Usuarios' => [$c.'Admin\\Usuarios', []],
             'TO-DO' => [$c.'Todo', []],
+            'Impuestos' => [$c.'Impuestos', []],
             'Campana' => [$c.'TodoCampana', []],
             'Estado de los PCs' => [$c.'TrabajadoresEstado', []],
             'Procesos FIQ' => [$c.'Contabilidad\\Procesos', []],

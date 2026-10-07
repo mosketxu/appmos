@@ -374,5 +374,10 @@
             </div>
                 </fieldset>
         </form>
+
+        {{-- Impuestos que presenta esta entidad (alimentan TO-DO → Impuestos); se guardan al momento, fuera del formulario --}}
+        @if ($entidadModel->id && ! $contactoId)
+            @livewire('entidad-impuestos', ['entidadId' => $entidadModel->id], key('impuestos-'.$entidadModel->id))
+        @endif
     </div>
 </div>

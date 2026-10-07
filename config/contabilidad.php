@@ -60,7 +60,7 @@ return [
     | Impuesto sobre Sociedades (25-sep-2026): se usa desde la web, como Bancos
     |--------------------------------------------------------------------------
     |
-    | Genera el .200 para importar en Sociedades WEB (Contabilidad/IS/motor).
+    | Genera el .200 para importar en Sociedades WEB (Contabilidad/Impuestos/IS/motor).
     | No toca OneDrive ni presenta nada: los ficheros se suben por el navegador
     | y el .200 se descarga. Datos de los clientes en <IS_DIR>/clientes/<NIF>.
     |   - VPS:   IS_EJECUCION=true, IS_DIR=/var/www/is
@@ -69,7 +69,7 @@ return [
     */
 
     'is_ejecucion' => env('IS_EJECUCION', false),
-    'is_dir' => env('IS_DIR', '/mnt/e/Claude/Contabilidad/IS'),
+    'is_dir' => env('IS_DIR', '/mnt/e/Claude/Contabilidad/Impuestos/IS'),
     'is_url' => env('IS_URL'),
     'is_python' => env('IS_PYTHON'),
 
@@ -194,6 +194,14 @@ return [
         'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
         'pc.facturasocr' => 'Llevar al OneDrive de este PC lo validado en Facturas OCR (con comprobación de huellas)',
         'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',
+        'pc.impuestos_pdfs' => 'Subir a Appmos los PDF de impuestos de OneDrive (pestaña Impuestos)',
+    ],
+
+    // Carpetas de OneDrive con los PDF de impuestos de cada año ({A}); se buscan en ellas y en sus subcarpetas. «_Clientes» y «Clientes» valen igual.
+    'impuestos_raices' => [
+        '_Clientes/{A}/_Impuestos {A}',
+        '_RUR_Marta_Alex/{A} RMA/Impuestos',
+        '_RUR_Marta_Alex/{A} RMA/__Impuestos A_M_R_{A}',
     ],
 
     // Scripts que el trabajador puede ejecutar, por grupo (ruta relativa a la carpeta del grupo en Contabilidad/).

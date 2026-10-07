@@ -29,6 +29,9 @@ return [
             'facturacion.ver' => 'Ver facturas, prefacturas y conceptos',
             'facturacion.editar' => 'Crear, modificar y borrar facturas, prefacturas y conceptos',
         ],
+        'Impuestos' => [
+            'impuestos.ver' => 'Impuestos (TO-DO): ver y marcar los suyos (Admin y Suma pueden ver todos)',
+        ],
         'Contabilidad' => [
             'contabilidad.procesos' => 'Procesos FIQ',
             'contabilidad.facturacionpdf' => 'Facturación PDF',
@@ -68,6 +71,7 @@ return [
     // Modelo -> permiso necesario para escribir en él (guardar o borrar).
     'escritura' => [
         \App\Models\Entidad::class => 'entidades.editar',
+        \App\Models\EntidadImpuesto::class => 'entidades.editar',
         \App\Models\ContactoEntidad::class => 'entidades.editar',
         \App\Models\Pu::class => 'entidades.editar',
         \App\Models\Facturacion::class => 'facturacion.editar',

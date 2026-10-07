@@ -1,0 +1,1 @@
+<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 2h8l6 6v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M14 2v6h6" fill="#fff" fill-opacity=".45"/><text x="12" y="17.5" text-anchor="middle" font-size="7.5" font-weight="700" font-family="Arial,sans-serif" fill="#fff">PDF</text></svg>

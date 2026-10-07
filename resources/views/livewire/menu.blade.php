@@ -41,7 +41,7 @@
                             {{ __('Entidades') }}
                         </x-jet-nav-link>
                     @endcan
-                    <x-jet-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
+                    <x-jet-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo', 'impuestos')">
                         TO-DO
                     </x-jet-nav-link>
                     <a href="{{ route('todo', ['nueva' => 'mejora']) }}" class="inline-flex items-center px-1 pt-1 text-sm font-medium leading-5 text-gray-500 border-b-2 border-transparent hover:text-gray-700"
@@ -245,7 +245,7 @@
                     {{ __('Entidades') }}
                 </x-jet-responsive-nav-link>
             @endcan
-            <x-jet-responsive-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
+            <x-jet-responsive-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo', 'impuestos')">
                 TO-DO
             </x-jet-responsive-nav-link>
             <x-jet-responsive-nav-link href="{{ route('todo', ['nueva' => 'mejora']) }}">

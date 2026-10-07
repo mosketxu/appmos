@@ -1,0 +1,85 @@
+<div class="mt-2 mb-4">
+    <div class="px-2 mx-2 mt-2 mb-1 rounded-md bg-blue-50">
+        <h3 class="font-semibold text-gray-600">Impuestos que presenta <span class="text-xs font-normal text-gray-500">— aparecen en TO-DO → Impuestos; se guarda al momento</span></h3>
+    </div>
+    <div class="mx-2 text-sm text-gray-600">
+        @if ($obs->isEmpty())
+            <p class="px-1 py-1 text-xs text-gray-500">Todavía no tiene ninguno.</p>
+        @else
+            <table class="text-sm">
+                <thead>
+                    <tr class="text-xs text-left text-gray-500">
+                        <th class="px-1 pr-4">Impuesto</th><th class="px-1 pr-4">Periodo</th><th class="px-1 pr-4">Lo lleva</th><th class="px-1 pr-4">Observaciones</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($obs as $o)
+                        <tr wire:key="ei-{{ $o->id }}">
+                            <td class="px-1 pr-4" style="white-space:nowrap"><b>{{ ctype_digit($o->codigo) ? 'M'.$o->codigo : $o->codigo }}</b> <span class="text-xs text-gray-500">{{ $o->nombre }}</span></td>
+                            <td class="px-1 pr-4">
+                                <select wire:change="cambiarPeriodicidad({{ $o->id }}, $event.target.value)" @disabled(! $editar) class="py-0.5 text-sm border-gray-300 rounded-md">
+                                    @foreach (\App\Support\Impuestos::PERIODICIDADES as $k => $t)
+                                        <option value="{{ $k }}" @selected($o->periodicidad === $k)>{{ $t }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="px-1 pr-4">
+                                <select wire:change="cambiarResponsable({{ $o->id }}, $event.target.value)" @disabled(! $editar) class="py-0.5 text-sm border-gray-300 rounded-md">
+                                    <option value="">Los de la entidad (Rpble. Suma)</option>
+                                    @foreach ($responsables as $r)
+                                        <option value="{{ $r->id }}" @selected($o->user_id == $r->id)>{{ $r->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td class="px-1 pr-4">
+                                <input type="text" value="{{ $o->observaciones }}" maxlength="255" @disabled(! $editar) wire:change="guardarObservaciones({{ $o->id }}, $event.target.value)"
+                                    class="py-0.5 text-sm border-gray-300 rounded-md" style="min-width:220px">
+                            </td>
+                            <td>
+                                @if ($editar)
+                                    <button type="button" wire:click="quitar({{ $o->id }})" wire:confirm="¿Quitar este impuesto de la entidad? Se borran también sus marcas de estado." class="text-gray-400 hover:text-red-600" title="Quitar">✕</button>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+
+        @if ($editar)
+            <div class="flex flex-wrap items-center gap-2 mt-2">
+                <select wire:model.live="nuevoModelo" class="py-1 text-sm border-gray-300 rounded-md">
+                    <option value="">＋ Añadir impuesto…</option>
+                    @foreach ($modelos as $m)
+                        <option value="{{ $m->codigo }}">{{ ctype_digit($m->codigo) ? 'M'.$m->codigo : $m->codigo }} · {{ $m->nombre }}</option>
+                    @endforeach
+                </select>
+                @if ($nuevoModelo !== '')
+                    <select wire:model="nuevaPeriodicidad" class="py-1 text-sm border-gray-300 rounded-md">
+                        @foreach (\App\Support\Impuestos::PERIODICIDADES as $k => $t)
+                            <option value="{{ $k }}">{{ $t }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" wire:click="anadir" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir</button>
+                @endif
+                @role('Admin')
+                    <button type="button" wire:click="$toggle('crearModelo')" class="text-xs text-indigo-700 hover:underline">¿No está? Crear un impuesto nuevo</button>
+                @endrole
+            </div>
+            @if ($crearModelo)
+                <div class="flex flex-wrap items-center gap-2 p-2 mt-2 bg-white border border-indigo-200 rounded-md">
+                    <input type="text" wire:model="mCodigo" placeholder="Código (p. ej. 036)" maxlength="10" class="py-1 text-sm border-gray-300 rounded-md" style="width:130px">
+                    <input type="text" wire:model="mNombre" placeholder="Nombre del impuesto" class="py-1 text-sm border-gray-300 rounded-md" style="min-width:260px">
+                    <select wire:model="mPeriodicidad" class="py-1 text-sm border-gray-300 rounded-md">
+                        @foreach (\App\Support\Impuestos::PERIODICIDADES as $k => $t)
+                            <option value="{{ $k }}">{{ $t }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" wire:click="guardarModelo" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Crear</button>
+                    @error('mCodigo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    @error('mNombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+            @endif
+        @endif
+    </div>
+</div>
