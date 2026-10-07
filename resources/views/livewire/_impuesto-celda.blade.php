@@ -6,12 +6,17 @@
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
     $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true);
-    $titulo = \App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: cambiar)';
+    $titulo = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: cambiar)';
     $subir = "\$wire.subirA = '".$ob->id.'|'.$per."'; document.getElementById('imp-fichero').click()";
 @endphp
 <span class="imp-cel">
-    <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}')" title="{{ $titulo }}"
-        class="imp-m {{ $e === 'no' ? 'no' : '' }}" @if ($e !== 'no') style="background:{{ $color[$e] }}" @endif>{{ $e === 'no' ? '' : $letra[$e] }}</button>
+    @php $bloqueada = $e === 'visto' && ! $this->puedeVisto(); @endphp
+    @if ($bloqueada)
+        <span class="imp-m" title="{{ $titulo }} · lo ha validado Marta: solo ella lo cambia" style="background:{{ $color[$e] }}; cursor:default">{{ $letra[$e] }}</span>
+    @else
+        <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}')" title="{{ $titulo }}"
+            class="imp-m {{ $e === 'no' ? 'no' : '' }}" @if ($e !== 'no') style="background:{{ $color[$e] }}" @endif>{{ $e === 'no' ? '' : $letra[$e] }}</button>
+    @endif
     @if ($conPdf)
         @if (count($lista) === 1 && $principal)
             <a href="{{ route('impuestos.documento', $principal->id) }}" target="_blank" class="imp-pdf" style="color:{{ $color[$e] }}" title="{{ $principal->nombre }}">@include('livewire._impuesto-pdf')</a>

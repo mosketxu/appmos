@@ -197,6 +197,9 @@ return [
         'pc.impuestos_pdfs' => 'Subir a Appmos los PDF de impuestos de OneDrive (pestaña Impuestos)',
     ],
 
+    // Quién puede marcar «visto por Marta» en Impuestos (correos separados por comas)
+    'impuestos_visto_emails' => array_filter(array_map('trim', explode(',', (string) env('IMPUESTOS_VISTO_EMAILS', 'marta.ruiz@sumaempresa.com')))),
+
     // Carpetas de OneDrive con los PDF de impuestos de cada año ({A}); se buscan en ellas y en sus subcarpetas. «_Clientes» y «Clientes» valen igual.
     'impuestos_raices' => [
         '_Clientes/{A}/_Impuestos {A}',

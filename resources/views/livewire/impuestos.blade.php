@@ -6,8 +6,6 @@
         $color = \App\Support\Impuestos::COLOR;
         $letra = \App\Support\Impuestos::LETRA;
         $etq = \App\Support\Impuestos::ESTADOS;
-        $cab = $this->cabecera;
-        $nCols = count($cab['grupos']) * 3;
         $vistas = ['anio' => 'Año', 'T1' => 'T1', 'T2' => 'T2', 'T3' => 'T3', 'T4' => 'T4'];
         $sinAsignar = $this->sinAsignar;
         $tarea = $this->tareaPdfsEstado;
@@ -38,7 +36,7 @@
         .imp-pop a, .imp-pop button { display: block; width: 100%; text-align: left; padding: 3px 6px; font-size: 12px; color: #1f2937; border-radius: 4px; background: none; border: 0; cursor: pointer; }
         .imp-pop a:hover, .imp-pop button:hover { background: #f3f4f6; }
         .imp-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #374151; }
-        .imp-chip i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
+        .imp-chip i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; font-style: normal; text-align: center; line-height: 18px; color: #fff; font-weight: 700; }
         .imp-btn { padding: 3px 10px; font-size: 13px; border: 1px solid #d1d5db; background: #fff; color: #374151; }
         .imp-btn.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
         .imp-btn:first-child { border-radius: 6px 0 0 6px; } .imp-btn:last-child { border-radius: 0 6px 6px 0; }
@@ -86,12 +84,14 @@
             @endif
         </div>
 
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {{-- Leyenda de las marcas (con su letra) y cuántas hay en la vista --}}
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 bg-white border border-gray-200 rounded-md">
+            <b class="text-xs text-gray-500">LEYENDA</b>
+            <span class="imp-chip"><i class="imp-m no" style="width:18px; height:18px"></i>sin marcar = no tiene que presentarlo</span>
             @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto'] as $e)
-                <span class="imp-chip"><i style="background:{{ $color[$e] }}"></i>{{ $etq[$e] }}: <b>{{ $cuenta[$e] }}</b></span>
+                <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; font-size:11px; background:{{ $color[$e] }}">{{ $letra[$e] }}</i>{{ $etq[$e] }} <b>({{ $cuenta[$e] }})</b></span>
             @endforeach
-            <span class="imp-chip"><i style="background:#fff; border:1px dashed #9ca3af"></i>sin marcar: no tiene que presentarlo</span>
-            <span class="text-xs text-gray-500">Clic en la casilla = siguiente estado. El icono PDF: color = hay PDF; gris = pulsa para subirlo (borrador en revisión, o el presentado).</span>
+            <span class="text-xs text-gray-500">Un clic en la casilla pasa al siguiente estado; «visto por Marta» solo lo marca ella. Icono PDF: color = hay PDF; gris = pulsa para subirlo (borrador en revisión/revisado, el presentado después).</span>
         </div>
 
         @if ($aviso)
@@ -136,56 +136,49 @@
         <div class="overflow-x-auto bg-white border rounded-lg shadow">
             <table class="imp-tabla">
                 <thead>
-                    @if ($cab['mes'])
-                        <tr><th class="imp-sticky">Cliente</th><th>Impuesto</th><th>Resp.</th><th>{{ $cab['mes'] }} {{ $ejercicio }}</th></tr>
-                    @else
-                        <tr>
-                            <th class="imp-sticky" rowspan="2">Cliente</th><th rowspan="2">Impuesto</th><th rowspan="2">Resp.</th>
-                            @foreach ($cab['grupos'] as $g)
-                                <th colspan="3" class="imp-qb">{{ $g['t'] }}</th>
+                    <tr>
+                        <th class="imp-sticky" rowspan="2">Cliente</th>
+                        @foreach ($grupos as $g)
+                            <th colspan="{{ count($g->columnas) }}" class="imp-qb" title="{{ $g->nombre }}">{{ ctype_digit($g->codigo) ? 'M'.$g->codigo : $g->codigo }}</th>
+                        @endforeach
+                    </tr>
+                    <tr>
+                        @foreach ($grupos as $g)
+                            @foreach ($g->columnas as $i => $col)
+                                <th class="{{ $i === 0 ? 'imp-qb' : '' }}">{{ $col['t'] }}</th>
                             @endforeach
-                            <th rowspan="2" class="imp-qb">Anual</th>
-                        </tr>
-                        <tr>
-                            @foreach ($cab['meses'] as $i => $m)
-                                <th class="{{ $i % 3 === 0 ? 'imp-qb' : '' }}">{{ $m }}</th>
-                            @endforeach
-                        </tr>
-                    @endif
+                        @endforeach
+                    </tr>
                 </thead>
                 <tbody>
                     @forelse ($filas as $entId => $f)
-                        @foreach ($f['obs'] as $k => $o)
-                            @php $ob = $o['ob']; $esUlt = $loop->last; @endphp
-                            <tr wire:key="o-{{ $ob->id }}" class="{{ $esUlt ? 'imp-ult' : '' }}">
-                                @if ($k === 0)
-                                    <td class="imp-sticky" rowspan="{{ count($f['obs']) }}" style="vertical-align:top; padding-top:5px; border-bottom:1px solid #d1d5db">
-                                        <a href="{{ route('entidad.edit', $entId) }}" class="font-medium text-gray-900 hover:underline" title="Abrir la entidad (aquí se define qué impuestos presenta)">{{ $ob->entidad }}</a>
-                                        @if ($ob->estado_ent != 1) <span class="text-xs text-amber-700">(baja)</span> @endif
-                                    </td>
-                                @endif
-                                <td style="white-space:nowrap" title="{{ $ob->modelo_nombre }} · {{ \App\Support\Impuestos::PERIODICIDADES[$ob->periodicidad] }}">
-                                    <b>{{ ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo }}</b> <span class="text-gray-400">{{ $ob->periodicidad }}</span>@if ($ob->etiqueta !== '') <span class="text-xs font-semibold text-indigo-700">· {{ $ob->etiqueta }}</span>@endif</td>
-                                <td class="text-gray-500" style="white-space:nowrap">{{ $ob->resp ? \Illuminate\Support\Str::of($ob->resp)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->implode('') : '' }}</td>
-                                @php $col = 0; @endphp
-                                @foreach ($o['celdas'] as $ci => $c)
-                                    @php
-                                        $per = $c['periodo'];
-                                        $e = $per ? ($estados[$ob->id][$per] ?? null) : null;
-                                        $esAnual = ! $cab['mes'] && $ci === count($o['celdas']) - 1;
-                                        $borde = ! $cab['mes'] && ($esAnual || $col % 3 === 0) ? 'imp-qb' : '';
-                                        $col += $c['span'];
-                                    @endphp
-                                    <td colspan="{{ $c['span'] }}" style="text-align:center" class="{{ $borde }}">
-                                        @if ($e !== null)
-                                            @include('livewire._impuesto-celda', ['ob' => $ob, 'per' => $per, 'e' => $e, 'docs' => $docs, 'color' => $color, 'letra' => $letra, 'etq' => $etq])
-                                        @endif
+                        @php $ent = $f['ent']; @endphp
+                        <tr wire:key="c-{{ $entId }}" class="imp-ult">
+                            <td class="imp-sticky" style="white-space:nowrap" title="Responsable: {{ $ent->resp ?: '—' }}">
+                                <a href="{{ route('entidad.edit', $entId) }}" class="font-medium text-gray-900 hover:underline" title="Abrir la entidad (aquí se define qué impuestos presenta). Responsable: {{ $ent->resp ?: '—' }}">{{ $ent->entidad }}</a>
+                                @if ($ent->estado_ent != 1) <span class="text-xs text-amber-700">(baja)</span> @endif
+                            </td>
+                            @foreach ($grupos as $cod => $g)
+                                @foreach ($g->columnas as $i => $col)
+                                    <td class="{{ $i === 0 ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap">
+                                        @foreach ($f['por'][$cod] ?? [] as $o)
+                                            @php $ob = $o['ob']; @endphp
+                                            @if ($ob->etiqueta !== '' && count($o['celdas'][$col['k']] ?? []))
+                                                <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
+                                            @endif
+                                            @foreach ($o['celdas'][$col['k']] ?? [] as $per)
+                                                @php $e = $estados[$ob->id][$per] ?? null; @endphp
+                                                @if ($e !== null)
+                                                    @include('livewire._impuesto-celda', ['ob' => $ob, 'per' => $per, 'e' => $e, 'docs' => $docs, 'color' => $color, 'letra' => $letra, 'etq' => $etq])
+                                                @endif
+                                            @endforeach
+                                        @endforeach
                                     </td>
                                 @endforeach
-                            </tr>
-                        @endforeach
+                            @endforeach
+                        </tr>
                     @empty
-                        <tr><td colspan="{{ $cab['mes'] ? 4 : $nCols + 4 }}" class="p-4 text-gray-500">
+                        <tr><td colspan="2" class="p-4 text-gray-500">
                             Nada que mostrar. @if (! $verTodos && $this->puedeTodos()) Pulsa «Solo los míos · ver todos» para ver los de todos. @endif
                             Los impuestos de cada cliente se definen en Entidades → zona «Impuestos».
                         </td></tr>
@@ -194,8 +187,9 @@
             </table>
         </div>
         <p class="text-xs text-gray-500">
-            T1 = ene-mar…; los meses son el periodo que se declara (IVA de marzo, etc.). IS, depósito de cuentas y legalización muestran el ejercicio anterior
-            (IS {{ $ejercicio - 1 }} se sigue en {{ $ejercicio }}). 202: pagos 1P (T1), 2P (T3) y 3P (T4).
+            Una fila por cliente; cada impuesto tiene sus columnas T1–T4 (los mensuales llevan tres casillas por trimestre: ene-feb-mar…, el periodo que se declara).
+            IS, depósito de cuentas y legalización muestran el ejercicio anterior (IS {{ $ejercicio - 1 }} se sigue en {{ $ejercicio }}). 202: pagos 1P (T1), 2P (T3) y 3P (T4).
+            Si un cliente tiene dos declaraciones del mismo impuesto, la segunda lleva delante las 3 primeras letras de su etiqueta.
         </p>
     </div>
 </div>

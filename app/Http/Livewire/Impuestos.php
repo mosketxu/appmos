@@ -60,6 +60,11 @@ class Impuestos extends Component
         Imp::asegurarEjercicio($this->ejercicio);
     }
 
+    public function puedeVisto(): bool
+    {
+        return Imp::puedeVisto();
+    }
+
     public function puedeTodos(): bool
     {
         return Imp::esGestor();
@@ -67,40 +72,50 @@ class Impuestos extends Component
 
     // ------------------------------------------------------------------ datos
 
-    /** Columnas de la vista: [['titulo' => , 'grupo' => , 'span' => ]]. */
-    public function getCabeceraProperty(): array
-    {
-        $grupos = [];
-        $meses = [];
-        foreach ($this->trimestres() as $q) {
-            $grupos[] = ['t' => 'T'.$q, 'span' => 3];
-            for ($m = 3 * $q - 2; $m <= 3 * $q; $m++) {
-                $meses[] = Imp::MESES[$m - 1];
-            }
-        }
-
-        return ['grupos' => $grupos, 'meses' => $meses, 'anual' => $this->trimestres() !== [], 'mes' => $this->esMes() ? Imp::MESES[(int) $this->vista - 1] : null];
-    }
-
-    /** Trimestres que se pintan (vacío en la vista de un mes). */
-    protected function trimestres(): array
-    {
-        if ($this->vista === 'anio') {
-            return [1, 2, 3, 4];
-        }
-
-        return $this->vista[0] === 'T' ? [(int) substr($this->vista, 1)] : [];
-    }
-
     protected function esMes(): bool
     {
         return ctype_digit($this->vista);
     }
 
-    /** Casillas de una obligación en la vista: [['periodo' => string|null, 'span' => int]] en el orden de las columnas. */
-    public function celdasDe(object $ob): array
+    /** Trimestre al que pertenece cada periodo (los anuales, el de su mes) para colocarlo en las columnas de trimestre. */
+    protected function trimestreDeCelda(object $ob, string $periodo): int
     {
-        $out = [];
+        return Imp::trimestreDe($periodo) ?? (int) ceil(Imp::mesDe('A', $ob->mes_anual) / 3);
+    }
+
+    /**
+     * Columnas de un impuesto en la vista: [['k' => clave, 't' => título]].
+     * Anuales (catálogo periodicidad A): una columna «Anual» (en un trimestre o un mes, solo si caen en él).
+     * Resto: año → T1..T4; un trimestre → esa columna (con los 3 meses dentro si es mensual); un mes → una columna.
+     */
+    public function columnasDe(object $modelo): array
+    {
+        if ($modelo->periodicidad === 'A') {
+            $mes = Imp::mesDe('A', $modelo->mes_anual);
+            $cae = match (true) {
+                $this->vista === 'anio' => true,
+                $this->esMes() => $mes === (int) $this->vista,
+                default => (int) ceil($mes / 3) === (int) substr($this->vista, 1),
+            };
+
+            return $cae ? [['k' => 'A', 't' => 'Anual']] : [];
+        }
+        if ($this->vista === 'anio') {
+            return array_map(fn ($q) => ['k' => $q, 't' => 'T'.$q], [1, 2, 3, 4]);
+        }
+        if ($this->esMes()) {
+            return [['k' => (int) $this->vista, 't' => Imp::MESES[(int) $this->vista - 1]]];
+        }
+
+        return [['k' => (int) substr($this->vista, 1), 't' => $this->vista]];
+    }
+
+    /** Periodos de una obligación que van en una columna de la vista. */
+    public function periodosEn(object $ob, $k): array
+    {
+        if ($k === 'A') {
+            return $ob->periodicidad === 'A' ? ['A'] : [];
+        }
         if ($this->esMes()) {
             $m = (int) $this->vista;
             $p = match ($ob->periodicidad) {
@@ -110,34 +125,16 @@ class Impuestos extends Component
                 default => Imp::mesDe('A', $ob->mes_anual) === $m ? 'A' : null,
             };
 
-            return [['periodo' => $p, 'span' => 1]];
+            return $p ? [$p] : [];
         }
-        $qs = $this->trimestres();
-        foreach ($qs as $q) {
-            switch ($ob->periodicidad) {
-                case 'M':
-                    for ($m = 3 * $q - 2; $m <= 3 * $q; $m++) {
-                        $out[] = ['periodo' => sprintf('%02d', $m), 'span' => 1];
-                    }
-                    break;
-                case 'T':
-                    $out[] = ['periodo' => 'T'.$q, 'span' => 3];
-                    break;
-                case 'P':
-                    $out[] = ['periodo' => [1 => 'P1', 3 => 'P2', 4 => 'P3'][$q] ?? null, 'span' => 3];
-                    break;
-                default:
-                    $out[] = ['periodo' => null, 'span' => 3];
-            }
-        }
-        $anual = null;
-        if ($ob->periodicidad === 'A') {
-            $mesQ = (int) ceil(Imp::mesDe('A', $ob->mes_anual) / 3);
-            $anual = $this->vista === 'anio' || in_array($mesQ, $qs, true) ? 'A' : null;
-        }
-        $out[] = ['periodo' => $anual, 'span' => 1];
+        $q = (int) $k;
 
-        return $out;
+        return match ($ob->periodicidad) {
+            'M' => array_map(fn ($m) => sprintf('%02d', $m), range(3 * $q - 2, 3 * $q)),
+            'T' => ['T'.$q],
+            'P' => ($pp = [1 => 'P1', 3 => 'P2', 4 => 'P3'][$q] ?? null) ? [$pp] : [],
+            default => $this->trimestreDeCelda($ob, 'A') === $q ? ['A'] : [],
+        };
     }
 
     protected function consulta()
@@ -181,7 +178,14 @@ class Impuestos extends Component
             return;
         }
         $fila = DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $obId, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo])->first();
-        $nuevo = Imp::siguiente($fila->estado ?? 'no');
+        $actual = $fila->estado ?? 'no';
+        if ($actual === 'visto' && ! Imp::puedeVisto()) {
+            return;   // lo ha validado Marta: solo ella lo cambia
+        }
+        $nuevo = Imp::siguiente($actual);
+        if ($nuevo === 'visto' && ! Imp::puedeVisto()) {
+            $nuevo = Imp::siguiente('visto');   // los demás se saltan «visto»: de presentado a vacío
+        }
         if ($fila) {
             DB::table('impuesto_estados')->where('id', $fila->id)->update(['estado' => $nuevo, 'user_id' => auth()->id(), 'updated_at' => now()]);
         } else {
@@ -289,28 +293,54 @@ class Impuestos extends Component
                 });
         }
         $filas = [];
+        $grupos = [];   // impuestos presentes (por orden del catálogo) con sus columnas
         $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'presentado' => 0, 'visto' => 0];
         foreach ($obs as $ob) {
-            $celdas = $this->celdasDe($ob);
-            if (! collect($celdas)->contains(fn ($c) => $c['periodo'] !== null)) {
+            $modelo = (object) ['codigo' => $ob->codigo, 'nombre' => $ob->modelo_nombre, 'orden' => $ob->orden, 'mes_anual' => $ob->mes_anual,
+                'periodicidad' => $ob->periodicidad === 'A' ? 'A' : 'Q'];
+            $grupos[$ob->codigo] ??= $modelo;
+            // un impuesto es «anual» si todas sus obligaciones lo son; si alguna no, se pinta por trimestres
+            if ($ob->periodicidad !== 'A') {
+                $grupos[$ob->codigo]->periodicidad = 'Q';
+            }
+        }
+        foreach ($grupos as $g) {
+            $g->columnas = $this->columnasDe($g);
+        }
+        $grupos = array_filter($grupos, fn ($g) => $g->columnas);
+        uasort($grupos, fn ($x, $y) => $x->orden <=> $y->orden);
+        foreach ($obs as $ob) {
+            if (! isset($grupos[$ob->codigo])) {
                 continue;
             }
-            $hay = false;
-            foreach ($celdas as $c) {
-                $e = $c['periodo'] ? ($estados[$ob->id][$c['periodo']] ?? null) : null;
-                if ($e && isset($cuenta[$e])) {
-                    $cuenta[$e]++;
-                    $hay = $hay || $e === 'pendiente';
+            $celdas = [];
+            $hay = $pend = false;
+            foreach ($grupos[$ob->codigo]->columnas as $col) {
+                $ps = $this->periodosEn($ob, $col['k']);
+                $celdas[$col['k']] = $ps;
+                foreach ($ps as $p) {
+                    $hay = true;
+                    $e = $estados[$ob->id][$p] ?? null;
+                    if ($e && isset($cuenta[$e])) {
+                        $cuenta[$e]++;
+                    }
+                    $pend = $pend || $e === 'pendiente';
                 }
             }
-            if ($this->soloPendientes && ! $hay) {
+            if (! $hay || ($this->soloPendientes && ! $pend)) {
                 continue;
             }
             $filas[$ob->entidad_id]['ent'] ??= $ob;
-            $filas[$ob->entidad_id]['obs'][] = ['ob' => $ob, 'celdas' => $celdas];
+            $filas[$ob->entidad_id]['por'][$ob->codigo][] = ['ob' => $ob, 'celdas' => $celdas];
         }
+        // solo se pintan los impuestos que tiene alguna fila visible
+        $usados = [];
+        foreach ($filas as $f) {
+            $usados += array_fill_keys(array_keys($f['por']), true);
+        }
+        $grupos = array_filter($grupos, fn ($g, $cod) => isset($usados[$cod]), ARRAY_FILTER_USE_BOTH);
         $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
 
-        return view('livewire.impuestos', ['filas' => $filas, 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos]);
+        return view('livewire.impuestos', ['filas' => $filas, 'grupos' => $grupos, 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos]);
     }
 }

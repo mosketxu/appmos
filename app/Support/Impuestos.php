@@ -26,6 +26,14 @@ class Impuestos
         'visto' => 'Visto por Marta',
     ];
 
+    /** «Visto por Marta» solo lo pone (y lo quita) quien esté en config('contabilidad.impuestos_visto_emails'); ni el Admin lo salta. */
+    public static function puedeVisto(?User $u = null): bool
+    {
+        $u ??= auth()->user();
+
+        return $u && in_array(strtolower((string) $u->email), array_map('strtolower', (array) config('contabilidad.impuestos_visto_emails', [])), true);
+    }
+
     /** Orden del clic. */
     public const CICLO = ['no', 'pendiente', 'revision', 'revisado', 'presentado', 'visto'];
 
