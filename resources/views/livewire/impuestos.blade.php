@@ -136,8 +136,8 @@
             </select>
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="soloPendientes" class="border-gray-300 rounded"> Solo con pendientes</label>
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="incluirBajas" class="border-gray-300 rounded"> Incluir bajas e inactivos</label>
-            <button type="button" onclick="window.print()" class="imp-btn" style="border-radius:6px" title="Imprime la lista tal como está en pantalla (A4 apaisado)">🖨 Imprimir</button>
-            <button type="button" wire:click="exportarExcel" wire:loading.attr="disabled" wire:target="exportarExcel" class="imp-btn" style="border-radius:6px" title="Descarga en Excel la lista tal como está filtrada, con colores y comentarios">📊 Excel</button>
+            <button type="button" onclick="window.print()" class="imp-btn" style="border-radius:6px" title="Imprimir la lista tal como está en pantalla (A4 apaisado)" aria-label="Imprimir">🖨</button>
+            <button type="button" wire:click="exportarExcel" wire:loading.attr="disabled" wire:target="exportarExcel" class="imp-btn" style="border-radius:6px" title="Descargar en Excel la lista tal como está filtrada, con colores y comentarios" aria-label="Excel"><svg width="18" height="18" viewBox="0 0 18 18" style="display:block"><rect width="18" height="18" rx="3" fill="#217346"/><path d="M5 4.5l8 9M13 4.5l-8 9" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></button>
             @if ($this->puedeTodos())
                 <button type="button" wire:click="$toggle('verTodos')" class="imp-btn {{ $verTodos ? 'on' : '' }}" style="border-radius:6px"
                     title="Por defecto solo ves tus impuestos (los de tus clientes o asignados a ti)">{{ $verTodos ? '👥 Viendo los de todos' : '👤 Solo los míos · ver todos' }}</button>
