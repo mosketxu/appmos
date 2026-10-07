@@ -36,13 +36,15 @@
                    padding: 4px; min-width: 220px; max-width: 340px; text-align: left; white-space: normal; }
         .imp-pop a, .imp-pop button { display: block; width: 100%; text-align: left; padding: 3px 6px; font-size: 12px; color: #1f2937; border-radius: 4px; background: none; border: 0; cursor: pointer; }
         .imp-pop a:hover, .imp-pop button:hover { background: #f3f4f6; }
+        .imp-qw:hover .imp-qx { display: block; }
+        .imp-qx { display: none; position: absolute; top: -8px; right: -7px; width: 13px; height: 13px; border-radius: 9999px; background: #b91c1c; color: #fff; font-size: 11px; line-height: 12px; text-align: center; padding: 0; border: 0; cursor: pointer; z-index: 5; }
         .imp-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #374151; }
         .imp-chip i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; font-style: normal; text-align: center; line-height: 18px; color: #fff; font-weight: 700; }
         .imp-btn { padding: 3px 10px; font-size: 13px; border: 1px solid #d1d5db; background: #fff; color: #374151; }
         .imp-btn.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
         @page { size: A4 landscape; margin: 8mm; }
         @media print {
-            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-com:not(.tiene), #imp-fichero, button[title="Información"] { display: none !important; }
+            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-qx, .imp-com:not(.tiene), #imp-fichero, button[title="Información"] { display: none !important; }
             body { background: #fff !important; }
             .imp-solo-print { display: block !important; }
             #imp-pagina { padding: 0 !important; }
@@ -156,6 +158,8 @@
                 @if (is_array($res) && isset($res['resumen'])) · {{ $res['resumen'] }} @endif
                     </x-neteges-info>
                 @endif
+                <button type="button" wire:click="$toggle('verPapelera')" class="imp-btn {{ $verPapelera ? 'on' : '' }}" style="border-radius:6px"
+                    title="PDF quitados de las casillas: no se borran y se pueden restaurar">🗑 Papelera @if ($this->papelera->count())({{ $this->papelera->count() }})@endif</button>
             @endif
         </div>
 
@@ -164,6 +168,29 @@
         @endif
         @error('archivo') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
         <div wire:loading wire:target="archivo" class="text-xs text-indigo-700 imp-noprint">Subiendo el PDF…</div>
+
+        {{-- Papelera de PDF: se restauran con un clic; solo el Admin la vacía --}}
+        @if ($verPapelera && $this->puedeTodos())
+            <div class="p-3 bg-white border border-gray-300 rounded-lg imp-noprint" style="max-width:900px">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="text-sm font-semibold">Papelera de PDF <span class="font-normal text-gray-500">— no se borran; la búsqueda de OneDrive no los vuelve a subir</span></div>
+                    @role('Admin')
+                        @if ($this->papelera->count())
+                            <button type="button" wire:click="vaciarPapelera" wire:confirm="¿Borrar DEFINITIVAMENTE todo lo que hay en la papelera? Si algún PDF sigue en OneDrive, la próxima búsqueda lo volverá a subir." class="imp-btn" style="border-radius:6px; color:#b91c1c">Vaciar papelera</button>
+                        @endif
+                    @endrole
+                </div>
+                @forelse ($this->papelera as $d)
+                    <div class="flex items-center gap-2 py-0.5 text-xs border-t border-gray-100">
+                        <a href="{{ route('impuestos.documento', $d->id) }}" target="_blank" class="text-indigo-700 hover:underline">{{ $d->nombre }}</a>
+                        <span class="text-gray-500">{{ $d->entidad ?: 'sin cliente' }} · {{ $d->modelo }} {{ $d->periodo }}/{{ $d->ejercicio }} · quitado por {{ $d->quien ?: '—' }} el {{ \Illuminate\Support\Carbon::parse($d->quitado_at)->format('d/m/Y H:i') }}</span>
+                        <button type="button" wire:click="restaurarPdf({{ $d->id }})" class="imp-btn" style="border-radius:6px; margin-left:auto">↩ Restaurar</button>
+                    </div>
+                @empty
+                    <div class="text-xs italic text-gray-400">La papelera está vacía.</div>
+                @endforelse
+            </div>
+        @endif
 
         {{-- PDF de OneDrive que no se han podido atribuir a un cliente --}}
         @if ($mostrarSinAsignar && $sinAsignar->count())

@@ -225,7 +225,7 @@ class ImpuestosPdfs
     /** Un PDF «presentado» de una casilla: crea la obligación si falta y pasa a presentado lo que estaba pendiente (o sin fila). */
     public static function aplicar(ImpuestoDocumento $doc): void
     {
-        if ($doc->tipo !== 'presentado' || ! $doc->entidad_id || ! $doc->modelo || ! $doc->periodo || ! $doc->ejercicio) {
+        if ($doc->quitado_at || $doc->tipo !== 'presentado' || ! $doc->entidad_id || ! $doc->modelo || ! $doc->periodo || ! $doc->ejercicio) {
             return;
         }
         $modelo = DB::table('impuesto_modelos')->where('codigo', $doc->modelo)->first();
@@ -258,7 +258,7 @@ class ImpuestosPdfs
     {
         $idx = self::indiceNombres();
         $n = 0;
-        foreach (ImpuestoDocumento::whereNull('entidad_id')->where('origen', 'onedrive')->get() as $d) {
+        foreach (ImpuestoDocumento::whereNull('entidad_id')->whereNull('quitado_at')->where('origen', 'onedrive')->get() as $d) {
             self::asociar($d, $idx);
             $n += $d->entidad_id ? 1 : 0;
         }

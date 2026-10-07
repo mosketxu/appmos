@@ -21,7 +21,12 @@
     @endif
     @if ($conPdf)
         @if (count($lista) === 1 && $principal)
-            <a href="{{ route('impuestos.documento', $principal->id) }}" target="_blank" class="imp-pdf" style="color:{{ $color[$e] }}" title="{{ $principal->nombre }}">@include('livewire._impuesto-pdf')</a>
+            <span class="imp-pdfw imp-qw">
+                <a href="{{ route('impuestos.documento', $principal->id) }}" target="_blank" class="imp-pdf" style="color:{{ $color[$e] }}" title="{{ $principal->nombre }}">@include('livewire._impuesto-pdf')</a>
+                @if ($this->puedeTodos())
+                    <button type="button" class="imp-qx" wire:click="quitarPdf({{ $principal->id }})" wire:confirm="¿Quitar este PDF a la papelera? No se borra: se puede restaurar." title="Quitar a la papelera">×</button>
+                @endif
+            </span>
         @elseif ($lista)
             {{-- Varios documentos (dos declaraciones, justificantes, aplazamientos...): hojas apiladas; el menú deja marcar los que se quieren abrir --}}
             <span class="imp-pdfw" x-data="{ o: false, sel: [] }" x-on:click.outside="o = false">
@@ -33,6 +38,9 @@
                         <label style="display:flex; gap:6px; align-items:center; padding:3px 6px; font-size:12px; cursor:pointer">
                             <input type="checkbox" value="{{ route('impuestos.documento', $d->id) }}" x-model="sel" class="border-gray-300 rounded">
                             <a href="{{ route('impuestos.documento', $d->id) }}" target="_blank" style="padding:0; width:auto">{{ ['presentado' => 'Presentado', 'borrador' => 'Borrador', 'otro' => 'Otro'][$d->tipo] ?? $d->tipo }} · {{ $d->nombre }}</a>
+                            @if ($this->puedeTodos())
+                                <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Quitar este PDF a la papelera? No se borra: se puede restaurar." title="Quitar a la papelera" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
+                            @endif
                         </label>
                     @endforeach
                     <button type="button" x-show="sel.length" x-on:click="sel.forEach(u => window.open(u, '_blank')); sel = []; o = false" style="border-top:1px solid #e5e7eb; font-weight:600">Abrir los seleccionados (<span x-text="sel.length"></span>)</button>

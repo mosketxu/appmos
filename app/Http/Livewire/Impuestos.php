@@ -41,6 +41,7 @@ class Impuestos extends Component
 
     // PDF sin cliente asignado
     public bool $mostrarSinAsignar = false;
+    public bool $verPapelera = false;
     public string $asignarTexto = '';
     public string $buscarEnt = '';
     public string $asignarEtiqueta = '';
@@ -361,6 +362,58 @@ class Impuestos extends Component
         $this->aviso = 'Pedido a un PC: buscará los PDF en OneDrive (puede tardar unos minutos).';
     }
 
+    // ------------------------------------------------------------------ papelera de PDF
+
+    /** Quita un PDF de la casilla sin borrarlo: va a la papelera y la búsqueda de OneDrive no lo vuelve a subir. Solo Admin y Suma. */
+    public function quitarPdf(int $id): void
+    {
+        abort_unless($this->puedeTodos(), 403);
+        $d = ImpuestoDocumento::whereNull('quitado_at')->find($id);
+        if ($d) {
+            $d->update(['quitado_at' => now(), 'quitado_por' => auth()->id()]);
+            $this->aviso = 'PDF «'.$d->nombre.'» enviado a la papelera (se puede restaurar).';
+        }
+    }
+
+    public function restaurarPdf(int $id): void
+    {
+        abort_unless($this->puedeTodos(), 403);
+        $d = ImpuestoDocumento::whereNotNull('quitado_at')->find($id);
+        if ($d) {
+            $d->update(['quitado_at' => null, 'quitado_por' => null]);
+            if ($d->entidad_id) {
+                ImpuestosPdfs::aplicar($d);
+            }
+            $this->aviso = 'PDF «'.$d->nombre.'» restaurado.';
+        }
+    }
+
+    /** Borra de verdad lo que hay en la papelera (solo Admin). Si el PDF sigue en OneDrive, la próxima búsqueda lo volverá a subir. */
+    public function vaciarPapelera(): void
+    {
+        abort_unless(auth()->user()?->hasRole('Admin'), 403);
+        foreach (ImpuestoDocumento::whereNotNull('quitado_at')->get() as $d) {
+            $d->delete();
+            $usado = ImpuestoDocumento::where('almacen', $d->almacen)->exists() || DB::table('impuesto_comentarios')->where('adjunto_almacen', $d->almacen)->exists();
+            if (! $usado) {
+                Storage::disk('local')->delete($d->almacen);
+            }
+        }
+        $this->verPapelera = false;
+        $this->aviso = 'Papelera vaciada.';
+    }
+
+    public function getPapeleraProperty()
+    {
+        if (! $this->puedeTodos()) {
+            return collect();
+        }
+
+        return DB::table('impuesto_documentos as d')->leftJoin('entidades as e', 'e.id', '=', 'd.entidad_id')->leftJoin('users as u', 'u.id', '=', 'd.quitado_por')
+            ->whereNotNull('d.quitado_at')->orderByDesc('d.quitado_at')->limit(200)
+            ->get(['d.id', 'd.nombre', 'd.modelo', 'd.ejercicio', 'd.periodo', 'd.quitado_at', 'e.entidad', 'u.name as quien']);
+    }
+
     public function getTareaPdfsEstadoProperty(): ?object
     {
         return DB::table('tareas')->where('proceso', 'pc.impuestos_pdfs')->orderByDesc('id')->first(['id', 'estado', 'resultado', 'terminada_at', 'created_at']);
@@ -372,7 +425,7 @@ class Impuestos extends Component
             return collect();
         }
 
-        return DB::table('impuesto_documentos')->whereNull('entidad_id')->where('origen', 'onedrive')->whereNotNull('modelo')
+        return DB::table('impuesto_documentos')->whereNull('quitado_at')->whereNull('entidad_id')->where('origen', 'onedrive')->whereNotNull('modelo')
             ->select('cliente_texto', DB::raw('count(*) as n'))->groupBy('cliente_texto')->orderByDesc('n')->orderBy('cliente_texto')->get();
     }
 
@@ -416,7 +469,7 @@ class Impuestos extends Component
         $docs = [];
         $entIds = $obs->pluck('entidad_id')->unique()->all();
         foreach (array_chunk($entIds ?: [0], 1000) as $trozo) {
-            DB::table('impuesto_documentos')->where('ejercicio', $this->ejercicio)->whereIn('entidad_id', $trozo)->whereNotNull('periodo')
+            DB::table('impuesto_documentos')->whereNull('quitado_at')->where('ejercicio', $this->ejercicio)->whereIn('entidad_id', $trozo)->whereNotNull('periodo')
                 ->orderBy('id')->get(['id', 'entidad_id', 'modelo', 'etiqueta', 'periodo', 'tipo', 'nombre'])->each(function ($d) use (&$docs) {
                     $docs[$d->entidad_id.'|'.$d->modelo.'|'.$d->etiqueta.'|'.$d->periodo][] = $d;
                 });
