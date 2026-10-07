@@ -218,7 +218,7 @@
                             @if (! ($bl['plegable'] && in_array($bl['k'], $plegados, true)))
                                 @php $gr = collect($bl['cols'])->groupBy('g'); @endphp
                                 @foreach ($gr as $g => $cs)
-                                    <th colspan="{{ $cs->count() }}" class="{{ $loop->first ? 'imp-qb' : '' }}" style="border-left:1px solid #e5e7eb">{{ $g }}</th>
+                                    <th colspan="{{ $cs->count() }}" class="{{ $loop->first ? 'imp-qb' : '' }}" style="border-left:1px solid #cbd5e1">{{ $g }}</th>
                                 @endforeach
                             @endif
                         @endforeach
@@ -226,8 +226,10 @@
                     <tr>
                         @foreach ($bloques as $bl)
                             @if (! ($bl['plegable'] && in_array($bl['k'], $plegados, true)))
+                                @php $gAnt = null; @endphp
                                 @foreach ($bl['cols'] as $col)
-                                    <th style="font-weight:500" title="{{ $col['cod'] }}">{{ $col['cod'] }}</th>
+                                    @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
+                                    <th style="font-weight:500{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}" title="{{ $col['cod'] }}">{{ $col['cod'] }}</th>
                                 @endforeach
                             @endif
                         @endforeach
@@ -254,9 +256,10 @@
                                         @endif
                                     </td>
                                 @else
+                                    @php $gAnt = null; @endphp
                                     @foreach ($bl['cols'] as $ci => $col)
-                                        @php $primera = $col['g'] === ($bl['cols'][array_key_first($bl['cols'])]['g']); @endphp
-                                        <td class="{{ $loop->first ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap">
+                                        @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
+                                        <td class="{{ $loop->first ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
                                             @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
                                                 @if ($ob->etiqueta !== '')
                                                     <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
