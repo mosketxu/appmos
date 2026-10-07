@@ -8,7 +8,7 @@
     $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true);
     $titulo = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
     $cm = ($coment ?? [])[$ob->id.'|'.$per] ?? [];
-    $cmTitulo = collect($cm)->map(fn ($c) => ($c[1] ?: '—').' · '.\Illuminate\Support\Carbon::parse($c[2])->format('d/m/Y H:i').': '.$c[0])->implode("\n");
+    $cmTitulo = collect($cm)->map(fn ($c) => ($c[1] ?: '—').' · '.\Illuminate\Support\Carbon::parse($c[2])->format('d/m/Y H:i').': '.$c[0].($c[3] ? ' 📎'.$c[3] : ''))->implode("\n");
     $subir = "\$wire.subirA = '".$ob->id.'|'.$per."'; document.getElementById('imp-fichero').click()";
 @endphp
 <span class="imp-cel">

@@ -217,7 +217,11 @@
                                     <button type="button" wire:click="borrarComentario({{ $c->id }})" wire:confirm="¿Borrar este comentario?" class="text-gray-400 hover:text-red-600">✕</button>
                                 @endif
                             </div>
-                            <div class="text-sm text-gray-800" style="white-space:pre-wrap">{{ $c->texto }}</div>
+                            @if ($c->texto !== '') <div class="text-sm text-gray-800" style="white-space:pre-wrap">{{ $c->texto }}</div> @endif
+                            @if ($c->adjunto_nombre)
+                                <a href="{{ route('impuestos.adjunto', $c->id) }}" target="_blank" class="text-sm text-indigo-700 hover:underline">📎 {{ $c->adjunto_nombre }}
+                                    <span class="text-xs text-gray-400">({{ ($c->adjunto_tam ?? 0) > 1048576 ? number_format($c->adjunto_tam / 1048576, 1, ',', '.').' MB' : number_format(($c->adjunto_tam ?? 0) / 1024, 0, ',', '.').' KB' }})</span></a>
+                            @endif
                         </div>
                     @empty
                         <p class="text-sm text-gray-500">Todavía no hay comentarios.</p>
@@ -225,8 +229,17 @@
                     <form wire:submit="comentar" class="mt-2">
                         <textarea wire:model="comTexto" rows="2" placeholder="Nuevo comentario…" class="w-full text-sm border-gray-300 rounded-md" autofocus
                             x-on:keydown.ctrl.enter.prevent="$wire.comentar()"></textarea>
+                        <div class="flex flex-wrap items-center gap-2 mt-1">
+                            <label class="text-sm text-indigo-700 cursor-pointer hover:underline" title="Un fichero por comentario, hasta 20 MB">📎 Adjuntar fichero
+                                <input type="file" wire:model="comArchivo" style="display:none">
+                            </label>
+                            <span wire:loading wire:target="comArchivo" class="text-xs text-indigo-700">Subiendo…</span>
+                            @if ($comArchivo) <span class="text-xs text-gray-700">{{ $comArchivo->getClientOriginalName() }}
+                                <button type="button" wire:click="$set('comArchivo', null)" class="text-gray-400 hover:text-red-600" title="Quitar el fichero">✕</button></span> @endif
+                            @error('comArchivo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                        </div>
                         <div class="flex items-center gap-2 mt-1">
-                            <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir comentario</button>
+                            <button type="submit" wire:loading.attr="disabled" wire:target="comArchivo" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir comentario</button>
                             <span class="text-xs text-gray-400">Ctrl+Intro también lo añade</span>
                         </div>
                     </form>
@@ -324,7 +337,7 @@
                     @php [$oid, $pp] = explode('|', $clave); $oo = $obsPorId[(int) $oid] ?? null; @endphp
                     @if ($oo)
                         @foreach ($lista as $c)
-                            <div>{{ $oo->entidad }} · {{ ctype_digit($oo->codigo) ? 'M'.$oo->codigo : $oo->codigo }}{{ $oo->etiqueta !== '' ? ' ('.$oo->etiqueta.')' : '' }} {{ $pp }}: {{ $c[0] }} <span style="color:#6b7280">— {{ $c[1] }}, {{ \Illuminate\Support\Carbon::parse($c[2])->format('d/m/y') }}</span></div>
+                            <div>{{ $oo->entidad }} · {{ ctype_digit($oo->codigo) ? 'M'.$oo->codigo : $oo->codigo }}{{ $oo->etiqueta !== '' ? ' ('.$oo->etiqueta.')' : '' }} {{ $pp }}: {{ $c[0] }}{{ $c[3] ? ' [adjunto: '.$c[3].']' : '' }} <span style="color:#6b7280">— {{ $c[1] }}, {{ \Illuminate\Support\Carbon::parse($c[2])->format('d/m/y') }}</span></div>
                         @endforeach
                     @endif
                 @endforeach

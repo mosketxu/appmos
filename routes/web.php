@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         }
         return view('impuestos.index');
     })->name('impuestos')->middleware('can:impuestos.ver');
+    Route::get('/impuestos/adjunto/{comentario}', [\App\Http\Controllers\ImpuestosAdjuntoController::class, 'ver'])->name('impuestos.adjunto')->middleware('can:impuestos.ver');
     Route::get('/impuestos/documento/{documento}', [\App\Http\Controllers\ImpuestosDocumentoController::class, 'ver'])->name('impuestos.documento')->middleware('can:impuestos.ver');
 
     // Contabilidad (Fashion IQ): lanzar los scripts Node/Python de monthlyFIQ

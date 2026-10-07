@@ -52,6 +52,7 @@ class Impuestos extends Component
     public ?int $comOb = null;
     public string $comPer = '';
     public string $comTexto = '';
+    public $comArchivo;   // un fichero adjunto por comentario (máx. 20 MB)
 
     public ?int $tareaPdfs = null;
     public string $aviso = '';
@@ -288,19 +289,33 @@ class Impuestos extends Component
         $this->comOb = null;
         $this->comPer = '';
         $this->comTexto = '';
+        $this->comArchivo = null;
     }
 
     public function comentar(): void
     {
         abort_unless($this->comOb, 422);
         $this->autorizarCasilla($this->comOb);
+        $this->validate(['comArchivo' => 'nullable|file|max:20480'], ['comArchivo.max' => 'El fichero pesa más de 20 MB.', 'comArchivo.file' => 'No se ha podido subir el fichero.']);
         $texto = trim($this->comTexto);
-        if ($texto === '') {
+        if ($texto === '' && ! $this->comArchivo) {
             return;
         }
+        $adj = ['adjunto_nombre' => null, 'adjunto_almacen' => null, 'adjunto_tam' => null];
+        if ($this->comArchivo) {
+            $nombre = mb_substr(basename(str_replace('\\', '/', (string) $this->comArchivo->getClientOriginalName())), -200);
+            $ext = preg_replace('/[^a-z0-9]/', '', strtolower(pathinfo($nombre, PATHINFO_EXTENSION)));
+            $sha = hash_file('sha256', $this->comArchivo->getRealPath());
+            $almacen = 'impuestos/adjuntos/'.$sha.($ext !== '' ? '.'.mb_substr($ext, 0, 8) : '');
+            if (! Storage::disk('local')->exists($almacen)) {
+                Storage::disk('local')->put($almacen, fopen($this->comArchivo->getRealPath(), 'rb'));
+            }
+            $adj = ['adjunto_nombre' => $nombre, 'adjunto_almacen' => $almacen, 'adjunto_tam' => $this->comArchivo->getSize()];
+        }
         DB::table('impuesto_comentarios')->insert(['entidad_impuesto_id' => $this->comOb, 'ejercicio' => $this->ejercicio, 'periodo' => $this->comPer,
-            'texto' => mb_substr($texto, 0, 2000), 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+            'texto' => mb_substr($texto, 0, 2000), 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()] + $adj);
         $this->comTexto = '';
+        $this->comArchivo = null;
     }
 
     public function borrarComentario(int $id): void
@@ -312,6 +327,9 @@ class Impuestos extends Component
         $this->autorizarCasilla($c->entidad_impuesto_id);
         abort_unless($c->user_id === auth()->id() || $this->puedeTodos(), 403);   // el suyo; Admin y Suma, cualquiera
         DB::table('impuesto_comentarios')->where('id', $id)->delete();
+        if ($c->adjunto_almacen && ! DB::table('impuesto_comentarios')->where('adjunto_almacen', $c->adjunto_almacen)->exists()) {
+            Storage::disk('local')->delete($c->adjunto_almacen);   // nadie más usa ese fichero
+        }
     }
 
     /** Datos de la ventana de comentarios abierta. */
@@ -324,7 +342,7 @@ class Impuestos extends Component
             ->where('ei.id', $this->comOb)->first(['ei.etiqueta', 'e.entidad', 'm.codigo', 'm.desfase']);
         $lista = DB::table('impuesto_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')
             ->where(['c.entidad_impuesto_id' => $this->comOb, 'c.ejercicio' => $this->ejercicio, 'c.periodo' => $this->comPer])
-            ->orderBy('c.id')->get(['c.id', 'c.texto', 'c.user_id', 'c.created_at', 'u.name']);
+            ->orderBy('c.id')->get(['c.id', 'c.texto', 'c.user_id', 'c.created_at', 'c.adjunto_nombre', 'c.adjunto_tam', 'u.name']);
 
         return ['ob' => $ob, 'lista' => $lista];
     }
@@ -417,8 +435,8 @@ class Impuestos extends Component
         $coment = [];   // [«obligación|periodo»] => [[texto, autor, fecha]] de las casillas visibles
         foreach (array_chunk($ids ?: [0], 1000) as $trozo) {
             DB::table('impuesto_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')->where('c.ejercicio', $this->ejercicio)->whereIn('c.entidad_impuesto_id', $trozo)
-                ->orderBy('c.id')->get(['c.entidad_impuesto_id', 'c.periodo', 'c.texto', 'c.created_at', 'u.name'])->each(function ($c) use (&$coment) {
-                    $coment[$c->entidad_impuesto_id.'|'.$c->periodo][] = [$c->texto, $c->name, $c->created_at];
+                ->orderBy('c.id')->get(['c.entidad_impuesto_id', 'c.periodo', 'c.texto', 'c.created_at', 'c.adjunto_nombre', 'u.name'])->each(function ($c) use (&$coment) {
+                    $coment[$c->entidad_impuesto_id.'|'.$c->periodo][] = [$c->texto, $c->name, $c->created_at, $c->adjunto_nombre];
                 });
         }
         $filas = [];
@@ -531,7 +549,7 @@ class Impuestos extends Component
                     foreach ($lista as [$ob, $per, $e]) {
                         $txt[] = ($ob->etiqueta !== '' ? mb_substr($ob->etiqueta, 0, 3).' ' : '').($e === 'no' ? '' : Imp::LETRA[$e]);
                         foreach ($d['coment'][$ob->id.'|'.$per] ?? [] as $cm) {
-                            $coms[] = ($cm[1] ?: '—').' · '.\Illuminate\Support\Carbon::parse($cm[2])->format('d/m/Y H:i').': '.$cm[0];
+                            $coms[] = ($cm[1] ?: '—').' · '.\Illuminate\Support\Carbon::parse($cm[2])->format('d/m/Y H:i').': '.$cm[0].($cm[3] ? ' [adjunto: '.$cm[3].']' : '');
                         }
                     }
                     $ws->setCellValue([$c, $r], trim(implode(' ', $txt)));
