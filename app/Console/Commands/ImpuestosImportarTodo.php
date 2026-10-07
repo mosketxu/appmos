@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  */
 class ImpuestosImportarTodo extends Command
 {
-    protected $signature = 'impuestos:importar-todo {fichero} {--ejercicio=2026} {--aplicar}';
+    protected $signature = 'impuestos:importar-todo {fichero} {--ejercicio=2026} {--aplicar} {--no-presenta : pasa a «no se presenta» las casillas vacías que el Excel marca como no hay/no hace/no toca}';
 
     protected $description = 'Carga en Impuestos las obligaciones y estados del ToDO Alex (JSON del exportador)';
 
@@ -35,7 +35,7 @@ class ImpuestosImportarTodo extends Command
         $idx = ImpuestosPdfs::indiceNombres();
         $modelos = DB::table('impuesto_modelos')->pluck('id', 'codigo')->all();
         $ahora = now();
-        $porCod = $porNombre = $sin = $obligaciones = $filas = $conAlias = 0;
+        $porCod = $porNombre = $sin = $obligaciones = $filas = $conAlias = $cambiadas = 0;
         $sinLista = [];
 
         foreach ($d['clientes'] as $c) {
@@ -77,6 +77,13 @@ class ImpuestosImportarTodo extends Command
                     $this->warn("{$c['cliente']} M{$o['modelo']}: ya estaba como {$ob->periodicidad}, el Excel dice {$o['periodicidad']} (no se cambia)");
                     continue;
                 }
+                if ($this->option('no-presenta')) {   // casillas que estaban «vacías» y el Excel dice «no se presenta»
+                    foreach ($o['estados'] as $p => $e) {
+                        if ($e === 'nopresenta') {
+                            $cambiadas += DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $obId, 'ejercicio' => $ejercicio, 'periodo' => $p, 'estado' => 'no'])->update(['estado' => 'nopresenta', 'updated_at' => $ahora]);
+                        }
+                    }
+                }
                 $nuevas = [];
                 foreach (Impuestos::periodos($o['periodicidad']) as $p) {
                     $nuevas[] = ['entidad_impuesto_id' => $obId, 'ejercicio' => $ejercicio, 'periodo' => $p, 'estado' => $o['estados'][$p] ?? 'no', 'created_at' => $ahora, 'updated_at' => $ahora];
@@ -85,7 +92,7 @@ class ImpuestosImportarTodo extends Command
             }
         }
         $this->info(sprintf('Clientes: %d por código, %d por nombre, %d sin casar · obligaciones: %d%s', $porCod, $porNombre, $sin, $obligaciones,
-            $aplicar ? " · casillas nuevas: $filas · alias nuevos: $conAlias" : ' (sin aplicar: usa --aplicar)'));
+            $aplicar ? " · casillas nuevas: $filas · alias nuevos: $conAlias · pasadas a «no se presenta»: $cambiadas" : ' (sin aplicar: usa --aplicar)'));
         foreach ($sinLista as $s) {
             $this->line('  sin casar: '.$s);
         }

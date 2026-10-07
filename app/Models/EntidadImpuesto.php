@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class EntidadImpuesto extends Model
 {
     protected $table = 'entidad_impuestos';
-    protected $fillable = ['entidad_id', 'modelo_id', 'etiqueta', 'periodicidad', 'user_id', 'observaciones'];
+    protected $fillable = ['entidad_id', 'modelo_id', 'etiqueta', 'periodicidad', 'baja_ejercicio', 'baja_periodo', 'user_id', 'observaciones'];
 
     public function modelo() { return $this->belongsTo(ImpuestoModelo::class, 'modelo_id'); }
     public function estados() { return $this->hasMany(ImpuestoEstado::class, 'entidad_impuesto_id'); }

@@ -6,7 +6,7 @@
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
     $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true);
-    $titulo = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: cambiar)';
+    $titulo = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
     $cm = ($coment ?? [])[$ob->id.'|'.$per] ?? [];
     $cmTitulo = collect($cm)->map(fn ($c) => ($c[1] ? $c[1].': ' : '').$c[0])->implode("\n");
     $subir = "\$wire.subirA = '".$ob->id.'|'.$per."'; document.getElementById('imp-fichero').click()";
@@ -16,7 +16,7 @@
     @if ($bloqueada)
         <span class="imp-m" title="{{ $titulo }} · lo ha validado Marta: solo ella lo cambia" style="background:{{ $color[$e] }}; cursor:default">{{ $letra[$e] }}</span>
     @else
-        <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}')" title="{{ $titulo }}"
+        <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}', $event.shiftKey)" title="{{ $titulo }}"
             class="imp-m {{ $e === 'no' ? 'no' : '' }}" @if ($e !== 'no') style="background:{{ $color[$e] }}" @endif>{{ $e === 'no' ? '' : $letra[$e] }}</button>
     @endif
     @if ($conPdf)

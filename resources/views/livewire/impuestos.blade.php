@@ -120,13 +120,14 @@
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 bg-white border border-gray-200 rounded-md">
             <x-neteges-info>
                 Un clic en la casilla pasa al siguiente estado: vacío → pendiente → listo para revisión → revisado → presentado → visto por Marta (este último solo lo marca ella).
-                La casilla vacía (no tiene que presentarlo) solo se dibuja al pasar el ratón por encima, para poder activarla.<br>
+                Mayús+clic en una casilla = «no se presenta este periodo» (gris –: p. ej. un 111, 115 o 349 sin movimientos; otro Mayús+clic o un clic lo reabre como pendiente).
+                La casilla vacía (no hay obligación) solo se dibuja al pasar el ratón por encima, para poder activarla.<br>
                 Icono PDF: de color = hay PDF; gris = pulsa para subirlo (el borrador en revisión/revisado, el presentado después). Hojas apiladas = varios documentos.
                 💬 = comentarios de la casilla.
             </x-neteges-info>
             <b class="text-xs text-gray-500">LEYENDA</b>
             <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; border:1px dashed #9ca3af; background:#fff"></i>vacío = no tiene que presentarlo</span>
-            @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto'] as $e)
+            @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'] as $e)
                 <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; font-size:11px; background:{{ $color[$e] }}">{{ $letra[$e] }}</i>{{ $etq[$e] }} <b>({{ $cuenta[$e] }})</b></span>
             @endforeach
         </div>
@@ -269,7 +270,7 @@
                                 @if ($bl['plegable'] && in_array($bl['k'], $plegados, true))
                                     @php
                                         $res = $f['resumen'][$bl['k']] ?? [];
-                                        $peor = collect(['pendiente', 'revision', 'revisado', 'presentado', 'visto'])->first(fn ($e) => ($res[$e] ?? 0) > 0);
+                                        $peor = collect(['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'])->first(fn ($e) => ($res[$e] ?? 0) > 0);
                                         $tit = collect($res)->map(fn ($n, $e) => $n.' '.strtolower($etq[$e]))->implode(' · ');
                                     @endphp
                                     <td class="imp-qb" style="text-align:center" title="{{ $tit }}">

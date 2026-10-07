@@ -200,7 +200,7 @@ class Impuestos extends Component
     }
 
     /** Clic en una casilla: pasa al siguiente estado. */
-    public function clic(int $obId, string $periodo): void
+    public function clic(int $obId, string $periodo, bool $mayus = false): void
     {
         $this->autorizarCasilla($obId);
         $ob = DB::table('entidad_impuestos')->find($obId);
@@ -212,7 +212,11 @@ class Impuestos extends Component
         if ($actual === 'visto' && ! Imp::puedeVisto()) {
             return;   // lo ha validado Marta: solo ella lo cambia
         }
-        $nuevo = Imp::siguiente($actual);
+        if ($mayus && in_array($actual, ['visto'], true) && ! Imp::puedeVisto()) {
+            return;
+        }
+        // Mayús+clic: «no se presenta este periodo» (y otra vez Mayús+clic lo reabre como pendiente)
+        $nuevo = $mayus ? ($actual === 'nopresenta' ? 'pendiente' : 'nopresenta') : Imp::siguiente($actual);
         if ($nuevo === 'visto' && ! Imp::puedeVisto()) {
             $nuevo = Imp::siguiente('visto');   // los demás se saltan «visto»: de presentado a vacío
         }
@@ -399,7 +403,7 @@ class Impuestos extends Component
                     $docs[$d->entidad_id.'|'.$d->modelo.'|'.$d->etiqueta.'|'.$d->periodo][] = $d;
                 });
         }
-        $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'presentado' => 0, 'visto' => 0];
+        $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'presentado' => 0, 'visto' => 0, 'nopresenta' => 0];
         $modelosVis = [];
         $tiene = ['M' => [], 'T' => [], 'P' => [], 'A' => []];
         $porEnt = [];
@@ -553,7 +557,7 @@ class Impuestos extends Component
         // Leyenda en otra hoja
         $ley = $hoja->createSheet()->setTitle('Leyenda');
         $i = 1;
-        foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto'] as $e) {
+        foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'] as $e) {
             $ley->setCellValue([1, $i], Imp::LETRA[$e]);
             $ley->setCellValue([2, $i], Imp::ESTADOS[$e]);
             $ley->getStyle([1, $i])->applyFromArray(['font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']], 'alignment' => ['horizontal' => 'center'],

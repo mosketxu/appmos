@@ -3,6 +3,7 @@
         <h3 class="font-semibold text-gray-600">Impuestos que presenta <span class="text-xs font-normal text-gray-500">— aparecen en TO-DO → Impuestos; se guarda al momento</span></h3>
     </div>
     <div class="mx-2 text-sm text-gray-600">
+        @if ($aviso) <p class="px-1 py-1 text-xs text-red-700">{{ $aviso }}</p> @endif
         @if ($obs->isEmpty())
             <p class="px-1 py-1 text-xs text-gray-500">Todavía no tiene ninguno.</p>
         @else
@@ -39,12 +40,35 @@
                                 <input type="text" value="{{ $o->observaciones }}" maxlength="255" @disabled(! $editar) wire:change="guardarObservaciones({{ $o->id }}, $event.target.value)"
                                     class="py-0.5 text-sm border-gray-300 rounded-md" style="min-width:220px">
                             </td>
-                            <td>
-                                @if ($editar)
-                                    <button type="button" wire:click="quitar({{ $o->id }})" wire:confirm="¿Quitar este impuesto de la entidad? Se borran también sus marcas de estado." class="text-gray-400 hover:text-red-600" title="Quitar">✕</button>
+                            <td style="white-space:nowrap">
+                                @if ($o->baja_ejercicio)
+                                    <span class="px-1.5 py-0.5 text-xs text-amber-800 bg-amber-100 rounded" title="Desde ahí no se generan casillas; lo anterior se conserva">
+                                        De baja desde {{ \App\Support\Impuestos::etiquetaPeriodo($o->baja_periodo, $o->baja_ejercicio) }}</span>
+                                    @if ($editar) <button type="button" wire:click="reactivar({{ $o->id }})" class="text-xs text-indigo-700 hover:underline">Reactivar</button> @endif
+                                @elseif ($editar)
+                                    <button type="button" wire:click="abrirBaja({{ $o->id }})" class="text-xs text-indigo-700 hover:underline" title="Deja de presentarlo desde un periodo sin perder el historial">⏸ Dejar de presentar…</button>
+                                    @if (! isset($conHistorial[$o->id]))
+                                        <button type="button" wire:click="quitar({{ $o->id }})" wire:confirm="¿Borrar este impuesto de la entidad? Aún no tiene historial." class="text-gray-400 hover:text-red-600" title="Borrar (solo si no tiene historial)">✕</button>
+                                    @endif
                                 @endif
                             </td>
                         </tr>
+                        @if ($bajaOb === $o->id)
+                            <tr wire:key="baja-{{ $o->id }}">
+                                <td colspan="6" class="px-2 py-2 bg-amber-50 rounded">
+                                    <span class="text-xs text-gray-700">Dejar de presentarlo <b>desde</b></span>
+                                    <select wire:model="bajaEj" class="py-0.5 text-sm border-gray-300 rounded-md">
+                                        @foreach ([now()->year - 1, now()->year, now()->year + 1] as $y) <option value="{{ $y }}">{{ $y }}</option> @endforeach
+                                    </select>
+                                    <select wire:model="bajaPer" class="py-0.5 text-sm border-gray-300 rounded-md">
+                                        @foreach (\App\Support\Impuestos::periodos($o->periodicidad) as $p) <option value="{{ $p }}">{{ $p }}</option> @endforeach
+                                    </select>
+                                    <button type="button" wire:click="darDeBaja" class="px-2 py-0.5 text-sm text-white bg-amber-600 rounded hover:bg-amber-700">Dar de baja</button>
+                                    <button type="button" wire:click="cerrarBaja" class="text-xs text-gray-500 hover:underline">Cancelar</button>
+                                    <span class="text-xs text-gray-500">Se conserva todo lo anterior; las casillas pendientes de ahí en adelante desaparecen. Se puede reactivar.</span>
+                                </td>
+                            </tr>
+                        @endif
                     @endforeach
                 </tbody>
             </table>

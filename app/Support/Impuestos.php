@@ -24,6 +24,7 @@ class Impuestos
         'revisado' => 'Revisado, listo para presentar',
         'presentado' => 'Presentado',
         'visto' => 'Visto por Marta',
+        'nopresenta' => 'No se presenta este periodo (no hace falta)',
     ];
 
     /** «Visto por Marta» solo lo pone (y lo quita) quien esté en config('contabilidad.impuestos_visto_emails'); ni el Admin lo salta. */
@@ -37,8 +38,8 @@ class Impuestos
     /** Orden del clic. */
     public const CICLO = ['no', 'pendiente', 'revision', 'revisado', 'presentado', 'visto'];
 
-    public const COLOR = ['pendiente' => '#dc2626', 'revision' => '#f97316', 'revisado' => '#2563eb', 'visto' => '#15803d', 'presentado' => '#16a34a'];
-    public const LETRA = ['pendiente' => 'x', 'revision' => 'r', 'revisado' => 'p', 'presentado' => '✓', 'visto' => 'v'];
+    public const COLOR = ['pendiente' => '#dc2626', 'revision' => '#f97316', 'revisado' => '#2563eb', 'visto' => '#15803d', 'presentado' => '#16a34a', 'nopresenta' => '#9ca3af'];
+    public const LETRA = ['pendiente' => 'x', 'revision' => 'r', 'revisado' => 'p', 'presentado' => '✓', 'visto' => 'v', 'nopresenta' => '–'];
 
     public const PERIODICIDADES = ['M' => 'Mensual', 'T' => 'Trimestral', 'A' => 'Anual', 'P' => 'Pagos fraccionados (1P 2P 3P)'];
 
@@ -96,9 +97,28 @@ class Impuestos
 
     public static function siguiente(string $estado): string
     {
+        if ($estado === 'nopresenta') {
+            return 'pendiente';   // «no se presenta» no está en el ciclo del clic (se pone con Mayús+clic); un clic normal lo reabre
+        }
         $i = array_search($estado, self::CICLO, true);
 
         return self::CICLO[(($i === false ? 0 : $i) + 1) % count(self::CICLO)];
+    }
+
+    /** Orden de un periodo dentro de su año (mes, trimestre, pago; 1 para el anual): para comparar con la fecha de baja. */
+    public static function ordinal(string $periodo): int
+    {
+        return $periodo === 'A' ? 1 : (int) substr($periodo, 1 - (ctype_digit($periodo) ? 1 : 0));
+    }
+
+    /** ¿La obligación ya estaba dada de baja en ese ejercicio y periodo? ($ob con baja_ejercicio y baja_periodo.) */
+    public static function dadaDeBaja(object $ob, int $ejercicio, string $periodo): bool
+    {
+        if (empty($ob->baja_ejercicio)) {
+            return false;
+        }
+
+        return $ejercicio > (int) $ob->baja_ejercicio || ($ejercicio === (int) $ob->baja_ejercicio && self::ordinal($periodo) >= self::ordinal((string) $ob->baja_periodo));
     }
 
     /** Admin y Suma pueden pedir ver los impuestos de todos. */
@@ -141,7 +161,7 @@ class Impuestos
     /** Crea las filas «pendiente» que falten de cada obligación en ese ejercicio (las ya existentes, incluidas las «no», no se tocan). */
     public static function asegurarEjercicio(int $ejercicio, ?int $entidadImpuestoId = null): int
     {
-        $obl = DB::table('entidad_impuestos')->when($entidadImpuestoId, fn ($q) => $q->where('id', $entidadImpuestoId))->get(['id', 'periodicidad']);
+        $obl = DB::table('entidad_impuestos')->when($entidadImpuestoId, fn ($q) => $q->where('id', $entidadImpuestoId))->get(['id', 'periodicidad', 'baja_ejercicio', 'baja_periodo']);
         $existen = [];
         DB::table('impuesto_estados')->where('ejercicio', $ejercicio)->when($entidadImpuestoId, fn ($q) => $q->where('entidad_impuesto_id', $entidadImpuestoId))
             ->get(['entidad_impuesto_id', 'periodo'])->each(function ($r) use (&$existen) {
@@ -151,7 +171,7 @@ class Impuestos
         $nuevas = [];
         foreach ($obl as $o) {
             foreach (self::periodos($o->periodicidad) as $p) {
-                if (! isset($existen[$o->id.'|'.$p])) {
+                if (! isset($existen[$o->id.'|'.$p]) && ! self::dadaDeBaja($o, $ejercicio, $p)) {
                     $nuevas[] = ['entidad_impuesto_id' => $o->id, 'ejercicio' => $ejercicio, 'periodo' => $p, 'estado' => 'pendiente', 'created_at' => $ahora, 'updated_at' => $ahora];
                 }
             }

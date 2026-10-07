@@ -20,6 +20,12 @@ class EntidadImpuestos extends Component
     public string $nuevaPeriodicidad = '';
     public string $nuevaEtiqueta = '';
 
+    // «Dejar de presentar desde…» (baja con historial): obligación, ejercicio y periodo elegidos
+    public ?int $bajaOb = null;
+    public int $bajaEj = 0;
+    public string $bajaPer = '';
+    public string $aviso = '';
+
     // Alta de un impuesto nuevo en el catálogo (solo Admin)
     public bool $crearModelo = false;
     public string $mCodigo = '';
@@ -89,9 +95,67 @@ class EntidadImpuestos extends Component
         EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id)->update(['observaciones' => trim($texto) ?: null]);
     }
 
+    /** ¿Tiene algo más que casillas pendientes o vacías (presentados, revisiones, comentarios)? Entonces no se borra: se da de baja. */
+    protected function tieneHistorial(int $id): bool
+    {
+        return DB::table('impuesto_estados')->where('entidad_impuesto_id', $id)->whereNotIn('estado', ['pendiente', 'no'])->exists()
+            || DB::table('impuesto_comentarios')->where('entidad_impuesto_id', $id)->exists();
+    }
+
+    public function abrirBaja(int $id): void
+    {
+        abort_unless($this->puedeEditar(), 403);
+        $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id);
+        $this->bajaOb = $id;
+        $this->bajaEj = (int) now()->format('Y');
+        $pend = DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $id, 'ejercicio' => $this->bajaEj, 'estado' => 'pendiente'])->pluck('periodo')->all();
+        usort($pend, fn ($a, $b) => Impuestos::ordinal($a) <=> Impuestos::ordinal($b));
+        $this->bajaPer = $pend[0] ?? Impuestos::periodos($ob->periodicidad)[0];
+        $this->aviso = '';
+    }
+
+    public function cerrarBaja(): void
+    {
+        $this->bajaOb = null;
+    }
+
+    /** Deja de presentar desde ese periodo: lo anterior (presentados, comentarios, PDF) se conserva; las pendientes de ahí en adelante se quitan. */
+    public function darDeBaja(): void
+    {
+        abort_unless($this->puedeEditar() && $this->bajaOb, 403);
+        $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($this->bajaOb);
+        if ($this->bajaEj < 2009 || $this->bajaEj > 2100 || ! in_array($this->bajaPer, Impuestos::periodos($ob->periodicidad), true)) {
+            return;
+        }
+        $ob->update(['baja_ejercicio' => $this->bajaEj, 'baja_periodo' => $this->bajaPer]);
+        $ob = $ob->fresh();
+        DB::table('impuesto_estados')->where('entidad_impuesto_id', $ob->id)->whereIn('estado', ['pendiente', 'no'])->get(['id', 'ejercicio', 'periodo'])
+            ->each(function ($r) use ($ob) {
+                if (Impuestos::dadaDeBaja($ob, (int) $r->ejercicio, $r->periodo)) {
+                    DB::table('impuesto_estados')->where('id', $r->id)->delete();
+                }
+            });
+        $this->bajaOb = null;
+        $this->dispatch('impuestos-cambiados');
+    }
+
+    public function reactivar(int $id): void
+    {
+        abort_unless($this->puedeEditar(), 403);
+        $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id);
+        $ob->update(['baja_ejercicio' => null, 'baja_periodo' => null]);
+        $this->asegurar($ob->id);
+        $this->dispatch('impuestos-cambiados');
+    }
+
     public function quitar(int $id): void
     {
         abort_unless($this->puedeEditar(), 403);
+        if ($this->tieneHistorial($id)) {
+            $this->aviso = 'Ese impuesto tiene historial (presentados, revisiones o comentarios): no se borra; usa «Dejar de presentar».';
+
+            return;
+        }
         EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id)->delete();   // sus estados se borran con ella
         $this->dispatch('impuestos-cambiados');
     }
@@ -120,10 +184,13 @@ class EntidadImpuestos extends Component
     {
         $obs = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->where('ei.entidad_id', $this->entidadId)->orderBy('m.orden')->orderBy('ei.etiqueta')
-            ->get(['ei.id', 'ei.etiqueta', 'ei.periodicidad', 'ei.user_id', 'ei.observaciones', 'm.codigo', 'm.nombre']);
+            ->get(['ei.id', 'ei.etiqueta', 'ei.periodicidad', 'ei.baja_ejercicio', 'ei.baja_periodo', 'ei.user_id', 'ei.observaciones', 'm.codigo', 'm.nombre']);
         $modelos = ImpuestoModelo::where('activo', true)->orderBy('orden')->get();
         $responsables = DB::table('sumas')->join('users', 'users.id', '=', 'sumas.user_id')->orderBy('sumas.nombre')->get(['users.id', 'sumas.nombre']);
 
-        return view('livewire.entidad-impuestos', ['obs' => $obs, 'modelos' => $modelos, 'responsables' => $responsables, 'editar' => $this->puedeEditar()]);
+        $conHistorial = DB::table('impuesto_estados')->whereIn('entidad_impuesto_id', $obs->pluck('id')->all() ?: [0])->whereNotIn('estado', ['pendiente', 'no'])->pluck('entidad_impuesto_id')
+            ->merge(DB::table('impuesto_comentarios')->whereIn('entidad_impuesto_id', $obs->pluck('id')->all() ?: [0])->pluck('entidad_impuesto_id'))->flip();
+
+        return view('livewire.entidad-impuestos', ['conHistorial' => $conHistorial, 'obs' => $obs, 'modelos' => $modelos, 'responsables' => $responsables, 'editar' => $this->puedeEditar()]);
     }
 }
