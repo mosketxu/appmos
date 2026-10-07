@@ -73,7 +73,7 @@ class ImpuestosSyncController extends Controller
         $ruta = (string) $r->query('ruta');
         abort_unless($this->rutaValida($ruta), 422, 'Ruta no válida');
         $cuerpo = $r->getContent();
-        abort_if($cuerpo === '' || ! str_starts_with($cuerpo, '%PDF'), 422, 'No es un PDF');
+        abort_if($cuerpo === '' || ! str_contains(substr($cuerpo, 0, 1024), '%PDF'), 422, 'No es un PDF');
         $tmp = tempnam(sys_get_temp_dir(), 'imp');
         file_put_contents($tmp, $cuerpo);
         try {
