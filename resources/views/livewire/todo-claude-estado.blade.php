@@ -34,7 +34,7 @@
                 <button type="button" wire:click="pausar(false)" class="px-2 py-0.5 text-white bg-green-600 rounded hover:bg-green-700">▶ Reanudar</button>
             @else
                 @if ($ec['agotado']) <span class="px-1.5 py-0.5 font-semibold text-amber-800 bg-amber-100 rounded" title="Uso del plan por encima del {{ $ec['freno'] }} %: Claude no empieza tareas nuevas hasta que baje">FRENO</span> @endif
-                <button type="button" wire:click="pausar(true)" wire:confirm="¿Pausar TODOS los desarrollos automáticos de Claude? (lo que esté en curso termina; nada nuevo empieza)" class="px-2 py-0.5 text-white bg-red-600 rounded hover:bg-red-700">⏸ Pausar todos</button>
+                <button type="button" wire:click="pausar(true)" wire:confirm="¿Pausar TODOS los desarrollos automáticos de Claude? (lo que esté en curso termina; nada nuevo empieza)" title="Pausar todos los desarrollos automáticos de Claude: lo que esté en curso termina y no empieza nada nuevo" aria-label="Pausar todos" class="inline-flex items-center justify-center text-white bg-red-600 rounded hover:bg-red-700" style="width:1.6rem;height:1.6rem"><svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="1" width="10" height="10" rx="1.5"/></svg></button>
             @endif
             </div>
         </div>

@@ -1,4 +1,5 @@
 <div wire:poll.30s style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; line-height:1.1">
+    <div style="display:flex; align-items:center; gap:.3rem">
     @if ($e)
         @php
             $color = $e['enlinea'] === 0 ? '#9ca3af' : ($e['enlinea'] < count($e['pcs']) ? '#f59e0b' : '#16a34a');
@@ -14,6 +15,10 @@
             <span>{{ $e['enlinea'] }}/{{ count($e['pcs']) }}</span>
             @if ($e['activas'])<span class="text-indigo-600">· ⏳ {{ $e['activas'] }}</span>@endif
         </span>
+    @endif
+        <x-selector-tema />
+    </div>
+    @if ($e)
         {{-- Selector «Ejecutar en»: el PC desde el que trabajas. Se recuerda en ESTE navegador (cookie appmos_pc, 1 año). Si ese PC no responde, el reparto vuelve a automático --}}
         <span wire:ignore class="inline-flex items-center text-xs text-gray-600 gap-x-1 whitespace-nowrap" style="font-size:.7rem" data-sin-tema
               x-data="{ pc: (document.cookie.match(/(?:^|; )appmos_pc=([^;]*)/) || [])[1] ? decodeURIComponent(document.cookie.match(/(?:^|; )appmos_pc=([^;]*)/)[1]) : '',

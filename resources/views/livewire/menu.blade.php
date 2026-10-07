@@ -20,8 +20,9 @@
             .barra-sup { flex-wrap:wrap; height:auto !important; min-height:3.5rem; row-gap:.25rem; padding-bottom:.35rem }
             .barra-sup > .barra-izq { min-width:0; flex-wrap:wrap }
             .barra-sup > .barra-der { margin-left:auto; flex-wrap:wrap; row-gap:.25rem; justify-content:flex-end }
-            .barra-sup > .barra-campana { order:2 }
-            .barra-sup > .barra-der { order:3 }
+            .barra-sup > .barra-claude { order:2; margin-left:auto !important }
+            .barra-sup > .barra-campana { order:3 }
+            .barra-sup > .barra-der { order:4 }
         }
     </style>
     <div class="max-w-full px-4 mx-auto">
@@ -90,6 +91,11 @@
                 @livewire('todo-campana')
             </div>
 
+            {{-- Estado de Claude (solo gestores): en pantalla mediana sube a la línea de arriba, junto a la campana --}}
+            @if (\App\Support\TodoClaude::esGestor(auth()->user()))
+                <div class="hidden sm:flex sm:items-center barra-claude" style="flex-shrink:0; margin:0 .4rem">@livewire('todo-claude-estado')</div>
+            @endif
+
             <div class="hidden sm:flex sm:items-center sm:ml-6 barra-der">
                 @if($entmenu->id)
                     <div class="hidden p-2 space-x-8 bg-gray-100 rounded-lg sm:-my-px sm:ml-10 sm:flex">
@@ -141,30 +147,15 @@
                         @endcan
                     </div>
                 @endif
-                @if (\App\Support\TodoClaude::esGestor(auth()->user()))
-                    <div class="mr-3">@livewire('todo-claude-estado')</div>
-                @endif
                 {{-- PCs de trabajo (cola de tareas): conectados y tareas en curso, para todos los usuarios --}}
                 <div class="mr-2">@livewire('trabajadores-estado')</div>
-                {{-- Tema: Automático (el del sistema, por defecto) / Claro / Oscuro. Se recuerda en este navegador. --}}
-                <div class="relative mr-1" x-data="{ abierto: false, t: window.appmosTema ? appmosTema.get() : 'auto' }" x-on:click.outside="abierto = false">
-                    <button type="button" x-on:click="abierto = !abierto" title="Tema de colores: automático, claro u oscuro"
-                            class="px-2 py-1 text-lg leading-none text-gray-500 rounded-md hover:bg-gray-100" data-sin-tema
-                            x-text="t === 'oscuro' ? '🌙' : (t === 'claro' ? '☀️' : '🌓')"></button>
-                    <div x-show="abierto" x-cloak style="display:none;min-width:11rem;z-index:60" class="absolute right-0 py-1 mt-2 text-sm bg-white border border-gray-200 rounded-md shadow-lg">
-                        <template x-for="o in [['auto','🌓 Automático (el del sistema)'],['claro','☀️ Claro'],['oscuro','🌙 Oscuro']]" :key="o[0]">
-                            <button type="button" class="block w-full px-3 py-1.5 text-left hover:bg-gray-100" :class="t === o[0] ? 'font-semibold text-indigo-700' : 'text-gray-700'"
-                                    x-on:click="t = o[0]; appmosTema.set(o[0]); abierto = false" x-text="o[1]"></button>
-                        </template>
-                    </div>
-                </div>
                 <!-- Settings Dropdown -->
                 <div class="relative ml-3">
                     <x-jet-dropdown align="right" width="w-64">
                         <x-slot name="trigger">
                             <span class="inline-flex rounded-md">
                                 <button type="button" class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none">
-                                    {{ Auth::user()->name }}
+                                    <span title="{{ Auth::user()->name }}">{{ \App\Support\NombreCorto::de(Auth::user()) }}</span>
                                     <svg class="ml-2 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                     </svg>
