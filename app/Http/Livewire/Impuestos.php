@@ -104,7 +104,7 @@ class Impuestos extends Component
     }
 
     /**
-     * Orden de la pantalla: trimestre → mes → impuesto. Bloques de columnas, cada uno con sus columnas [p periodo, g grupo (01, 02, 03, T1…), cod impuesto, kind M|T|P|A]:
+     * Orden de la pantalla: trimestre → mes → impuesto. Bloques de columnas, cada uno con sus columnas [ps periodo según la periodicidad de la obligación, g grupo («01», «03 / T1»…), cod impuesto]:
      * T1 [01 02 03 | T1] (con los impuestos mensuales bajo cada mes y los trimestrales bajo T1), …, y al final las «Anuales».
      * Un anual con `despues_de` (D2) va justo después de ese trimestre. $tiene = [kind => [codigo => true]] de las obligaciones visibles.
      */
@@ -118,18 +118,25 @@ class Impuestos extends Component
         $out = [];
         foreach ($qs as $q) {
             $cols = [];
+            $pagos = [1 => 'P1', 3 => 'P2', 4 => 'P3'][$q] ?? null;
             foreach ($mesSel ? [$mesSel] : range(3 * $q - 2, 3 * $q) as $m) {
-                foreach ($mens as $mod) {
-                    $cols[] = ['p' => sprintf('%02d', $m), 'g' => sprintf('%02d', $m), 'cod' => $mod->codigo, 'kind' => 'M'];
-                }
-            }
-            if (! $mesSel || $mesSel % 3 === 0) {
-                foreach ($trim as $mod) {
-                    if (isset($tiene['T'][$mod->codigo])) {
-                        $cols[] = ['p' => 'T'.$q, 'g' => 'T'.$q, 'cod' => $mod->codigo, 'kind' => 'T'];
+                // El mes que cierra el trimestre y el trimestre comparten columnas (03 / T1): un 303 mensual y uno trimestral van en la misma
+                $cierra = $m % 3 === 0;
+                $mods = $cierra ? $mens + $trim : $mens;
+                uasort($mods, fn ($x, $y) => $x->orden <=> $y->orden);
+                foreach ($mods as $mod) {
+                    $ps = [];
+                    if (isset($tiene['M'][$mod->codigo])) {
+                        $ps['M'] = sprintf('%02d', $m);
                     }
-                    if (isset($tiene['P'][$mod->codigo]) && ($pp = [1 => 'P1', 3 => 'P2', 4 => 'P3'][$q] ?? null)) {
-                        $cols[] = ['p' => $pp, 'g' => 'T'.$q, 'cod' => $mod->codigo, 'kind' => 'P'];
+                    if ($cierra && isset($tiene['T'][$mod->codigo])) {
+                        $ps['T'] = 'T'.$q;
+                    }
+                    if ($cierra && $pagos && isset($tiene['P'][$mod->codigo])) {
+                        $ps['P'] = $pagos;
+                    }
+                    if ($ps) {
+                        $cols[] = ['ps' => $ps, 'g' => $cierra ? sprintf('%02d / T%d', $m, $q) : sprintf('%02d', $m), 'cod' => $mod->codigo];
                     }
                 }
             }
@@ -138,7 +145,7 @@ class Impuestos extends Component
             }
             foreach ($anuales as $cod => $mod) {
                 if ($mod->despues_de === 'T'.$q) {
-                    $out[] = ['k' => 'D'.$cod, 'titulo' => $cod, 'plegable' => false, 'cols' => [['p' => 'A', 'g' => 'Anual', 'cod' => $cod, 'kind' => 'A']]];
+                    $out[] = ['k' => 'D'.$cod, 'titulo' => $cod, 'plegable' => false, 'cols' => [['ps' => ['A' => 'A'], 'g' => 'Anual', 'cod' => $cod]]];
                 }
             }
         }
@@ -146,7 +153,7 @@ class Impuestos extends Component
         foreach ($anuales as $cod => $mod) {
             $enSuTrimestre = in_array($mod->despues_de, ['T1', 'T2', 'T3', 'T4'], true) && in_array((int) substr($mod->despues_de, 1), $qs, true);
             if (! $enSuTrimestre) {
-                $cols[] = ['p' => 'A', 'g' => 'Anual', 'cod' => $cod, 'kind' => 'A'];
+                $cols[] = ['ps' => ['A' => 'A'], 'g' => 'Anual', 'cod' => $cod];
             }
         }
         if ($cols) {
@@ -393,14 +400,12 @@ class Impuestos extends Component
             foreach ($bloques as $bl) {
                 foreach ($bl['cols'] as $ci => $col) {
                     foreach ($porEnt[$entId][$col['cod']] ?? [] as $ob) {
-                        if ($ob->periodicidad !== $col['kind']) {
-                            continue;
-                        }
-                        $e = $estados[$ob->id][$col['p']] ?? null;
+                        $per = $col['ps'][$ob->periodicidad] ?? null;
+                        $e = $per ? ($estados[$ob->id][$per] ?? null) : null;
                         if ($e === null) {
                             continue;
                         }
-                        $matriz[$bl['k']][$ci][] = [$ob, $col['p'], $e];
+                        $matriz[$bl['k']][$ci][] = [$ob, $per, $e];
                         $resumen[$bl['k']][$e] = ($resumen[$bl['k']][$e] ?? 0) + 1;
                         $hay = true;
                         $pend = $pend || $e === 'pendiente';
