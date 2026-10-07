@@ -147,19 +147,19 @@
                     title="Por defecto solo ves tus impuestos (los de tus clientes o asignados a ti)">{{ $verTodos ? '👥 Viendo los de todos' : '👤 Solo los míos · ver todos' }}</button>
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
+                @if ($tarea)
+                    <x-neteges-info>
+                Última búsqueda de PDF en OneDrive: {{ \Illuminate\Support\Carbon::parse($tarea->terminada_at ?? $tarea->created_at)->diffForHumans() }} ·
+                {{ ['pendiente' => 'en cola', 'en_curso' => 'en marcha…', 'ok' => 'terminada', 'error' => 'con error'][$tarea->estado] ?? $tarea->estado }}
+                @php $res = json_decode($tarea->resultado ?? 'null', true); @endphp
+                @if (is_array($res) && isset($res['resumen'])) · {{ $res['resumen'] }} @endif
+                    </x-neteges-info>
+                @endif
             @endif
         </div>
 
         @if ($aviso)
             <div class="text-xs text-indigo-700 imp-noprint">{{ $aviso }}</div>
-        @endif
-        @if ($this->puedeTodos() && $tarea)
-            <div class="text-xs text-gray-500 imp-noprint">
-                Última búsqueda de PDF en OneDrive: {{ \Illuminate\Support\Carbon::parse($tarea->terminada_at ?? $tarea->created_at)->diffForHumans() }} ·
-                {{ ['pendiente' => 'en cola', 'en_curso' => 'en marcha…', 'ok' => 'terminada', 'error' => 'con error'][$tarea->estado] ?? $tarea->estado }}
-                @php $res = json_decode($tarea->resultado ?? 'null', true); @endphp
-                @if (is_array($res) && isset($res['resumen'])) · {{ $res['resumen'] }} @endif
-            </div>
         @endif
         @error('archivo') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
         <div wire:loading wire:target="archivo" class="text-xs text-indigo-700 imp-noprint">Subiendo el PDF…</div>
