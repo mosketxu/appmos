@@ -200,7 +200,6 @@ return [
     // Carpetas de OneDrive con los PDF de impuestos de cada año ({A}); se buscan en ellas y en sus subcarpetas. «_Clientes» y «Clientes» valen igual.
     'impuestos_raices' => [
         '_Clientes/{A}/_Impuestos {A}',
-        '_RUR_Marta_Alex/{A} RMA/Impuestos',
         '_RUR_Marta_Alex/{A} RMA/__Impuestos A_M_R_{A}',
     ],
 
