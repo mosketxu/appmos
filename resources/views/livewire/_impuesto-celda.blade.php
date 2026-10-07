@@ -2,10 +2,10 @@
 @php
     $clave = $ob->entidad_id.'|'.$ob->codigo.'|'.$ob->etiqueta.'|'.$per;
     $lista = $docs[$clave] ?? [];
-    $tipoPdf = $e === 'presentado' ? 'presentado' : 'borrador';
+    $tipoPdf = in_array($e, ['presentado', 'visto'], true) ? 'presentado' : 'borrador';
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
-    $conPdf = in_array($e, ['revision', 'revisado', 'visto', 'presentado'], true);
+    $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true);
     $titulo = \App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: cambiar)';
     $subir = "\$wire.subirA = '".$ob->id.'|'.$per."'; document.getElementById('imp-fichero').click()";
 @endphp

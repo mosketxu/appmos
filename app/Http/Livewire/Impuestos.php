@@ -209,7 +209,7 @@ class Impuestos extends Component
         $almacen = 'impuestos/docs/'.$sha.'.pdf';
         Storage::disk('local')->put($almacen, fopen($this->archivo->getRealPath(), 'rb'));
         ImpuestoDocumento::create(['entidad_id' => $ob->entidad_id, 'modelo' => $ob->codigo, 'etiqueta' => $ob->etiqueta, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo,
-            'tipo' => $estado === 'presentado' ? 'presentado' : 'borrador', 'nombre' => $nombre, 'almacen' => $almacen, 'tam' => $this->archivo->getSize(),
+            'tipo' => in_array($estado, ['presentado', 'visto'], true) ? 'presentado' : 'borrador', 'nombre' => $nombre, 'almacen' => $almacen, 'tam' => $this->archivo->getSize(),
             'sha256' => $sha, 'origen' => 'web', 'user_id' => auth()->id()]);
         $this->archivo = null;
         $this->subirA = '';
@@ -289,7 +289,7 @@ class Impuestos extends Component
                 });
         }
         $filas = [];
-        $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'visto' => 0, 'presentado' => 0];
+        $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'presentado' => 0, 'visto' => 0];
         foreach ($obs as $ob) {
             $celdas = $this->celdasDe($ob);
             if (! collect($celdas)->contains(fn ($c) => $c['periodo'] !== null)) {

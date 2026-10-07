@@ -87,7 +87,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-            @foreach (['pendiente', 'revision', 'revisado', 'visto', 'presentado'] as $e)
+            @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto'] as $e)
                 <span class="imp-chip"><i style="background:{{ $color[$e] }}"></i>{{ $etq[$e] }}: <b>{{ $cuenta[$e] }}</b></span>
             @endforeach
             <span class="imp-chip"><i style="background:#fff; border:1px dashed #9ca3af"></i>sin marcar: no tiene que presentarlo</span>
