@@ -92,6 +92,29 @@
                         title="{{ $cierra ? 'Mes '.$t.' y, como cierra el trimestre, también los trimestrales T'.(($i + 1) / 3).' y los pagos del 202 que toquen' : 'Solo los impuestos mensuales de '.$t }}">{{ $t }}@if ($cierra) <span style="opacity:.75">+T{{ ($i + 1) / 3 }}</span>@endif</button>
                 @endforeach
             </div>
+            {{-- Leyenda: botón junto a los meses; el detalle en un modal --}}
+            <div x-data="{ ley: false }" x-on:keydown.escape.window="ley = false" class="imp-noprint">
+                <button type="button" x-on:click="ley = true" class="imp-btn" style="border-radius:6px" title="Qué significa cada color y cómo se usa">❓ Leyenda</button>
+                <div x-show="ley" x-cloak style="display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); align-items:center; justify-content:center" x-bind:style="ley ? 'display:flex' : 'display:none'" x-on:click.self="ley = false">
+                    <div class="p-4 bg-white rounded-lg shadow-xl" style="width:560px; max-width:94vw; max-height:90vh; overflow:auto">
+                        <div class="flex items-center justify-between mb-2">
+                            <b class="text-lg">Leyenda</b>
+                            <button type="button" x-on:click="ley = false" class="px-2 text-xl leading-none text-gray-500 hover:text-gray-800">×</button>
+                        </div>
+                        <div class="flex flex-col gap-1.5 mb-3">
+<span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; border:1px dashed #9ca3af; background:#fff"></i>vacío = no tiene que presentarlo</span>
+            @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'] as $e)
+                <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; font-size:11px; background:{{ $color[$e] }}">{{ $letra[$e] }}</i>{{ $etq[$e] }} <b>({{ $cuenta[$e] }})</b></span>
+            @endforeach
+                        </div>
+                        <div class="text-sm text-gray-700">Un clic en la casilla pasa al siguiente estado: vacío → pendiente → listo para revisión → revisado → presentado → visto por Marta (este último solo lo marca ella).
+                Mayús+clic en una casilla = «no se presenta este periodo» (gris –: p. ej. un 111, 115 o 349 sin movimientos; otro Mayús+clic o un clic lo reabre como pendiente).
+                La casilla vacía (no hay obligación) solo se dibuja al pasar el ratón por encima, para poder activarla.<br>
+                Icono PDF: de color = hay PDF; gris = pulsa para subirlo (el borrador en revisión/revisado, el presentado después). Hojas apiladas = varios documentos.
+                💬 = comentarios de la casilla.</div>
+                    </div>
+                </div>
+            </div>
             @if ($this->puedeTodos() && $sinAsignar->count())
                 <button type="button" wire:click="$toggle('mostrarSinAsignar')" class="imp-btn {{ $mostrarSinAsignar ? 'on' : '' }}" style="border-radius:6px; border-color:#f59e0b; margin-left:auto"
                     title="PDF de OneDrive que no se han podido atribuir a ningún cliente">📄 {{ $sinAsignar->sum('n') }} PDF sin cliente</button>
@@ -116,22 +139,6 @@
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
             @endif
-        </div>
-
-        {{-- Leyenda de las marcas (con su letra) y cuántas hay en la vista --}}
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 bg-white border border-gray-200 rounded-md">
-            <x-neteges-info>
-                Un clic en la casilla pasa al siguiente estado: vacío → pendiente → listo para revisión → revisado → presentado → visto por Marta (este último solo lo marca ella).
-                Mayús+clic en una casilla = «no se presenta este periodo» (gris –: p. ej. un 111, 115 o 349 sin movimientos; otro Mayús+clic o un clic lo reabre como pendiente).
-                La casilla vacía (no hay obligación) solo se dibuja al pasar el ratón por encima, para poder activarla.<br>
-                Icono PDF: de color = hay PDF; gris = pulsa para subirlo (el borrador en revisión/revisado, el presentado después). Hojas apiladas = varios documentos.
-                💬 = comentarios de la casilla.
-            </x-neteges-info>
-            <b class="text-xs text-gray-500">LEYENDA</b>
-            <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; border:1px dashed #9ca3af; background:#fff"></i>vacío = no tiene que presentarlo</span>
-            @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'] as $e)
-                <span class="imp-chip"><i class="imp-m" style="width:18px; height:18px; font-size:11px; background:{{ $color[$e] }}">{{ $letra[$e] }}</i>{{ $etq[$e] }} <b>({{ $cuenta[$e] }})</b></span>
-            @endforeach
         </div>
 
         @if ($aviso)
