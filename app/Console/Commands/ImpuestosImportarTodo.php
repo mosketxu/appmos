@@ -70,7 +70,7 @@ class ImpuestosImportarTodo extends Command
                 if (! $aplicar) {
                     continue;
                 }
-                $ob = DB::table('entidad_impuestos')->where('entidad_id', $id)->where('modelo_id', $modeloId)->first();
+                $ob = DB::table('entidad_impuestos')->where('entidad_id', $id)->where('modelo_id', $modeloId)->where('etiqueta', '')->first();
                 $obId = $ob->id ?? DB::table('entidad_impuestos')->insertGetId(['entidad_id' => $id, 'modelo_id' => $modeloId, 'periodicidad' => $o['periodicidad'],
                     'created_at' => $ahora, 'updated_at' => $ahora]);
                 if ($ob && $ob->periodicidad !== $o['periodicidad']) {

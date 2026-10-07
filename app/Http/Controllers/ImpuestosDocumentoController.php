@@ -15,7 +15,7 @@ class ImpuestosDocumentoController extends Controller
         $u = auth()->user();
         if (! Impuestos::esGestor($u)) {
             $q = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
-                ->where('ei.entidad_id', $documento->entidad_id)->where('m.codigo', $documento->modelo);
+                ->where('ei.entidad_id', $documento->entidad_id)->where('m.codigo', $documento->modelo)->where('ei.etiqueta', (string) $documento->etiqueta);
             abort_unless($documento->entidad_id && Impuestos::soloVisibles($q, $u)->exists(), 403);
         }
         $ruta = Storage::disk('local')->path($documento->almacen);

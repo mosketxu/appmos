@@ -18,6 +18,7 @@ class EntidadImpuestos extends Component
 
     public string $nuevoModelo = '';
     public string $nuevaPeriodicidad = '';
+    public string $nuevaEtiqueta = '';
 
     // Alta de un impuesto nuevo en el catálogo (solo Admin)
     public bool $crearModelo = false;
@@ -47,10 +48,11 @@ class EntidadImpuestos extends Component
         if (! $m || ! array_key_exists($this->nuevaPeriodicidad, Impuestos::PERIODICIDADES)) {
             return;
         }
-        $ob = EntidadImpuesto::firstOrCreate(['entidad_id' => $this->entidadId, 'modelo_id' => $m->id], ['periodicidad' => $this->nuevaPeriodicidad]);
+        $ob = EntidadImpuesto::firstOrCreate(['entidad_id' => $this->entidadId, 'modelo_id' => $m->id, 'etiqueta' => trim($this->nuevaEtiqueta)], ['periodicidad' => $this->nuevaPeriodicidad]);
         $this->asegurar($ob->id);
         $this->nuevoModelo = '';
         $this->nuevaPeriodicidad = '';
+        $this->nuevaEtiqueta = '';
     }
 
     public function cambiarPeriodicidad(int $id, string $periodicidad): void
@@ -65,6 +67,17 @@ class EntidadImpuestos extends Component
     {
         abort_unless($this->puedeEditar(), 403);
         EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id)->update(['user_id' => $userId === '' ? null : (int) $userId]);
+    }
+
+    public function cambiarEtiqueta(int $id, string $texto): void
+    {
+        abort_unless($this->puedeEditar(), 403);
+        $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id);
+        $texto = trim($texto);
+        if (EntidadImpuesto::where('entidad_id', $this->entidadId)->where('modelo_id', $ob->modelo_id)->where('etiqueta', $texto)->where('id', '!=', $id)->exists()) {
+            return;   // ya hay otra con esa etiqueta
+        }
+        $ob->update(['etiqueta' => $texto]);
     }
 
     public function guardarObservaciones(int $id, string $texto): void
@@ -102,10 +115,9 @@ class EntidadImpuestos extends Component
     public function render()
     {
         $obs = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
-            ->where('ei.entidad_id', $this->entidadId)->orderBy('m.orden')
-            ->get(['ei.id', 'ei.periodicidad', 'ei.user_id', 'ei.observaciones', 'm.codigo', 'm.nombre']);
-        $usados = $obs->pluck('codigo')->all();
-        $modelos = ImpuestoModelo::where('activo', true)->orderBy('orden')->get()->reject(fn ($m) => in_array($m->codigo, $usados, true));
+            ->where('ei.entidad_id', $this->entidadId)->orderBy('m.orden')->orderBy('ei.etiqueta')
+            ->get(['ei.id', 'ei.etiqueta', 'ei.periodicidad', 'ei.user_id', 'ei.observaciones', 'm.codigo', 'm.nombre']);
+        $modelos = ImpuestoModelo::where('activo', true)->orderBy('orden')->get();
         $responsables = DB::table('sumas')->join('users', 'users.id', '=', 'sumas.user_id')->orderBy('sumas.nombre')->get(['users.id', 'sumas.nombre']);
 
         return view('livewire.entidad-impuestos', ['obs' => $obs, 'modelos' => $modelos, 'responsables' => $responsables, 'editar' => $this->puedeEditar()]);

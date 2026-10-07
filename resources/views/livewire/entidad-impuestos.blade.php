@@ -9,13 +9,17 @@
             <table class="text-sm">
                 <thead>
                     <tr class="text-xs text-left text-gray-500">
-                        <th class="px-1 pr-4">Impuesto</th><th class="px-1 pr-4">Periodo</th><th class="px-1 pr-4">Lo lleva</th><th class="px-1 pr-4">Observaciones</th><th></th>
+                        <th class="px-1 pr-4">Impuesto</th><th class="px-1 pr-4" title="Solo si el cliente presenta dos declaraciones del mismo impuesto">Etiqueta</th><th class="px-1 pr-4">Periodo</th><th class="px-1 pr-4">Lo lleva</th><th class="px-1 pr-4">Observaciones</th><th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($obs as $o)
                         <tr wire:key="ei-{{ $o->id }}">
                             <td class="px-1 pr-4" style="white-space:nowrap"><b>{{ ctype_digit($o->codigo) ? 'M'.$o->codigo : $o->codigo }}</b> <span class="text-xs text-gray-500">{{ $o->nombre }}</span></td>
+                            <td class="px-1 pr-4">
+                                <input type="text" value="{{ $o->etiqueta }}" maxlength="60" placeholder="(la normal)" @disabled(! $editar) wire:change="cambiarEtiqueta({{ $o->id }}, $event.target.value)"
+                                    class="py-0.5 text-sm border-gray-300 rounded-md" style="width:130px">
+                            </td>
                             <td class="px-1 pr-4">
                                 <select wire:change="cambiarPeriodicidad({{ $o->id }}, $event.target.value)" @disabled(! $editar) class="py-0.5 text-sm border-gray-300 rounded-md">
                                     @foreach (\App\Support\Impuestos::PERIODICIDADES as $k => $t)
@@ -60,6 +64,7 @@
                             <option value="{{ $k }}">{{ $t }}</option>
                         @endforeach
                     </select>
+                    <input type="text" wire:model="nuevaEtiqueta" maxlength="60" placeholder="Etiqueta (si ya tiene otra igual)" class="py-1 text-sm border-gray-300 rounded-md" style="width:210px">
                     <button type="button" wire:click="anadir" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir</button>
                 @endif
                 @role('Admin')

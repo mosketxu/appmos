@@ -87,7 +87,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-            @foreach (['pendiente', 'revision', 'revisado', 'presentado'] as $e)
+            @foreach (['pendiente', 'revision', 'revisado', 'visto', 'presentado'] as $e)
                 <span class="imp-chip"><i style="background:{{ $color[$e] }}"></i>{{ $etq[$e] }}: <b>{{ $cuenta[$e] }}</b></span>
             @endforeach
             <span class="imp-chip"><i style="background:#fff; border:1px dashed #9ca3af"></i>sin marcar: no tiene que presentarlo</span>
@@ -122,6 +122,7 @@
                     <div class="mt-2 text-sm">
                         «{{ $asignarTexto }}» es →
                         <input type="text" wire:model.live.debounce.300ms="buscarEnt" placeholder="Buscar entidad…" class="py-1 text-sm border-gray-300 rounded-md" autofocus>
+                        <input type="text" wire:model="asignarEtiqueta" placeholder="Etiqueta (solo si es otra declaración del mismo cliente)" class="py-1 text-sm border-gray-300 rounded-md" style="width:340px">
                         @foreach ($this->resultadosEntidad as $e)
                             <button type="button" wire:click="asignar({{ $e->id }})" class="imp-btn" style="border-radius:6px; margin-left:4px">{{ $e->entidad }}{{ $e->estado == 1 ? '' : ' (baja)' }}</button>
                         @endforeach
@@ -164,7 +165,7 @@
                                     </td>
                                 @endif
                                 <td style="white-space:nowrap" title="{{ $ob->modelo_nombre }} · {{ \App\Support\Impuestos::PERIODICIDADES[$ob->periodicidad] }}">
-                                    <b>{{ ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo }}</b> <span class="text-gray-400">{{ $ob->periodicidad }}</span></td>
+                                    <b>{{ ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo }}</b> <span class="text-gray-400">{{ $ob->periodicidad }}</span>@if ($ob->etiqueta !== '') <span class="text-xs font-semibold text-indigo-700">· {{ $ob->etiqueta }}</span>@endif</td>
                                 <td class="text-gray-500" style="white-space:nowrap">{{ $ob->resp ? \Illuminate\Support\Str::of($ob->resp)->explode(' ')->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->implode('') : '' }}</td>
                                 @php $col = 0; @endphp
                                 @foreach ($o['celdas'] as $ci => $c)

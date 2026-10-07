@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Periodicidad de una obligación: M mensual (periodos 01..12), T trimestral (T1..T4), A anual (A), P pagos fraccionados del 202 (P1..P3).
  * Estados de un periodo (ciclo con cada clic): no (vacío: no tiene que presentarlo) → pendiente (rojo) → revision (naranja, listo para
- * revisar) → revisado (azul, listo para presentar) → presentado (verde).
+ * revisar) → revisado (azul, listo para presentar) → visto (verde oscuro: visto por Marta) → presentado (verde).
  * Ejercicio = año del seguimiento. Para los modelos con «desfase» (200, D2, LIB) es el año siguiente al del impuesto: el IS 2025 se
  * presenta y se sigue en el ejercicio 2026, como en el ToDO Alex.
  */
@@ -22,14 +22,15 @@ class Impuestos
         'pendiente' => 'Pendiente',
         'revision' => 'Listo para revisión',
         'revisado' => 'Revisado, listo para presentar',
+        'visto' => 'Visto por Marta',
         'presentado' => 'Presentado',
     ];
 
     /** Orden del clic. */
-    public const CICLO = ['no', 'pendiente', 'revision', 'revisado', 'presentado'];
+    public const CICLO = ['no', 'pendiente', 'revision', 'revisado', 'visto', 'presentado'];
 
-    public const COLOR = ['pendiente' => '#dc2626', 'revision' => '#f97316', 'revisado' => '#2563eb', 'presentado' => '#16a34a'];
-    public const LETRA = ['pendiente' => 'x', 'revision' => 'r', 'revisado' => 'v', 'presentado' => '✓'];
+    public const COLOR = ['pendiente' => '#dc2626', 'revision' => '#f97316', 'revisado' => '#2563eb', 'visto' => '#15803d', 'presentado' => '#16a34a'];
+    public const LETRA = ['pendiente' => 'x', 'revision' => 'r', 'revisado' => 'p', 'visto' => 'v', 'presentado' => '✓'];
 
     public const PERIODICIDADES = ['M' => 'Mensual', 'T' => 'Trimestral', 'A' => 'Anual', 'P' => 'Pagos fraccionados (1P 2P 3P)'];
 

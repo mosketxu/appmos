@@ -42,6 +42,7 @@ class Impuestos extends Component
     public bool $mostrarSinAsignar = false;
     public string $asignarTexto = '';
     public string $buscarEnt = '';
+    public string $asignarEtiqueta = '';
 
     public ?int $tareaPdfs = null;
     public string $aviso = '';
@@ -146,7 +147,7 @@ class Impuestos extends Component
             ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->leftJoin('sumas as s', 's.id', '=', 'e.suma_id')
             ->where('m.activo', true)
-            ->select('ei.id', 'ei.entidad_id', 'ei.periodicidad', 'ei.user_id', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp',
+            ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'ei.user_id', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp',
                 'm.codigo', 'm.nombre as modelo_nombre', 'm.orden', 'm.mes_anual', 'm.desfase')
             ->orderBy('e.entidad')->orderBy('m.orden');
         Imp::soloVisibles($q, null, $this->verTodos);
@@ -207,7 +208,7 @@ class Impuestos extends Component
         $sha = hash_file('sha256', $this->archivo->getRealPath());
         $almacen = 'impuestos/docs/'.$sha.'.pdf';
         Storage::disk('local')->put($almacen, fopen($this->archivo->getRealPath(), 'rb'));
-        ImpuestoDocumento::create(['entidad_id' => $ob->entidad_id, 'modelo' => $ob->codigo, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo,
+        ImpuestoDocumento::create(['entidad_id' => $ob->entidad_id, 'modelo' => $ob->codigo, 'etiqueta' => $ob->etiqueta, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo,
             'tipo' => $estado === 'presentado' ? 'presentado' : 'borrador', 'nombre' => $nombre, 'almacen' => $almacen, 'tam' => $this->archivo->getSize(),
             'sha256' => $sha, 'origen' => 'web', 'user_id' => auth()->id()]);
         $this->archivo = null;
@@ -260,11 +261,12 @@ class Impuestos extends Component
         abort_unless($this->puedeTodos() && $this->asignarTexto !== '', 403);
         $a = ImpuestosPdfs::normalizar($this->asignarTexto);
         if (strlen($a) >= 2 && DB::table('entidades')->where('id', $entidadId)->exists()) {
-            DB::table('impuesto_alias')->updateOrInsert(['alias' => $a], ['entidad_id' => $entidadId, 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('impuesto_alias')->updateOrInsert(['alias' => $a], ['entidad_id' => $entidadId, 'etiqueta' => trim($this->asignarEtiqueta), 'created_at' => now(), 'updated_at' => now()]);
             ImpuestosPdfs::reasociarSinAsignar();
         }
         $this->asignarTexto = '';
         $this->buscarEnt = '';
+        $this->asignarEtiqueta = '';
     }
 
     public function render()
@@ -282,12 +284,12 @@ class Impuestos extends Component
         $entIds = $obs->pluck('entidad_id')->unique()->all();
         foreach (array_chunk($entIds ?: [0], 1000) as $trozo) {
             DB::table('impuesto_documentos')->where('ejercicio', $this->ejercicio)->whereIn('entidad_id', $trozo)->whereNotNull('periodo')
-                ->orderBy('id')->get(['id', 'entidad_id', 'modelo', 'periodo', 'tipo', 'nombre'])->each(function ($d) use (&$docs) {
-                    $docs[$d->entidad_id.'|'.$d->modelo.'|'.$d->periodo][] = $d;
+                ->orderBy('id')->get(['id', 'entidad_id', 'modelo', 'etiqueta', 'periodo', 'tipo', 'nombre'])->each(function ($d) use (&$docs) {
+                    $docs[$d->entidad_id.'|'.$d->modelo.'|'.$d->etiqueta.'|'.$d->periodo][] = $d;
                 });
         }
         $filas = [];
-        $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'presentado' => 0];
+        $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'visto' => 0, 'presentado' => 0];
         foreach ($obs as $ob) {
             $celdas = $this->celdasDe($ob);
             if (! collect($celdas)->contains(fn ($c) => $c['periodo'] !== null)) {

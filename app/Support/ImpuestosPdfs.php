@@ -18,6 +18,9 @@ class ImpuestosPdfs
     /** Palabras que convierten un fichero en «otro» documento (justificante, aplazamiento...): no cuenta como el impuesto presentado. */
     protected const OTROS = '/justific|aplaz|concesi|solicitud|recargo|requerimiento|rectificativ|\bnrc\b|\bpago\b(?!\s+(?:fraccionado|a cuenta))|datos fiscales|propuesta|escrito|resoluci|carta de pago|multa|comprobante|memoria/iu';
 
+    /** [alias normalizado => etiqueta] de la última indiceNombres(): qué declaración del cliente es cada nombre de fichero. */
+    public static array $etiquetas = [];
+
     /** Texto sin acentos, minúsculas, sin puntuación y sin la forma societaria final (S.L., SA...): para comparar nombres. */
     public static function normalizar(string $s): string
     {
@@ -132,8 +135,12 @@ class ImpuestosPdfs
                 $add(str_replace('_', ' ', $e->alias), $e->id);
             }
         }
+        self::$etiquetas = [];
         foreach (DB::table('impuesto_alias')->get() as $a) {
             $idx[$a->alias][$a->entidad_id] = $a->entidad_id;
+            if ($a->etiqueta !== '') {
+                self::$etiquetas[$a->alias] = $a->etiqueta;
+            }
         }
 
         return $idx;
@@ -205,8 +212,12 @@ class ImpuestosPdfs
     public static function asociar(ImpuestoDocumento $doc, ?array $idx = null): void
     {
         $p = self::parsear($doc->nombre, $doc->ruta_origen ? self::anioDeRuta($doc->ruta_origen) : null);
-        $doc->fill(['cliente_texto' => $p['cliente_texto'], 'modelo' => $p['modelo'], 'ejercicio' => $p['ejercicio'], 'periodo' => $p['periodo'], 'tipo' => $p['tipo']]);
+        // un documento marcado «otro» (a mano o por el nombre) no vuelve a «presentado» al reasociarlo
+        $tipo = $doc->tipo === 'otro' && $p['tipo'] === 'presentado' ? 'otro' : $p['tipo'];
+        $doc->fill(['cliente_texto' => $p['cliente_texto'], 'modelo' => $p['modelo'], 'ejercicio' => $p['ejercicio'], 'periodo' => $p['periodo'], 'tipo' => $tipo]);
+        $idx ??= self::indiceNombres();
         $doc->entidad_id = self::entidadPorTexto((string) $p['cliente_texto'], $idx);
+        $doc->etiqueta = $doc->entidad_id ? (self::$etiquetas[self::normalizar((string) $p['cliente_texto'])] ?? '') : '';
         $doc->save();
         self::aplicar($doc);
     }
@@ -222,10 +233,10 @@ class ImpuestosPdfs
             return;
         }
         $per = Impuestos::periodicidadDe($doc->periodo);
-        $ob = DB::table('entidad_impuestos')->where('entidad_id', $doc->entidad_id)->where('modelo_id', $modelo->id)->first();
+        $ob = DB::table('entidad_impuestos')->where('entidad_id', $doc->entidad_id)->where('modelo_id', $modelo->id)->where('etiqueta', (string) $doc->etiqueta)->first();
         $ahora = now();
         if (! $ob) {
-            $id = DB::table('entidad_impuestos')->insertGetId(['entidad_id' => $doc->entidad_id, 'modelo_id' => $modelo->id, 'periodicidad' => $per,
+            $id = DB::table('entidad_impuestos')->insertGetId(['entidad_id' => $doc->entidad_id, 'modelo_id' => $modelo->id, 'etiqueta' => (string) $doc->etiqueta, 'periodicidad' => $per,
                 'created_at' => $ahora, 'updated_at' => $ahora]);
             Impuestos::asegurarEjercicio((int) $doc->ejercicio, $id);
             $ob = (object) ['id' => $id, 'periodicidad' => $per];
