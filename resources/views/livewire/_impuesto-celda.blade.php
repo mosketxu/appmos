@@ -43,6 +43,6 @@
             <button type="button" class="imp-pdf gris" x-on:click="{!! $subir !!}" title="Sin PDF: pulsa para subir {{ $tipoPdf === 'presentado' ? 'el presentado' : 'el borrador' }}">@include('livewire._impuesto-pdf')</button>
         @endif
     @endif
-    <button type="button" class="imp-com {{ $cm ? 'tiene' : '' }}" wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
+    <button type="button" class="imp-com {{ $cm ? 'tiene' : ($e === 'no' ? 'oculta' : '') }}" wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
         title="{{ $cm ? $cmTitulo : 'Añadir un comentario' }}">{{ $cm ? '💬' : '' }}@if (count($cm) > 1)<sup>{{ count($cm) }}</sup>@endif</button>
 </span>

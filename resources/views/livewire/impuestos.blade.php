@@ -59,9 +59,11 @@
         .imp-cel { position: relative; }
         .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 1; font-size: 12px; cursor: pointer; }
         .imp-com.tiene sup { font-size: 9px; font-weight: 700; color: #92400e; }
-        .imp-com:not(.tiene) { position: absolute; right: -7px; top: -6px; width: 12px; height: 12px; visibility: hidden; }
-        .imp-com:not(.tiene)::before { content: '💬'; font-size: 10px; filter: grayscale(1); opacity: .6; }
-        .imp-cel:hover .imp-com:not(.tiene) { visibility: visible; }
+        .imp-com:not(.tiene) { opacity: .7; }
+        .imp-com:not(.tiene)::before { content: '💬'; font-size: 13px; }
+        .imp-com:not(.tiene):hover { opacity: 1; }
+        .imp-com.oculta:not(.tiene) { visibility: hidden; }
+        .imp-cel:hover .imp-com.oculta:not(.tiene) { visibility: visible; }
         .imp-btn:first-child { border-radius: 6px 0 0 6px; } .imp-btn:last-child { border-radius: 0 6px 6px 0; }
     </style>
 
