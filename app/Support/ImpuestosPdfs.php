@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 class ImpuestosPdfs
 {
     /** Palabras que convierten un fichero en «otro» documento (justificante, aplazamiento...): no cuenta como el impuesto presentado. */
-    protected const OTROS = '/justific|aplaz|concesi|solicitud|recargo|requerimiento|rectificativ|\bnrc\b|datos fiscales|propuesta|escrito|resoluci|carta de pago|multa|comprobante|memoria/iu';
+    protected const OTROS = '/justific|aplaz|concesi|solicitud|recargo|requerimiento|rectificativ|\bnrc\b|\bpago\b(?!\s+(?:fraccionado|a cuenta))|datos fiscales|propuesta|escrito|resoluci|carta de pago|multa|comprobante|memoria/iu';
 
     /** Texto sin acentos, minúsculas, sin puntuación y sin la forma societaria final (S.L., SA...): para comparar nombres. */
     public static function normalizar(string $s): string
