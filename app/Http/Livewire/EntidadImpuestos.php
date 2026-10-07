@@ -53,6 +53,7 @@ class EntidadImpuestos extends Component
         $this->nuevoModelo = '';
         $this->nuevaPeriodicidad = '';
         $this->nuevaEtiqueta = '';
+        $this->dispatch('impuestos-cambiados');
     }
 
     public function cambiarPeriodicidad(int $id, string $periodicidad): void
@@ -61,6 +62,7 @@ class EntidadImpuestos extends Component
         $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id);
         $ob->update(['periodicidad' => $periodicidad]);
         $this->asegurar($ob->id);
+        $this->dispatch('impuestos-cambiados');
     }
 
     public function cambiarResponsable(int $id, string $userId): void
@@ -78,6 +80,7 @@ class EntidadImpuestos extends Component
             return;   // ya hay otra con esa etiqueta
         }
         $ob->update(['etiqueta' => $texto]);
+        $this->dispatch('impuestos-cambiados');
     }
 
     public function guardarObservaciones(int $id, string $texto): void
@@ -90,6 +93,7 @@ class EntidadImpuestos extends Component
     {
         abort_unless($this->puedeEditar(), 403);
         EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id)->delete();   // sus estados se borran con ella
+        $this->dispatch('impuestos-cambiados');
     }
 
     public function guardarModelo(): void

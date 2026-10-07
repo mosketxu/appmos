@@ -162,6 +162,21 @@
             </div>
         @endif
 
+        @if ($editEnt)
+            <div class="imp-noprint" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center" wire:click.self="cerrarEntidad">
+                <div style="background:#fff; border-radius:8px; padding:14px; width:min(900px, 96vw); max-height:86vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.3)">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="font-semibold text-gray-900">{{ \Illuminate\Support\Facades\DB::table('entidades')->where('id', $editEnt)->value('entidad') }}</div>
+                        <div class="flex items-center gap-3">
+                            <a href="{{ route('entidad.edit', $editEnt) }}" class="text-xs text-indigo-700 hover:underline" target="_blank">Abrir la ficha de la entidad ↗</a>
+                            <button type="button" wire:click="cerrarEntidad" class="text-gray-400 hover:text-gray-700" title="Cerrar">✕</button>
+                        </div>
+                    </div>
+                    @livewire('entidad-impuestos', ['entidadId' => $editEnt], key('ei-modal-'.$editEnt))
+                </div>
+            </div>
+        @endif
+
         @if ($comOb)
             @php $cd = $this->comentariosAbiertos; @endphp
             <div class="imp-noprint" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center" wire:click.self="cerrarComentarios">
@@ -240,7 +255,8 @@
                         @php $ent = $f['ent']; @endphp
                         <tr wire:key="c-{{ $entId }}" class="imp-ult">
                             <td class="imp-sticky" style="white-space:nowrap">
-                                <a href="{{ route('entidad.edit', $entId) }}" class="font-medium text-gray-900 hover:underline" title="Abrir la entidad (aquí se define qué impuestos presenta). Responsable: {{ $ent->resp ?: '—' }}">{{ $ent->entidad }}</a>
+                                <button type="button" wire:click="abrirEntidad({{ $entId }})" class="font-medium text-left text-gray-900 hover:underline" style="background:none; border:0; padding:0; cursor:pointer"
+                                    title="Añadir o quitar los impuestos de este cliente. Responsable: {{ $ent->resp ?: '—' }}">{{ $ent->entidad }}</button>
                                 @if ($ent->estado_ent != 1) <span class="text-xs text-amber-700">(baja)</span> @endif
                             </td>
                             @foreach ($bloques as $bl)

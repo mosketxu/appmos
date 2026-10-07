@@ -8,6 +8,7 @@ use App\Support\Impuestos as Imp;
 use App\Support\ImpuestosPdfs;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -43,6 +44,9 @@ class Impuestos extends Component
     public string $asignarTexto = '';
     public string $buscarEnt = '';
     public string $asignarEtiqueta = '';
+
+    /** Cliente cuya ventana «añadir o quitar impuestos» está abierta. */
+    public ?int $editEnt = null;
 
     // Comentarios de una casilla (ventana abierta): «obligación», periodo y texto nuevo
     public ?int $comOb = null;
@@ -243,6 +247,26 @@ class Impuestos extends Component
             'sha256' => $sha, 'origen' => 'web', 'user_id' => auth()->id()]);
         $this->archivo = null;
         $this->subirA = '';
+    }
+
+    // ------------------------------------------------------------------ impuestos del cliente
+
+    public function abrirEntidad(int $entidadId): void
+    {
+        $q = DB::table('entidad_impuestos as ei')->where('ei.entidad_id', $entidadId);
+        abort_unless(auth()->user()?->can('impuestos.ver') && Imp::soloVisibles($q, null, $this->verTodos)->exists(), 403);
+        $this->editEnt = $entidadId;
+    }
+
+    public function cerrarEntidad(): void
+    {
+        $this->editEnt = null;
+    }
+
+    /** Lo dispara la ventana de impuestos del cliente al añadir, quitar o cambiar algo: la tabla se vuelve a pintar. */
+    #[On('impuestos-cambiados')]
+    public function refrescar(): void
+    {
     }
 
     // ------------------------------------------------------------------ comentarios
