@@ -72,6 +72,11 @@
             <b style="font-size:16px">Impuestos {{ $ejercicio }}</b> · vista: {{ $vista === 'anio' ? 'año completo' : (ctype_digit($vista) ? 'mes '.$vista : $vista) }}
             @if ($filtroModelo !== '') · impuesto {{ $filtroModelo }} @endif @if (trim($buscar) !== '') · «{{ $buscar }}» @endif @if ($soloPendientes) · solo con pendientes @endif
             · {{ $verTodos ? 'todos los clientes' : 'mis clientes' }} · impreso el {{ now()->format('d/m/Y H:i') }}
+            <div style="display:flex; flex-wrap:wrap; gap:2px 12px; margin-top:3px; font-size:10px">
+                @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'] as $e)
+                    <span class="imp-chip"><i class="imp-m" style="width:13px; height:13px; font-size:9px; background:{{ $color[$e] }}">{{ $letra[$e] }}</i>{{ $etq[$e] }}</span>
+                @endforeach
+            </div>
         </div>
         <div class="flex flex-wrap items-center gap-3 imp-noprint">
             <h1 class="text-2xl font-semibold text-gray-900">Impuestos</h1>
