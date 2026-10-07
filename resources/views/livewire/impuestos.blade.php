@@ -80,6 +80,10 @@
         </div>
         <div class="flex flex-wrap items-center gap-3 imp-noprint">
             <h1 class="text-2xl font-semibold text-gray-900">Impuestos</h1>
+            <x-neteges-info>Una fila por cliente. Orden: trimestre → mes → impuesto (01 02 03 | T1, 04 05 06 | T2…; el D2 entre T1 y 04) y al final las anuales. Pulsa el título de un trimestre
+            o de «Anuales» para comprimirlo (queda una casilla con lo peor que haya dentro: rojo con el nº de pendientes). Los meses solo salen si algún cliente declara por meses.
+            IS, depósito de cuentas y legalización muestran el ejercicio anterior (IS {{ $ejercicio - 1 }} se sigue en {{ $ejercicio }}). 202: pagos 1P (T1), 2P (T3) y 3P (T4).
+            Si un cliente tiene dos declaraciones del mismo impuesto, la segunda lleva delante las 3 primeras letras de su etiqueta.</x-neteges-info>
             <div class="flex items-center gap-1">
                 <button type="button" wire:click="cambiarEjercicio(-1)" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">◀</button>
                 <span class="px-2 font-semibold">{{ $ejercicio }}</span>
@@ -343,12 +347,6 @@
                 @endforeach
             </div>
         @endif
-        <p class="text-xs text-gray-500">
-            Una fila por cliente. Orden: trimestre → mes → impuesto (01 02 03 | T1, 04 05 06 | T2…; el D2 entre T1 y 04) y al final las anuales. Pulsa el título de un trimestre
-            o de «Anuales» para comprimirlo (queda una casilla con lo peor que haya dentro: rojo con el nº de pendientes). Los meses solo salen si algún cliente declara por meses.
-            IS, depósito de cuentas y legalización muestran el ejercicio anterior (IS {{ $ejercicio - 1 }} se sigue en {{ $ejercicio }}). 202: pagos 1P (T1), 2P (T3) y 3P (T4).
-            Si un cliente tiene dos declaraciones del mismo impuesto, la segunda lleva delante las 3 primeras letras de su etiqueta.
-        </p>
     </div>
 </div>
 
