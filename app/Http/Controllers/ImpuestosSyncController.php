@@ -45,21 +45,15 @@ class ImpuestosSyncController extends Controller
             }
         }
 
-        // Lo que ya no está en OneDrive (movido de carpeta, borrado): se quita de las carpetas recorridas, con su fichero si nadie más lo usa
+        // Lo que ya no está en OneDrive (movido, borrado) NO se quita de Appmos: sirve de copia de seguridad. Solo se cuenta, para el resumen.
         $presentes = array_flip(array_column((array) $r->input('ficheros', []), 'ruta'));
         $quitados = 0;
         if ($presentes && $r->input('completo')) {
             $raices = array_map(fn ($x) => rtrim((string) $x, '/').'/', (array) $r->input('raices', []));
             foreach ($conocidos as $ruta => $d) {
-                if (isset($presentes[$ruta]) || ! collect($raices)->contains(fn ($x) => str_starts_with($ruta, $x))) {
-                    continue;
+                if (! isset($presentes[$ruta]) && collect($raices)->contains(fn ($x) => str_starts_with($ruta, $x))) {
+                    $quitados++;
                 }
-                $doc = ImpuestoDocumento::where('ruta_origen', $ruta)->first();
-                $doc?->delete();
-                if ($doc && ! ImpuestoDocumento::where('almacen', $doc->almacen)->exists()) {
-                    \Illuminate\Support\Facades\Storage::disk('local')->delete($doc->almacen);
-                }
-                $quitados += $doc ? 1 : 0;
             }
         }
 
