@@ -20,6 +20,7 @@
         .imp-sticky { position: sticky; left: 0; z-index: 2; background: #fff; min-width: 190px; max-width: 260px; border-right: 1px solid #e5e7eb; }
         th.imp-sticky { background: #f9fafb; z-index: 3; text-align: left; }
         .imp-qb { border-left: 2px solid #9ca3af; }
+        .imp-tabla th[wire\:click]:hover { background: #eef2ff; }
         .imp-cel { display: inline-flex; align-items: center; gap: 1px; justify-content: center; min-width: 38px; }
         .imp-m { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; border: 1px solid transparent;
                  color: #fff; font-weight: 700; font-size: 13px; line-height: 1; cursor: pointer; padding: 0; }
@@ -39,11 +40,38 @@
         .imp-chip i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; font-style: normal; text-align: center; line-height: 18px; color: #fff; font-weight: 700; }
         .imp-btn { padding: 3px 10px; font-size: 13px; border: 1px solid #d1d5db; background: #fff; color: #374151; }
         .imp-btn.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+        @page { size: A4 landscape; margin: 8mm; }
+        @media print {
+            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-com:not(.tiene), #imp-fichero { display: none !important; }
+            body { background: #fff !important; }
+            .imp-solo-print { display: block !important; }
+            #imp-pagina { padding: 0 !important; }
+            .overflow-x-auto { overflow: visible !important; border: 0 !important; box-shadow: none !important; }
+            .imp-tabla { font-size: 9px; }
+            .imp-tabla th, .imp-tabla td { padding: 1px 2px; }
+            .imp-sticky { position: static !important; min-width: 0; max-width: 150px; white-space: normal !important; }
+            .imp-m { width: 15px; height: 15px; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .imp-chip i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .imp-cel { min-width: 0; }
+            tr { break-inside: avoid; }
+            thead { display: table-header-group; }
+        }
+        .imp-cel { position: relative; }
+        .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 1; font-size: 12px; cursor: pointer; }
+        .imp-com.tiene sup { font-size: 9px; font-weight: 700; color: #92400e; }
+        .imp-com:not(.tiene) { position: absolute; right: -7px; top: -6px; width: 12px; height: 12px; visibility: hidden; }
+        .imp-com:not(.tiene)::before { content: '💬'; font-size: 10px; filter: grayscale(1); opacity: .6; }
+        .imp-cel:hover .imp-com:not(.tiene) { visibility: visible; }
         .imp-btn:first-child { border-radius: 6px 0 0 6px; } .imp-btn:last-child { border-radius: 0 6px 6px 0; }
     </style>
 
-    <div class="p-3 space-y-2">
-        <div class="flex flex-wrap items-center gap-3">
+    <div class="p-3 space-y-2" id="imp-pagina">
+        <div class="imp-solo-print" style="display:none; font-size:12px">
+            <b style="font-size:16px">Impuestos {{ $ejercicio }}</b> · vista: {{ $vista === 'anio' ? 'año completo' : (ctype_digit($vista) ? 'mes '.$vista : $vista) }}
+            @if ($filtroModelo !== '') · impuesto {{ $filtroModelo }} @endif @if (trim($buscar) !== '') · «{{ $buscar }}» @endif @if ($soloPendientes) · solo con pendientes @endif
+            · {{ $verTodos ? 'todos los clientes' : 'mis clientes' }} · impreso el {{ now()->format('d/m/Y H:i') }}
+        </div>
+        <div class="flex flex-wrap items-center gap-3 imp-noprint">
             <h1 class="text-2xl font-semibold text-gray-900">Impuestos</h1>
             <div class="flex items-center gap-1">
                 <button type="button" wire:click="cambiarEjercicio(-1)" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">◀</button>
@@ -57,12 +85,14 @@
             </div>
             <div class="inline-flex">
                 @foreach (\App\Support\Impuestos::MESES as $i => $t)
-                    <button type="button" wire:click="$set('vista','{{ sprintf('%02d', $i + 1) }}')" class="imp-btn {{ $vista === sprintf('%02d', $i + 1) ? 'on' : '' }}" style="padding:3px 7px">{{ $t }}</button>
+                    @php $cierra = ($i + 1) % 3 === 0; @endphp
+                    <button type="button" wire:click="$set('vista','{{ sprintf('%02d', $i + 1) }}')" class="imp-btn {{ $vista === sprintf('%02d', $i + 1) ? 'on' : '' }}" style="padding:3px 7px"
+                        title="{{ $cierra ? 'Mes '.$t.' y, como cierra el trimestre, también los trimestrales T'.(($i + 1) / 3).' y los pagos del 202 que toquen' : 'Solo los impuestos mensuales de '.$t }}">{{ $t }}@if ($cierra) <span style="opacity:.75">+T{{ ($i + 1) / 3 }}</span>@endif</button>
                 @endforeach
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3 text-sm">
+        <div class="flex flex-wrap items-center gap-3 text-sm imp-noprint">
             <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar cliente…" class="py-1 text-sm border-gray-300 rounded-md">
             <select wire:model.live="filtroModelo" class="py-1 text-sm border-gray-300 rounded-md">
                 <option value="">Todos los impuestos</option>
@@ -77,6 +107,7 @@
                     title="Por defecto solo ves tus impuestos (los de tus clientes o asignados a ti)">{{ $verTodos ? '👥 Viendo los de todos' : '👤 Solo los míos · ver todos' }}</button>
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
+                <button type="button" onclick="window.print()" class="imp-btn" style="border-radius:6px" title="Imprime la lista tal como está en pantalla (apaisado)">🖨 Imprimir</button>
                 @if ($sinAsignar->count())
                     <button type="button" wire:click="$toggle('mostrarSinAsignar')" class="imp-btn {{ $mostrarSinAsignar ? 'on' : '' }}" style="border-radius:6px; border-color:#f59e0b">
                         📄 {{ $sinAsignar->sum('n') }} PDF sin cliente</button>
@@ -95,10 +126,10 @@
         </div>
 
         @if ($aviso)
-            <div class="text-xs text-indigo-700">{{ $aviso }}</div>
+            <div class="text-xs text-indigo-700 imp-noprint">{{ $aviso }}</div>
         @endif
         @if ($this->puedeTodos() && $tarea)
-            <div class="text-xs text-gray-500">
+            <div class="text-xs text-gray-500 imp-noprint">
                 Última búsqueda de PDF en OneDrive: {{ \Illuminate\Support\Carbon::parse($tarea->terminada_at ?? $tarea->created_at)->diffForHumans() }} ·
                 {{ ['pendiente' => 'en cola', 'en_curso' => 'en marcha…', 'ok' => 'terminada', 'error' => 'con error'][$tarea->estado] ?? $tarea->estado }}
                 @php $res = json_decode($tarea->resultado ?? 'null', true); @endphp
@@ -106,7 +137,7 @@
             </div>
         @endif
         @error('archivo') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
-        <div wire:loading wire:target="archivo" class="text-xs text-indigo-700">Subiendo el PDF…</div>
+        <div wire:loading wire:target="archivo" class="text-xs text-indigo-700 imp-noprint">Subiendo el PDF…</div>
 
         {{-- PDF de OneDrive que no se han podido atribuir a un cliente --}}
         @if ($mostrarSinAsignar && $sinAsignar->count())
@@ -131,22 +162,74 @@
             </div>
         @endif
 
+        @if ($comOb)
+            @php $cd = $this->comentariosAbiertos; @endphp
+            <div class="imp-noprint" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center" wire:click.self="cerrarComentarios">
+                <div style="background:#fff; border-radius:8px; padding:14px; width:min(560px, 94vw); max-height:80vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.3)">
+                    <div class="flex items-start justify-between gap-3 mb-2">
+                        <div>
+                            <div class="font-semibold text-gray-900">{{ $cd['ob']->entidad }}</div>
+                            <div class="text-xs text-gray-500">{{ ctype_digit($cd['ob']->codigo) ? 'M'.$cd['ob']->codigo : $cd['ob']->codigo }}@if ($cd['ob']->etiqueta !== '') · {{ $cd['ob']->etiqueta }}@endif · {{ \App\Support\Impuestos::etiquetaPeriodo($comPer, $ejercicio, $cd['ob']->desfase) }}</div>
+                        </div>
+                        <button type="button" wire:click="cerrarComentarios" class="text-gray-400 hover:text-gray-700" title="Cerrar">✕</button>
+                    </div>
+                    @forelse ($cd['lista'] as $c)
+                        <div class="py-1.5 border-b border-gray-100" wire:key="cm-{{ $c->id }}">
+                            <div class="flex items-center justify-between text-xs text-gray-500">
+                                <span><b>{{ $c->name ?: '—' }}</b> · {{ \Illuminate\Support\Carbon::parse($c->created_at)->format('d/m/Y H:i') }}</span>
+                                @if ($c->user_id === auth()->id() || $this->puedeTodos())
+                                    <button type="button" wire:click="borrarComentario({{ $c->id }})" wire:confirm="¿Borrar este comentario?" class="text-gray-400 hover:text-red-600">✕</button>
+                                @endif
+                            </div>
+                            <div class="text-sm text-gray-800" style="white-space:pre-wrap">{{ $c->texto }}</div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-500">Todavía no hay comentarios.</p>
+                    @endforelse
+                    <form wire:submit="comentar" class="mt-2">
+                        <textarea wire:model="comTexto" rows="2" placeholder="Nuevo comentario…" class="w-full text-sm border-gray-300 rounded-md" autofocus
+                            x-on:keydown.ctrl.enter.prevent="$wire.comentar()"></textarea>
+                        <div class="flex items-center gap-2 mt-1">
+                            <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir comentario</button>
+                            <span class="text-xs text-gray-400">Ctrl+Intro también lo añade</span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
+
         <input id="imp-fichero" type="file" accept="application/pdf" wire:model="archivo" style="display:none">
 
         <div class="overflow-x-auto bg-white border rounded-lg shadow">
             <table class="imp-tabla">
                 <thead>
                     <tr>
-                        <th class="imp-sticky" rowspan="2">Cliente</th>
-                        @foreach ($grupos as $g)
-                            <th colspan="{{ count($g->columnas) }}" class="imp-qb" title="{{ $g->nombre }}">{{ ctype_digit($g->codigo) ? 'M'.$g->codigo : $g->codigo }}</th>
+                        <th class="imp-sticky" rowspan="3">Cliente</th>
+                        @foreach ($bloques as $bl)
+                            @php $plegado = $bl['plegable'] && in_array($bl['k'], $plegados, true); @endphp
+                            <th colspan="{{ $plegado ? 1 : count($bl['cols']) }}" @if ($plegado) rowspan="3" @endif class="imp-qb"
+                                style="{{ $bl['plegable'] ? 'cursor:pointer' : '' }}"
+                                @if ($bl['plegable']) wire:click="alternarBloque('{{ $bl['k'] }}')" title="{{ $plegado ? 'Desplegar' : 'Comprimir' }} {{ $bl['titulo'] }}" @endif>
+                                {{ $bl['titulo'] }} @if ($bl['plegable']) <span class="text-gray-400">{{ $plegado ? '▸' : '▾' }}</span> @endif</th>
                         @endforeach
                     </tr>
                     <tr>
-                        @foreach ($grupos as $g)
-                            @foreach ($g->columnas as $i => $col)
-                                <th class="{{ $i === 0 ? 'imp-qb' : '' }}">{{ $col['t'] }}</th>
-                            @endforeach
+                        @foreach ($bloques as $bl)
+                            @if (! ($bl['plegable'] && in_array($bl['k'], $plegados, true)))
+                                @php $gr = collect($bl['cols'])->groupBy('g'); @endphp
+                                @foreach ($gr as $g => $cs)
+                                    <th colspan="{{ $cs->count() }}" class="{{ $loop->first ? 'imp-qb' : '' }}" style="border-left:1px solid #e5e7eb">{{ $g }}</th>
+                                @endforeach
+                            @endif
+                        @endforeach
+                    </tr>
+                    <tr>
+                        @foreach ($bloques as $bl)
+                            @if (! ($bl['plegable'] && in_array($bl['k'], $plegados, true)))
+                                @foreach ($bl['cols'] as $col)
+                                    <th style="font-weight:500" title="{{ $col['cod'] }}">{{ $col['cod'] }}</th>
+                                @endforeach
+                            @endif
                         @endforeach
                     </tr>
                 </thead>
@@ -154,27 +237,35 @@
                     @forelse ($filas as $entId => $f)
                         @php $ent = $f['ent']; @endphp
                         <tr wire:key="c-{{ $entId }}" class="imp-ult">
-                            <td class="imp-sticky" style="white-space:nowrap" title="Responsable: {{ $ent->resp ?: '—' }}">
+                            <td class="imp-sticky" style="white-space:nowrap">
                                 <a href="{{ route('entidad.edit', $entId) }}" class="font-medium text-gray-900 hover:underline" title="Abrir la entidad (aquí se define qué impuestos presenta). Responsable: {{ $ent->resp ?: '—' }}">{{ $ent->entidad }}</a>
                                 @if ($ent->estado_ent != 1) <span class="text-xs text-amber-700">(baja)</span> @endif
                             </td>
-                            @foreach ($grupos as $cod => $g)
-                                @foreach ($g->columnas as $i => $col)
-                                    <td class="{{ $i === 0 ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap">
-                                        @foreach ($f['por'][$cod] ?? [] as $o)
-                                            @php $ob = $o['ob']; @endphp
-                                            @if ($ob->etiqueta !== '' && count($o['celdas'][$col['k']] ?? []))
-                                                <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
-                                            @endif
-                                            @foreach ($o['celdas'][$col['k']] ?? [] as $per)
-                                                @php $e = $estados[$ob->id][$per] ?? null; @endphp
-                                                @if ($e !== null)
-                                                    @include('livewire._impuesto-celda', ['ob' => $ob, 'per' => $per, 'e' => $e, 'docs' => $docs, 'color' => $color, 'letra' => $letra, 'etq' => $etq])
-                                                @endif
-                                            @endforeach
-                                        @endforeach
+                            @foreach ($bloques as $bl)
+                                @if ($bl['plegable'] && in_array($bl['k'], $plegados, true))
+                                    @php
+                                        $res = $f['resumen'][$bl['k']] ?? [];
+                                        $peor = collect(['pendiente', 'revision', 'revisado', 'presentado', 'visto'])->first(fn ($e) => ($res[$e] ?? 0) > 0);
+                                        $tit = collect($res)->map(fn ($n, $e) => $n.' '.strtolower($etq[$e]))->implode(' · ');
+                                    @endphp
+                                    <td class="imp-qb" style="text-align:center" title="{{ $tit }}">
+                                        @if ($peor)
+                                            <span class="imp-m" style="background:{{ $color[$peor] }}; cursor:default">{{ $peor === 'pendiente' ? $res['pendiente'] : $letra[$peor] }}</span>
+                                        @endif
                                     </td>
-                                @endforeach
+                                @else
+                                    @foreach ($bl['cols'] as $ci => $col)
+                                        @php $primera = $col['g'] === ($bl['cols'][array_key_first($bl['cols'])]['g']); @endphp
+                                        <td class="{{ $loop->first ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap">
+                                            @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
+                                                @if ($ob->etiqueta !== '')
+                                                    <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
+                                                @endif
+                                                @include('livewire._impuesto-celda', ['ob' => $ob, 'per' => $per, 'e' => $e, 'docs' => $docs, 'coment' => $coment, 'color' => $color, 'letra' => $letra, 'etq' => $etq])
+                                            @endforeach
+                                        </td>
+                                    @endforeach
+                                @endif
                             @endforeach
                         </tr>
                     @empty
@@ -186,10 +277,36 @@
                 </tbody>
             </table>
         </div>
+        @if ($coment)
+            <div class="imp-solo-print" style="display:none; font-size:9px">
+                <b>Comentarios</b>
+                @foreach ($coment as $clave => $lista)
+                    @php [$oid, $pp] = explode('|', $clave); $oo = $obsPorId[(int) $oid] ?? null; @endphp
+                    @if ($oo)
+                        @foreach ($lista as $c)
+                            <div>{{ $oo->entidad }} · {{ ctype_digit($oo->codigo) ? 'M'.$oo->codigo : $oo->codigo }}{{ $oo->etiqueta !== '' ? ' ('.$oo->etiqueta.')' : '' }} {{ $pp }}: {{ $c[0] }} <span style="color:#6b7280">— {{ $c[1] }}, {{ \Illuminate\Support\Carbon::parse($c[2])->format('d/m/y') }}</span></div>
+                        @endforeach
+                    @endif
+                @endforeach
+            </div>
+        @endif
         <p class="text-xs text-gray-500">
-            Una fila por cliente; cada impuesto tiene sus columnas T1–T4 (los mensuales llevan tres casillas por trimestre: ene-feb-mar…, el periodo que se declara).
+            Una fila por cliente. Orden: trimestre → mes → impuesto (01 02 03 | T1, 04 05 06 | T2…; el D2 entre T1 y 04) y al final las anuales. Pulsa el título de un trimestre
+            o de «Anuales» para comprimirlo (queda una casilla con lo peor que haya dentro: rojo con el nº de pendientes). Los meses solo salen si algún cliente declara por meses.
             IS, depósito de cuentas y legalización muestran el ejercicio anterior (IS {{ $ejercicio - 1 }} se sigue en {{ $ejercicio }}). 202: pagos 1P (T1), 2P (T3) y 3P (T4).
             Si un cliente tiene dos declaraciones del mismo impuesto, la segunda lleva delante las 3 primeras letras de su etiqueta.
         </p>
     </div>
 </div>
+
+@script
+<script>
+    // Al imprimir, encoge la tabla (zoom) para que quepa en el ancho del folio apaisado
+    const ajustar = () => {
+        const t = document.querySelector('.imp-tabla'); if (!t) return;
+        t.style.zoom = ''; const ancho = t.scrollWidth, util = 1040; if (ancho > util) t.style.zoom = (util / ancho).toFixed(3);
+    };
+    window.addEventListener('beforeprint', ajustar);
+    window.addEventListener('afterprint', () => { const t = document.querySelector('.imp-tabla'); if (t) t.style.zoom = ''; });
+</script>
+@endscript

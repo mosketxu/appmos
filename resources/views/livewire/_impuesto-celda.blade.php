@@ -7,6 +7,8 @@
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
     $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true);
     $titulo = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: cambiar)';
+    $cm = ($coment ?? [])[$ob->id.'|'.$per] ?? [];
+    $cmTitulo = collect($cm)->map(fn ($c) => ($c[1] ? $c[1].': ' : '').$c[0])->implode("\n");
     $subir = "\$wire.subirA = '".$ob->id.'|'.$per."'; document.getElementById('imp-fichero').click()";
 @endphp
 <span class="imp-cel">
@@ -41,4 +43,6 @@
             <button type="button" class="imp-pdf gris" x-on:click="{!! $subir !!}" title="Sin PDF: pulsa para subir {{ $tipoPdf === 'presentado' ? 'el presentado' : 'el borrador' }}">@include('livewire._impuesto-pdf')</button>
         @endif
     @endif
+    <button type="button" class="imp-com {{ $cm ? 'tiene' : '' }}" wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
+        title="{{ $cm ? $cmTitulo : 'Añadir un comentario' }}">{{ $cm ? '💬' : '' }}@if (count($cm) > 1)<sup>{{ count($cm) }}</sup>@endif</button>
 </span>

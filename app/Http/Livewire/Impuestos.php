@@ -44,6 +44,11 @@ class Impuestos extends Component
     public string $buscarEnt = '';
     public string $asignarEtiqueta = '';
 
+    // Comentarios de una casilla (ventana abierta): «obligación», periodo y texto nuevo
+    public ?int $comOb = null;
+    public string $comPer = '';
+    public string $comTexto = '';
+
     public ?int $tareaPdfs = null;
     public string $aviso = '';
 
@@ -77,64 +82,78 @@ class Impuestos extends Component
         return ctype_digit($this->vista);
     }
 
-    /** Trimestre al que pertenece cada periodo (los anuales, el de su mes) para colocarlo en las columnas de trimestre. */
-    protected function trimestreDeCelda(object $ob, string $periodo): int
+    /** Bloques plegados (T1..T4, A). */
+    public array $plegados = [];
+
+    public function alternarBloque(string $k): void
     {
-        return Imp::trimestreDe($periodo) ?? (int) ceil(Imp::mesDe('A', $ob->mes_anual) / 3);
+        in_array($k, ['T1', 'T2', 'T3', 'T4', 'A'], true) || abort(422);
+        $this->plegados = in_array($k, $this->plegados, true) ? array_values(array_diff($this->plegados, [$k])) : [...$this->plegados, $k];
+    }
+
+    /** ¿Cae un impuesto anual en la vista actual? (año: siempre; trimestre o mes: si su mes cae ahí). */
+    protected function anualEnVista(object $m): bool
+    {
+        $mes = Imp::mesDe('A', $m->mes_anual);
+
+        return match (true) {
+            $this->vista === 'anio' => true,
+            $this->esMes() => $mes === (int) $this->vista,
+            default => (int) ceil($mes / 3) === (int) substr($this->vista, 1),
+        };
     }
 
     /**
-     * Columnas de un impuesto en la vista: [['k' => clave, 't' => título]].
-     * Anuales (catálogo periodicidad A): una columna «Anual» (en un trimestre o un mes, solo si caen en él).
-     * Resto: año → T1..T4; un trimestre → esa columna (con los 3 meses dentro si es mensual); un mes → una columna.
+     * Orden de la pantalla: trimestre → mes → impuesto. Bloques de columnas, cada uno con sus columnas [p periodo, g grupo (01, 02, 03, T1…), cod impuesto, kind M|T|P|A]:
+     * T1 [01 02 03 | T1] (con los impuestos mensuales bajo cada mes y los trimestrales bajo T1), …, y al final las «Anuales».
+     * Un anual con `despues_de` (D2) va justo después de ese trimestre. $tiene = [kind => [codigo => true]] de las obligaciones visibles.
      */
-    public function columnasDe(object $modelo): array
+    protected function bloques(array $modelos, array $tiene): array
     {
-        if ($modelo->periodicidad === 'A') {
-            $mes = Imp::mesDe('A', $modelo->mes_anual);
-            $cae = match (true) {
-                $this->vista === 'anio' => true,
-                $this->esMes() => $mes === (int) $this->vista,
-                default => (int) ceil($mes / 3) === (int) substr($this->vista, 1),
-            };
-
-            return $cae ? [['k' => 'A', 't' => 'Anual']] : [];
+        $mesSel = $this->esMes() ? (int) $this->vista : null;
+        $qs = $this->vista === 'anio' ? [1, 2, 3, 4] : [$mesSel ? (int) ceil($mesSel / 3) : (int) substr($this->vista, 1)];
+        $mens = array_filter($modelos, fn ($m) => isset($tiene['M'][$m->codigo]));
+        $trim = array_filter($modelos, fn ($m) => isset($tiene['T'][$m->codigo]) || isset($tiene['P'][$m->codigo]));
+        $anuales = array_filter($modelos, fn ($m) => isset($tiene['A'][$m->codigo]) && $this->anualEnVista($m));
+        $out = [];
+        foreach ($qs as $q) {
+            $cols = [];
+            foreach ($mesSel ? [$mesSel] : range(3 * $q - 2, 3 * $q) as $m) {
+                foreach ($mens as $mod) {
+                    $cols[] = ['p' => sprintf('%02d', $m), 'g' => sprintf('%02d', $m), 'cod' => $mod->codigo, 'kind' => 'M'];
+                }
+            }
+            if (! $mesSel || $mesSel % 3 === 0) {
+                foreach ($trim as $mod) {
+                    if (isset($tiene['T'][$mod->codigo])) {
+                        $cols[] = ['p' => 'T'.$q, 'g' => 'T'.$q, 'cod' => $mod->codigo, 'kind' => 'T'];
+                    }
+                    if (isset($tiene['P'][$mod->codigo]) && ($pp = [1 => 'P1', 3 => 'P2', 4 => 'P3'][$q] ?? null)) {
+                        $cols[] = ['p' => $pp, 'g' => 'T'.$q, 'cod' => $mod->codigo, 'kind' => 'P'];
+                    }
+                }
+            }
+            if ($cols) {
+                $out[] = ['k' => 'T'.$q, 'titulo' => 'T'.$q, 'plegable' => true, 'cols' => $cols];
+            }
+            foreach ($anuales as $cod => $mod) {
+                if ($mod->despues_de === 'T'.$q) {
+                    $out[] = ['k' => 'D'.$cod, 'titulo' => $cod, 'plegable' => false, 'cols' => [['p' => 'A', 'g' => 'Anual', 'cod' => $cod, 'kind' => 'A']]];
+                }
+            }
         }
-        if ($this->vista === 'anio') {
-            return array_map(fn ($q) => ['k' => $q, 't' => 'T'.$q], [1, 2, 3, 4]);
+        $cols = [];
+        foreach ($anuales as $cod => $mod) {
+            $enSuTrimestre = in_array($mod->despues_de, ['T1', 'T2', 'T3', 'T4'], true) && in_array((int) substr($mod->despues_de, 1), $qs, true);
+            if (! $enSuTrimestre) {
+                $cols[] = ['p' => 'A', 'g' => 'Anual', 'cod' => $cod, 'kind' => 'A'];
+            }
         }
-        if ($this->esMes()) {
-            return [['k' => (int) $this->vista, 't' => Imp::MESES[(int) $this->vista - 1]]];
+        if ($cols) {
+            $out[] = ['k' => 'A', 'titulo' => 'Anuales', 'plegable' => true, 'cols' => $cols];
         }
 
-        return [['k' => (int) substr($this->vista, 1), 't' => $this->vista]];
-    }
-
-    /** Periodos de una obligación que van en una columna de la vista. */
-    public function periodosEn(object $ob, $k): array
-    {
-        if ($k === 'A') {
-            return $ob->periodicidad === 'A' ? ['A'] : [];
-        }
-        if ($this->esMes()) {
-            $m = (int) $this->vista;
-            $p = match ($ob->periodicidad) {
-                'M' => sprintf('%02d', $m),
-                'T' => $m % 3 === 0 ? 'T'.($m / 3) : null,
-                'P' => [3 => 'P1', 9 => 'P2', 12 => 'P3'][$m] ?? null,
-                default => Imp::mesDe('A', $ob->mes_anual) === $m ? 'A' : null,
-            };
-
-            return $p ? [$p] : [];
-        }
-        $q = (int) $k;
-
-        return match ($ob->periodicidad) {
-            'M' => array_map(fn ($m) => sprintf('%02d', $m), range(3 * $q - 2, 3 * $q)),
-            'T' => ['T'.$q],
-            'P' => ($pp = [1 => 'P1', 3 => 'P2', 4 => 'P3'][$q] ?? null) ? [$pp] : [],
-            default => $this->trimestreDeCelda($ob, 'A') === $q ? ['A'] : [],
-        };
+        return $out;
     }
 
     protected function consulta()
@@ -145,7 +164,7 @@ class Impuestos extends Component
             ->leftJoin('sumas as s', 's.id', '=', 'e.suma_id')
             ->where('m.activo', true)
             ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'ei.user_id', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp',
-                'm.codigo', 'm.nombre as modelo_nombre', 'm.orden', 'm.mes_anual', 'm.desfase')
+                'm.codigo', 'm.nombre as modelo_nombre', 'm.orden', 'm.mes_anual', 'm.despues_de', 'm.desfase')
             ->orderBy('e.entidad')->orderBy('m.orden');
         Imp::soloVisibles($q, null, $this->verTodos);
         if (! $this->incluirBajas) {
@@ -217,6 +236,62 @@ class Impuestos extends Component
             'sha256' => $sha, 'origen' => 'web', 'user_id' => auth()->id()]);
         $this->archivo = null;
         $this->subirA = '';
+    }
+
+    // ------------------------------------------------------------------ comentarios
+
+    public function abrirComentarios(int $obId, string $periodo): void
+    {
+        $this->autorizarCasilla($obId);
+        $this->comOb = $obId;
+        $this->comPer = $periodo;
+        $this->comTexto = '';
+    }
+
+    public function cerrarComentarios(): void
+    {
+        $this->comOb = null;
+        $this->comPer = '';
+        $this->comTexto = '';
+    }
+
+    public function comentar(): void
+    {
+        abort_unless($this->comOb, 422);
+        $this->autorizarCasilla($this->comOb);
+        $texto = trim($this->comTexto);
+        if ($texto === '') {
+            return;
+        }
+        DB::table('impuesto_comentarios')->insert(['entidad_impuesto_id' => $this->comOb, 'ejercicio' => $this->ejercicio, 'periodo' => $this->comPer,
+            'texto' => mb_substr($texto, 0, 2000), 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+        $this->comTexto = '';
+    }
+
+    public function borrarComentario(int $id): void
+    {
+        $c = DB::table('impuesto_comentarios')->find($id);
+        if (! $c) {
+            return;
+        }
+        $this->autorizarCasilla($c->entidad_impuesto_id);
+        abort_unless($c->user_id === auth()->id() || $this->puedeTodos(), 403);   // el suyo; Admin y Suma, cualquiera
+        DB::table('impuesto_comentarios')->where('id', $id)->delete();
+    }
+
+    /** Datos de la ventana de comentarios abierta. */
+    public function getComentariosAbiertosProperty(): array
+    {
+        if (! $this->comOb) {
+            return [];
+        }
+        $ob = DB::table('entidad_impuestos as ei')->join('entidades as e', 'e.id', '=', 'ei.entidad_id')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where('ei.id', $this->comOb)->first(['ei.etiqueta', 'e.entidad', 'm.codigo', 'm.desfase']);
+        $lista = DB::table('impuesto_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')
+            ->where(['c.entidad_impuesto_id' => $this->comOb, 'c.ejercicio' => $this->ejercicio, 'c.periodo' => $this->comPer])
+            ->orderBy('c.id')->get(['c.id', 'c.texto', 'c.user_id', 'c.created_at', 'u.name']);
+
+        return ['ob' => $ob, 'lista' => $lista];
     }
 
     // ------------------------------------------------------------------ PDF de OneDrive
@@ -292,55 +367,71 @@ class Impuestos extends Component
                     $docs[$d->entidad_id.'|'.$d->modelo.'|'.$d->etiqueta.'|'.$d->periodo][] = $d;
                 });
         }
-        $filas = [];
-        $grupos = [];   // impuestos presentes (por orden del catálogo) con sus columnas
         $cuenta = ['pendiente' => 0, 'revision' => 0, 'revisado' => 0, 'presentado' => 0, 'visto' => 0];
+        $modelosVis = [];
+        $tiene = ['M' => [], 'T' => [], 'P' => [], 'A' => []];
+        $porEnt = [];
         foreach ($obs as $ob) {
-            $modelo = (object) ['codigo' => $ob->codigo, 'nombre' => $ob->modelo_nombre, 'orden' => $ob->orden, 'mes_anual' => $ob->mes_anual,
-                'periodicidad' => $ob->periodicidad === 'A' ? 'A' : 'Q'];
-            $grupos[$ob->codigo] ??= $modelo;
-            // un impuesto es «anual» si todas sus obligaciones lo son; si alguna no, se pinta por trimestres
-            if ($ob->periodicidad !== 'A') {
-                $grupos[$ob->codigo]->periodicidad = 'Q';
-            }
+            $modelosVis[$ob->codigo] ??= (object) ['codigo' => $ob->codigo, 'nombre' => $ob->modelo_nombre, 'orden' => $ob->orden, 'mes_anual' => $ob->mes_anual, 'despues_de' => $ob->despues_de];
+            $tiene[$ob->periodicidad][$ob->codigo] = true;
+            $porEnt[$ob->entidad_id][$ob->codigo][] = $ob;
         }
-        foreach ($grupos as $g) {
-            $g->columnas = $this->columnasDe($g);
+        uasort($modelosVis, fn ($x, $y) => $x->orden <=> $y->orden);
+        $bloques = $this->bloques($modelosVis, $tiene);
+        $coment = [];   // [«obligación|periodo»] => [[texto, autor, fecha]] de las casillas visibles
+        foreach (array_chunk($ids ?: [0], 1000) as $trozo) {
+            DB::table('impuesto_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')->where('c.ejercicio', $this->ejercicio)->whereIn('c.entidad_impuesto_id', $trozo)
+                ->orderBy('c.id')->get(['c.entidad_impuesto_id', 'c.periodo', 'c.texto', 'c.created_at', 'u.name'])->each(function ($c) use (&$coment) {
+                    $coment[$c->entidad_impuesto_id.'|'.$c->periodo][] = [$c->texto, $c->name, $c->created_at];
+                });
         }
-        $grupos = array_filter($grupos, fn ($g) => $g->columnas);
-        uasort($grupos, fn ($x, $y) => $x->orden <=> $y->orden);
-        foreach ($obs as $ob) {
-            if (! isset($grupos[$ob->codigo])) {
-                continue;
-            }
-            $celdas = [];
+        $filas = [];
+        foreach ($obs->groupBy('entidad_id') as $entId => $lista) {
+            $matriz = [];    // [bloque][columna] => [[ob, periodo, estado]]
+            $resumen = [];   // [bloque] => [estado => n]  (para los bloques plegados)
             $hay = $pend = false;
-            foreach ($grupos[$ob->codigo]->columnas as $col) {
-                $ps = $this->periodosEn($ob, $col['k']);
-                $celdas[$col['k']] = $ps;
-                foreach ($ps as $p) {
-                    $hay = true;
-                    $e = $estados[$ob->id][$p] ?? null;
-                    if ($e && isset($cuenta[$e])) {
-                        $cuenta[$e]++;
+            foreach ($bloques as $bl) {
+                foreach ($bl['cols'] as $ci => $col) {
+                    foreach ($porEnt[$entId][$col['cod']] ?? [] as $ob) {
+                        if ($ob->periodicidad !== $col['kind']) {
+                            continue;
+                        }
+                        $e = $estados[$ob->id][$col['p']] ?? null;
+                        if ($e === null) {
+                            continue;
+                        }
+                        $matriz[$bl['k']][$ci][] = [$ob, $col['p'], $e];
+                        $resumen[$bl['k']][$e] = ($resumen[$bl['k']][$e] ?? 0) + 1;
+                        $hay = true;
+                        $pend = $pend || $e === 'pendiente';
+                        if (isset($cuenta[$e])) {
+                            $cuenta[$e]++;
+                        }
                     }
-                    $pend = $pend || $e === 'pendiente';
                 }
             }
             if (! $hay || ($this->soloPendientes && ! $pend)) {
                 continue;
             }
-            $filas[$ob->entidad_id]['ent'] ??= $ob;
-            $filas[$ob->entidad_id]['por'][$ob->codigo][] = ['ob' => $ob, 'celdas' => $celdas];
+            $filas[$entId] = ['ent' => $lista->first(), 'matriz' => $matriz, 'resumen' => $resumen];
         }
-        // solo se pintan los impuestos que tiene alguna fila visible
-        $usados = [];
+        // columnas que de verdad se usan (no se pintan impuestos/bloques sin ninguna casilla)
+        $usadas = [];
         foreach ($filas as $f) {
-            $usados += array_fill_keys(array_keys($f['por']), true);
+            foreach ($f['matriz'] as $bk => $cols) {
+                foreach (array_keys($cols) as $ci) {
+                    $usadas[$bk][$ci] = true;
+                }
+            }
         }
-        $grupos = array_filter($grupos, fn ($g, $cod) => isset($usados[$cod]), ARRAY_FILTER_USE_BOTH);
+        foreach ($bloques as $i => $bl) {
+            $bloques[$i]['cols'] = array_filter($bl['cols'], fn ($ci) => isset($usadas[$bl['k']][$ci]), ARRAY_FILTER_USE_KEY);
+            if (! $bloques[$i]['cols']) {
+                unset($bloques[$i]);
+            }
+        }
         $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
 
-        return view('livewire.impuestos', ['filas' => $filas, 'grupos' => $grupos, 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos]);
+        return view('livewire.impuestos', ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos]);
     }
 }
