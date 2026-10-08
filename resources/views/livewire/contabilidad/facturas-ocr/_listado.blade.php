@@ -350,6 +350,13 @@
                             @else
                                 <span class="text-xs text-gray-400">Nada nuevo para SAGE</span>
                             @endif
+                            @if (count($marcadasValidadas))
+                                <button type="button" wire:click="retrocederMarcadas" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.3rem .8rem; font-size:.85rem; border-color:#b45309; color:#92400e"
+                                        wire:confirm="¿Volver a pendientes las {{ count($marcadasValidadas) }} validadas marcadas? Se quitan del Excel del proceso en curso y el PDF vuelve a su carpeta. Si alguna estaba en un Excel ya guardado para SAGE, corrígela también en SAGE."
+                                        title="Las vuelve a poner por revisar sin abrirlas una a una">
+                                    ↩ Retroceder {{ count($marcadasValidadas) === 1 ? '1 marcada' : count($marcadasValidadas).' marcadas' }}
+                                </button>
+                            @endif
                             <input type="search" wire:model.live.debounce.300ms="filtro" placeholder="Buscar proveedor, cuenta, nº, fichero…" class="focr-in" style="max-width:320px">
                             <select wire:model.live="filtroProceso" class="focr-in" style="max-width:260px" title="Cada vez que guardas el Excel para SAGE se cierra un proceso">
                                 <option value="">Proceso en curso (sin guardar: {{ $enExcel }})</option>
@@ -369,7 +376,11 @@
                             </span>
                         </div>
                         <table class="focr-tabla">
+                            @php $idsValidadas = collect($validadas)->where('estado', 'validada')->pluck('id')->values()->all(); @endphp
                             <thead><tr>
+                                <th style="width:1.4rem"><input type="checkbox" title="Marcar / desmarcar todas las validadas de la lista"
+                                    x-data x-on:click.stop x-on:change="$wire.set('marcadasValidadas', $event.target.checked ? @js($idsValidadas) : [])"
+                                    @checked(count($idsValidadas) > 0 && count(array_intersect($idsValidadas, $marcadasValidadas)) === count($idsValidadas))></th>
                                 <th>F. registro</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>Contrap.</th>
                                 <th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th><th style="text-align:right">Total</th>
                                 <th>Excel</th><th>Fichero</th><th>Validada</th>
@@ -378,6 +389,7 @@
                             @forelse ($validadas as $f)
                                 @php $d = $f['datos']; @endphp
                                 <tr wire:key="v-{{ $f['id'] }}" @if ($f['estado'] === 'validada') class="clic" wire:click="abrir('{{ $f['id'] }}')" title="Ver lo validado (y volverla a pendiente para corregirla)" @endif>
+                                    <td x-data x-on:click.stop>@if ($f['estado'] === 'validada')<input type="checkbox" wire:model.live="marcadasValidadas" value="{{ $f['id'] }}" title="Marcar para retroceder">@endif</td>
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
                                     <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
@@ -402,7 +414,7 @@
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="12" class="p-4 text-center text-gray-500">{{ $filtroProceso === '' && ! $filtro && ! $filtroMes ? 'Nada validado en este proceso todavía (lo guardado antes está en el desplegable de procesos).' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso ? ' con ese filtro' : '').'.' }}</td></tr>
+                                <tr><td colspan="13" class="p-4 text-center text-gray-500">{{ $filtroProceso === '' && ! $filtro && ! $filtroMes ? 'Nada validado en este proceso todavía (lo guardado antes está en el desplegable de procesos).' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso ? ' con ese filtro' : '').'.' }}</td></tr>
                             @endforelse
                             </tbody>
                         </table>
