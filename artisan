@@ -7,6 +7,8 @@ define('LARAVEL_START', microtime(true));
 if (! getenv('XDG_CONFIG_HOME') && ! is_writable(getenv('HOME') ?: '/nonexistent')) {
     putenv('XDG_CONFIG_HOME='.__DIR__.'/storage/psysh');
     @mkdir(__DIR__.'/storage/psysh', 0775, true);
+    putenv('HOME='.__DIR__.'/storage/psysh');   // PsySH mira antes HOME que XDG_CONFIG_HOME
+    $_SERVER['HOME'] = $_ENV['HOME'] = __DIR__.'/storage/psysh';
 }
 
 /*
