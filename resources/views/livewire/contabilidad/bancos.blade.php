@@ -351,6 +351,7 @@
                         <span class="text-xs" :class="vacias ? 'text-amber-700' : 'text-green-700'"
                               x-text="vacias ? vacias + ' sin contrapartida de ' + lineas.length : 'Todas las ' + lineas.length + ' líneas tienen contrapartida'"></span>
                     @endif
+                    <span class="px-2 py-0.5 text-xs rounded" style="background:#fef08a;color:#854d0e">amarillo = varias cuentas posibles en el histórico</span>
                     <x-neteges-info>Al generar un fichero de bancos se abre aquí solo. También puedes elegir uno ya generado.</x-neteges-info>
                 </div>
                 <div class="p-4 space-y-3">
@@ -382,7 +383,8 @@
                                 </thead>
                                 <tbody>
                                     <template x-for="l in lineas" :key="l.numero">
-                                        <tr x-show="visible(l)" class="border-t" :class="l.contrapartida ? '' : 'bg-amber-50'">
+                                        <tr x-show="visible(l)" class="border-t" :class="l.contrapartida ? '' : 'bg-amber-50'"
+                                            :style="(l.varias && l.varias.length && ! l.tocada) ? 'background:#fef08a' : ''">
                                             <td class="px-2 py-1 text-right text-gray-400" x-text="l.numero"></td>
                                             <td class="px-2 py-1 whitespace-nowrap" x-text="l.fecha"></td>
                                             <td class="px-2 py-1" x-text="l.concepto" :title="l.original"></td>
@@ -395,6 +397,8 @@
                                             <td class="px-2 py-1">
                                                 <span x-text="nombre(l.contrapartida)"></span>
                                                 <span x-show="nuevas[l.contrapartida]" class="text-indigo-600">(nueva)</span>
+                                                <div x-show="l.varias && l.varias.length" class="text-xs font-medium" style="color:#854d0e"
+                                                     x-text="'⚠ varias en el histórico: ' + (l.varias || []).map(c => c + (nombre(c) ? ' ' + nombre(c) : '')).join(' · ')"></div>
                                             </td>
                                             <td class="px-2 py-1">
                                                 <input type="text" x-model="l.concepto_maestro" placeholder="(opcional)"
