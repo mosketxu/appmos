@@ -339,7 +339,8 @@
                             </tbody>
                         </table>
                     @else
-                        <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200">
+                        {{-- Barra fija: «Guardar el Excel para SAGE» y los filtros se quedan arriba al desplazar la lista --}}
+                        <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200 focr-barra-fija" style="position:sticky; top:0; z-index:6; background:#fff">
                             <input type="search" wire:model.live.debounce.300ms="filtro" placeholder="Buscar proveedor, cuenta, nº, fichero…" class="focr-in" style="max-width:320px">
                             <select wire:model.live="filtroProceso" class="focr-in" style="max-width:260px" title="Cada vez que guardas el Excel para SAGE se cierra un proceso">
                                 <option value="">Proceso en curso (sin guardar: {{ $enExcel }})</option>
