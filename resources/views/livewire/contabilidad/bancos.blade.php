@@ -583,11 +583,7 @@
                         <option value="pendientes">Sin cuenta</option>
                         <option value="dudosos">Con varias cuentas</option>
                     </select>
-                    <span wire:loading.flex wire:target="guardarMaestro, borrarMaestro" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando…</span>
-                </div>
-
-                <div x-show="abierto" class="p-4 space-y-3">
-                    <p class="text-xs text-gray-500">
+                    <x-neteges-info>
                         <b>SAGE</b> = sale de los mayores subidos (se rehace con cada subida).
                         <b>Appmos</b> = sale de líneas ya procesadas aquí (bancos&lt;cuenta&gt;.xlsx) que aún no han vuelto en un mayor de SAGE;
                         no se borra porque es el propio movimiento: si su cuenta no vale, edítala (crea una fila manual que manda).
@@ -598,7 +594,11 @@
                         crea dos filas manuales, una "solo pagos (−)" con la de proveedor y otra "solo cobros (+)" con la de cliente.
                         Aunque no lo pongas, si salen varias cuentas y solo una es de proveedor (40/41) o de cliente (43/44),
                         un pago se queda con la de proveedor y un cobro con la de cliente.
-                    </p>
+                    </x-neteges-info>
+                    <span wire:loading.flex wire:target="guardarMaestro, borrarMaestro" class="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse"><span class="text-lg">⏳</span> Guardando…</span>
+                </div>
+
+                <div x-show="abierto" class="p-4 space-y-3">
                     @if ($avisoMaestro !== '')
                         <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $avisoMaestro }}</p>
                     @endif
