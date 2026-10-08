@@ -206,6 +206,7 @@ trait EjecutaEnPcs
             return;
         }
         $pc = $res['pc'] ?? ($t->trabajador_id ? DB::table('trabajadores')->where('id', $t->trabajador_id)->value('nombre') : '');
+        $fallos = [];
         foreach ($pasos as $i => $paso) {
             if (! empty($paso['omitido'])) {   // un paso anterior falló y este era «solo si ok»
                 $oks[] = false;
@@ -221,13 +222,21 @@ trait EjecutaEnPcs
                 $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
             } else {
                 $this->salida .= "\n\n⚠️ El proceso terminó con código de salida ".($paso['codigo'] ?? '?').'.';
-                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código ".($paso['codigo'] ?? '?')."). Mira la caja de Salida: cada ⚠️ dice qué hacer (👉) si el proceso lo sabe.");
+                $motivo = '';
+                foreach (preg_split('/\R/', (string) ($paso['salida'] ?? '')) as $l) {
+                    if (preg_match('/^\s*(ERROR|⚠️|❌)/u', $l)) { $motivo = trim($l); break; }
+                }
+                $fallos[] = "❌ {$etiqueta}".($motivo ? "\n     {$motivo}" : '');
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTerminó con error (código ".($paso['codigo'] ?? '?').").".($motivo ? "\n{$motivo}" : '')."\nMira la caja de Salida: cada ⚠️ dice qué hacer (👉) si el proceso lo sabe.");
             }
             if (! empty($p['resultados'])) {
                 foreach ($paso['ficheros'] ?? [] as $f) {
                     $this->anexarFicheroRemoto($p['resultados'], $f, (int) $t->id, (string) $pc);
                 }
             }
+        }
+        if ($fallos) {
+            $this->salida .= "\n\n==============================\n🚨 RESUMEN: HA FALLADO\n".implode("\n", $fallos)."\n==============================";
         }
         $this->ultimoOk = ! in_array(false, $oks, true);
         if (! empty($p['post'])) {
