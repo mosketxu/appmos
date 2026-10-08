@@ -50,7 +50,7 @@
         .focr-tabla th { text-align:left; font-weight:600; color:#6b7280; background:#f9fafb; padding:.4rem .5rem; border-bottom:1px solid #e5e7eb; position:sticky; top:0; }
         /* Fila de botones/filtros de cada pestaña del listado: se queda arriba al desplazarse (la caja de la lista tiene su propio scroll) */
         .focr-barra-fija { position:sticky; top:0; z-index:6; background:#fff; }
-        .focr-barra-fija ~ .focr-tabla th { top:3.4rem; }   /* la cabecera de la tabla se pega debajo de la barra fija */
+        .focr-card .focr-tabla th { top:var(--focr-barra, 0px); }   /* la cabecera de la tabla se pega justo debajo de la barra fija (altura medida abajo) */
         .focr-tabla td { padding:.35rem .5rem; border-bottom:1px solid #f3f4f6; vertical-align:top; }
         .focr-tabla tr.clic:hover td { background:#eef2ff; cursor:pointer; }
         .focr-chip { display:inline-block; padding:0 .4rem; border-radius:9999px; font-size:.7rem; font-weight:600; line-height:1.3rem; }
@@ -166,6 +166,16 @@
             const el = Array.from(f.querySelectorAll('input,select,textarea')).find((x) => window.focrClaveCampo(x, f) === window.focrUltimoCampo);
             if (el && ! el.disabled && el.offsetParent !== null) { el.focus(); try { el.select && el.select(); } catch (e) {} }
         };
+        // Altura real de la barra fija de cada caja de lista: la cabecera de la tabla se pega justo debajo (sin hueco por el que asomen las filas)
+        if (! window.__focrBarraH) {
+            window.__focrBarraH = setInterval(() => {
+                document.querySelectorAll('.focr-card.overflow-auto').forEach((caja) => {
+                    const barra = caja.querySelector('.focr-barra-fija');
+                    const h = barra ? barra.offsetHeight + 'px' : '0px';
+                    if (caja.style.getPropertyValue('--focr-barra') !== h) caja.style.setProperty('--focr-barra', h);
+                });
+            }, 300);
+        }
         window.focrListas = window.focrListas || {};
         window.addEventListener('focr-listas', () => { window.focrListas = {}; });
         window.buscador = function (lista, campo, libre) {
