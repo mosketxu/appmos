@@ -769,6 +769,12 @@ class Bancos extends Component
         $this->cargarRevision();
     }
 
+    /** «Borrar todos y empezar de nuevo»: todos los bancos*.xlsx de Output (también los juntados). */
+    public function descartarTodos(): void
+    {
+        $this->descartarSalida(array_values(array_filter($this->ficheros('Output'), fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g))));
+    }
+
     /** Respuesta al aviso de ficheros de pasadas anteriores: 'borrar' (los deshace y sigue), 'mantener' (sigue) o 'cancelar'. */
     public function responderPrevios(string $modo): void
     {

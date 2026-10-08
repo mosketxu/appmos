@@ -429,7 +429,7 @@
                         @endforeach
                     </div>
                     @if (count($borrables) > 1)
-                        <x-button.secondary wire:click="descartarSalida(@js($borrables))"
+                        <x-button.secondary wire:click="descartarTodos"
                                             wire:confirm="¿Borrar TODOS los ficheros de bancos generados ({{ count($borrables) }}) y sus apuntes provisionales de la Base?">
                             🗑 Borrar todos y empezar de nuevo
                         </x-button.secondary>
@@ -957,7 +957,7 @@
         </div>
     @endif
     {{-- Indicador central mientras el servidor trabaja (conciliar, generar, subir ficheros a la base...) --}}
-    <div wire:loading.flex wire:target="conciliar, responderPrevios, descartarSalida, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
+    <div wire:loading.flex wire:target="conciliar, responderPrevios, descartarSalida, descartarTodos, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
          class="fixed inset-0 z-50 items-center justify-center bg-gray-900/40">
         <div class="flex flex-col items-center gap-3 px-8 py-6 bg-white rounded-xl shadow-2xl">
             <svg class="w-14 h-14 text-indigo-600 animate-spin" viewBox="0 0 24 24" fill="none">
