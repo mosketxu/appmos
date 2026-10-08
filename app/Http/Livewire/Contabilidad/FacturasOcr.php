@@ -1289,6 +1289,11 @@ class FacturasOcr extends Component
             $this->dispatch('proceso-terminado', mensaje: "⏳ Se están leyendo las facturas.\nEl periodo nuevo se aplicará a las fechas de registro en cuanto termine la lectura (se hace solo).");
             return;
         }
+        // Otro Python de este cliente (cola de validaciones, OCR...) tiene el bloqueo: esperarlo agotaría los 60 s y daría excepción
+        if ($this->web() && $this->pythonActivo()) {
+            $this->dispatch('proceso-terminado', mensaje: "⏳ La cola está trabajando con este cliente.\nCuando termine, vuelve a elegir el periodo para recalcular las fechas de registro.");
+            return;
+        }
         $this->ejecutar(array_merge(['fechas'], $this->parametros()), 60, 'Fechas de registro', false);
         if ($this->sel) {
             $f = $this->factura($this->sel);
