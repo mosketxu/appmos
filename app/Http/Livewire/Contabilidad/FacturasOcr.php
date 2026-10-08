@@ -1140,6 +1140,7 @@ class FacturasOcr extends Component
             $log = trim((string) @file_get_contents($this->dirDatos().'/_cola/lectura.log'));
             $this->salida = $log !== '' ? $log : 'Lectura terminada.';
             $this->dispatch('proceso-terminado', mensaje: '✅ Lectura de facturas terminada'."\n".$this->salida);
+            $this->dispatch('lectura-terminada');   // sonido, aviso del escritorio y título de la pestaña (la lectura puede tardar minutos)
         }
     }
 

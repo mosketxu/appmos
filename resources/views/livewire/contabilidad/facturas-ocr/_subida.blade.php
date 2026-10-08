@@ -37,6 +37,9 @@
     @if ($lecturaDesde)
         <b style="color:#b45309">⏳ {{ $esperandoOcr ? 'esperando el OCR de Windows de un PC (si tarda más de 3 min se lee con el servidor)' : 'leyendo en el servidor' }}… <span x-text="Math.max(0, ahora - t0) + ' s'"></span></b>
         (puedes seguir con otras)
+        @include('livewire.contabilidad.facturas-ocr._progreso', ['estilo' => 'margin-top:.3rem'])
+        <button type="button" x-data x-show="window.Notification && Notification.permission === 'default'" x-on:click="Notification.requestPermission()"
+                style="color:#4338ca; text-decoration:underline; font-size:.75rem; margin-top:.2rem">🔔 Avisarme al terminar (activar avisos del navegador)</button>
     @elseif ($sinLeer > 0)
         <span style="color:#b45309">{{ $sinLeer }} sin leer{{ $ciclo === '' ? ': elige el IVA del cliente y se leen solas' : '' }}</span>
     @elseif (count($entrada))

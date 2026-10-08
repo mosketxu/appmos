@@ -104,6 +104,25 @@
         .focr-sec { font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; margin:.75rem 0 .35rem; }
     </style>
 
+    <script>
+        /* Fin de la lectura de la carpeta (puede tardar minutos): pitido, aviso del escritorio si se ha permitido y marca en el título de la pestaña. */
+        if (! window.__focrAvisoFin) {
+            window.__focrAvisoFin = true;
+            window.addEventListener('lectura-terminada', () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    [880, 1175].forEach((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+                        g.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.22); o.start(ctx.currentTime + i * 0.22); o.stop(ctx.currentTime + i * 0.22 + 0.18); });
+                } catch (e) {}
+                try { if (window.Notification && Notification.permission === 'granted') new Notification('Facturas OCR', { body: 'Ha terminado de leer las facturas.' }); } catch (e) {}
+                const base = document.title.replace(/^✅ Lectura terminada · /, '');
+                document.title = '✅ Lectura terminada · ' + base;
+                const quitar = () => { document.title = base; window.removeEventListener('focus', quitar); };
+                window.addEventListener('focus', quitar);
+            });
+        }
+    </script>
+
     @if ($sincronizarPendiente)
         {{-- Hay ficheros base nuevos (plan, mayor, proveedores): la pantalla sale ya y los instala ahora, con este aviso --}}
         <div wire:init="sincronizarInicial"></div>
@@ -390,7 +409,7 @@
                 <span class="truncate" style="flex:1" title="{{ $actual['ruta'] }}">{{ basename($actual['ruta']) }}</span>
                 @if ($guardando) <span class="focr-chip c-gris" title="Excel, mover el PDF y aprender de las ya validadas, en segundo plano">💾 guardando {{ $guardando }}…</span> @endif
                 @if ($actual['estado'] !== 'validada')
-                    <button type="button" wire:click="reproponer" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
+                    <button @disabled($lecturaDesde) type="button" wire:click="reproponer" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
                             title="Vuelve a calcular los datos con lo ya leído del PDF (rápido; pierde lo cambiado a mano en esta factura)">
                         <span wire:loading.remove wire:target="reproponer">↻ Volver a proponer</span>
                         <span wire:loading wire:target="reproponer">Proponiendo…</span>
@@ -402,13 +421,13 @@
                             <span wire:loading wire:target="separar">Separando…</span>
                         </button>
                     @endif
-                    <button type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
+                    <button @disabled($lecturaDesde) type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
                             title="Vuelve a leer el PDF con el OCR de Windows (para escaneados o mal leídos; tarda unos segundos)">
                         <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
                         <span wire:loading wire:target="releerOcr">Leyendo con OCR…</span>
                     </button>
                     @if ($web)
-                        <button type="button" wire:click="escaneoDeCalidad" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
+                        <button @disabled($lecturaDesde) type="button" wire:click="escaneoDeCalidad" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
                                 title="La manda a un PC con el OCR de Windows (lee mejor NIF y fechas que el del servidor) y la propone de nuevo. Tarda unos segundos.">
                             <span wire:loading.remove wire:target="escaneoDeCalidad">✨ Escaneo de calidad</span>
                             <span wire:loading wire:target="escaneoDeCalidad">Pidiéndolo a un PC…</span>
@@ -457,6 +476,12 @@
                 </span>
                 <button type="button" wire:click="cerrar" class="focr-btn b-gris" style="padding:.2rem .6rem">✕ Cerrar (Esc)</button>
             </div>
+            @if ($lecturaDesde)
+                <div style="background:#fef3c7; color:#92400e; padding:.35rem .75rem; font-size:.8rem; display:flex; gap:.75rem; align-items:center; flex-wrap:wrap">
+                    <b>⏳ Leyendo las facturas subidas…</b> Validar, rechazar y volver a proponer se activan al terminar; mientras, puedes mirar las facturas.
+                    <div style="flex:1; min-width:12rem">@include('livewire.contabilidad.facturas-ocr._progreso')</div>
+                </div>
+            @endif
             <div class="focr-rev-body">
                 <div class="focr-rev-pdf" wire:key="pdf-{{ $actual['id'] }}-{{ md5($actual['ruta']) }}" wire:ignore
                      @php $sig = $cola[($posicion === false ? -1 : $posicion) + 1] ?? null; @endphp
@@ -508,7 +533,7 @@
                             <div style="font-size:1.05rem">⚠️ FACTURA DUPLICADA</div>
                             @foreach ($duplicados as $m) <div>{{ $m }}</div> @endforeach
                             <div style="display:flex; gap:.5rem; align-items:center; margin-top:.3rem">
-                                <button type="button" wire:click="marcarDuplicada" wire:loading.attr="disabled" class="focr-btn" style="background:#dc2626; color:#fff; padding:.2rem .7rem; font-size:.78rem">
+                                <button @disabled($lecturaDesde) type="button" wire:click="marcarDuplicada" wire:loading.attr="disabled" class="focr-btn" style="background:#dc2626; color:#fff; padding:.2rem .7rem; font-size:.78rem">
                                     Sí, es duplicada → a la carpeta Duplicadas
                                 </button>
                                 <span style="font-weight:400; font-size:.72rem">Si de verdad es otra factura, valida (te lo preguntará).</span>
@@ -555,7 +580,7 @@
                         <div>
                             <label class="focr-lbl">CIF europeo
                                 @if ($provFueraSage)
-                                    <button type="button" wire:click="buscarCif" wire:loading.attr="disabled" wire:target="buscarCif"
+                                    <button @disabled($lecturaDesde) type="button" wire:click="buscarCif" wire:loading.attr="disabled" wire:target="buscarCif"
                                             title="Buscar en internet el CIF y el código postal de este proveedor (unos céntimos)" style="margin-left:.3rem; color:#1d4ed8">
                                         <span wire:loading.remove wire:target="buscarCif">🔎 buscar</span><span wire:loading wire:target="buscarCif">⏳</span>
                                     </button>
@@ -665,16 +690,16 @@
                             @endphp
                             {{-- La pregunta se lee del propio botón al pulsar (data-*): wire:confirm se quedaba con la de antes
                                  al cambiar los datos de la factura (p.ej. tras "Leer con OCR" ya cuadraba y seguía preguntando) --}}
-                            <button type="button" data-atajo="validar" title="Validar (Ctrl + Intro)" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde" style="flex:1; justify-content:center"
+                            <button @disabled($lecturaDesde) type="button" data-atajo="validar" title="Validar (Ctrl + Intro)" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde" style="flex:1; justify-content:center"
                                     data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
                                     x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1')">
                                 <span wire:loading.remove wire:target="validar">✅ Validar <small style="opacity:.75; font-weight:400">Ctrl+Intro</small></span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>
                             <input type="text" wire:model.blur="motivo" class="focr-in" style="flex:1" placeholder="Motivo del rechazo (opcional)">
-                            <button type="button" data-atajo="rechazar" title="Rechazar (Alt + Intro)" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo">✖ Rechazar <small style="opacity:.75; font-weight:400">Alt+Intro</small></button>
-                            <button type="button" wire:click="rechazar('ISP')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.15rem .45rem; font-size:.7rem" title="Rechazar por inversión del sujeto pasivo: añade ISP al final del nombre del PDF">ISP</button>
-                            <button type="button" wire:click="rechazar('ADC')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.15rem .45rem; font-size:.7rem" title="Rechazar por ADC (adquisición intracomunitaria): añade ADC al final del nombre del PDF">ADC</button>
+                            <button @disabled($lecturaDesde) type="button" data-atajo="rechazar" title="Rechazar (Alt + Intro)" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo">✖ Rechazar <small style="opacity:.75; font-weight:400">Alt+Intro</small></button>
+                            <button @disabled($lecturaDesde) type="button" wire:click="rechazar('ISP')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.15rem .45rem; font-size:.7rem" title="Rechazar por inversión del sujeto pasivo: añade ISP al final del nombre del PDF">ISP</button>
+                            <button @disabled($lecturaDesde) type="button" wire:click="rechazar('ADC')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.15rem .45rem; font-size:.7rem" title="Rechazar por ADC (adquisición intracomunitaria): añade ADC al final del nombre del PDF">ADC</button>
                         </div>
                         @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
                             <div style="margin-top:.35rem">
