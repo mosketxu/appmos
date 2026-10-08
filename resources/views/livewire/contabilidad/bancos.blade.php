@@ -914,4 +914,16 @@
             </div>
         </div>
     @endif
+    {{-- Indicador central mientras el servidor trabaja (conciliar, generar, subir ficheros a la base...) --}}
+    <div wire:loading.flex wire:target="conciliar, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
+         class="fixed inset-0 z-50 items-center justify-center bg-gray-900/40">
+        <div class="flex flex-col items-center gap-3 px-8 py-6 bg-white rounded-xl shadow-2xl">
+            <svg class="w-14 h-14 text-indigo-600 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"/>
+                <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+            <div class="text-base font-semibold text-gray-800">Pensando… procesando</div>
+            <div class="text-xs text-gray-500">Puede tardar un minuto por extracto. No cierres la página.</div>
+        </div>
+    </div>
 </div>
