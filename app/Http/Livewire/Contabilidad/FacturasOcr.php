@@ -90,7 +90,7 @@ class FacturasOcr extends Component
         $this->cliente = $this->clienteOk = $this->clientes()[0] ?? '';
         $t = intdiv((int) date('n') - 1, 3);   // trimestre natural anterior, para el chequeo contra el mayor
         $this->chequeoPeriodo = $t === 0 ? (date('Y') - 1).'-4T' : date('Y').'-'.$t.'T';
-        $this->cargarCliente();
+        $this->cargarCliente(true);
         $this->retomarTareas();
     }
 
@@ -233,7 +233,7 @@ class FacturasOcr extends Component
         return json_decode((string) @file_get_contents($this->dirDatos().'/facturas.json'), true) ?: ['facturas' => []];
     }
 
-    protected function cargarCliente(): void
+    protected function cargarCliente(bool $aplazarSync = false): void
     {
         $this->sel = '';
         $this->propuestaCif = null;
@@ -264,11 +264,34 @@ class FacturasOcr extends Component
         if (! array_key_exists($this->cierre, $this->mesesCierre())) {
             $this->cierre = '';
         }
-        // Ficheros base centrales de la empresa (mayor, plan, proveedores): lo subido en otro proceso se instala aquí y lo de aquí se publica allí
+        // Ficheros base centrales de la empresa (mayor, plan, proveedores): lo subido en otro proceso se instala aquí y lo de aquí se publica allí.
+        // Al abrir la pantalla solo se comprueba si hay algo (rápido): si lo hay, la pantalla sale ya y lo instala después (wire:init) con el recuadro
+        // «Actualizando los ficheros base…», en vez de dejar la página en blanco durante el minuto que tarda en rehacer los proveedores.
+        try {
+            if ($aplazarSync) {
+                $this->sincronizarPendiente = $this->sincronizarCentral(true) !== [];
+            } else {
+                $this->sincronizarCentral();
+            }
+        } catch (\Throwable $e) {
+            report($e);   // no impide abrir la pantalla
+        }
+    }
+
+    /** ¿Hay ficheros base centrales por instalar/publicar al abrir? La pantalla lo hace tras pintarse (sincronizarInicial). */
+    public bool $sincronizarPendiente = false;
+
+    /** wire:init: instala/publica los ficheros base centrales (puede tardar un minuto si hay que rehacer los proveedores). */
+    public function sincronizarInicial(): void
+    {
+        if (! $this->sincronizarPendiente) {
+            return;
+        }
+        $this->sincronizarPendiente = false;
         try {
             $this->sincronizarCentral();
         } catch (\Throwable $e) {
-            report($e);   // no impide abrir la pantalla
+            report($e);
         }
     }
 
@@ -2259,7 +2282,7 @@ class FacturasOcr extends Component
      * Ficheros base centrales ↔ Base/ de este cliente, en los dos sentidos (gana el más reciente): lo que se subió en otro proceso se instala aquí
      * y lo que se sube aquí se publica allí. Se hace al abrir el cliente. Devuelve lo hecho.
      */
-    protected function sincronizarCentral(): array
+    protected function sincronizarCentral(bool $soloComprobar = false): array
     {
         $hecho = [];
         $eid = $this->entidadIdCliente();
@@ -2278,12 +2301,14 @@ class FacturasOcr extends Component
                 foreach (array_merge($locales, glob($dir.'/OLD/*.xlsx') ?: []) as $f) {
                     $yaEsta = $yaEsta || hash_file('sha256', $f) === hash_file('sha256', $central['ruta']);
                 }
-                if (! $yaEsta && $this->instalarBase($tipo, $central['ruta'], $central['nombre'], false)) {
+                if (! $yaEsta && ($soloComprobar || $this->instalarBase($tipo, $central['ruta'], $central['nombre'], false))) {
                     $hecho[] = "{$tc}: instalado el del central ({$central['nombre']})";
                 }
             } elseif ($local && (! $central || (filemtime($local) > filemtime($central['ruta']) && hash_file('sha256', $local) !== hash_file('sha256', $central['ruta'])))
                 && ! \App\Support\FicherosBase::existeContenido($eid, $tc, $local)) {
-                \App\Support\FicherosBase::guardar($eid, $tc, $local, basename($local), 'Facturas OCR (existente)');
+                if (! $soloComprobar) {
+                    \App\Support\FicherosBase::guardar($eid, $tc, $local, basename($local), 'Facturas OCR (existente)');
+                }
                 $hecho[] = "{$tc}: publicado el de Facturas OCR ({$local})";
             }
         }

@@ -104,6 +104,13 @@
         .focr-sec { font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b7280; margin:.75rem 0 .35rem; }
     </style>
 
+    @if ($sincronizarPendiente)
+        {{-- Hay ficheros base nuevos (plan, mayor, proveedores): la pantalla sale ya y los instala ahora, con este aviso --}}
+        <div wire:init="sincronizarInicial"></div>
+        <x-contabilidad.procesando target="sincronizarInicial" :visible="true" titulo="Actualizando los ficheros base de SAGE…"
+                                   nota="Hay un plan, mayor o listado de proveedores nuevo y se está rehaciendo la base. Puede tardar un minuto." />
+    @endif
+
     <div class="fixed flex flex-col gap-2 top-4 right-4" style="z-index:70; width:24rem; max-width:calc(100vw - 2rem)">
         <template x-for="aviso in avisos" :key="aviso.id">
             <div x-on:click="avisos = avisos.filter(a => a.id !== aviso.id)" title="Clic para cerrar" class="cursor-pointer flex items-start gap-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg">

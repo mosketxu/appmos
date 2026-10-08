@@ -7,8 +7,8 @@
             <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity=".25"/>
             <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
         </svg>
-        <div style="font-size:1rem;font-weight:600;color:#1f2937">Pensando… procesando</div>
-        <div style="font-size:.75rem;color:#6b7280">Puede tardar un momento. No cierres la página.</div>
+        <div id="procesando-global-titulo" style="font-size:1rem;font-weight:600;color:#1f2937">Pensando… procesando</div>
+        <div id="procesando-global-nota" style="font-size:.75rem;color:#6b7280">Puede tardar un momento. No cierres la página.</div>
         <style>@keyframes procesando-giro{to{transform:rotate(360deg)}}</style>
     </div>
 </div>
@@ -30,10 +30,33 @@
             if (! accion && ! cambios) return;
             activas++;
             if (! temporizador) {
-                temporizador = setTimeout(() => { if (activas > 0 && ! propio()) caja.style.display = 'flex'; }, 800);
+                temporizador = setTimeout(() => { if (activas > 0 && ! propio()) { document.getElementById('procesando-global-titulo').textContent = 'Pensando… procesando'; document.getElementById('procesando-global-nota').textContent = 'Puede tardar un momento. No cierres la página.'; caja.style.display = 'flex'; } }, 800);
             }
             succeed(terminar);
             fail(terminar);
         });
     });
+
+    /* Cambio de pantalla (enlace normal, no Livewire): si el servidor tarda en responder más de 0,7 s, el recuadro con aviso breve en vez de
+       dejar la página parada sin decir nada. Se quita al cargar la nueva (o al volver con «atrás»). */
+    (function () {
+        const caja = document.getElementById('procesando-global');
+        if (! caja) return;
+        let t = null;
+        window.addEventListener('pageshow', () => { clearTimeout(t); caja.style.display = 'none'; });
+        document.addEventListener('click', e => {
+            if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            const a = e.target.closest && e.target.closest('a[href]');
+            if (! a || a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('wire:click') || a.getAttribute('href').startsWith('#')) return;
+            const u = new URL(a.href, location.href);
+            if (u.origin !== location.origin || (u.pathname === location.pathname && u.search === location.search)) return;
+            const sitio = u.pathname.replace(/^\/(contabilidad\/)?/, '').split('/')[0] || 'la pantalla';
+            clearTimeout(t);
+            t = setTimeout(() => {
+                document.getElementById('procesando-global-titulo').textContent = 'Abriendo ' + sitio.replace(/-/g, ' ') + '…';
+                document.getElementById('procesando-global-nota').textContent = 'Un momento, el servidor está preparando la pantalla.';
+                caja.style.display = 'flex';
+            }, 700);
+        });
+    })();
 </script>
