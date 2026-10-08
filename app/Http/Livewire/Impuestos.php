@@ -233,7 +233,7 @@ class Impuestos extends Component
     /** Se ha elegido un PDF para la casilla $subirA: se guarda como borrador (revisión/revisado) o como presentado. */
     public function updatedArchivo(): void
     {
-        $this->validate(['archivo' => 'file|mimes:pdf|max:30720'], ['archivo.mimes' => 'Tiene que ser un PDF.', 'archivo.max' => 'El PDF pesa más de 30 MB.']);
+        $this->validate(['archivo' => 'file|mimes:pdf,xlsx,xls|max:30720'], ['archivo.mimes' => 'Tiene que ser un PDF o un Excel (.xlsx, .xls).', 'archivo.max' => 'El fichero pesa más de 30 MB.']);
         [$obId, $periodo] = array_pad(explode('|', $this->subirA, 2), 2, '');
         $obId = (int) $obId;
         $this->autorizarCasilla($obId);
@@ -246,10 +246,12 @@ class Impuestos extends Component
         }
         $nombre = basename((string) $this->archivo->getClientOriginalName());
         $sha = hash_file('sha256', $this->archivo->getRealPath());
-        $almacen = 'impuestos/docs/'.$sha.'.pdf';
+        $ext = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
+        $ext = in_array($ext, ['xlsx', 'xls'], true) ? $ext : 'pdf';
+        $almacen = 'impuestos/docs/'.$sha.'.'.$ext;
         Storage::disk('local')->put($almacen, fopen($this->archivo->getRealPath(), 'rb'));
         ImpuestoDocumento::create(['entidad_id' => $ob->entidad_id, 'modelo' => $ob->codigo, 'etiqueta' => $ob->etiqueta, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo,
-            'tipo' => in_array($estado, ['presentado', 'visto'], true) ? 'presentado' : 'borrador', 'nombre' => $nombre, 'almacen' => $almacen, 'tam' => $this->archivo->getSize(),
+            'tipo' => $ext !== 'pdf' ? 'otro' : (in_array($estado, ['presentado', 'visto'], true) ? 'presentado' : 'borrador'), 'nombre' => $nombre, 'almacen' => $almacen, 'tam' => $this->archivo->getSize(),
             'sha256' => $sha, 'origen' => 'web', 'user_id' => auth()->id()]);
         $this->archivo = null;
         $this->subirA = '';

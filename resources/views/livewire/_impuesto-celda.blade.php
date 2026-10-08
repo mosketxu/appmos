@@ -1,7 +1,10 @@
 {{-- Una casilla de Impuestos: marca de estado + icono PDF. Variables: $ob, $per, $e (estado), $docs, $color, $letra, $etq. --}}
 @php
     $clave = $ob->entidad_id.'|'.$ob->codigo.'|'.$ob->etiqueta.'|'.$per;
-    $lista = $docs[$clave] ?? [];
+    $todas = $docs[$clave] ?? [];
+    $esXls = fn ($d) => (bool) preg_match('/\.xlsx?$/i', $d->nombre);
+    $lista = array_values(array_filter($todas, fn ($d) => ! $esXls($d)));
+    $listaX = array_values(array_filter($todas, $esXls));
     $tipoPdf = in_array($e, ['presentado', 'visto'], true) ? 'presentado' : 'borrador';
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
@@ -49,6 +52,27 @@
             </span>
         @else
             <button type="button" class="imp-pdf gris" x-on:click="{!! $subir !!}" title="Sin PDF: pulsa para subir {{ $tipoPdf === 'presentado' ? 'el presentado' : 'el borrador' }}">@include('livewire._impuesto-pdf')</button>
+        @endif
+    @endif
+    @if ($e !== 'no')
+        {{-- Excel de la casilla (cálculos, listados...): otro icono; con documentos abre su lista, sin ellos sube uno --}}
+        @if ($listaX)
+            <span class="imp-pdfw imp-xl" x-data="{ o: false }" x-on:click.outside="o = false">
+                <button type="button" class="imp-pdf" style="color:#107c41" x-on:click="o = !o" title="{{ count($listaX) }} Excel">@include('livewire._impuesto-xls')</button>
+                <div class="imp-pop" x-show="o" x-cloak>
+                    @foreach ($listaX as $d)
+                        <div style="display:flex; gap:6px; align-items:center; padding:3px 6px; font-size:12px">
+                            <a href="{{ route('impuestos.documento', $d->id) }}" style="padding:0; width:auto">{{ $d->nombre }}</a>
+                            @if ($this->puedeTodos())
+                                <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Quitar este Excel a la papelera? No se borra: se puede restaurar." title="Quitar a la papelera" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
+                            @endif
+                        </div>
+                    @endforeach
+                    <button type="button" x-on:click="o = false; {!! $subir !!}" style="border-top:1px solid #e5e7eb">＋ Subir otro Excel…</button>
+                </div>
+            </span>
+        @else
+            <button type="button" class="imp-pdf gris imp-xl" x-on:click="{!! $subir !!}" title="Subir un Excel de esta casilla">@include('livewire._impuesto-xls')</button>
         @endif
     @endif
     <button type="button" class="imp-com {{ $cm ? 'tiene' : ($e === 'no' ? 'oculta' : '') }}" wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"

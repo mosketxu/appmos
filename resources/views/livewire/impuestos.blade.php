@@ -29,6 +29,7 @@
         .imp-m:hover { filter: brightness(1.12); }
         .imp-pdf { display: inline-flex; padding: 0; margin: 0; background: none; border: 0; cursor: pointer; line-height: 0; }
         .imp-pdf svg { width: 16px; height: 16px; }
+        .imp-xl svg { width: 16px; height: 16px; }
         .imp-pdf.gris { color: #cbd5e1 !important; }
         .imp-pdf.gris:hover { color: #94a3b8 !important; }
         .imp-pdfw { position: relative; display: inline-flex; }
@@ -44,7 +45,7 @@
         .imp-btn.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
         @page { size: A4 landscape; margin: 8mm; }
         @media print {
-            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-qx, .imp-com:not(.tiene), #imp-fichero, button[title="Información"] { display: none !important; }
+            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-xl, .imp-qx, .imp-com:not(.tiene), #imp-fichero, button[title="Información"] { display: none !important; }
             body { background: #fff !important; }
             .imp-solo-print { display: block !important; }
             #imp-pagina { padding: 0 !important; }
@@ -167,7 +168,7 @@
             <div class="text-xs text-indigo-700 imp-noprint">{{ $aviso }}</div>
         @endif
         @error('archivo') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
-        <div wire:loading wire:target="archivo" class="text-xs text-indigo-700 imp-noprint">Subiendo el PDF…</div>
+        <div wire:loading wire:target="archivo" class="text-xs text-indigo-700 imp-noprint">Subiendo el fichero…</div>
 
         {{-- Papelera de PDF: se restauran con un clic; solo el Admin la vacía --}}
         @if ($verPapelera && $this->puedeTodos())
@@ -279,7 +280,7 @@
             </div>
         @endif
 
-        <input id="imp-fichero" type="file" accept="application/pdf" wire:model="archivo" style="display:none">
+        <input id="imp-fichero" type="file" accept="application/pdf,.xlsx,.xls" wire:model="archivo" style="display:none">
 
         <div class="overflow-x-auto bg-white border rounded-lg shadow">
             <table class="imp-tabla">

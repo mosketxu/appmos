@@ -21,6 +21,10 @@ class ImpuestosDocumentoController extends Controller
         $ruta = Storage::disk('local')->path($documento->almacen);
         abort_unless(is_file($ruta), 404);
 
+        if (preg_match('/\.xlsx?$/i', $documento->almacen)) {
+            return response()->download($ruta, $documento->nombre);
+        }
+
         return response()->file($ruta, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.addslashes($documento->nombre).'"']);
     }
 }
