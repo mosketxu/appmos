@@ -62,8 +62,15 @@ class Bancos extends Component
     /** Cuenta que no empieza por 572 a marcar como de banco (p.ej. 551002). */
     public string $otraCuenta = '';
 
-    /** Extracto del banco a conciliar y cuenta (partida) a la que pertenece. */
-    public $extracto = null;
+    /**
+     * Extractos del banco a conciliar (varios a la vez, 8-oct-2026): ficheros subidos ($nuevosExtractos es el
+     * buzón de la subida; anadirExtractos() los pasa a la lista), la cuenta (partida) de cada uno
+     * ($cuentasExtracto, misma posición) y de dónde sale la propuesta ($origenCuenta).
+     */
+    public array $nuevosExtractos = [];
+    public array $extractos = [];
+    public array $cuentasExtracto = [];
+    public array $origenCuenta = [];
     public string $cuenta = '';
 
     /** Maestro del cliente (filas SAGE + manuales) y plan de cuentas [codigo => nombre], ver cargarMaestro(). */
@@ -373,7 +380,7 @@ class Bancos extends Component
         $this->sincronizarCentral();
         $this->resultados = [];
         $this->cuenta = '';
-        $this->extracto = null;
+        $this->extractos = $this->cuentasExtracto = $this->origenCuenta = [];
         $this->mapeo = null;
         $this->revisar = '';
         $this->cargarMaestro();
@@ -588,63 +595,157 @@ class Bancos extends Component
         return $archivos ? $this->descargar('Output/'.basename($archivos[0])) : null;
     }
 
-    /** Si el nombre del extracto empieza por una de las cuentas, se preselecciona. */
-    public function updatedExtracto(): void
+    /**
+     * Propone la cuenta de un extracto por su nombre: empieza por el código de cuenta (572003...) o lleva
+     * el nº de cuenta del banco (0077994) que ya se vio en un extracto anterior de esa cuenta (nombres
+     * de Input/input_old y lo aprendido en Base/cuentas_extracto.json). Devuelve [cuenta, motivo].
+     */
+    protected function proponerCuenta(string $nombre): array
     {
-        $this->resetErrorBag('extracto');
-        if ($this->extracto instanceof UploadedFile && $this->cuenta === ''
-            && preg_match('/^(\d{6,})/', $this->extracto->getClientOriginalName(), $m)
-            && array_key_exists($m[1], $this->cuentasBanco())) {
-            $this->cuenta = $m[1];
+        $cuentas = $this->cuentasBanco();
+        if (preg_match('/^(\d{6,})/', $nombre, $m) && array_key_exists($m[1], $cuentas)) {
+            return [$m[1], 'por el nombre del fichero'];
+        }
+        preg_match_all('/(?<!\d)\d{5,}(?!\d)/', $nombre, $nums);
+        $mapa = $this->cuentasPorNumeroBanco();
+        foreach ($nums[0] as $n) {
+            $clave = ltrim($n, '0');
+            if ($clave !== '' && isset($mapa[$clave]) && array_key_exists($mapa[$clave], $cuentas)) {
+                return [$mapa[$clave], "porque el nº {$n} ya se usó en extractos de la {$mapa[$clave]}"];
+            }
+        }
+        return ['', ''];
+    }
+
+    /** [nº de cuenta del banco sin ceros => cuenta 572...] aprendido de los extractos ya procesados. */
+    protected function cuentasPorNumeroBanco(): array
+    {
+        $mapa = [];
+        $json = $this->baseDir().'/'.$this->cliente.'/Base/cuentas_extracto.json';
+        if (is_file($json)) {
+            $mapa = array_filter((array) json_decode((string) file_get_contents($json), true), 'is_string');
+        }
+        foreach (['Input', 'Input/input_old'] as $sub) {
+            foreach (glob($this->baseDir().'/'.$this->cliente.'/'.$sub.'/*') ?: [] as $f) {
+                $n = basename($f);
+                if (preg_match('/(?<!\d)(5\d{5})(?!\d)[ _-]+0*(\d{5,})(?!\d)/', $n, $m)) {
+                    $mapa[$m[2]] ??= $m[1];
+                }
+            }
+        }
+        return $mapa;
+    }
+
+    /** Recuerda que el nº de cuenta del banco que lleva el nombre de este extracto es de esta cuenta 572. */
+    protected function aprenderCuentaExtracto(string $nombre, string $cuenta): void
+    {
+        if (preg_match('/^\d{6,}/', $nombre)) {
+            return; // ya lleva la cuenta delante: no hace falta aprender nada
+        }
+        preg_match_all('/(?<!\d)\d{5,}(?!\d)/', $nombre, $nums);
+        if (empty($nums[0])) {
+            return;
+        }
+        $json = $this->baseDir().'/'.$this->cliente.'/Base/cuentas_extracto.json';
+        $mapa = is_file($json) ? (array) json_decode((string) file_get_contents($json), true) : [];
+        foreach ($nums[0] as $n) {
+            $mapa[ltrim($n, '0')] = $cuenta;
+        }
+        @file_put_contents($json, json_encode($mapa, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    /** Los ficheros recién subidos pasan a la lista, cada uno con su cuenta propuesta (se puede cambiar). */
+    public function anadirExtractos(): void
+    {
+        $this->resetErrorBag(['extractos', 'cuenta']);
+        $nuevos = array_values(array_filter($this->nuevosExtractos, fn ($f) => $f instanceof UploadedFile));
+        $this->nuevosExtractos = [];
+        $malos = [];
+        foreach ($nuevos as $f) {
+            $nombre = $f->getClientOriginalName();
+            if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls'], true)) {
+                $malos[] = $nombre;
+                continue;
+            }
+            [$cuenta, $motivo] = $this->proponerCuenta($nombre);
+            $this->extractos[] = $f;
+            $this->cuentasExtracto[] = $cuenta;
+            $this->origenCuenta[] = $motivo;
+        }
+        if ($malos) {
+            $this->addError('extractos', 'Solo Excel (.xlsx / .xls). No se han añadido: '.implode(', ', $malos));
         }
     }
 
+    public function quitarExtracto(int $i): void
+    {
+        unset($this->extractos[$i], $this->cuentasExtracto[$i], $this->origenCuenta[$i]);
+        $this->extractos = array_values($this->extractos);
+        $this->cuentasExtracto = array_values($this->cuentasExtracto);
+        $this->origenCuenta = array_values($this->origenCuenta);
+    }
+
+    public function updatedCuentasExtracto(): void
+    {
+        $this->origenCuenta = array_map(fn ($o, $i) => ($this->cuentasExtracto[$i] ?? '') === '' ? '' : $o, $this->origenCuenta, array_keys($this->origenCuenta));
+    }
+
+    /** Concilia, uno tras otro, todos los extractos de la lista contra la cuenta elegida para cada uno. */
     public function conciliar(): void
     {
-        $this->resetErrorBag(['extracto', 'cuenta']);
-        $etiqueta = "Bancos · {$this->cliente} · bancos{$this->cuenta}";
+        $this->resetErrorBag(['extractos', 'cuenta']);
         if (! config('contabilidad.bancos_ejecucion')) {
-            $this->avisarNoAutorizado($etiqueta);
+            $this->avisarNoAutorizado('Bancos · extractos');
             return;
         }
         if (! $this->clienteValido()) {
-            $this->addError('extracto', 'Elige primero un cliente.');
+            $this->addError('extractos', 'Elige primero un cliente.');
             return;
         }
-        if (! array_key_exists($this->cuenta, $this->cuentasBanco())) {
-            $this->addError('cuenta', 'Elige la cuenta del banco.');
+        if (! $this->extractos) {
+            $this->addError('extractos', 'Sube al menos un extracto del banco.');
             return;
         }
-        if (! $this->extracto instanceof UploadedFile) {
-            $this->addError('extracto', 'Sube el extracto del banco.');
-            return;
-        }
-        $nombre = str_replace(['/', '\\'], '_', $this->extracto->getClientOriginalName());
-        if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls'], true)) {
-            $this->addError('extracto', 'El extracto tiene que ser un Excel (.xlsx / .xls).');
-            return;
+        $cuentas = $this->cuentasBanco();
+        foreach ($this->extractos as $i => $f) {
+            if (! array_key_exists($this->cuentasExtracto[$i] ?? '', $cuentas)) {
+                $this->addError('extractos', 'Falta la cuenta de «'.$f->getClientOriginalName().'»: elígela en su fila.');
+                return;
+            }
         }
 
         $dir = $this->baseDir().'/'.$this->cliente.'/Input';
         if (! is_dir($dir) && ! @mkdir($dir, 0777, true)) {
-            $this->addError('extracto', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
+            $this->addError('extractos', "No se ha podido crear la carpeta {$this->rutaWindows($dir)}.");
             return;
         }
-        $destino = "{$dir}/{$nombre}";
-        if (file_exists($destino)) {
-            $destino = "{$dir}/".date('Ymd-His')." {$nombre}";
+        $this->salida = '';
+        $hechos = [];
+        foreach ($this->extractos as $i => $f) {
+            $nombre = str_replace(['/', '\\'], '_', $f->getClientOriginalName());
+            $destino = "{$dir}/{$nombre}";
+            if (file_exists($destino)) {
+                $destino = "{$dir}/".date('Ymd-His')." {$nombre}";
+            }
+            if (! @copy($f->getRealPath(), $destino)) {
+                $this->addError('extractos', "No se ha podido guardar {$nombre} en {$this->rutaWindows($dir)}.");
+                break;
+            }
+            $this->cuenta = $this->cuentasExtracto[$i];
+            $this->aprenderCuentaExtracto($nombre, $this->cuenta);
+            $hechos[] = $i;
+            if (! $this->procesar($destino)) {
+                break; // formato desconocido: se abre la pantalla de columnas y el resto queda en la lista
+            }
         }
-        if (! @copy($this->extracto->getRealPath(), $destino)) {
-            $this->addError('extracto', "No se ha podido guardar {$nombre} en {$this->rutaWindows($dir)}.");
-            return;
+        foreach (array_reverse($hechos) as $i) {
+            $this->quitarExtracto($i);
         }
-
-        $this->extracto = null;
-        $this->procesar($destino);
+        // un extracto con formato desconocido se vuelve a procesar desde la pantalla de columnas, no desde la lista
     }
 
     /** bancos_conciliacion.py con un extracto ya guardado en Input; si no sabe leerlo, pide asignar las columnas. */
-    protected function procesar(string $destino): void
+    protected function procesar(string $destino): bool
     {
         $etiqueta = "Bancos · {$this->cliente} · bancos{$this->cuenta}";
         $this->resultados = [];
@@ -666,7 +767,9 @@ class Bancos extends Component
                 ."\n→ Asigna las columnas del extracto en la ventana que se ha abierto.";
             preg_match('/^AVISO:\s*(.+?) -- se omite/m', $nueva, $motivo);
             $this->abrirMapeo($m[1], $this->cuenta, $motivo[1] ?? '');
+            return false;
         }
+        return true;
     }
 
     /** Descarga un fichero de la carpeta del cliente (Output/..., Base/...). */

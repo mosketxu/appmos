@@ -178,9 +178,9 @@
     @if ($cliente !== '')
         <div class="overflow-hidden bg-white border rounded-lg shadow">
             <div class="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="mb-1 text-sm font-semibold text-gray-700">Extracto a procesar → bancos{{ $cuenta ?: '572xxx' }}.xlsx</h2>
+                <h2 class="mb-1 text-sm font-semibold text-gray-700">Extractos a procesar → bancos&lt;cuenta&gt;.xlsx</h2>
                 <p class="mb-3 text-xs text-gray-500">
-                    Elige la cuenta del banco y sube su extracto. Se quitan los movimientos que ya están en el mayor de
+                    Sube uno o varios extractos: propongo la cuenta de cada uno (si no la encuentro, la eliges tú) y se procesan uno tras otro. Se quitan los movimientos que ya están en el mayor de
                     esa cuenta (y los que aparezcan en los otros mayores cargados, que se listan en la Salida).
                     La contrapartida de cada movimiento se busca en la base:
                     Variables (a mano) → Maestro → Plan de cuentas → palabras distintivas.
@@ -194,55 +194,72 @@
                 @if (! $hayBase || empty($cuentas))
                     <p class="text-sm text-amber-700">Primero sube arriba el plan de cuentas y el mayor.</p>
                 @else
-                    <div class="flex flex-wrap items-start gap-4">
-                        <div>
-                            <label class="block mb-1 text-xs font-medium text-gray-600">Cuenta del banco</label>
-                            <select wire:model.live="cuenta" class="text-sm border-gray-300 rounded-md shadow-sm">
-                                <option value="">— elige —</option>
-                                @foreach ($cuentas as $codigo => $nombreCuenta)
-                                    <option value="{{ $codigo }}">{{ $codigo }}{{ $nombreCuenta !== '' ? ' · '.$nombreCuenta : '' }}</option>
-                                @endforeach
-                            </select>
-                            @error('cuenta')
-                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                    <div x-data="{
+                             encima: false, subiendo: false,
+                             subir(files) {
+                                 if (! files || ! files.length) return;
+                                 this.subiendo = true;
+                                 $wire.uploadMultiple('nuevosExtractos', files,
+                                     () => { this.subiendo = false; $wire.anadirExtractos(); },
+                                     () => { this.subiendo = false; });
+                             },
+                         }"
+                         x-on:dragover.prevent="encima = true"
+                         x-on:dragleave.prevent="encima = false"
+                         x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)">
+                        <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
+                               class="flex items-center gap-2 px-3 py-3 text-sm border-2 border-dashed rounded-md cursor-pointer">
+                            <input type="file" multiple accept=".xlsx,.xls" class="hidden"
+                                   x-on:change="subir($event.target.files); $event.target.value = ''">
+                            <span>📄</span>
+                            <span class="text-gray-700">Arrastra aquí los extractos del banco (uno o varios) o haz clic para elegirlos</span>
+                            <span x-show="subiendo" class="text-xs text-gray-400">Subiendo…</span>
+                        </label>
+                        @error('extractos')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
 
-                        <div class="flex-1 min-w-[16rem]"
-                             x-data="{ encima: false }"
-                             x-on:dragover.prevent="encima = true"
-                             x-on:dragleave.prevent="encima = false"
-                             x-on:drop.prevent="encima = false; $event.dataTransfer.files.length && $wire.upload('extracto', $event.dataTransfer.files[0])">
-                            <label class="block mb-1 text-xs font-medium text-gray-600">Extracto del banco</label>
-                            <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
-                                   class="flex items-center gap-2 px-3 py-2 text-sm border-2 border-dashed rounded-md cursor-pointer">
-                                <input type="file" wire:model="extracto" accept=".xlsx,.xls" class="hidden">
-                                <span>📄</span>
-                                <span class="text-gray-700">
-                                    @if ($extracto)
-                                        {{ $extracto->getClientOriginalName() }}
-                                    @else
-                                        Arrastra aquí el extracto o haz clic para elegirlo
-                                    @endif
-                                </span>
-                            </label>
-                            <div wire:loading wire:target="extracto" class="mt-1 text-xs text-gray-400">Subiendo…</div>
-                            @error('extracto')
-                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="pt-5">
-                            <x-button.primary
-                                wire:click="conciliar"
-                                wire:loading.attr="disabled"
-                                wire:target="conciliar, extracto"
-                                :disabled="$cuenta === '' || ! $extracto"
-                            >
-                                <span wire:loading.remove wire:target="conciliar">▶ Generar bancos{{ $cuenta }}.xlsx</span>
-                                <span wire:loading wire:target="conciliar">⏳ Procesando…</span>
-                            </x-button.primary>
-                        </div>
+                        @if ($extractos)
+                            <table class="mt-3 text-sm">
+                                <thead>
+                                    <tr class="text-xs text-left text-gray-500">
+                                        <th class="pr-3 font-medium">Extracto</th>
+                                        <th class="pr-3 font-medium">Cuenta del banco</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($extractos as $i => $ex)
+                                        <tr wire:key="extracto-{{ $i }}-{{ $ex->getClientOriginalName() }}" class="align-top">
+                                            <td class="py-1 pr-3 text-gray-800">{{ $ex->getClientOriginalName() }}</td>
+                                            <td class="py-1 pr-3">
+                                                <select wire:model.live="cuentasExtracto.{{ $i }}"
+                                                        class="text-sm border-gray-300 rounded-md shadow-sm {{ ($cuentasExtracto[$i] ?? '') === '' ? 'border-amber-400 bg-amber-50' : '' }}">
+                                                    <option value="">— elige —</option>
+                                                    @foreach ($cuentas as $codigo => $nombreCuenta)
+                                                        <option value="{{ $codigo }}">{{ $codigo }}{{ $nombreCuenta !== '' ? ' · '.$nombreCuenta : '' }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @if (($cuentasExtracto[$i] ?? '') === '')
+                                                    <div class="mt-0.5 text-xs text-amber-700">No he encontrado la cuenta: elígela tú.</div>
+                                                @elseif (($origenCuenta[$i] ?? '') !== '')
+                                                    <div class="mt-0.5 text-xs text-gray-500">Propuesta {{ $origenCuenta[$i] }}.</div>
+                                                @endif
+                                            </td>
+                                            <td class="py-1">
+                                                <button type="button" wire:click="quitarExtracto({{ $i }})" class="text-xs text-red-600 hover:underline">quitar</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <div class="mt-3">
+                                <x-button.primary wire:click="conciliar" wire:loading.attr="disabled" wire:target="conciliar">
+                                    <span wire:loading.remove wire:target="conciliar">▶ Generar bancos ({{ count($extractos) }} {{ count($extractos) === 1 ? 'extracto' : 'extractos' }})</span>
+                                    <span wire:loading wire:target="conciliar">⏳ Procesando…</span>
+                                </x-button.primary>
+                            </div>
+                        @endif
                     </div>
                 @endif
             </div>
