@@ -2396,7 +2396,10 @@ class FacturasOcr extends Component
             return;
         }
         $this->salida = '';
-        if ($this->ejecutar(array_merge(['reproponer'], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0', '--editadas']), 600, 'Revisar todas', false)) {
+        // Con facturas marcadas en la lista, solo esas; sin marcar, todas las pendientes
+        $ids = array_values(array_filter($this->marcadas, fn ($i) => is_string($i) && preg_match('/^[0-9a-f]{6,}$/', $i)));
+        $args = $ids ? ['reproponer', implode(',', $ids)] : ['reproponer'];
+        if ($this->ejecutar(array_merge($args, $this->parametros(), ['--analitica', $this->analitica ? '1' : '0', '--editadas']), 600, $ids ? 'Revisar las marcadas' : 'Revisar todas', false)) {
             $this->dispatch('proceso-terminado', mensaje: '✅ '.trim($this->salida));
         }
         if ($this->sel) {

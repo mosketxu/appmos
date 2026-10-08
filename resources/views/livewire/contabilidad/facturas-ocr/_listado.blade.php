@@ -272,14 +272,14 @@
                                     <button type="button" wire:click="$set('marcadas', [])" class="focr-btn b-gris" style="padding:.15rem .5rem; font-size:.75rem">Desmarcar</button>
                                 @endif
                                 <button type="button" wire:click="revisarTodas" wire:loading.attr="disabled"
-                                        wire:confirm="Volver a proponer todas las facturas por revisar con los ficheros base y las reglas de ahora? En las empezadas se conserva lo que has cambiado a mano."
-                                        class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.8rem" title="Volver a proponer todas las pendientes (también las empezadas: lo tocado a mano se conserva)">
-                                    <span wire:loading.remove wire:target="revisarTodas">↻ Revisar todas</span>
+                                        wire:confirm="{{ $marcadas ? '¿Volver a proponer las '.count($marcadas).' facturas marcadas con los ficheros base y las reglas de ahora? Se conserva lo que has cambiado a mano.' : '¿Volver a proponer todas las facturas por revisar con los ficheros base y las reglas de ahora? En las empezadas se conserva lo que has cambiado a mano.' }}"
+                                        class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.8rem" title="{{ $marcadas ? 'Volver a proponer solo las marcadas (lo tocado a mano se conserva)' : 'Volver a proponer todas las pendientes (también las empezadas: lo tocado a mano se conserva)' }}">
+                                    <span wire:loading.remove wire:target="revisarTodas">{{ $marcadas ? '↻ Revisar las '.count($marcadas).' marcadas' : '↻ Revisar todas' }}</span>
                                     <span wire:loading wire:target="revisarTodas">↻ Revisando…</span>
                                 </button>
                                 <div wire:loading.flex wire:target="revisarTodas" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,.75);align-items:center;justify-content:center;flex-direction:column;gap:1rem">
                                     <div style="width:64px;height:64px;border:7px solid #c7d2fe;border-top-color:#4f46e5;border-radius:50%;animation:focr-giro 1s linear infinite"></div>
-                                    <div style="font-weight:600;color:#3730a3;font-size:1.1rem">Revisando todas las facturas… puede tardar un minuto</div>
+                                    <div style="font-weight:600;color:#3730a3;font-size:1.1rem">Revisando las facturas… puede tardar un minuto</div>
                                     <style>@keyframes focr-giro{to{transform:rotate(360deg)}}</style>
                                 </div>
                                 @if ($quitables)
