@@ -76,5 +76,5 @@
         @endif
     @endif
     <button type="button" class="imp-com {{ $cm ? 'tiene' : ($e === 'no' ? 'oculta' : '') }}" wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
-        title="{{ $cm ? $cmTitulo : 'Añadir un comentario' }}">@if ($cm){{ count($cm) }}@endif</button>
+        title="{{ $cm ? $cmTitulo : 'Añadir un comentario' }}">@include('livewire._impuesto-globo', ['n' => count($cm)])</button>
 </span>

@@ -32,6 +32,7 @@
         .imp-xl svg { width: 19px; height: 19px; }
         .imp-pdf.gris { color: #cbd5e1 !important; }
         .imp-pdf.gris:hover { color: #94a3b8 !important; }
+        .imp-xl.gris:hover svg { opacity: .8; }
         .imp-pdfw { position: relative; display: inline-flex; }
         .imp-pop { position: absolute; top: 25px; right: -6px; z-index: 20; background: #fff; border: 1px solid #9ca3af; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.2);
                    padding: 4px; min-width: 220px; max-width: 340px; text-align: left; white-space: normal; }
@@ -60,14 +61,13 @@
             thead { display: table-header-group; }
         }
         .imp-cel { position: relative; }
-        .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 1; font-size: 15px; cursor: pointer; }
-        .imp-com.tiene { position: relative; min-width: 20px; height: 18px; padding: 0 5px; border-radius: 6px; background: #f59e0b; color: #fff; font-size: 12px; font-weight: 700; line-height: 18px;
-                         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .imp-com.tiene::after { content: ''; position: absolute; left: 5px; bottom: -4px; border: 4px solid transparent; border-top-color: #f59e0b; border-bottom: 0; }
-        .imp-com.tiene:hover { background: #d97706; }
+        .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 0; cursor: pointer; color: #9ca3af; }
+        .imp-com svg { width: 19px; height: 19px; }
+        .imp-com.tiene { color: #f59e0b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .imp-com.tiene:hover { color: #d97706; }
         .imp-com:not(.tiene) { opacity: .7; }
-        .imp-com:not(.tiene)::before { content: '💬'; font-size: 16px; }
-        .imp-com:not(.tiene):hover { opacity: 1; }
+        .imp-com:not(.tiene):hover { opacity: 1; color: #6b7280; }
+        .imp-xl.gris svg, .imp-xl.imp-pdf.gris svg { filter: grayscale(1); opacity: .45; }
         .imp-com.oculta:not(.tiene) { visibility: hidden; }
         .imp-cel:hover .imp-com.oculta:not(.tiene) { visibility: visible; }
         .imp-btn:first-child { border-radius: 6px 0 0 6px; } .imp-btn:last-child { border-radius: 0 6px 6px 0; }
