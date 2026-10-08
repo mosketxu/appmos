@@ -167,6 +167,11 @@
                 valor() { return (this.$wire.form || {})[campo] || ''; },
                 etiqueta(v) { const r = this.lista.find((x) => x[0] === v); return v ? (r ? v + ' · ' + r[1] : v) : ''; },
                 mostrar() { this.q = this.etiqueta(this.valor()); },
+                // Ancho = el de la entrada más larga del listado del combo («cuenta nombre»), no todo el espacio libre
+                get ancho() {
+                    const n = this.lista.reduce((m, r) => Math.max(m, (r[0] + ' ' + r[1]).length), 0);
+                    return Math.min(70, Math.max(18, n + 5)) + 'ch';
+                },
                 get res() {
                     const q = norm(this.q);
                     if (this.lista.length === 1 && !this.lista[0][0]) return this.lista;   // mensaje de error
@@ -633,11 +638,11 @@
 
                         {{-- Cl.Ope y Cod.Trans: 2 dígitos (estrechos); Contrapartida ocupa todo lo que sobra (cabe «cuenta · concepto»); Canal a su derecha --}}
                         <div style="grid-column:1 / -1; display:flex; gap:.45rem; align-items:flex-end">
-                            <div style="flex:0 0 3.4rem"><label class="focr-lbl" title="Clave de operación (M)">Cl.Ope</label><input type="text" wire:model.blur="form.clave_operacion" maxlength="2" class="focr-in" style="text-align:center" placeholder="—"></div>
-                            <div style="flex:0 0 3.4rem"><label class="focr-lbl" title="Código de transacción">Cod.Trans</label><input type="text" wire:model.blur="form.codigo_transaccion" maxlength="2" class="focr-in" style="text-align:center"></div>
-                            <div style="flex:1 1 auto; min-width:0">
+                            <div style="flex:0 0 4.2rem"><label class="focr-lbl" title="Clave de operación (M)">Clave Ope</label><input type="text" wire:model.blur="form.clave_operacion" maxlength="2" class="focr-in" style="text-align:center" placeholder="—"></div>
+                            <div style="flex:0 0 4.2rem"><label class="focr-lbl" title="Código de transacción">Cod.Trans</label><input type="text" wire:model.blur="form.codigo_transaccion" maxlength="2" class="focr-in" style="text-align:center"></div>
+                            <div style="flex:0 0 auto; min-width:0; max-width:100%">
                                 <label class="focr-lbl">Contrapartida</label>
-                                <div class="focr-busc" wire:ignore wire:key="bcontrapartida-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)">
+                                <div class="focr-busc" wire:ignore wire:key="bcontrapartida-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)" :style="{ width: ancho }">
                                     <input type="text" x-ref="q" class="focr-in {{ ($form['contrapartida'] ?? '') === '' ? 'falta' : '' }}" style="padding-right:1.4rem" x-model="q" placeholder="cuenta / nombre"
                                            x-on:focus="$el.select(); abrir()" x-on:click="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
                                            x-on:keydown.enter.prevent="intro()" x-on:keydown.escape.stop="cerrar()" x-on:blur="salir()">
