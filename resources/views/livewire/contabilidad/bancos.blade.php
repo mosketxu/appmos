@@ -301,12 +301,13 @@
         @if ($hayBase)
             @php $ficherosBancos = array_values(array_filter($generados, fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g) && ! str_starts_with($g, 'bancos_junto_'))); @endphp
             <div class="overflow-hidden bg-white border rounded-lg shadow"
+                 id="revision-bancos" x-on:bancos-revisar.window="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))"
                  wire:key="revision-{{ $cliente }}-{{ $revisar }}-{{ $revisionN }}"
                  x-data="{
                      lineas: @js(array_map(fn ($l) => $l + ['concepto_maestro' => '', 'vale' => ''], $lineasRevisar)),
                      nombres: @js((object) $planCuentas),
                      nuevas: {},
-                     filtro: 'vacias', q: '',
+                     filtro: @js(collect($lineasRevisar)->contains(fn ($l) => empty($l['contrapartida'])) ? 'vacias' : 'todas'), q: '',
                      get vacias() { return this.lineas.filter(l => ! l.contrapartida).length },
                      visible(l) {
                          if (this.filtro === 'vacias' && l.contrapartida && ! l.tocada) return false;
@@ -326,6 +327,10 @@
                  }">
                 <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
                     <h2 class="text-sm font-semibold text-gray-700">Revisar contrapartidas de</h2>
+                    @foreach ($ficherosBancos as $g)
+                        <button type="button" wire:click="$set('revisar', @js($g))"
+                                class="px-2 py-1 text-xs border rounded-md {{ $g === $revisar ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400' }}">{{ $g }}</button>
+                    @endforeach
                     <select wire:model.live="revisar" class="py-1 text-sm border-gray-300 rounded-md shadow-sm">
                         <option value="">— elige un fichero de bancos —</option>
                         @foreach ($ficherosBancos as $g)

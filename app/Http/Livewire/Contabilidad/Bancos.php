@@ -845,6 +845,9 @@ class Bancos extends Component
         foreach (array_reverse($hechos) as $i) {
             $this->quitarExtracto($i);
         }
+        if ($hechos) {
+            $this->dispatch('bancos-revisar');   // baja a la revisión de contrapartidas, que se abre sola con el último fichero
+        }
         // un extracto con formato desconocido se vuelve a procesar desde la pantalla de columnas, no desde la lista
     }
 
