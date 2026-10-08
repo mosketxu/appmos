@@ -1430,6 +1430,9 @@ class FacturasOcr extends Component
         $this->form = $d;
         $this->cifAviso = $this->enLote ? '' : (string) ($this->analizarCif($d['cif'] ?? '')['mensaje'] ?? '');
         $this->avisarHistoria($id);
+        if (! $this->enLote) {
+            $this->dispatch('focr-abierta');   // el cursor vuelve al último campo que se estaba usando (ver focrFoco en la vista)
+        }
     }
 
     public function cerrar(): void

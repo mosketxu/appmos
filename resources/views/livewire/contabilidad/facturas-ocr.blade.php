@@ -10,6 +10,7 @@
         } }"
     x-on:proceso-terminado.window="avisos.push({ id: Date.now() + '-' + Math.random(), mensaje: $event.detail.mensaje })"
     x-on:focr-historia.window="historia($event.detail.id || '')"
+    x-on:focr-abierta.window="setTimeout(() => window.focrFoco && window.focrFoco(), 120)"
     {{-- Atajos con la factura abierta: Ctrl+Intro valida, Alt+Intro rechaza. Ninguno lo usan Chrome, Edge ni Firefox dentro de la página
          (AltGr = Ctrl+Alt en teclado español: se ignora). Antes se sale del campo para que se guarde lo que se estaba escribiendo --}}
     x-on:keydown.window="
@@ -146,6 +147,25 @@
     <script>
         // Visor de PDF propio (PDF.js) para poder recordar el zoom entre facturas y recuadrar datos
         // Buscador de cuenta (proveedor / contrapartida): la lista se pide una vez a Livewire y se filtra aquí
+        // Cursor en el último campo usado: al pasar a otra factura se vuelve a ese campo (identificado por su wire:model o, en los combos, por su buscador)
+        window.focrUltimoCampo = window.focrUltimoCampo || null;
+        window.focrClaveCampo = function (el, f) {
+            const m = el.getAttribute('wire:model.blur') || el.getAttribute('wire:model') || el.getAttribute('wire:model.live');
+            if (m) return m;
+            const busc = el.closest('.focr-busc');
+            if (busc) return 'busc:' + (busc.getAttribute('x-data') || '');
+            return 'idx:' + Array.from(f.querySelectorAll('input,select,textarea')).indexOf(el);
+        };
+        document.addEventListener('focusin', (e) => {
+            const f = e.target.closest && e.target.closest('.focr-rev-form');
+            if (f && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) window.focrUltimoCampo = window.focrClaveCampo(e.target, f);
+        });
+        window.focrFoco = function () {
+            const f = document.querySelector('.focr-rev-form');
+            if (! f || ! window.focrUltimoCampo) return;
+            const el = Array.from(f.querySelectorAll('input,select,textarea')).find((x) => window.focrClaveCampo(x, f) === window.focrUltimoCampo);
+            if (el && ! el.disabled && el.offsetParent !== null) { el.focus(); try { el.select && el.select(); } catch (e) {} }
+        };
         window.focrListas = window.focrListas || {};
         window.addEventListener('focr-listas', () => { window.focrListas = {}; });
         window.buscador = function (lista, campo, libre) {
