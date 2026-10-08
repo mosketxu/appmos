@@ -2162,7 +2162,7 @@ class FacturasOcr extends Component
     public array $marcadasValidadas = [];
 
     /** Retrocede a pendientes las validadas marcadas (reabrir_varias: fuera del Excel, el PDF a su carpeta). */
-    public function retrocederMarcadas(): void
+    public function retrocederMarcadas(bool $reproponer = false): void
     {
         $ids = array_values(array_filter($this->marcadasValidadas, fn ($i) => is_string($i) && preg_match('/^[0-9a-f]{6,}$/', $i)));
         $this->marcadasValidadas = [];
@@ -2170,8 +2170,13 @@ class FacturasOcr extends Component
             return;
         }
         $this->salida = '';
-        $ok = $this->ejecutar(['reabrir_varias', implode(',', $ids)], 600, 'Retroceder validadas', false);
-        $lineas = array_values(array_filter(array_map('trim', explode("\n", $this->salida)), fn ($l) => str_contains($l, 'vuelven a pendientes') || str_starts_with($l, 'OJO') || str_starts_with($l, 'No se ha podido')));
+        $args = ['reabrir_varias', implode(',', $ids)];
+        if ($reproponer) {
+            // Además se vuelven a proponer (datos rehechos con lo aprendido: abonos, etiquetas de importes, nº de factura...)
+            $args = array_merge($args, $this->parametros(), ['--analitica', $this->analitica ? '1' : '0', '--reproponer']);
+        }
+        $ok = $this->ejecutar($args, 900, 'Retroceder validadas', false);
+        $lineas = array_values(array_filter(array_map('trim', explode("\n", $this->salida)), fn ($l) => str_contains($l, 'vuelven a pendientes') || str_contains($l, 'vuelto a proponer') || str_starts_with($l, 'OJO') || str_starts_with($l, 'No se ha podido')));
         $this->dispatch('proceso-terminado', mensaje: ($ok ? '↩ ' : '⚠️ ').($lineas ? implode("\n", $lineas) : trim($this->salida)));
     }
 

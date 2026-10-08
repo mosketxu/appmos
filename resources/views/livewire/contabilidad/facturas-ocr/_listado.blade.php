@@ -351,9 +351,10 @@
                                 <span class="text-xs text-gray-400">Nada nuevo para SAGE</span>
                             @endif
                             @if (count($marcadasValidadas))
-                                <button type="button" wire:click="retrocederMarcadas" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.3rem .8rem; font-size:.85rem; border-color:#b45309; color:#92400e"
-                                        wire:confirm="¿Volver a pendientes las {{ count($marcadasValidadas) }} validadas marcadas? Se quitan del Excel del proceso en curso y el PDF vuelve a su carpeta. Si alguna estaba en un Excel ya guardado para SAGE, corrígela también en SAGE."
-                                        title="Las vuelve a poner por revisar sin abrirlas una a una">
+                                <button type="button" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.3rem .8rem; font-size:.85rem; border-color:#b45309; color:#92400e"
+                                        x-data
+                                        x-on:click="if (! confirm(@js('¿Volver a pendientes las '.count($marcadasValidadas).' validadas marcadas? Se quitan del Excel del proceso en curso y el PDF vuelve a su carpeta. Si alguna estaba en un Excel ya guardado para SAGE, corrígela también en SAGE.'))) return; $wire.retrocederMarcadas(confirm('¿Volver a proponerlas ahora (releerlas)?\n\nAceptar = se rehacen los datos con lo aprendido (abonos, importes, nº de factura…) y se pierde lo que cambiaste a mano.\nCancelar = quedan pendientes tal como las validaste.'))"
+                                        title="Las vuelve a poner por revisar sin abrirlas una a una (y, si quieres, las relee)">
                                     ↩ Retroceder {{ count($marcadasValidadas) === 1 ? '1 marcada' : count($marcadasValidadas).' marcadas' }}
                                 </button>
                             @endif
