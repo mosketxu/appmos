@@ -42,5 +42,6 @@
         @stack('modals')
 
         @livewireScripts
+        <x-procesando-global />
     </body>
 </html>
