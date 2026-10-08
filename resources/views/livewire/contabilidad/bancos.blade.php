@@ -309,6 +309,27 @@
                  id="revision-bancos" x-on:bancos-revisar.window="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'start' }))"
                  wire:key="revision-{{ $cliente }}-{{ $revisar }}-{{ $revisionN }}"
                  x-data="{
+                     // Las ediciones de cada fichero se recuerdan al saltar de uno a otro (en esta página): «Generar todos y juntar» las aplica todas.
+                     init() {
+                         const clave = @js($cliente.'|'.$revisar);
+                         window.bancosBorradores = window.bancosBorradores || {};
+                         window.bancosNuevas = window.bancosNuevas || {};
+                         const borrador = window.bancosBorradores[clave] || {};
+                         this.lineas.forEach(l => {
+                             const d = borrador[l.numero];
+                             if (d && d.concepto === l.concepto) { l.contrapartida = d.contrapartida; l.concepto_maestro = d.concepto_maestro; l.vale = d.vale; l.tocada = d.tocada; }
+                         });
+                         Object.assign(this.nuevas, window.bancosNuevas[@js($cliente)] || {});
+                         this.$watch('lineas', () => this.guardarBorrador(clave));
+                         this.$watch('nuevas', () => { window.bancosNuevas[@js($cliente)] = Object.assign({}, window.bancosNuevas[@js($cliente)] || {}, this.nuevas); });
+                     },
+                     guardarBorrador(clave) {
+                         const b = {};
+                         this.lineas.forEach(l => {
+                             if (l.tocada || l.concepto_maestro || l.vale) b[l.numero] = { contrapartida: l.contrapartida, concepto_maestro: l.concepto_maestro, vale: l.vale, tocada: !! l.tocada, concepto: l.concepto };
+                         });
+                         window.bancosBorradores[clave] = b;
+                     },
                      lineas: @js(array_map(fn ($l) => $l + ['concepto_maestro' => '', 'vale' => ''], $lineasRevisar)),
                      nombres: @js((object) $planCuentas),
                      nuevas: {},
@@ -476,6 +497,13 @@
                         <span wire:loading.remove wire:target="juntarBancos">⧉ Juntar y descargar</span>
                         <span wire:loading wire:target="juntarBancos">⏳ Juntando…</span>
                     </x-button.secondary>
+                    <x-button.primary x-on:click="$wire.generarTodosYJuntar(window.bancosPayload(@js($cliente)))"
+                                      wire:loading.attr="disabled" wire:target="generarTodosYJuntar" class="ml-2">
+                        <span wire:loading.remove wire:target="generarTodosYJuntar">⚡ Generar todos y juntar</span>
+                        <span wire:loading wire:target="generarTodosYJuntar">⏳ Generando…</span>
+                    </x-button.primary>
+                    <p class="mt-1 text-xs text-gray-500">«Generar todos y juntar» aplica lo que hayas cambiado en la revisión de <b>cada</b> fichero (también los que ya no tienes abiertos),
+                        escribe los ficheros y descarga el juntado de todos de una vez.</p>
                 </div>
             @endif
 
@@ -1001,6 +1029,20 @@
         /* Atajo de cuentas como en SAGE: «410.33» = 410 + ceros + 33 hasta la longitud de las cuentas del plan que empiezan por 410
            (410033 si son de 6 cifras, 4100033 si son de 7, 41000033 si son de 8...). Si hay varias posibilidades en el plan, pregunta. */
         /* Nº de cifras de las cuentas de la empresa: el más habitual en su plan (cada empresa tiene el suyo). */
+        /* Ediciones de la revisión de todos los ficheros de un cliente, para «Generar todos y juntar». */
+        window.bancosPayload = function (cliente) {
+            const borradores = {};
+            Object.entries(window.bancosBorradores || {}).forEach(([clave, b]) => {
+                const [c, fichero] = clave.split('|');
+                if (c !== cliente) return;
+                borradores[fichero] = Object.entries(b).map(([numero, d]) => ({ numero: Number(numero), contrapartida: d.contrapartida, concepto_maestro: d.concepto_maestro, vale: d.vale }));
+            });
+            return { borradores: borradores, nuevas: (window.bancosNuevas || {})[cliente] || {} };
+        };
+        if (! window.__bancosLimpiar) {
+            window.__bancosLimpiar = true;
+            window.addEventListener('bancos-limpiar-borradores', () => { window.bancosBorradores = {}; window.bancosNuevas = {}; });
+        }
         window.longitudCuentas = function () {
             let codigos = [];
             try { codigos = JSON.parse(document.getElementById('plan-codigos').dataset.codigos || '[]'); } catch (e) {}

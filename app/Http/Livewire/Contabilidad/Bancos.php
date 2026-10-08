@@ -797,12 +797,62 @@ class Bancos extends Component
         $this->previos = [];
         $this->cargarMaestro();
         $this->cargarRevision();
+        $this->dispatch('bancos-limpiar-borradores');
     }
 
     /** «Borrar todos y empezar de nuevo»: todos los bancos*.xlsx de Output (también los juntados). */
     public function descartarTodos(): void
     {
         $this->descartarSalida(array_values(array_filter($this->ficheros('Output'), fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g))));
+    }
+
+    /**
+     * «Generar todos y juntar»: aplica las ediciones de la revisión de cada fichero (que la pantalla recuerda aunque ya no esté abierto),
+     * y descarga el juntado de todos los bancos<cuenta>.xlsx generados.
+     * $datos = ['borradores' => [fichero => [{numero, contrapartida, concepto_maestro, vale}]], 'nuevas' => [cuenta => nombre]]
+     */
+    public function generarTodosYJuntar(array $datos = [])
+    {
+        if (! config('contabilidad.bancos_ejecucion')) {
+            $this->avisarNoAutorizado('Bancos · generar todos y juntar');
+            return null;
+        }
+        if (! $this->clienteValido()) {
+            return null;
+        }
+        $ficheros = $this->ficherosBancosGenerados();
+        if (count($ficheros) < 2) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ Hacen falta al menos dos ficheros de bancos generados para juntarlos.');
+            return null;
+        }
+        $borradores = (array) ($datos['borradores'] ?? []);
+        $nuevas = (object) (array) ($datos['nuevas'] ?? []);
+        $this->resultados = [];
+        foreach ($ficheros as $f) {
+            $lineas = array_map(fn ($l) => [
+                'numero' => (int) ($l['numero'] ?? 0),
+                'contrapartida' => trim((string) ($l['contrapartida'] ?? '')),
+                'concepto_maestro' => trim((string) ($l['concepto_maestro'] ?? '')),
+                'vale' => in_array($l['vale'] ?? '', ['+', '-'], true) ? $l['vale'] : '',
+            ], (array) ($borradores[$f] ?? []));
+            if (! $lineas) {
+                continue;   // sin cambios en este fichero: se junta tal como está
+            }
+            $json = tempnam(sys_get_temp_dir(), 'bancos');
+            file_put_contents($json, json_encode(['lineas' => $lineas, 'nuevas' => $nuevas], JSON_UNESCAPED_UNICODE));
+            $etiqueta = "Bancos · {$this->cliente} · generar {$f}";
+            $this->salida .= "\n\n===== {$etiqueta} =====\n";
+            $this->ejecutarScript([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'aplicar', $f, $json], 120, $etiqueta);
+            @unlink($json);
+        }
+        $etiqueta = "Bancos · {$this->cliente} · juntar ".implode(' + ', $ficheros);
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        $archivos = $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'juntar'], $ficheros), 120, $etiqueta);
+        $this->anexarResultados($archivos);
+        $this->cargarMaestro();
+        $this->cargarRevision();
+        $this->dispatch('bancos-limpiar-borradores');
+        return $archivos ? $this->descargar('Output/'.basename($archivos[0])) : null;
     }
 
     /** Respuesta al aviso de ficheros de pasadas anteriores: 'borrar' (los deshace y sigue), 'mantener' (sigue) o 'cancelar'. */
@@ -876,6 +926,7 @@ class Bancos extends Component
             $this->quitarExtracto($i);
         }
         if ($hechos) {
+            $this->dispatch('bancos-limpiar-borradores');   // los borradores de la revisión eran de ficheros anteriores
             $this->dispatch('bancos-revisar');   // baja a la revisión de contrapartidas, que se abre sola con el último fichero
         }
         // un extracto con formato desconocido se vuelve a procesar desde la pantalla de columnas, no desde la lista
