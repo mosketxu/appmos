@@ -74,6 +74,9 @@ class Bancos extends Component
     public array $origenCuenta = [];
     public string $cuenta = '';
 
+    /** Ficheros bancos<cuenta>.xlsx de pasadas anteriores que hay en Output al empezar: se pregunta qué hacer con ellos. */
+    public array $previos = [];
+
     /** Maestro del cliente (filas SAGE + manuales) y plan de cuentas [codigo => nombre], ver cargarMaestro(). */
     public array $maestro = [];
     public array $planCuentas = [];
@@ -389,7 +392,7 @@ class Bancos extends Component
         $this->sincronizarCentral();
         $this->resultados = [];
         $this->cuenta = '';
-        $this->extractos = $this->cuentasExtracto = $this->origenCuenta = [];
+        $this->extractos = $this->cuentasExtracto = $this->origenCuenta = $this->previos = [];
         $this->mapeo = null;
         $this->revisar = '';
         $this->cargarMaestro();
@@ -699,8 +702,48 @@ class Bancos extends Component
         $this->origenCuenta = array_map(fn ($o, $i) => ($this->cuentasExtracto[$i] ?? '') === '' ? '' : $o, $this->origenCuenta, array_keys($this->origenCuenta));
     }
 
+    /** Ficheros de bancos por cuenta ya generados en Output (los de pasadas anteriores). */
+    protected function ficherosBancosGenerados(): array
+    {
+        return array_values(array_filter($this->ficheros('Output'), fn ($g) => preg_match('/^bancos\d+(_\d+)?\.xlsx$/i', $g)));
+    }
+
+    /**
+     * Borra ficheros de Output y los apuntes provisionales que dejaron en la Base (bancos_maestro.py descartar;
+     * copia de la Base antes). Cualquier usuario puede deshacer una pasada sin pedir ayuda.
+     */
+    public function descartarSalida(array $ficheros): void
+    {
+        $validos = array_values(array_intersect($ficheros, $this->ficheros('Output')));
+        $validos = array_values(array_filter($validos, fn ($g) => preg_match('/^bancos[\w\- ]*\.xlsx$/i', $g)));
+        if (! $this->clienteValido() || ! $validos) {
+            return;
+        }
+        $this->ejecutarScript(array_merge([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'descartar'], $validos), 120, "Bancos · {$this->cliente} · borrar ".implode(', ', $validos));
+        if (in_array($this->revisar, $validos, true)) {
+            $this->revisar = '';
+        }
+        $this->previos = [];
+        $this->cargarMaestro();
+        $this->cargarRevision();
+    }
+
+    /** Respuesta al aviso de ficheros de pasadas anteriores: 'borrar' (los deshace y sigue), 'mantener' (sigue) o 'cancelar'. */
+    public function responderPrevios(string $modo): void
+    {
+        $previos = $this->previos;
+        $this->previos = [];
+        if ($modo === 'cancelar') {
+            return;
+        }
+        if ($modo === 'borrar') {
+            $this->descartarSalida($previos);
+        }
+        $this->conciliar(true);
+    }
+
     /** Concilia, uno tras otro, todos los extractos de la lista contra la cuenta elegida para cada uno. */
-    public function conciliar(): void
+    public function conciliar(bool $previosResueltos = false): void
     {
         $this->resetErrorBag(['extractos', 'cuenta']);
         if (! config('contabilidad.bancos_ejecucion')) {
@@ -721,6 +764,11 @@ class Bancos extends Component
                 $this->addError('extractos', 'Falta la cuenta de «'.$f->getClientOriginalName().'»: elígela en su fila.');
                 return;
             }
+        }
+
+        if (! $previosResueltos && ($previos = $this->ficherosBancosGenerados())) {
+            $this->previos = $previos; // la pantalla pregunta: borrarlos, mantenerlos o cancelar
+            return;
         }
 
         $dir = $this->baseDir().'/'.$this->cliente.'/Input';

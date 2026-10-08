@@ -248,6 +248,22 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                        @if ($previos)
+                            <div class="p-3 mt-3 text-sm border rounded-md bg-amber-50 border-amber-300">
+                                <div class="font-semibold text-amber-900">⚠️ Ya hay ficheros de bancos de una pasada anterior:</div>
+                                <div class="mt-1 text-amber-900">{{ implode(', ', $previos) }}</div>
+                                <p class="mt-1 text-xs text-amber-800">
+                                    Si los dejas, los movimientos de esas pasadas ya están en la Base como apuntes provisionales y no se repetirán
+                                    (el resultado nuevo saldrá casi vacío o como <b>_2</b>). Si quieres empezar de cero, bórralos: se quitan también
+                                    sus apuntes provisionales de la Base (antes se hace copia de seguridad).
+                                </p>
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    <x-button.primary wire:click="responderPrevios('borrar')">🗑 Borrarlos y procesar</x-button.primary>
+                                    <x-button.secondary wire:click="responderPrevios('mantener')">Mantenerlos y procesar</x-button.secondary>
+                                    <x-button.secondary wire:click="responderPrevios('cancelar')">Cancelar</x-button.secondary>
+                                </div>
+                            </div>
+                        @endif
                             <div class="mt-3">
                                 <x-button.primary wire:click="conciliar" wire:loading.attr="disabled" wire:target="conciliar">
                                     <span wire:loading.remove wire:target="conciliar">▶ Generar bancos ({{ count($extractos) }} {{ count($extractos) === 1 ? 'extracto' : 'extractos' }})</span>
@@ -389,6 +405,34 @@
                     @endif
                 </div>
             </div>
+
+            @php $borrables = array_values(array_filter($generados, fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g))); @endphp
+            @if ($borrables)
+                <div class="p-4 bg-white border rounded-lg shadow">
+                    <h2 class="mb-1 text-sm font-semibold text-gray-700">Ficheros de bancos generados</h2>
+                    <p class="mb-2 text-xs text-gray-500">
+                        Para empezar de cero o descartar una pasada: «Borrar» elimina el fichero y quita de la Base los movimientos
+                        provisionales que dejó (antes se guarda una copia de la Base), así se pueden volver a procesar sus extractos.
+                        Si ya lo has subido a SAGE, no hace falta borrarlo.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-x-5 gap-y-1 mb-2">
+                        @foreach ($borrables as $g)
+                            <span class="inline-flex items-center gap-1 text-sm">
+                                {{ $g }}
+                                <button type="button" wire:click="descartarSalida(@js([$g]))"
+                                        wire:confirm="¿Borrar {{ $g }} y sus apuntes provisionales de la Base?"
+                                        class="text-xs text-red-600 hover:underline">🗑 borrar</button>
+                            </span>
+                        @endforeach
+                    </div>
+                    @if (count($borrables) > 1)
+                        <x-button.secondary wire:click="descartarSalida(@js($borrables))"
+                                            wire:confirm="¿Borrar TODOS los ficheros de bancos generados ({{ count($borrables) }}) y sus apuntes provisionales de la Base?">
+                            🗑 Borrar todos y empezar de nuevo
+                        </x-button.secondary>
+                    @endif
+                </div>
+            @endif
 
             @if (count($ficherosBancos) >= 2)
                 <div class="p-4 bg-white border rounded-lg shadow" x-data="{ marcados: [] }">
@@ -910,7 +954,7 @@
         </div>
     @endif
     {{-- Indicador central mientras el servidor trabaja (conciliar, generar, subir ficheros a la base...) --}}
-    <div wire:loading.flex wire:target="conciliar, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
+    <div wire:loading.flex wire:target="conciliar, responderPrevios, descartarSalida, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
          class="fixed inset-0 z-50 items-center justify-center bg-gray-900/40">
         <div class="flex flex-col items-center gap-3 px-8 py-6 bg-white rounded-xl shadow-2xl">
             <svg class="w-14 h-14 text-indigo-600 animate-spin" viewBox="0 0 24 24" fill="none">
