@@ -48,16 +48,44 @@ class ImpuestosSyncController extends Controller
         // Lo que ya no está en OneDrive (movido, borrado) NO se quita de Appmos: sirve de copia de seguridad. Solo se cuenta, para el resumen.
         $presentes = array_flip(array_column((array) $r->input('ficheros', []), 'ruta'));
         $quitados = 0;
+        $movidos = 0;
         if ($presentes && $r->input('completo')) {
             $raices = array_map(fn ($x) => rtrim((string) $x, '/').'/', (array) $r->input('raices', []));
+            $ausentes = [];   // rutas conocidas que ya no están en las carpetas recorridas
             foreach ($conocidos as $ruta => $d) {
                 if (! isset($presentes[$ruta]) && collect($raices)->contains(fn ($x) => str_starts_with($ruta, $x))) {
-                    $quitados++;
+                    $ausentes[$ruta] = $d;
                 }
             }
+            $quitados = count($ausentes);
+            // Un fichero «nuevo» con el mismo tamaño y fecha que uno ausente (y solo uno) es el mismo PDF movido de carpeta o renombrado:
+            // se actualiza su ruta en vez de crear un duplicado (se conservan su papelera, sus marcas y su casilla)
+            $nuevos = array_flip($subir);
+            foreach ((array) $r->input('ficheros', []) as $f) {
+                $ruta = (string) ($f['ruta'] ?? '');
+                if (! isset($nuevos[$ruta]) || isset($conocidos[$ruta])) {
+                    continue;
+                }
+                $cand = array_keys(array_filter($ausentes, fn ($d) => $d->tam === (int) ($f['tam'] ?? -1) && abs((int) $d->mtime - (int) ($f['mtime'] ?? 0)) <= 1));
+                if (count($cand) !== 1) {
+                    continue;
+                }
+                $doc = ImpuestoDocumento::where('ruta_origen', $cand[0])->first();
+                if (! $doc) {
+                    continue;
+                }
+                $doc->ruta_origen = $ruta;
+                $doc->nombre = basename($ruta);
+                $doc->save();
+                \App\Support\ImpuestosPdfs::asociar($doc);
+                unset($ausentes[$cand[0]], $nuevos[$ruta]);
+                $movidos++;
+                $quitados--;
+            }
+            $subir = array_values(array_flip($nuevos));
         }
 
-        return response()->json(['subir' => $subir, 'quitados' => $quitados, 'total' => count((array) $r->input('ficheros', [])), 'conocidos' => $conocidos->count()]);
+        return response()->json(['subir' => $subir, 'quitados' => $quitados, 'movidos' => $movidos, 'total' => count((array) $r->input('ficheros', [])), 'conocidos' => $conocidos->count()]);
     }
 
     /** Cuerpo = el PDF; ruta, tam y mtime en la query. */
