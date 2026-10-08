@@ -295,6 +295,14 @@ class Impuestos extends Component
         $this->comArchivo = null;
     }
 
+    /** Al elegir un fichero sin haber escrito texto se guarda ya como comentario (si no, parecía subido y no quedaba en ningún sitio). */
+    public function updatedComArchivo(): void
+    {
+        if ($this->comArchivo && $this->comOb && trim($this->comTexto) === '') {
+            $this->comentar();
+        }
+    }
+
     public function comentar(): void
     {
         abort_unless($this->comOb, 422);

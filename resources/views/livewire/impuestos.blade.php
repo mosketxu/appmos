@@ -266,7 +266,7 @@
                         <textarea wire:model="comTexto" rows="2" placeholder="Nuevo comentario…" class="w-full text-sm border-gray-300 rounded-md" autofocus
                             x-on:keydown.ctrl.enter.prevent="$wire.comentar()"></textarea>
                         <div class="flex flex-wrap items-center gap-2 mt-1">
-                            <label class="text-sm text-indigo-700 cursor-pointer hover:underline" title="Un fichero por comentario, hasta 20 MB">📎 Adjuntar fichero
+                            <label class="text-sm text-indigo-700 cursor-pointer hover:underline" title="Un fichero por comentario, hasta 20 MB. Sin texto, se guarda al elegirlo; con texto, pulsa «Añadir comentario»">📎 Adjuntar fichero
                                 <input type="file" wire:model="comArchivo" style="display:none">
                             </label>
                             <span wire:loading wire:target="comArchivo" class="text-xs text-indigo-700">Subiendo…</span>
