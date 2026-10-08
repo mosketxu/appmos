@@ -1110,6 +1110,10 @@ class FacturasOcr extends Component
             }
             $this->sinLeerAntes = 0;
             $this->leyendo = false;
+            if ($this->fechasPendientes) {
+                $this->fechasPendientes = false;
+                $this->recalcularFechas();   // el IVA/periodo cambió durante la lectura: las fechas se rehacen con lo elegido ahora
+            }
             $log = trim((string) @file_get_contents($this->dirDatos().'/_cola/lectura.log'));
             $this->salida = $log !== '' ? $log : 'Lectura terminada.';
             $this->dispatch('proceso-terminado', mensaje: '✅ Lectura de facturas terminada'."\n".$this->salida);
@@ -1271,9 +1275,18 @@ class FacturasOcr extends Component
         return $p;
     }
 
+    /** Se cambió IVA/periodo/cierre mientras se leían facturas: las fechas de registro se recalculan al terminar la lectura. */
+    public bool $fechasPendientes = false;
+
     public function recalcularFechas(): void
     {
         if (! $this->clienteValido() || ! in_array($this->ciclo, ['M', 'T'], true) || ! is_file($this->dirDatos().'/facturas.json')) {
+            return;
+        }
+        // Mientras se lee la carpeta (minutos, con el cliente bloqueado) no se puede recalcular: se deja anotado y se hace al terminar
+        if ($this->web() && $this->lecturaEnCurso() !== null) {
+            $this->fechasPendientes = true;
+            $this->dispatch('proceso-terminado', mensaje: "⏳ Se están leyendo las facturas.\nEl periodo nuevo se aplicará a las fechas de registro en cuanto termine la lectura (se hace solo).");
             return;
         }
         $this->ejecutar(array_merge(['fechas'], $this->parametros()), 60, 'Fechas de registro', false);
