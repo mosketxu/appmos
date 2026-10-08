@@ -162,8 +162,6 @@
                 @if (is_array($res) && isset($res['resumen'])) · {{ $res['resumen'] }} @endif
                     </x-neteges-info>
                 @endif
-                <button type="button" wire:click="$toggle('verPapelera')" class="imp-btn {{ $verPapelera ? 'on' : '' }}" style="border-radius:6px"
-                    title="PDF quitados de las casillas: no se borran y se pueden restaurar">🗑 Papelera @if ($this->papelera->count())({{ $this->papelera->count() }})@endif</button>
             @endif
         </div>
 
@@ -172,29 +170,6 @@
         @endif
         @error('archivo') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
         <div wire:loading wire:target="archivo" class="text-xs text-indigo-700 imp-noprint">Subiendo el fichero…</div>
-
-        {{-- Papelera de PDF: se restauran con un clic; solo el Admin la vacía --}}
-        @if ($verPapelera && $this->puedeTodos())
-            <div class="p-3 bg-white border border-gray-300 rounded-lg imp-noprint" style="max-width:900px">
-                <div class="flex items-center justify-between mb-1">
-                    <div class="text-sm font-semibold">Papelera de PDF <span class="font-normal text-gray-500">— no se borran; la búsqueda de OneDrive no los vuelve a subir</span></div>
-                    @role('Admin')
-                        @if ($this->papelera->count())
-                            <button type="button" wire:click="vaciarPapelera" wire:confirm="¿Borrar DEFINITIVAMENTE todo lo que hay en la papelera? Si algún PDF sigue en OneDrive, la próxima búsqueda lo volverá a subir." class="imp-btn" style="border-radius:6px; color:#b91c1c">Vaciar papelera</button>
-                        @endif
-                    @endrole
-                </div>
-                @forelse ($this->papelera as $d)
-                    <div class="flex items-center gap-2 py-0.5 text-xs border-t border-gray-100">
-                        <a href="{{ route('impuestos.documento', $d->id) }}" target="_blank" class="text-indigo-700 hover:underline">{{ $d->nombre }}</a>
-                        <span class="text-gray-500">{{ $d->entidad ?: 'sin cliente' }} · {{ $d->modelo }} {{ $d->periodo }}/{{ $d->ejercicio }} · quitado por {{ $d->quien ?: '—' }} el {{ \Illuminate\Support\Carbon::parse($d->quitado_at)->format('d/m/Y H:i') }}</span>
-                        <button type="button" wire:click="restaurarPdf({{ $d->id }})" class="imp-btn" style="border-radius:6px; margin-left:auto">↩ Restaurar</button>
-                    </div>
-                @empty
-                    <div class="text-xs italic text-gray-400">La papelera está vacía.</div>
-                @endforelse
-            </div>
-        @endif
 
         {{-- PDF de OneDrive que no se han podido atribuir a un cliente --}}
         @if ($mostrarSinAsignar && $sinAsignar->count())

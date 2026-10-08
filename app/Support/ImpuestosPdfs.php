@@ -200,9 +200,15 @@ class ImpuestosPdfs
         }
         $nombre = basename($meta['ruta']);
         $doc = ImpuestoDocumento::firstOrNew(['ruta_origen' => $meta['ruta']]);
+        $almacenViejo = $doc->almacen;
         $doc->fill(['nombre' => $nombre, 'almacen' => $almacen, 'tam' => (int) ($meta['tam'] ?? filesize($origen)), 'mtime' => (int) ($meta['mtime'] ?? 0),
             'sha256' => $sha, 'origen' => 'onedrive']);
         $doc->save();
+        // el PDF cambió en OneDrive: el fichero anterior ya no lo usa nadie → fuera (no llenar el servidor de basura)
+        if ($almacenViejo && $almacenViejo !== $almacen && ! ImpuestoDocumento::where('almacen', $almacenViejo)->exists()
+            && ! \Illuminate\Support\Facades\DB::table('impuesto_comentarios')->where('adjunto_almacen', $almacenViejo)->exists()) {
+            Storage::disk('local')->delete($almacenViejo);
+        }
         self::asociar($doc, $idx);
 
         return $doc;

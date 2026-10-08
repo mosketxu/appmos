@@ -27,7 +27,7 @@
             <span class="imp-pdfw imp-qw">
                 <a href="{{ route('impuestos.documento', $principal->id) }}" target="_blank" class="imp-pdf" style="color:{{ $color[$e] }}" title="{{ $principal->nombre }}">@include('livewire._impuesto-pdf')</a>
                 @if ($this->puedeTodos())
-                    <button type="button" class="imp-qx" wire:click="quitarPdf({{ $principal->id }})" wire:confirm="¿Quitar este PDF a la papelera? No se borra: se puede restaurar." title="Quitar a la papelera">×</button>
+                    <button type="button" class="imp-qx" wire:click="quitarPdf({{ $principal->id }})" wire:confirm="¿Borrar este PDF de Appmos? El original en OneDrive no se toca. No se puede deshacer." title="Borrar de Appmos">×</button>
                 @endif
             </span>
         @elseif ($lista)
@@ -42,7 +42,7 @@
                             <input type="checkbox" value="{{ route('impuestos.documento', $d->id) }}" x-model="sel" class="border-gray-300 rounded">
                             <a href="{{ route('impuestos.documento', $d->id) }}" target="_blank" style="padding:0; width:auto">{{ ['presentado' => 'Presentado', 'borrador' => 'Borrador', 'otro' => 'Otro'][$d->tipo] ?? $d->tipo }} · {{ $d->nombre }}</a>
                             @if ($this->puedeTodos())
-                                <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Quitar este PDF a la papelera? No se borra: se puede restaurar." title="Quitar a la papelera" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
+                                <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Borrar este PDF de Appmos? El original en OneDrive no se toca. No se puede deshacer." title="Borrar de Appmos" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
                             @endif
                         </label>
                     @endforeach
@@ -64,7 +64,7 @@
                         <div style="display:flex; gap:6px; align-items:center; padding:3px 6px; font-size:12px">
                             <a href="{{ route('impuestos.documento', $d->id) }}" style="padding:0; width:auto">{{ $d->nombre }}</a>
                             @if ($this->puedeTodos())
-                                <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Quitar este Excel a la papelera? No se borra: se puede restaurar." title="Quitar a la papelera" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
+                                <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Borrar este Excel de Appmos? Si no está también en OneDrive, se pierde. No se puede deshacer." title="Borrar de Appmos" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
                             @endif
                         </div>
                     @endforeach

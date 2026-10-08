@@ -33,13 +33,16 @@ class ImpuestosSyncController extends Controller
     {
         $this->autorizar($r);
         $subir = [];
-        $conocidos = ImpuestoDocumento::whereNotNull('ruta_origen')->get(['ruta_origen', 'tam', 'mtime'])->keyBy('ruta_origen');
+        $conocidos = ImpuestoDocumento::whereNotNull('ruta_origen')->get(['ruta_origen', 'tam', 'mtime', 'quitado_at'])->keyBy('ruta_origen');
         foreach ((array) $r->input('ficheros', []) as $f) {
             $ruta = (string) ($f['ruta'] ?? '');
             if (! $this->rutaValida($ruta)) {
                 continue;
             }
             $d = $conocidos->get($ruta);
+            if ($d && $d->quitado_at) {
+                continue;   // borrado a propósito de Appmos: no se vuelve a subir
+            }
             if (! $d || $d->tam !== (int) ($f['tam'] ?? 0) || (int) ($f['mtime'] ?? 0) > $d->mtime + 1) {
                 $subir[] = $ruta;
             }
@@ -53,13 +56,13 @@ class ImpuestosSyncController extends Controller
             $raices = array_map(fn ($x) => rtrim((string) $x, '/').'/', (array) $r->input('raices', []));
             $ausentes = [];   // rutas conocidas que ya no están en las carpetas recorridas
             foreach ($conocidos as $ruta => $d) {
-                if (! isset($presentes[$ruta]) && collect($raices)->contains(fn ($x) => str_starts_with($ruta, $x))) {
+                if (! $d->quitado_at && ! isset($presentes[$ruta]) && collect($raices)->contains(fn ($x) => str_starts_with($ruta, $x))) {
                     $ausentes[$ruta] = $d;
                 }
             }
             $quitados = count($ausentes);
             // Un fichero «nuevo» con el mismo tamaño y fecha que uno ausente (y solo uno) es el mismo PDF movido de carpeta o renombrado:
-            // se actualiza su ruta en vez de crear un duplicado (se conservan su papelera, sus marcas y su casilla)
+            // se actualiza su ruta en vez de crear un duplicado (se conservan sus marcas y su casilla)
             $nuevos = array_flip($subir);
             foreach ((array) $r->input('ficheros', []) as $f) {
                 $ruta = (string) ($f['ruta'] ?? '');

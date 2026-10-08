@@ -41,7 +41,6 @@ class Impuestos extends Component
 
     // PDF sin cliente asignado
     public bool $mostrarSinAsignar = false;
-    public bool $verPapelera = false;
     public string $asignarTexto = '';
     public string $buscarEnt = '';
     public string $asignarEtiqueta = '';
@@ -449,56 +448,31 @@ class Impuestos extends Component
         $this->aviso = 'Pedido a un PC: buscará los PDF en OneDrive (puede tardar unos minutos).';
     }
 
-    // ------------------------------------------------------------------ papelera de PDF
+    // ------------------------------------------------------------------ quitar PDF / Excel
 
-    /** Quita un PDF de la casilla sin borrarlo: va a la papelera y la búsqueda de OneDrive no lo vuelve a subir. Solo Admin y Suma. */
+    /**
+     * Borra de Appmos un PDF o Excel de una casilla (el original sigue en OneDrive). Se elimina el fichero del servidor; si venía de OneDrive
+     * queda solo una marca (sin fichero) para que la búsqueda no lo vuelva a subir. Solo Admin y Suma.
+     */
     public function quitarPdf(int $id): void
     {
         abort_unless($this->puedeTodos(), 403);
         $d = ImpuestoDocumento::whereNull('quitado_at')->find($id);
-        if ($d) {
+        if (! $d) {
+            return;
+        }
+        $nombre = $d->nombre;
+        $almacen = $d->almacen;
+        $deOneDrive = (bool) $d->ruta_origen;
+        if ($deOneDrive) {
             $d->update(['quitado_at' => now(), 'quitado_por' => auth()->id()]);
-            $this->aviso = 'PDF «'.$d->nombre.'» enviado a la papelera (se puede restaurar).';
-        }
-    }
-
-    public function restaurarPdf(int $id): void
-    {
-        abort_unless($this->puedeTodos(), 403);
-        $d = ImpuestoDocumento::whereNotNull('quitado_at')->find($id);
-        if ($d) {
-            $d->update(['quitado_at' => null, 'quitado_por' => null]);
-            if ($d->entidad_id) {
-                ImpuestosPdfs::aplicar($d);
-            }
-            $this->aviso = 'PDF «'.$d->nombre.'» restaurado.';
-        }
-    }
-
-    /** Borra de verdad lo que hay en la papelera (solo Admin). Si el PDF sigue en OneDrive, la próxima búsqueda lo volverá a subir. */
-    public function vaciarPapelera(): void
-    {
-        abort_unless(auth()->user()?->hasRole('Admin'), 403);
-        foreach (ImpuestoDocumento::whereNotNull('quitado_at')->get() as $d) {
+        } else {
             $d->delete();
-            $usado = ImpuestoDocumento::where('almacen', $d->almacen)->exists() || DB::table('impuesto_comentarios')->where('adjunto_almacen', $d->almacen)->exists();
-            if (! $usado) {
-                Storage::disk('local')->delete($d->almacen);
-            }
         }
-        $this->verPapelera = false;
-        $this->aviso = 'Papelera vaciada.';
-    }
-
-    public function getPapeleraProperty()
-    {
-        if (! $this->puedeTodos()) {
-            return collect();
+        if (! ImpuestoDocumento::where('almacen', $almacen)->whereNull('quitado_at')->exists() && ! DB::table('impuesto_comentarios')->where('adjunto_almacen', $almacen)->exists()) {
+            Storage::disk('local')->delete($almacen);
         }
-
-        return DB::table('impuesto_documentos as d')->leftJoin('entidades as e', 'e.id', '=', 'd.entidad_id')->leftJoin('users as u', 'u.id', '=', 'd.quitado_por')
-            ->whereNotNull('d.quitado_at')->orderByDesc('d.quitado_at')->limit(200)
-            ->get(['d.id', 'd.nombre', 'd.modelo', 'd.ejercicio', 'd.periodo', 'd.quitado_at', 'e.entidad', 'u.name as quien']);
+        $this->aviso = '«'.$nombre.'» borrado de Appmos.'.($deOneDrive ? ' (El de OneDrive no se toca y no se vuelve a subir.)' : '');
     }
 
     public function getTareaPdfsEstadoProperty(): ?object
