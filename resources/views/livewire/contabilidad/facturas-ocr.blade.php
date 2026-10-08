@@ -26,10 +26,10 @@
     <style>
         .focr-card { background:#fff; border:1px solid #e5e7eb; border-radius:.5rem; box-shadow:0 1px 2px rgba(0,0,0,.05); }
         /* Web: arriba, dos columnas: IVA/periodo/ficheros base a la izquierda y las facturas subidas (con scroll) a la derecha */
-        .focr-pag { display:grid; grid-template-columns:minmax(0,1fr) 27rem; grid-template-areas:"izq der" "lista der"; gap:1rem; align-items:start; }
+        .focr-pag { display:grid; grid-template-columns:minmax(0,1fr) 27rem; grid-template-areas:"izq der" "lista der"; grid-template-rows:auto 1fr; gap:1rem; align-items:start; }
         .focr-pag.comprimida { grid-template-columns:minmax(0,1fr) 13rem; grid-template-areas:"izq der" "lista lista"; }
         .focr-pag.comprimida .focr-der { align-self:start; }
-        @media (max-width:1100px) { .focr-pag, .focr-pag.comprimida { grid-template-columns:minmax(0,1fr); grid-template-areas:"izq" "der" "lista"; } }
+        @media (max-width:1100px) { .focr-pag, .focr-pag.comprimida { grid-template-columns:minmax(0,1fr); grid-template-areas:"izq" "der" "lista"; grid-template-rows:auto; } }
         .focr-izq { display:flex; flex-direction:column; gap:.75rem; min-width:0; }
         .focr-der { display:flex; flex-direction:column; min-width:0; }
         .focr-der-cuerpo { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
