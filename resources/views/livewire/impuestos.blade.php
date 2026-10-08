@@ -1,4 +1,4 @@
-<div>
+<div x-data @if ($comOb || $editEnt) x-on:keydown.escape.window="$wire.cerrarModales()" @endif>
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_todo', ['activa' => 'impuestos'])
 

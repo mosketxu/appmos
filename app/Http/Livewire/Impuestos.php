@@ -312,6 +312,12 @@ class Impuestos extends Component
         $this->comTexto = '';
     }
 
+    /** Esc: cierra la ventana abierta (comentarios o impuestos del cliente). */
+    public function cerrarModales(): void
+    {
+        $this->comOb ? $this->cerrarComentarios() : $this->cerrarEntidad();
+    }
+
     public function cerrarComentarios(): void
     {
         $this->comOb = null;
