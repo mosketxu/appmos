@@ -680,6 +680,13 @@
                 </div>
             </div>
         </div>
+        {{-- Recuadro central al instante en las acciones lentas de la revisión (el global solo sale pasados 0,8 s) --}}
+        <x-contabilidad.procesando target="reproponer" titulo="Proponiendo proveedor y cuentas…" nota="Un momento. No cierres la página." />
+        <x-contabilidad.procesando target="releerOcr" titulo="Leyendo la factura con OCR…" nota="Puede tardar unos segundos." />
+        <x-contabilidad.procesando target="escaneoDeCalidad" titulo="Pidiendo el escaneo de calidad a un PC…" nota="Un momento." />
+        <x-contabilidad.procesando target="leerZona" titulo="Leyendo la zona marcada…" nota="Un momento." />
+        <x-contabilidad.procesando target="buscarCif" titulo="Buscando el CIF en internet…" nota="Unos segundos." />
+        <x-contabilidad.procesando target="validar" titulo="Guardando la factura…" nota="Un momento." />
     @endif
 
 <script>
