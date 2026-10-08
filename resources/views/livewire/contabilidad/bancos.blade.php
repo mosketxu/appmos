@@ -35,10 +35,16 @@
             ];
             $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
         @endphp
-        <div class="overflow-hidden bg-white border rounded-lg shadow">
-            <div class="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="mb-1 text-sm font-semibold text-gray-700">Ficheros base (de SAGE)</h2>
-                <p class="text-xs text-gray-500">
+        <div class="overflow-hidden bg-white border rounded-lg shadow"
+             x-data="{ abierto: (() => { try { return localStorage.getItem('bancos-base-abierto') !== '0' } catch (e) { return true } })() }"
+             x-init="$watch('abierto', v => { try { localStorage.setItem('bancos-base-abierto', v ? '1' : '0') } catch (e) {} })">
+            <div class="p-4 bg-gray-50" :class="abierto ? 'border-b border-gray-200' : ''">
+                <h2 class="mb-1 text-sm font-semibold text-gray-700">
+                    <button type="button" x-on:click="abierto = ! abierto" class="font-semibold">
+                        <span x-text="abierto ? '▾' : '▸'"></span> Ficheros base (de SAGE)
+                    </button>
+                </h2>
+                <p class="text-xs text-gray-500" x-show="abierto">
                     El plan de cuentas y el mayor, exportados de SAGE. Cada uno va en su fila (arrástralo encima o pulsa ⬆):
                     se acumulan en la base de {{ $cliente }} y lo repetido no se duplica. El mayor puede traer todas las
                     cuentas: solo se guardan las de banco (las 572… y las que marques abajo).
@@ -47,7 +53,7 @@
                 </p>
             </div>
 
-            <div class="divide-y">
+            <div class="divide-y" x-show="abierto">
                 @foreach ($filasBase as $fb)
                     <div wire:key="fila-base-{{ $cliente }}-{{ $fb['clave'] }}"
                          x-data="{
@@ -124,7 +130,7 @@
                 </div>
             </div>
 
-            <div class="px-4 py-2 border-t bg-gray-50">
+            <div class="px-4 py-2 border-t bg-gray-50" x-show="abierto">
                 <div wire:loading.flex wire:target="procesarSubidas, anadirOtraCuenta, quitarOtraCuenta" class="items-center gap-2 mb-1 text-xs font-semibold text-amber-800">⏳ Actualizando la base…</div>
                 @error('subidas')
                     <p class="mb-1 text-xs text-red-600">{{ $message }}</p>
@@ -177,18 +183,17 @@
     @if ($cliente !== '')
         <div class="overflow-hidden bg-white border rounded-lg shadow">
             <div class="p-4 border-b border-gray-200 bg-gray-50">
-                <h2 class="mb-1 text-sm font-semibold text-gray-700">Extractos a procesar → bancos&lt;cuenta&gt;.xlsx</h2>
-                <p class="mb-3 text-xs text-gray-500">
-                    Sube uno o varios extractos: propongo la cuenta de cada uno (si no la encuentro, la eliges tú) y se procesan uno tras otro. Se quitan los movimientos que ya están en el mayor de
-                    esa cuenta (y los que aparezcan en los otros mayores cargados, que se listan en la Salida).
-                    La contrapartida de cada movimiento se busca en la base:
-                    Variables (a mano) → Maestro → Plan de cuentas → palabras distintivas.
-                    Los movimientos que salen en bancos&lt;cuenta&gt;.xlsx se guardan también en la base como apuntes de esa
-                    cuenta (provisionales hasta que subas el mayor de SAGE), así no se repiten ni hace falta volver a bajar
-                    el mayor. Si luego pones a mano en el Maestro la cuenta de un concepto sin contrapartida, se rellena
-                    también en la base y en su línea del fichero de bancos. Si no hay una única cuenta posible se deja en blanco;
+                <h2 class="mb-3 text-sm font-semibold text-gray-700">Extractos a procesar → bancos&lt;cuenta&gt;.xlsx
+                    <x-neteges-info>
+                    Sube uno o varios extractos: propongo la cuenta de cada uno (si no la encuentro, la eliges tú) y se procesan uno tras otro.
+                    Se quitan los movimientos que ya están en el mayor de esa cuenta (y los que aparezcan en los otros mayores cargados, que se listan en la Salida).
+                    La contrapartida de cada movimiento se busca en la base: Variables (a mano) → Maestro → Plan de cuentas → palabras distintivas.
+                    Los movimientos que salen en bancos&lt;cuenta&gt;.xlsx se guardan también en la base como apuntes de esa cuenta (provisionales hasta que subas el mayor de SAGE),
+                    así no se repiten ni hace falta volver a bajar el mayor. Si luego pones a mano en el Maestro la cuenta de un concepto sin contrapartida,
+                    se rellena también en la base y en su línea del fichero de bancos. Si no hay una única cuenta posible se deja en blanco;
                     los conceptos sin ninguna coincidencia se añaden a la pestaña Variables de la base para rellenarlos.
-                </p>
+                    </x-neteges-info>
+                </h2>
 
                 @if (! $hayBase || empty($cuentas))
                     <p class="text-sm text-amber-700">Primero sube arriba el plan de cuentas y el mayor.</p>
@@ -346,14 +351,13 @@
                         <span class="text-xs" :class="vacias ? 'text-amber-700' : 'text-green-700'"
                               x-text="vacias ? vacias + ' sin contrapartida de ' + lineas.length : 'Todas las ' + lineas.length + ' líneas tienen contrapartida'"></span>
                     @endif
+                    <x-neteges-info>Al generar un fichero de bancos se abre aquí solo. También puedes elegir uno ya generado.</x-neteges-info>
                 </div>
                 <div class="p-4 space-y-3">
                     @if ($avisoRevisar !== '')
                         <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $avisoRevisar }}</p>
                     @endif
-                    @if ($revisar === '')
-                        <p class="text-xs text-gray-500">Al generar un fichero de bancos se abre aquí solo. También puedes elegir uno ya generado.</p>
-                    @elseif ($lineasRevisar)
+                    @if ($lineasRevisar)
                         <p class="text-xs text-gray-500">
                             Pon la cuenta de las líneas vacías (te sugiere las del plan; si no existe, te pide el nombre y la crea en el plan de la base).
                             Si quieres que sirva para más casos, pon en <b>Concepto para el Maestro</b> la parte fija (p.ej. GOOGLE CLOUD) y en
@@ -421,12 +425,9 @@
             @php $borrables = array_values(array_filter($generados, fn ($g) => preg_match('/^bancos.+\.xlsx$/i', $g))); @endphp
             @if ($borrables)
                 <div class="p-4 bg-white border rounded-lg shadow">
-                    <h2 class="mb-1 text-sm font-semibold text-gray-700">Ficheros de bancos generados</h2>
-                    <p class="mb-2 text-xs text-gray-500">
-                        Para empezar de cero o descartar una pasada: «Borrar» elimina el fichero y quita de la Base los movimientos
-                        provisionales que dejó (antes se guarda una copia de la Base), así se pueden volver a procesar sus extractos.
-                        Si ya lo has subido a SAGE, no hace falta borrarlo.
-                    </p>
+                    <h2 class="mb-2 text-sm font-semibold text-gray-700">Ficheros de bancos generados
+                        <x-neteges-info>Para empezar de cero o descartar una pasada: «Borrar» elimina el fichero y quita de la Base los movimientos provisionales que dejó (antes se guarda una copia de la Base), así se pueden volver a procesar sus extractos. Si ya lo has subido a SAGE, no hace falta borrarlo.</x-neteges-info>
+                    </h2>
                     <div class="flex flex-wrap items-center gap-x-5 gap-y-1 mb-2">
                         @foreach ($borrables as $g)
                             <span class="inline-flex items-center gap-1 text-sm">
@@ -885,6 +886,8 @@
                         <span>{{ $f }}</span>
                         <button type="button" wire:click="mapearPendiente(@js($f))" class="text-xs text-blue-700 underline hover:text-blue-900"
                                 title="Decir qué es cada columna del extracto (fecha, concepto, importe…)">Asignar columnas</button>
+                        <button type="button" wire:click="borrarPendiente(@js($f))" wire:confirm="¿Borrar {{ $f }} de la carpeta Input? Es un extracto que no se llegó a procesar; no toca la Base."
+                                class="text-xs text-red-600 hover:underline" title="Quitar este extracto de Input">🗑 quitar</button>
                     </div>
                 @empty
                     <div class="text-sm text-gray-400">(ninguno)</div>

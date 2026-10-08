@@ -75,6 +75,15 @@ class Bancos extends Component
     public array $avisoCuenta = [];
     public string $cuenta = '';
 
+    /** Quita de Input un extracto que quedó sin procesar (no toca la Base). */
+    public function borrarPendiente(string $nombre): void
+    {
+        if (! $this->clienteValido() || ! in_array($nombre, $this->ficheros('Input'), true)) {
+            return;
+        }
+        @unlink($this->baseDir().'/'.$this->cliente.'/Input/'.basename($nombre));
+    }
+
     /** Ficheros bancos<cuenta>.xlsx de pasadas anteriores que hay en Output al empezar: se pregunta qué hacer con ellos. */
     public array $previos = [];
 
