@@ -61,7 +61,10 @@
         }
         .imp-cel { position: relative; }
         .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 1; font-size: 15px; cursor: pointer; }
-        .imp-com.tiene sup { font-size: 10px; font-weight: 700; color: #92400e; }
+        .imp-com.tiene { position: relative; min-width: 20px; height: 18px; padding: 0 5px; border-radius: 6px; background: #f59e0b; color: #fff; font-size: 12px; font-weight: 700; line-height: 18px;
+                         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .imp-com.tiene::after { content: ''; position: absolute; left: 5px; bottom: -4px; border: 4px solid transparent; border-top-color: #f59e0b; border-bottom: 0; }
+        .imp-com.tiene:hover { background: #d97706; }
         .imp-com:not(.tiene) { opacity: .7; }
         .imp-com:not(.tiene)::before { content: '💬'; font-size: 16px; }
         .imp-com:not(.tiene):hover { opacity: 1; }
