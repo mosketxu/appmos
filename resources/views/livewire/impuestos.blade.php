@@ -257,6 +257,9 @@
                             @if ($c->adjunto_nombre)
                                 <a href="{{ route('impuestos.adjunto', $c->id) }}" target="_blank" class="text-sm text-indigo-700 hover:underline">📎 {{ $c->adjunto_nombre }}
                                     <span class="text-xs text-gray-400">({{ ($c->adjunto_tam ?? 0) > 1048576 ? number_format($c->adjunto_tam / 1048576, 1, ',', '.').' MB' : number_format(($c->adjunto_tam ?? 0) / 1024, 0, ',', '.').' KB' }})</span></a>
+                                <button type="button" wire:click="quitarAdjunto({{ $c->id }})" wire:confirm="¿Borrar el fichero de este comentario? El comentario se queda; el fichero se elimina." class="text-gray-400 hover:text-red-600" title="Borrar el fichero (el comentario se queda)">🗑</button>
+                            @elseif ($c->user_id === auth()->id() || $this->puedeTodos())
+                                <button type="button" x-on:click="$wire.adjuntarA = {{ $c->id }}; document.getElementById('imp-fichero-com').click()" class="text-xs text-indigo-700 hover:underline" title="Un fichero por comentario, hasta 20 MB">📎 Adjuntar fichero</button>
                             @endif
                         </div>
                     @empty
@@ -283,6 +286,7 @@
             </div>
         @endif
 
+        <input id="imp-fichero-com" type="file" wire:model="adjArchivo" style="display:none">
         <input id="imp-fichero" type="file" accept="application/pdf,.xlsx,.xls" wire:model="archivo" style="display:none">
 
         <div class="overflow-x-auto bg-white border rounded-lg shadow">

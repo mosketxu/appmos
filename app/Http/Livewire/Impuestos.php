@@ -53,6 +53,8 @@ class Impuestos extends Component
     public ?int $comOb = null;
     public string $comPer = '';
     public string $comTexto = '';
+    public $adjArchivo;   // fichero para un comentario que ya existe
+    public int $adjuntarA = 0;
     public $comArchivo;   // un fichero adjunto por comentario (máx. 20 MB)
 
     public ?int $tareaPdfs = null;
@@ -293,6 +295,52 @@ class Impuestos extends Component
         $this->comPer = '';
         $this->comTexto = '';
         $this->comArchivo = null;
+    }
+
+    /** Guarda un fichero de comentario en el almacén (por SHA-256) y devuelve las columnas adjunto_*. */
+    protected function guardarAdjunto($archivo): array
+    {
+        $nombre = mb_substr(basename(str_replace('\\', '/', (string) $archivo->getClientOriginalName())), -200);
+        $ext = preg_replace('/[^a-z0-9]/', '', strtolower(pathinfo($nombre, PATHINFO_EXTENSION)));
+        $sha = hash_file('sha256', $archivo->getRealPath());
+        $almacen = 'impuestos/adjuntos/'.$sha.($ext !== '' ? '.'.mb_substr($ext, 0, 8) : '');
+        if (! Storage::disk('local')->exists($almacen)) {
+            Storage::disk('local')->put($almacen, fopen($archivo->getRealPath(), 'rb'));
+        }
+
+        return ['adjunto_nombre' => $nombre, 'adjunto_almacen' => $almacen, 'adjunto_tam' => $archivo->getSize()];
+    }
+
+    /** Añade un fichero a un comentario ya hecho (el suyo; Admin y Suma, cualquiera). */
+    public function updatedAdjArchivo(): void
+    {
+        $this->validate(['adjArchivo' => 'file|max:20480'], ['adjArchivo.max' => 'El fichero pesa más de 20 MB.', 'adjArchivo.file' => 'No se ha podido subir el fichero.']);
+        $c = DB::table('impuesto_comentarios')->find($this->adjuntarA);
+        if ($c) {
+            $this->autorizarCasilla($c->entidad_impuesto_id);
+            abort_unless($c->user_id === auth()->id() || $this->puedeTodos(), 403);
+            if (! $c->adjunto_almacen) {
+                DB::table('impuesto_comentarios')->where('id', $c->id)->update($this->guardarAdjunto($this->adjArchivo) + ['updated_at' => now()]);
+            }
+        }
+        $this->adjArchivo = null;
+        $this->adjuntarA = 0;
+    }
+
+    /** Quita el fichero de un comentario (el comentario se queda). Borra el fichero si ningún otro lo usa. */
+    public function quitarAdjunto(int $id): void
+    {
+        $c = DB::table('impuesto_comentarios')->find($id);
+        if (! $c || ! $c->adjunto_almacen) {
+            return;
+        }
+        $this->autorizarCasilla($c->entidad_impuesto_id);
+        abort_unless($c->user_id === auth()->id() || $this->puedeTodos(), 403);
+        DB::table('impuesto_comentarios')->where('id', $id)->update(['adjunto_nombre' => null, 'adjunto_almacen' => null, 'adjunto_tam' => null, 'updated_at' => now()]);
+        if (! DB::table('impuesto_comentarios')->where('adjunto_almacen', $c->adjunto_almacen)->exists()
+            && ! ImpuestoDocumento::where('almacen', $c->adjunto_almacen)->exists()) {
+            Storage::disk('local')->delete($c->adjunto_almacen);
+        }
     }
 
     /** Al elegir un fichero sin haber escrito texto se guarda ya como comentario (si no, parecía subido y no quedaba en ningún sitio). */
