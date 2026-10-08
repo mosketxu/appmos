@@ -72,6 +72,7 @@ class Bancos extends Component
     public array $extractos = [];
     public array $cuentasExtracto = [];
     public array $origenCuenta = [];
+    public array $avisoCuenta = [];
     public string $cuenta = '';
 
     /** Ficheros bancos<cuenta>.xlsx de pasadas anteriores que hay en Output al empezar: se pregunta qué hacer con ellos. */
@@ -392,7 +393,7 @@ class Bancos extends Component
         $this->sincronizarCentral();
         $this->resultados = [];
         $this->cuenta = '';
-        $this->extractos = $this->cuentasExtracto = $this->origenCuenta = $this->previos = [];
+        $this->extractos = $this->cuentasExtracto = $this->origenCuenta = $this->avisoCuenta = $this->previos = [];
         $this->mapeo = null;
         $this->revisar = '';
         $this->cargarMaestro();
@@ -609,8 +610,7 @@ class Bancos extends Component
 
     /**
      * Propone la cuenta de un extracto por su nombre: empieza por el código de cuenta (572003...) o lleva
-     * el nº de cuenta del banco (0077994) que ya se vio en un extracto anterior de esa cuenta (nombres
-     * de Input/input_old y lo aprendido en Base/cuentas_extracto.json). Devuelve [cuenta, motivo].
+     * el nº de cuenta del banco (0077994) que ya se confirmó en un extracto anterior (Base/cuentas_extracto.json). Devuelve [cuenta, motivo].
      */
     protected function proponerCuenta(string $nombre): array
     {
@@ -629,6 +629,44 @@ class Bancos extends Component
         return ['', ''];
     }
 
+    /**
+     * Cuenta de cada extracto subido mirando su contenido contra los mayores de la base (bancos_proponer.py:
+     * primero el mayor de SAGE y, de seguro, los apuntes provisionales de Appmos). Devuelve [i => [cuenta, motivo, aviso]].
+     */
+    protected function proponerPorContenido(array $ficheros): array
+    {
+        if (! $ficheros || ! is_file($this->basePath())) {
+            return [];
+        }
+        $tmp = sys_get_temp_dir().'/bancos-prop-'.uniqid();
+        @mkdir($tmp, 0700, true);
+        $rutas = [];
+        foreach ($ficheros as $i => $f) {
+            $ruta = $tmp.'/'.$i.'-'.str_replace(['/', '\\'], '_', $f->getClientOriginalName());
+            if (@copy($f->getRealPath(), $ruta)) {
+                $rutas[$i] = $ruta;
+            }
+        }
+        $out = [];
+        try {
+            $r = Process::path($this->baseDir())->timeout(120)->run(array_merge([$this->pythonBin(), 'bancos_proponer.py', $this->cliente], array_values($rutas)));
+            $json = $r->successful() ? json_decode(trim($r->output()), true) : null;
+            foreach (array_keys($rutas) as $k => $i) {
+                $d = $json[$k] ?? null;
+                if ($d && ($d['cuenta'] ?? '') !== '') {
+                    $out[$i] = [$d['cuenta'], $d['motivo'] ?? '', $d['aviso'] ?? ''];
+                }
+            }
+        } catch (\Throwable $e) {
+            // sin propuesta por contenido: se queda la del nombre del fichero
+        }
+        foreach ($rutas as $ruta) {
+            @unlink($ruta);
+        }
+        @rmdir($tmp);
+        return $out;
+    }
+
     /** [nº de cuenta del banco sin ceros => cuenta 572...] aprendido de los extractos ya procesados. */
     protected function cuentasPorNumeroBanco(): array
     {
@@ -636,14 +674,6 @@ class Bancos extends Component
         $json = $this->baseDir().'/'.$this->cliente.'/Base/cuentas_extracto.json';
         if (is_file($json)) {
             $mapa = array_filter((array) json_decode((string) file_get_contents($json), true), 'is_string');
-        }
-        foreach (['Input', 'Input/input_old'] as $sub) {
-            foreach (glob($this->baseDir().'/'.$this->cliente.'/'.$sub.'/*') ?: [] as $f) {
-                $n = basename($f);
-                if (preg_match('/(?<!\d)(5\d{5})(?!\d)[ _-]+0*(\d{5,})(?!\d)/', $n, $m)) {
-                    $mapa[$m[2]] ??= $m[1];
-                }
-            }
         }
         return $mapa;
     }
@@ -673,16 +703,26 @@ class Bancos extends Component
         $nuevos = array_values(array_filter($this->nuevosExtractos, fn ($f) => $f instanceof UploadedFile));
         $this->nuevosExtractos = [];
         $malos = [];
+        $buenos = [];
         foreach ($nuevos as $f) {
             $nombre = $f->getClientOriginalName();
             if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls'], true)) {
                 $malos[] = $nombre;
                 continue;
             }
-            [$cuenta, $motivo] = $this->proponerCuenta($nombre);
+            $buenos[] = $f;
+        }
+        $contenido = $this->proponerPorContenido($buenos);
+        foreach ($buenos as $i => $f) {
+            [$porNombre, $motivoNombre] = $this->proponerCuenta($f->getClientOriginalName());
+            [$cuenta, $motivo, $aviso] = $contenido[$i] ?? [$porNombre, $motivoNombre, ''];
+            if (isset($contenido[$i]) && $porNombre !== '' && $porNombre !== $cuenta) {
+                $aviso = trim("el nombre del fichero decía {$porNombre}, pero su contenido encaja con la {$cuenta}. ".$aviso);
+            }
             $this->extractos[] = $f;
             $this->cuentasExtracto[] = $cuenta;
             $this->origenCuenta[] = $motivo;
+            $this->avisoCuenta[] = $aviso;
         }
         if ($malos) {
             $this->addError('extractos', 'Solo Excel (.xlsx / .xls). No se han añadido: '.implode(', ', $malos));
@@ -691,7 +731,8 @@ class Bancos extends Component
 
     public function quitarExtracto(int $i): void
     {
-        unset($this->extractos[$i], $this->cuentasExtracto[$i], $this->origenCuenta[$i]);
+        unset($this->extractos[$i], $this->cuentasExtracto[$i], $this->origenCuenta[$i], $this->avisoCuenta[$i]);
+        $this->avisoCuenta = array_values($this->avisoCuenta);
         $this->extractos = array_values($this->extractos);
         $this->cuentasExtracto = array_values($this->cuentasExtracto);
         $this->origenCuenta = array_values($this->origenCuenta);

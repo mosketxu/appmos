@@ -240,6 +240,9 @@
                                                 @elseif (($origenCuenta[$i] ?? '') !== '')
                                                     <div class="mt-0.5 text-xs text-gray-500">Propuesta {{ $origenCuenta[$i] }}.</div>
                                                 @endif
+                                                @if (($avisoCuenta[$i] ?? '') !== '' && ($cuentasExtracto[$i] ?? '') !== '')
+                                                    <div class="mt-0.5 text-xs font-medium text-amber-700">⚠️ {{ $avisoCuenta[$i] }}</div>
+                                                @endif
                                             </td>
                                             <td class="py-1">
                                                 <button type="button" wire:click="quitarExtracto({{ $i }})" class="text-xs text-red-600 hover:underline">quitar</button>
