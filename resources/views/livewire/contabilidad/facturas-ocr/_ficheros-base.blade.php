@@ -1,10 +1,6 @@
 {{-- Ficheros base: listado de proveedores, mayor y plan --}}
-            <div wire:loading.flex wire:target="subidaProv,subidaMayor,subidaPlan,quitarBase" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,.8);align-items:center;justify-content:center;flex-direction:column;gap:1rem">
-                <div style="width:80px;height:80px;border:9px solid #c7d2fe;border-top-color:#4f46e5;border-radius:50%;animation:focr-giro 1s linear infinite"></div>
-                <div style="font-weight:600;color:#3730a3;font-size:1.25rem">Procesando el fichero y rehaciendo los proveedores…</div>
-                <div style="color:#4b5563">Puede tardar un par de minutos. No cierres la página.</div>
-                <style>@keyframes focr-giro{to{transform:rotate(360deg)}}</style>
-            </div>
+            <x-contabilidad.procesando target="subidaProv,subidaMayor,subidaPlan,quitarBase" titulo="Procesando el fichero y rehaciendo los proveedores…"
+                                       nota="Puede tardar un par de minutos. No cierres la página." />
             @if (! empty($basesFaltan) || empty($ficherosBase['plan']))
                 <div class="focr-nocuadra" style="animation:none; border-color:#f59e0b; background:#fffbeb; color:#78350f">
                     ⚠️ Faltan ficheros base de SAGE de este cliente:
