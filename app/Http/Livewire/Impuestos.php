@@ -64,13 +64,36 @@ class Impuestos extends Component
     {
         abort_unless(auth()->user()?->can('impuestos.ver'), 403);
         $this->ejercicio = (int) now()->format('Y');
+        // Al volver a la pantalla se recuerdan los filtros de la última vez (en la sesión del usuario)
+        $g = (array) session('impuestos.filtros', []);
+        $this->ejercicio = (int) ($g['ejercicio'] ?? $this->ejercicio);
+        $this->vista = in_array($g['vista'] ?? '', array_merge(['anio', 'T1', 'T2', 'T3', 'T4'], array_map(fn ($m) => sprintf('%02d', $m), range(1, 12))), true) ? $g['vista'] : $this->vista;
+        $this->buscar = (string) ($g['buscar'] ?? '');
+        $this->filtroModelo = (string) ($g['filtroModelo'] ?? '');
+        $this->soloPendientes = (bool) ($g['soloPendientes'] ?? false);
+        $this->incluirBajas = (bool) ($g['incluirBajas'] ?? false);
+        $this->verTodos = $this->puedeTodos() && (bool) ($g['verTodos'] ?? false);
         Imp::asegurarEjercicio($this->ejercicio);
+    }
+
+    public function updated($propiedad): void
+    {
+        if (in_array($propiedad, ['vista', 'buscar', 'filtroModelo', 'soloPendientes', 'incluirBajas', 'verTodos'], true)) {
+            $this->recordarFiltros();
+        }
+    }
+
+    protected function recordarFiltros(): void
+    {
+        session(['impuestos.filtros' => ['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo,
+            'soloPendientes' => $this->soloPendientes, 'incluirBajas' => $this->incluirBajas, 'verTodos' => $this->verTodos]]);
     }
 
     public function cambiarEjercicio(int $d): void
     {
         $this->ejercicio += $d;
         Imp::asegurarEjercicio($this->ejercicio);
+        $this->recordarFiltros();
     }
 
     public function puedeVisto(): bool
