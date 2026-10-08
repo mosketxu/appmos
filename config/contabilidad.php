@@ -195,6 +195,7 @@ return [
         'pc.facturasocr' => 'Llevar al OneDrive de este PC lo validado en Facturas OCR (con comprobación de huellas)',
         'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',
         'pc.impuestos_pdfs' => 'Subir a Appmos los PDF de impuestos de OneDrive (pestaña Impuestos)',
+        'pc.arbol_carpetas' => 'Leer las carpetas de OneDrive/_Clientes (explorador de Facturas OCR y Bancos)',
     ],
 
     // Quién puede marcar «visto por Marta» en Impuestos (correos separados por comas)
