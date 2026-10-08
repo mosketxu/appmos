@@ -158,7 +158,7 @@ trait EligeEntidadCliente
         }
         $c = ClientesEntidad::aCarpeta((string) ($e['ruta'] ?? ''));
         if ($c === null) {
-            $this->nuevoError = 'Elige una carpeta dentro de _Clientes › año › cliente (donde están las facturas recibidas).';
+            $this->nuevoError = 'Elige la carpeta donde están las facturas recibidas, dentro de la carpeta de la empresa (no la raíz _Clientes ni el año).';
 
             return;
         }

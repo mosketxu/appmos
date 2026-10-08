@@ -132,20 +132,32 @@ class ClientesEntidad
         return array_values($out);
     }
 
-    /** «_Clientes/2026/Fashion 2026/_Facturas» → «Fashion {AAAA}/_Facturas» (null si no cuelga de _Clientes/<año>/). */
+    /**
+     * «_Clientes/2026/Fashion 2026/_Facturas» → «Fashion {AAAA}/_Facturas» (lo normal: cuelga de _Clientes/<año>/).
+     * Fuera de _Clientes (empresas de Alex, Marta, RUR: _RUR_Marta_Alex/…) la ruta completa desde OneDrive con «@» delante: «@_RUR_Marta_Alex/Alexander/Facturas».
+     */
     public static function aCarpeta(string $ruta): ?string
     {
-        if (! preg_match('#^_Clientes/((?:19|20)\d\d)/(.+)$#u', $ruta, $m)) {
-            return null;
+        if (preg_match('#^_Clientes/((?:19|20)\d\d)/(.+)$#u', $ruta, $m)) {
+            return str_replace($m[1], '{AAAA}', $m[2]);
+        }
+        if (preg_match('#^[^/]+/.+$#u', $ruta) && ! str_starts_with($ruta, '_Clientes/') && ! str_contains($ruta, '..')) {
+            return '@'.$ruta;
         }
 
-        return str_replace($m[1], '{AAAA}', $m[2]);
+        return null;
+    }
+
+    /** Ruta de la carpeta de recibidas desde OneDrive, con {AAAA}: la de _Clientes/{AAAA}/… o, con «@», la completa. */
+    public static function rutaOneDrive(string $carpeta): string
+    {
+        return str_starts_with($carpeta, '@') ? substr($carpeta, 1) : '_Clientes/{AAAA}/'.$carpeta;
     }
 
     /** Ruta con el año en lugar de {AAAA}, con barras de Windows, para enseñársela al usuario. */
     public static function rutaWindows(string $carpeta): string
     {
-        return 'OneDrive\\_Clientes\\'.date('Y').'\\'.str_replace('/', '\\', str_replace('{AAAA}', date('Y'), $carpeta));
+        return 'OneDrive\\'.str_replace('/', '\\', str_replace('{AAAA}', date('Y'), self::rutaOneDrive($carpeta)));
     }
 
     /**
@@ -220,7 +232,11 @@ class ClientesEntidad
     /** Carpeta de facturas recibidas bajo _Clientes/{AAAA}/ (puede llevar subcarpetas con /). */
     public static function carpetaValida(string $c): bool
     {
-        if (str_contains($c, '..') || ! str_contains($c, '{AAAA}')) {
+        $fuera = str_starts_with($c, '@');   // fuera de _Clientes/{AAAA}: ruta completa desde OneDrive, sin obligación de llevar el año
+        if ($fuera) {
+            $c = substr($c, 1);
+        }
+        if (str_contains($c, '..') || (! $fuera && ! str_contains($c, '{AAAA}'))) {
             return false;
         }
         foreach (explode('/', $c) as $seg) {
@@ -247,15 +263,14 @@ class ClientesEntidad
             @mkdir("$ocr/$nombre", 0775, true);
             file_put_contents("$ocr/$nombre/cliente.json", json_encode([
                 'entidad_id' => $entidadId, 'entidad' => $e->entidad, 'nif' => (string) $e->nif,
-                'carpeta_recibidas' => "{OneDrive}/_Clientes/{AAAA}/{$carpeta}/{MM}",
-                'carpeta_emitidas' => "{OneDrive}/_Clientes/{AAAA}/{$carpeta}/Emitidas/{MM}",
+                'carpeta_recibidas' => '{OneDrive}/'.self::rutaOneDrive($carpeta).'/{MM}_{AAAA}',
+                'carpeta_emitidas' => '{OneDrive}/'.self::rutaOneDrive($carpeta).'/Emitidas/{MM}_{AAAA}',
                 'serie_recibidas' => '',
                 'datos' => '{OneDrive}/_ClaudeDesarrollo/FacturasOCR/'.$nombre,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $hechos[] = 'Facturas OCR';
             if ($raizOneDrive && is_dir($raizOneDrive)) {   // carpeta anual de este año y datos compartidos
-                $a = str_replace('{AAAA}', date('Y'), $carpeta);
-                @mkdir(rtrim($raizOneDrive, '/').'/_Clientes/'.date('Y')."/$a", 0775, true);
+                @mkdir(rtrim($raizOneDrive, '/').'/'.str_replace('{AAAA}', date('Y'), self::rutaOneDrive($carpeta)), 0775, true);
                 @mkdir(rtrim($raizOneDrive, '/').'/_ClaudeDesarrollo/FacturasOCR/'.$nombre, 0775, true);
             }
         }
