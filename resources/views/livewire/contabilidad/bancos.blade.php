@@ -357,7 +357,9 @@
                     @if ($avisoRevisar !== '')
                         <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $avisoRevisar }}</p>
                     @endif
-                    @if ($lineasRevisar)
+                    @if ($revisar === '')
+                        <p class="text-sm text-amber-700">Elige arriba el fichero de bancos que quieres revisar.</p>
+                    @elseif ($lineasRevisar)
                         <p class="text-xs text-gray-500">
                             Pon la cuenta de las líneas vacías (te sugiere las del plan; si no existe, te pide el nombre y la crea en el plan de la base).
                             Si quieres que sirva para más casos, pon en <b>Concepto para el Maestro</b> la parte fija (p.ej. GOOGLE CLOUD) y en

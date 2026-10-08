@@ -123,6 +123,26 @@ class Bancos extends Component
         $this->cargarMaestro();
         $this->cargarConfig();
         $this->cargarFormatos();
+        $this->abrirUltimaRevision();
+    }
+
+    /** Al entrar (o cambiar de cliente) abre la revisión con el último bancos<cuenta>.xlsx generado, para no tener que buscarla. */
+    protected function abrirUltimaRevision(): void
+    {
+        if ($this->revisar !== '' || ! $this->clienteValido()) {
+            return;
+        }
+        $mejor = null;
+        foreach ($this->ficherosBancosGenerados() as $g) {
+            $t = (int) @filemtime($this->baseDir().'/'.$this->cliente.'/Output/'.$g);
+            if ($mejor === null || $t >= $mejor[0]) {
+                $mejor = [$t, $g];
+            }
+        }
+        if ($mejor) {
+            $this->revisar = $mejor[1];
+            $this->cargarRevision();
+        }
     }
 
     // ------------------------------------------------------------ formatos de extracto
@@ -408,6 +428,7 @@ class Bancos extends Component
         $this->cargarMaestro();
         $this->cargarFormatos();
         $this->cargarRevision();
+        $this->abrirUltimaRevision();
     }
 
     protected function basePath(): string
