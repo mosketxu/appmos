@@ -2166,6 +2166,7 @@ class FacturasOcr extends Component
         }
         $this->salida = '';
         if ($this->ejecutar(array_merge(['reproponer', $this->sel], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 120, 'Volver a proponer', false)) {
+            $this->dispatch('focr-listas');   // los combos de proveedor/cuenta vuelven a pedir sus nombres (por si se editó algo en Proveedores)
             $this->abrir($this->sel);
         } else {
             $this->addError('validar', trim($this->salida));

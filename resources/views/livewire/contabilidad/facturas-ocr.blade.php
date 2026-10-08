@@ -154,6 +154,13 @@
                     if (!window.focrListas[clave]) window.focrListas[clave] = await this.$wire.lista(lista);
                     this.lista = window.focrListas[clave];
                     this.mostrar();
+                    // Si se edita un proveedor o se vuelve a proponer, la lista de este combo se vuelve a pedir (sin recargar la página)
+                    window.addEventListener('focr-listas', async () => {
+                        if (! this.$el.isConnected) return;
+                        window.focrListas[clave] = await this.$wire.lista(lista);
+                        this.lista = window.focrListas[clave];
+                        if (! this.open) this.mostrar();
+                    });
                     this.$wire.$watch('form', () => { if (!this.open) this.mostrar(); });
                 },
                 valor() { return (this.$wire.form || {})[campo] || ''; },
