@@ -28,12 +28,12 @@
         .imp-cel:hover .imp-m.no { border-color: #9ca3af; }
         .imp-m:hover { filter: brightness(1.12); }
         .imp-pdf { display: inline-flex; padding: 0; margin: 0; background: none; border: 0; cursor: pointer; line-height: 0; }
-        .imp-pdf svg { width: 16px; height: 16px; }
-        .imp-xl svg { width: 16px; height: 16px; }
+        .imp-pdf svg { width: 19px; height: 19px; }
+        .imp-xl svg { width: 19px; height: 19px; }
         .imp-pdf.gris { color: #cbd5e1 !important; }
         .imp-pdf.gris:hover { color: #94a3b8 !important; }
         .imp-pdfw { position: relative; display: inline-flex; }
-        .imp-pop { position: absolute; top: 22px; right: -6px; z-index: 20; background: #fff; border: 1px solid #9ca3af; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.2);
+        .imp-pop { position: absolute; top: 25px; right: -6px; z-index: 20; background: #fff; border: 1px solid #9ca3af; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.2);
                    padding: 4px; min-width: 220px; max-width: 340px; text-align: left; white-space: normal; }
         .imp-pop a, .imp-pop button { display: block; width: 100%; text-align: left; padding: 3px 6px; font-size: 12px; color: #1f2937; border-radius: 4px; background: none; border: 0; cursor: pointer; }
         .imp-pop a:hover, .imp-pop button:hover { background: #f3f4f6; }
@@ -60,10 +60,10 @@
             thead { display: table-header-group; }
         }
         .imp-cel { position: relative; }
-        .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 1; font-size: 12px; cursor: pointer; }
-        .imp-com.tiene sup { font-size: 9px; font-weight: 700; color: #92400e; }
+        .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 1; font-size: 15px; cursor: pointer; }
+        .imp-com.tiene sup { font-size: 10px; font-weight: 700; color: #92400e; }
         .imp-com:not(.tiene) { opacity: .7; }
-        .imp-com:not(.tiene)::before { content: '💬'; font-size: 13px; }
+        .imp-com:not(.tiene)::before { content: '💬'; font-size: 16px; }
         .imp-com:not(.tiene):hover { opacity: 1; }
         .imp-com.oculta:not(.tiene) { visibility: hidden; }
         .imp-cel:hover .imp-com.oculta:not(.tiene) { visibility: visible; }
