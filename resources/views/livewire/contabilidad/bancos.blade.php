@@ -322,12 +322,14 @@
                      nombre(c) { return this.nombres[c] || this.nuevas[c] || '' },
                      cuentaCambiada(l) {
                          l.tocada = true;
-                         l.contrapartida = window.expandirCuenta((l.contrapartida || '').trim());
+                         l.error = '';
+                         l.contrapartida = window.expandirCuenta((l.contrapartida || '').trim().replace(/\s+/g, '').replace(',', '.'));
                          const c = l.contrapartida;
                          if (c === '' || this.nombre(c)) return;
-                         if (! /^\d{6,}$/.test(c)) { alert('La cuenta tiene que ser un número de 6 cifras o más.'); l.contrapartida = ''; return; }
-                         const n = prompt('La cuenta ' + c + ' no está en el plan de cuentas.\nSi es nueva (p.ej. un proveedor dado de alta en Facturas OCR y aún no en SAGE), escribe su nombre para crearla:', l.concepto);
-                         if (n && n.trim()) { this.nuevas[c] = n.trim(); } else { l.contrapartida = ''; }
+                         const n = window.longitudCuentas();
+                         if (! /^\d+$/.test(c) || c.length !== n) { l.error = 'Las cuentas de esta empresa tienen ' + n + ' cifras (o escribe 410.33 como en SAGE)'; return; }
+                         const nom = prompt('La cuenta ' + c + ' no está en el plan de cuentas.\nSi es nueva (p.ej. un proveedor dado de alta en Facturas OCR y aún no en SAGE), escribe su nombre para crearla:', l.concepto);
+                         if (nom && nom.trim()) { this.nuevas[c] = nom.trim(); } else { l.contrapartida = ''; }
                      },
                  }">
                 <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
@@ -391,8 +393,9 @@
                                             <td class="px-2 py-1 text-right whitespace-nowrap" :class="l.importe < 0 ? 'text-red-700' : 'text-green-700'"
                                                 x-text="l.importe.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })"></td>
                                             <td class="px-2 py-1">
-                                                <input type="text" x-model="l.contrapartida" x-on:change="cuentaCambiada(l)" list="plan-cuentas-{{ $cliente }}"
-                                                       class="w-24 py-0.5 text-xs font-mono border-gray-300 rounded">
+                                                <input type="text" x-model="l.contrapartida" x-on:input="l.error = ''" x-on:change="cuentaCambiada(l)" list="plan-cuentas-{{ $cliente }}"
+                                                       :class="l.error ? 'border-red-500' : 'border-gray-300'" class="w-24 py-0.5 text-xs font-mono rounded">
+                                                <div x-show="l.error" class="text-xs text-red-600" x-text="l.error"></div>
                                             </td>
                                             <td class="px-2 py-1">
                                                 <span x-text="nombre(l.contrapartida)"></span>
@@ -417,7 +420,7 @@
                             </table>
                         </div>
                         <div class="flex flex-wrap items-center gap-3">
-                            <x-button.primary x-on:click="$wire.generarBancos(lineas.map(l => ({ numero: l.numero, contrapartida: l.contrapartida, concepto_maestro: l.concepto_maestro, vale: l.vale })), nuevas)"
+                            <x-button.primary x-on:click="if (lineas.some(l => l.error)) { alert('Hay cuentas con un número de cifras incorrecto (en rojo). Corrígelas o bórralas antes de generar.'); return; } $wire.generarBancos(lineas.map(l => ({ numero: l.numero, contrapartida: l.contrapartida, concepto_maestro: l.concepto_maestro, vale: l.vale })), nuevas)"
                                               wire:loading.attr="disabled" wire:target="generarBancos">
                                 <span wire:loading.remove wire:target="generarBancos">✔ Generar {{ $revisar }}</span>
                                 <span wire:loading wire:target="generarBancos">⏳ Generando…</span>
@@ -571,7 +574,8 @@
                      nombreNueva(cuenta, concepto) {
                          const c = (cuenta || '').trim();
                          if (c === '' || this.codigos.includes(c)) return '';
-                         if (! /^\d{6,}$/.test(c)) { alert('La cuenta tiene que ser un número de 6 cifras o más.'); return null; }
+                         const n = window.longitudCuentas();
+                         if (! /^\d+$/.test(c) || c.length !== n) { alert('Las cuentas de esta empresa tienen ' + n + ' cifras.'); return null; }
                          const n = prompt('La cuenta ' + c + ' no está en el plan de cuentas.\nSi es nueva (p.ej. un proveedor dado de alta en Facturas OCR y aún no en SAGE), escribe su nombre para crearla:', concepto);
                          return n && n.trim() ? n.trim() : null;
                      },
@@ -996,6 +1000,14 @@
     <script>
         /* Atajo de cuentas como en SAGE: «410.33» = 410 + ceros + 33 hasta la longitud de las cuentas del plan que empiezan por 410
            (410033 si son de 6 cifras, 4100033 si son de 7, 41000033 si son de 8...). Si hay varias posibilidades en el plan, pregunta. */
+        /* Nº de cifras de las cuentas de la empresa: el más habitual en su plan (cada empresa tiene el suyo). */
+        window.longitudCuentas = function () {
+            let codigos = [];
+            try { codigos = JSON.parse(document.getElementById('plan-codigos').dataset.codigos || '[]'); } catch (e) {}
+            const n = {};
+            codigos.filter(c => /^\d{5,}$/.test(c)).forEach(c => { n[c.length] = (n[c.length] || 0) + 1; });
+            return Number(Object.keys(n).sort((a, b) => n[b] - n[a])[0]) || 6;
+        };
         window.expandirCuenta = window.expandirCuenta || function (v) {
             const m = /^(\d+)\.(\d+)$/.exec((v || '').trim());
             if (! m) return v;

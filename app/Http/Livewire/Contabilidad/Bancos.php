@@ -1045,8 +1045,11 @@ class Bancos extends Component
     public function anadirOtraCuenta(): void
     {
         $cuenta = trim($this->otraCuenta);
-        if (! preg_match('/^\d{6,}$/', $cuenta)) {
-            $this->addError('otraCuenta', 'Escribe la cuenta completa (6 cifras o más).');
+        $largos = array_count_values(array_map('strlen', array_filter(array_map('strval', array_keys($this->planCuentas)), fn ($c) => preg_match('/^\d{5,}$/', $c))));
+        arsort($largos);
+        $largo = (int) (array_key_first($largos) ?? 6);
+        if (! preg_match('/^\d+$/', $cuenta) || strlen($cuenta) !== $largo) {
+            $this->addError('otraCuenta', "Escribe la cuenta completa ({$largo} cifras, como las de este cliente).");
             return;
         }
         $this->otraCuenta = '';
