@@ -322,7 +322,7 @@
                      nombre(c) { return this.nombres[c] || this.nuevas[c] || '' },
                      cuentaCambiada(l) {
                          l.tocada = true;
-                         l.contrapartida = (l.contrapartida || '').trim();
+                         l.contrapartida = window.expandirCuenta((l.contrapartida || '').trim());
                          const c = l.contrapartida;
                          if (c === '' || this.nombre(c)) return;
                          if (! /^\d{6,}$/.test(c)) { alert('La cuenta tiene que ser un número de 6 cifras o más.'); l.contrapartida = ''; return; }
@@ -615,6 +615,7 @@
                         <p class="text-xs text-red-600 whitespace-pre-wrap">{{ $avisoMaestro }}</p>
                     @endif
 
+                    <div id="plan-codigos" class="hidden" data-codigos='@json(array_keys($planCuentas))'></div>
                     <datalist id="plan-cuentas-{{ $cliente }}">
                         @foreach ($planCuentas as $codigo => $nombreCuenta)
                             <option value="{{ $codigo }}">{{ $nombreCuenta }}</option>
@@ -630,7 +631,7 @@
                         </div>
                         <div>
                             <label class="block text-xs text-gray-600">Cuenta</label>
-                            <input type="text" x-model="cuenta" list="plan-cuentas-{{ $cliente }}" placeholder="400002"
+                            <input type="text" x-model="cuenta" x-on:change="cuenta = window.expandirCuenta(cuenta)" list="plan-cuentas-{{ $cliente }}" placeholder="400002"
                                    class="w-32 py-1 text-sm border-gray-300 rounded-md shadow-sm">
                         </div>
                         <div>
@@ -678,7 +679,7 @@
                                         </td>
                                         <td class="px-2 py-1 font-mono">
                                             <span x-show="! edit">{{ $f['cuenta'] ?: '—' }}</span>
-                                            <input x-show="edit" x-cloak type="text" x-model="cuenta" list="plan-cuentas-{{ $cliente }}" class="w-24 py-0.5 text-xs border-gray-300 rounded">
+                                            <input x-show="edit" x-cloak type="text" x-model="cuenta" x-on:change="cuenta = window.expandirCuenta(cuenta)" list="plan-cuentas-{{ $cliente }}" class="w-24 py-0.5 text-xs border-gray-300 rounded">
                                         </td>
                                         <td class="px-2 py-1 whitespace-nowrap">
                                             <span x-show="! edit">{{ ['+' => 'solo cobros (+)', '-' => 'solo pagos (−)'][$f['signo']] ?? '' }}</span>
@@ -991,6 +992,33 @@
             </div>
         </div>
     @endif
+
+    <script>
+        /* Atajo de cuentas como en SAGE: «410.33» = 410 + ceros + 33 hasta la longitud de las cuentas del plan que empiezan por 410
+           (410033 si son de 6 cifras, 4100033 si son de 7, 41000033 si son de 8...). Si hay varias posibilidades en el plan, pregunta. */
+        window.expandirCuenta = window.expandirCuenta || function (v) {
+            const m = /^(\d+)\.(\d+)$/.exec((v || '').trim());
+            if (! m) return v;
+            const [, pre, suf] = m;
+            let codigos = [];
+            try { codigos = JSON.parse(document.getElementById('plan-codigos').dataset.codigos || '[]'); } catch (e) {}
+            const largos = {};
+            codigos.filter(c => c.startsWith(pre)).forEach(c => { largos[c.length] = (largos[c.length] || 0) + 1; });
+            let lista = Object.keys(largos).map(Number).filter(L => L >= pre.length + suf.length);
+            if (! lista.length) {   // ninguna cuenta con ese principio: se usa la longitud más habitual del plan
+                const todos = {}; codigos.forEach(c => { todos[c.length] = (todos[c.length] || 0) + 1; });
+                const habitual = Object.keys(todos).map(Number).sort((a, b) => todos[b] - todos[a])[0] || 6;
+                lista = [Math.max(habitual, pre.length + suf.length)];
+            }
+            const cand = lista.sort((a, b) => a - b).map(L => pre + '0'.repeat(L - pre.length - suf.length) + suf);
+            const existen = cand.filter(c => codigos.includes(c));
+            if (existen.length === 1) return existen[0];
+            const opciones = existen.length ? existen : cand;
+            if (opciones.length === 1) return opciones[0];
+            const r = prompt('«' + v + '» puede ser:\n' + opciones.map((c, i) => (i + 1) + ') ' + c).join('\n') + '\nEscribe el número:', '1');
+            return opciones[(parseInt(r, 10) || 1) - 1] || opciones[0];
+        };
+    </script>
     <x-contabilidad.procesando target="conciliar, responderPrevios, descartarSalida, descartarTodos, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
                                nota="Puede tardar un minuto por extracto. No cierres la página." />
 </div>
