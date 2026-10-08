@@ -26,7 +26,8 @@
         Livewire.hook('commit', ({ commit, succeed, fail }) => {
             const llamadas = (commit && commit.calls) || [];
             const accion = llamadas.some(c => ! SILENCIOSAS.includes(c.method) && ! String(c.method).startsWith('__'));
-            if (! accion) return;
+            const cambios = commit && commit.updates && Object.keys(commit.updates).length > 0;   // p.ej. un combo con wire:model.live
+            if (! accion && ! cambios) return;
             activas++;
             if (! temporizador) {
                 temporizador = setTimeout(() => { if (activas > 0 && ! propio()) caja.style.display = 'flex'; }, 800);
