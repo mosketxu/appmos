@@ -47,6 +47,8 @@
         .b-gris { background:#fff; color:#374151; border-color:#d1d5db; } .b-gris:hover { background:#f9fafb; }
         .focr-tabla { width:100%; font-size:.8125rem; border-collapse:collapse; }
         .focr-tabla th { text-align:left; font-weight:600; color:#6b7280; background:#f9fafb; padding:.4rem .5rem; border-bottom:1px solid #e5e7eb; position:sticky; top:0; }
+        /* Fila de botones/filtros de cada pestaña del listado: se queda arriba al desplazarse (la caja de la lista tiene su propio scroll) */
+        .focr-barra-fija { position:sticky; top:0; z-index:6; background:#fff; }
         .focr-barra-fija ~ .focr-tabla th { top:3.4rem; }   /* la cabecera de la tabla se pega debajo de la barra fija */
         .focr-tabla td { padding:.35rem .5rem; border-bottom:1px solid #f3f4f6; vertical-align:top; }
         .focr-tabla tr.clic:hover td { background:#eef2ff; cursor:pointer; }

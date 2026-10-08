@@ -21,7 +21,7 @@
                 <div class="overflow-auto focr-card" style="border-top-left-radius:0; max-height:70vh">
                     @if ($vista === 'chequeo')
                         <div class="p-3" style="display:flex; flex-direction:column; gap:.6rem">
-                            <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+                            <div class="focr-barra-fija" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; padding:.2rem 0">
                                 <b class="text-sm">Chequeo contra el mayor</b>
                                 <input type="text" wire:model="chequeoPeriodo" wire:keydown.enter="chequearMayor" placeholder="2026-3T o 2026-09" class="focr-in" style="max-width:9rem">
                                 <button type="button" wire:click="chequearMayor" wire:loading.attr="disabled" wire:target="chequearMayor" class="focr-btn b-verde" style="padding:.25rem .8rem">
@@ -107,7 +107,7 @@
                     @elseif ($vista === 'ordenar')
                         <div class="p-3" style="display:flex; flex-direction:column; gap:.6rem">
                                                         <div style="border-top:1px solid #e5e7eb; padding-top:.7rem; display:flex; flex-direction:column; gap:.5rem">
-                                <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+                                <div class="focr-barra-fija" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; padding:.2rem 0">
                                     <b class="text-sm">Facturas sueltas en la raíz de «_Facturas»</b>
                                     <button type="button" wire:click="ordenarSueltas(false)" wire:loading.attr="disabled" wire:target="ordenarSueltas" class="focr-btn b-gris" style="padding:.25rem .8rem">
                                         <span wire:loading.remove wire:target="ordenarSueltas">🔎 Simular (no toca nada)</span><span wire:loading wire:target="ordenarSueltas">Trabajando…</span>
@@ -175,7 +175,7 @@
                             </div>
                         </div>
                     @elseif ($vista === 'proveedores')
-                        <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200">
+                        <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200 focr-barra-fija">
                             <input type="search" wire:model.live.debounce.300ms="filtroProv" placeholder="Buscar cuenta, nombre, CIF o contrapartida…" class="focr-in" style="max-width:340px">
                             <span class="text-xs text-gray-500">{{ count($provs) }} proveedores · <b>●</b> = puesto aquí (manda sobre la ficha de SAGE). Clic en cualquier parte de la fila para editarlo.</span>
                             <button type="button" wire:click="descargarProveedores" class="focr-btn b-gris ml-auto" style="padding:.2rem .5rem; font-size:.75rem" title="El listado tal cual se ve (con el filtro), para abrir en Excel">💾 Listado (CSV)</button>
@@ -259,7 +259,7 @@
                         </table>
                     @elseif ($vista === 'revisar')
                         @if ($cola)
-                            <div class="flex items-center gap-2 p-2 border-b border-gray-200 text-xs text-gray-500">
+                            <div class="flex items-center gap-2 p-2 border-b border-gray-200 text-xs text-gray-500 focr-barra-fija">
                                 <button type="button" wire:click="marcarSeguras" class="focr-btn b-gris" style="padding:.15rem .6rem; font-size:.8rem"
                                         title="Marca las que se leyeron con todo «ok», cuadran, tienen cuenta y contrapartida y no son duplicadas">☑ Marcar las seguras</button>
                                 @if ($marcadas)
@@ -340,7 +340,7 @@
                         </table>
                     @else
                         {{-- Barra fija: «Guardar el Excel para SAGE» y los filtros se quedan arriba al desplazar la lista --}}
-                        <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200 focr-barra-fija" style="position:sticky; top:0; z-index:6; background:#fff">
+                        <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200 focr-barra-fija">
                             @if ($enExcel)
                                 <button type="button" wire:click="guardarExcel" wire:loading.attr="disabled" class="focr-btn b-verde" style="padding:.3rem .8rem; font-size:.85rem"
                                         title="Te pregunta dónde guardarlo (ventana de Windows) y cierra el proceso: lo que valides después irá a un Excel nuevo. Copia en {{ $dirDatos }}/Output/Guardados">

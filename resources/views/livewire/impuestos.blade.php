@@ -136,7 +136,7 @@
             @endif
         </div>
 
-        <div class="flex flex-wrap items-center gap-3 text-sm imp-noprint">
+        <div class="flex flex-wrap items-center gap-3 text-sm imp-noprint" style="position:sticky; top:0; z-index:25; background:#f9fafb; padding:.4rem 0">   {{-- fila de filtros y botones: fija al desplazarse por los clientes --}}
             <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar cliente…" class="py-1 text-sm border-gray-300 rounded-md">
             <select wire:model.live="filtroModelo" class="py-1 text-sm border-gray-300 rounded-md">
                 <option value="">Todos los impuestos</option>
