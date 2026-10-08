@@ -388,6 +388,13 @@
                         <span wire:loading.remove wire:target="reproponer">↻ Volver a proponer</span>
                         <span wire:loading wire:target="reproponer">Proponiendo…</span>
                     </button>
+                    @if (collect($actual['avisos'] ?? [])->contains(fn ($a) => str_contains($a, 'usa «Separar»')))
+                        <button type="button" wire:click="separar" wire:loading.attr="disabled" class="focr-btn" style="background:#d97706; color:#fff; padding:.2rem .6rem"
+                                title="Parte este PDF en uno por factura y deja el original en la subcarpeta Separadas">
+                            <span wire:loading.remove wire:target="separar">✂️ Separar</span>
+                            <span wire:loading wire:target="separar">Separando…</span>
+                        </button>
+                    @endif
                     <button type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
                             title="Vuelve a leer el PDF con el OCR de Windows (para escaneados o mal leídos; tarda unos segundos)">
                         <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
@@ -682,6 +689,7 @@
         </div>
         {{-- Recuadro central al instante en las acciones lentas de la revisión (el global solo sale pasados 0,8 s) --}}
         <x-contabilidad.procesando target="reproponer" titulo="Proponiendo proveedor y cuentas…" nota="Un momento. No cierres la página." />
+        <x-contabilidad.procesando target="separar" titulo="Separando el PDF y leyendo las facturas…" nota="Un momento. No cierres la página." />
         <x-contabilidad.procesando target="releerOcr" titulo="Leyendo la factura con OCR…" nota="Puede tardar unos segundos." />
         <x-contabilidad.procesando target="escaneoDeCalidad" titulo="Pidiendo el escaneo de calidad a un PC…" nota="Un momento." />
         <x-contabilidad.procesando target="leerZona" titulo="Leyendo la zona marcada…" nota="Un momento." />

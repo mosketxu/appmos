@@ -2144,6 +2144,22 @@ class FacturasOcr extends Component
         }
     }
 
+    /** Parte el PDF de la factura abierta si lleva varias (Amazon...): un PDF por factura, el original a Separadas, y se leen las nuevas. */
+    public function separar(): void
+    {
+        if (! $this->sel) {
+            return;
+        }
+        $this->salida = '';
+        $antes = array_column($this->cola(), 'id');
+        if ($this->ejecutar(array_merge(['separar', $this->sel], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']), 600, 'Separar', false)) {
+            $this->dispatch('proceso-terminado', mensaje: "✅ PDF separado: las facturas nuevas están en la lista.");
+            $this->siguiente($antes);
+        } else {
+            $this->addError('validar', trim($this->salida));
+        }
+    }
+
     public function releerOcr(): void
     {
         if (! $this->sel) {
