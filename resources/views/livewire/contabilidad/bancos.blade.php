@@ -23,13 +23,13 @@
     <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3">
         <span>Bancos — cliente:</span>
         <select wire:model.live="cliente" class="text-base font-normal border-gray-300 rounded-md shadow-sm">
-            @forelse ($clientes as $c)
-                <option value="{{ $c }}">{{ $c }}</option>
-            @empty
-                <option value="">(no hay clientes)</option>
-            @endforelse
+                @if ($cliente === '')<option value="">— elige una entidad —</option>@endif
+            @foreach ($clientes as $v => $t)
+                <option value="{{ $v }}">{{ $t }}</option>
+            @endforeach
         </select>
     </h1>
+    @include('livewire.contabilidad._modal-cliente-nuevo')
 
     @if ($cliente !== '')
         @php

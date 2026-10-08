@@ -28,6 +28,7 @@ class FacturasOcr extends Component
     use WithFileUploads;
     // Web: el OCR de las facturas escaneadas lo hace un PC con el OCR de Windows (trait: cola de tareas, 3-oct-2026)
     use \App\Http\Livewire\Concerns\EjecutaEnPcs;
+    use \App\Http\Livewire\Concerns\EligeEntidadCliente;
 
     protected string $grupoPc = 'facturasocr';
     protected bool $ultimoOk = false;
@@ -86,7 +87,7 @@ class FacturasOcr extends Component
 
     public function mount(): void
     {
-        $this->cliente = $this->clientes()[0] ?? '';
+        $this->cliente = $this->clienteOk = $this->clientes()[0] ?? '';
         $t = intdiv((int) date('n') - 1, 3);   // trimestre natural anterior, para el chequeo contra el mayor
         $this->chequeoPeriodo = $t === 0 ? (date('Y') - 1).'-4T' : date('Y').'-'.$t.'T';
         $this->cargarCliente();
@@ -272,6 +273,14 @@ class FacturasOcr extends Component
     }
 
     public function updatedCliente(): void
+    {
+        if ($this->interceptaNuevo()) {
+            return;
+        }
+        $this->alElegirCliente();
+    }
+
+    protected function alElegirCliente(): void
     {
         $this->cargarCliente();
     }
@@ -948,6 +957,10 @@ class FacturasOcr extends Component
     public function leerEnSegundoPlano(): void
     {
         if (! $this->web() || ! $this->clienteValido()) {
+            return;
+        }
+        if ($faltan = $this->basesQueFaltan()) {
+            $this->salida .= "\n⚠️ No puedo leer las facturas de {$this->cliente} sin ".implode(' ni ', $faltan).". Sube ".(count($faltan) > 1 ? 'esos ficheros' : 'ese fichero')." de SAGE en «Ficheros base» (Excel exportado de SAGE) y vuelve a intentarlo.";
             return;
         }
         if (! in_array($this->ciclo, ['M', 'T'], true)) {
@@ -2303,6 +2316,20 @@ class FacturasOcr extends Component
         }
     }
 
+    /** Ficheros base imprescindibles que no tiene el cliente (listado de proveedores y mayor); el plan de cuentas solo se avisa en pantalla. */
+    protected function basesQueFaltan(): array
+    {
+        $fb = $this->ficherosBase();
+        $f = [];
+        foreach (['prov' => 'el listado de proveedores', 'mayor' => 'el mayor'] as $t => $txt) {
+            if (empty($fb[$t])) {
+                $f[] = $txt;
+            }
+        }
+
+        return $f;
+    }
+
     /** Ficheros base que hay, por tipo, del más reciente al más antiguo: [nombre, fecha, tamaño]. */
     protected function ficherosBase(): array
     {
@@ -2425,7 +2452,7 @@ class FacturasOcr extends Component
             'chequeo' => $this->vista === 'chequeo' ? $this->chequeoResultado() : null,
             'revisados' => $this->vista === 'chequeo' ? $this->chequeoRevisados() : [],
             'ordenar' => in_array($this->vista, ['chequeo', 'ordenar'], true) ? $this->ordenarResultado() : null,
-            'clientes' => $this->clientes(),
+            'clientes' => $this->opcionesClientes(),
             'cola' => $cola,
             'cuenta' => array_count_values(array_column($todas, 'estado')),
             'validadas' => $validadas,
@@ -2457,6 +2484,7 @@ class FacturasOcr extends Component
             'quitables' => count(array_filter($todas, fn ($f) => empty($f['oculta']) && in_array($f['estado'], ['rechazada', 'ilegible', 'duplicada'], true))),
             'base' => $valido ? $this->base() : [],
             'ficherosBase' => $valido ? $this->ficherosBase() : [],
+            'basesFaltan' => $valido ? $this->basesQueFaltan() : [],
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
             'duplicados' => $this->sel ? $this->duplicados() : [],

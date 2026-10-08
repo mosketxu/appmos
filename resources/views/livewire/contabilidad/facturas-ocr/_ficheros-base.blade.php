@@ -5,7 +5,14 @@
                 <div style="color:#4b5563">Puede tardar un par de minutos. No cierres la página.</div>
                 <style>@keyframes focr-giro{to{transform:rotate(360deg)}}</style>
             </div>
-            <details class="p-3 focr-card">
+            @if (! empty($basesFaltan) || empty($ficherosBase['plan']))
+                <div class="focr-nocuadra" style="animation:none; border-color:#f59e0b; background:#fffbeb; color:#78350f">
+                    ⚠️ Faltan ficheros base de SAGE de este cliente:
+                    {{ implode(', ', array_filter([empty($ficherosBase['prov']) ? 'listado de proveedores' : '', empty($ficherosBase['mayor']) ? 'mayor' : '', empty($ficherosBase['plan']) ? 'plan de cuentas' : ''])) }}.
+                    <span style="font-weight:400">Súbelos aquí abajo (Excel exportado de SAGE){{ ! empty($basesFaltan) ? '; sin proveedores y mayor no se pueden leer las facturas' : '' }}.</span>
+                </div>
+            @endif
+            <details class="p-3 focr-card" @if (! empty($basesFaltan)) open @endif>
                 <summary class="text-sm font-semibold text-gray-700 cursor-pointer">
                     Ficheros base: listado de proveedores, mayor y plan de cuentas de SAGE
                     @if ($base)

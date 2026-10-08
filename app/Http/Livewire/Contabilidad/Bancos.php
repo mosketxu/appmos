@@ -33,6 +33,7 @@ use Livewire\WithFileUploads;
 class Bancos extends Component
 {
     use WithFileUploads;
+    use \App\Http\Livewire\Concerns\EligeEntidadCliente;
 
     public string $cliente = '';
     public string $salida = '';
@@ -104,7 +105,7 @@ class Bancos extends Component
 
     public function mount(): void
     {
-        $this->cliente = $this->clientes()[0] ?? '';
+        $this->cliente = $this->clienteOk = $this->clientes()[0] ?? '';
         $this->sincronizarCentral();
         $this->cargarMaestro();
         $this->cargarConfig();
@@ -376,6 +377,14 @@ class Bancos extends Component
     }
 
     public function updatedCliente(): void
+    {
+        if ($this->interceptaNuevo()) {
+            return;
+        }
+        $this->alElegirCliente();
+    }
+
+    protected function alElegirCliente(): void
     {
         $this->sincronizarCentral();
         $this->resultados = [];
@@ -1033,7 +1042,7 @@ class Bancos extends Component
     public function render()
     {
         return view('livewire.contabilidad.bancos', [
-            'clientes' => $this->clientes(),
+            'clientes' => $this->opcionesClientes(),
             'recibidos' => array_slice($this->ficheros('Base/Recibidos', true), 0, 15),
             'cuentas' => $this->cuentasBanco(),
             'hayBase' => $this->clienteValido() && is_file($this->basePath()),
