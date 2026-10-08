@@ -3,6 +3,7 @@
 namespace App\Http\Livewire\Concerns;
 
 use App\Support\ClientesEntidad;
+use App\Support\ColaTareas;
 
 /**
  * Desplegable de cliente de Facturas OCR y Bancos con todas las entidades activas del usuario (8-oct-2026): si la elegida no tiene carpeta,
@@ -122,6 +123,52 @@ trait EligeEntidadCliente
     }
 
     // ------------------------------------------------------------ explorador de carpetas de OneDrive (el árbol lo lee un PC)
+
+    /** Token de la ventana de Windows pedida a un PC (selector de carpetas nativo); mientras no está vacío, el modal sondea el resultado. */
+    public string $ventanaToken = '';
+
+    /** «Examinar…»: un PC abre el selector de carpetas de Windows (el del Explorador) y devuelve la carpeta elegida. */
+    public function elegirConWindows(): void
+    {
+        $this->expError = '';
+        $this->nuevoError = '';
+        $this->explorando = false;
+        $this->ventanaToken = bin2hex(random_bytes(6));
+        ColaTareas::crear('pc.elegir_carpeta', ['token' => $this->ventanaToken], ColaTareas::pcElegido() ?: null, auth()->id());
+    }
+
+    /** wire:poll mientras se espera: recoge la carpeta elegida en la ventana de Windows. */
+    public function revisarVentana(): void
+    {
+        if ($this->ventanaToken === '') {
+            return;
+        }
+        $e = ColaTareas::estado('onedrive.carpeta_elegida');
+        if (! is_array($e) || ($e['token'] ?? '') !== $this->ventanaToken) {
+            return;
+        }
+        $this->ventanaToken = '';
+        if (! empty($e['cancelada'])) {
+            return;
+        }
+        if (! empty($e['error'])) {
+            $this->nuevoError = (string) $e['error'];
+
+            return;
+        }
+        $c = ClientesEntidad::aCarpeta((string) ($e['ruta'] ?? ''));
+        if ($c === null) {
+            $this->nuevoError = 'Elige una carpeta dentro de _Clientes › año › cliente (donde están las facturas recibidas).';
+
+            return;
+        }
+        $this->nuevoCarpeta = $c;
+    }
+
+    public function cancelarVentana(): void
+    {
+        $this->ventanaToken = '';
+    }
 
     public function abrirExplorador(): void
     {

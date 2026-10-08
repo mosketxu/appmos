@@ -13,10 +13,16 @@
                 <span class="font-medium text-gray-700">Carpeta de OneDrive con las facturas recibidas</span>
                 <div class="flex items-stretch gap-2 mt-1">
                     <div class="flex-1 px-3 py-2 font-mono text-xs break-all bg-gray-50 border border-gray-300 rounded-md">{{ \App\Support\ClientesEntidad::rutaWindows($nuevoCarpeta) }}</div>
-                    <button type="button" wire:click="abrirExplorador" class="px-3 py-1.5 text-sm font-semibold text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50">📂 Examinar…</button>
+                    <button type="button" wire:click="elegirConWindows" wire:loading.attr="disabled" @disabled($ventanaToken !== '') class="px-3 py-1.5 text-sm font-semibold text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Se abre el selector de carpetas de Windows en el PC donde trabajas">📂 Examinar…</button>
                 </div>
+                @if ($ventanaToken !== '')
+                    <div class="flex items-center gap-2 mt-1 text-xs font-semibold text-indigo-700" wire:poll.2s="revisarVentana">
+                        ⏳ Se está abriendo la ventana de Windows en tu PC: elige la carpeta de las facturas recibidas (si no la ves, mira en la barra de tareas).
+                        <button type="button" wire:click="cancelarVentana" class="font-normal text-gray-600 underline">Cancelar</button>
+                    </div>
+                @endif
                 <span class="text-xs {{ $nuevoDetectada ? 'text-green-700' : 'text-amber-700' }}">
-                    {{ $nuevoDetectada ? '✔ He encontrado la carpeta del cliente en OneDrive.' : '⚠ No he encontrado la carpeta del cliente en OneDrive: es una suposición; usa «Examinar…».' }}
+                    {{ $nuevoDetectada ? '✔ He encontrado la carpeta del cliente en OneDrive.' : '⚠ No he encontrado la carpeta del cliente en OneDrive: es una suposición; usa «Examinar…» (abre el selector de carpetas de Windows).' }}
                     Dentro tiene que haber una subcarpeta por mes (01, 02…); las facturas validadas van a la del mes de registro.
                 </span>
             </div>
