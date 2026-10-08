@@ -1479,6 +1479,7 @@ class FacturasOcr extends Component
                 $this->form['codigo_transaccion'] = (string) ($pat['codigo_transaccion'] ?? ($this->form['codigo_transaccion'] ?? ''));
                 $this->form['clave_operacion'] = (string) ($pat['clave_operacion'] ?? ($this->form['clave_operacion'] ?? ''));
                 $this->form['nombre_fichero'] = $pat['nombre_fichero'] ?? '';
+                $this->form['canal'] = $this->analitica ? ($pat['canal'] ?? '') : '';
             } elseif ($b = $this->cuentasBancos()[$cta] ?? null) {
                 // Creada en Bancos (a veces aún sin CIF)
                 $this->form['proveedor'] = $b['nombre'] ?? '';
@@ -1493,7 +1494,7 @@ class FacturasOcr extends Component
         $this->form['codigo_transaccion'] = (string) (($pat['codigo_transaccion'] ?? '') !== '' ? $pat['codigo_transaccion'] : ($p['transaccion'] ?? ''));
         $this->form['clave_operacion'] = (string) ($pat['clave_operacion'] ?? '');
         $this->form['cp'] = $p['cp'] ?? '';
-        $this->form['canal'] = $this->analitica ? ($p['canal'] ?? '') : '';
+        $this->form['canal'] = $this->analitica ? ($pat['canal'] ?? ($p['canal'] ?? '')) : '';
         $this->form['nombre_fichero'] = $pat['nombre_fichero'] ?? '';
         if (($this->form['su_factura'] ?? '') && $this->sii()) {
             $this->form['comentario'] = mb_substr(trim('Fra '.$this->form['su_factura'].' '.$this->form['proveedor']), 0, 40);
