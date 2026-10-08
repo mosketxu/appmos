@@ -87,9 +87,70 @@ class ClientesEntidad
         return preg_replace('/[^a-z0-9]/', '', strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s) ?: $s));
     }
 
+    /** Árbol de carpetas de OneDrive/_Clientes que subió un PC (tarea pc.arbol_carpetas): ['fecha', 'pc', 'dirs' => ['_Clientes/2026/Fashion 2026', ...]] o null. */
+    public static function arbol(): ?array
+    {
+        try {
+            $a = ColaTareas::estado('onedrive.arbol');
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return is_array($a) && ! empty($a['dirs']) ? $a : null;
+    }
+
+    /** ¿Hay ya una tarea de leer las carpetas de OneDrive en marcha? */
+    public static function arbolEnCurso(): bool
+    {
+        try {
+            return DB::table('tareas')->where('proceso', 'pc.arbol_carpetas')->whereIn('estado', ['pendiente', 'en_curso'])->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** Pide a un PC que lea las carpetas de OneDrive (el resultado queda en arbol()). */
+    public static function pedirArbol(): void
+    {
+        if (! self::arbolEnCurso()) {
+            ColaTareas::crear('pc.arbol_carpetas', [], ColaTareas::pcElegido() ?: null, auth()->id());
+        }
+    }
+
+    /** Subcarpetas directas de $ruta (relativa a OneDrive) según el árbol. */
+    public static function hijas(array $dirs, string $ruta): array
+    {
+        $pre = $ruta === '' ? '' : $ruta.'/';
+        $out = [];
+        foreach ($dirs as $d) {
+            if ($pre === '' ? ! str_contains($d, '/') : (str_starts_with($d, $pre) && ! str_contains(substr($d, strlen($pre)), '/') && strlen($d) > strlen($pre))) {
+                $out[] = basename($d);
+            }
+        }
+        natcasesort($out);
+
+        return array_values($out);
+    }
+
+    /** «_Clientes/2026/Fashion 2026/_Facturas» → «Fashion {AAAA}/_Facturas» (null si no cuelga de _Clientes/<año>/). */
+    public static function aCarpeta(string $ruta): ?string
+    {
+        if (! preg_match('#^_Clientes/((?:19|20)\d\d)/(.+)$#u', $ruta, $m)) {
+            return null;
+        }
+
+        return str_replace($m[1], '{AAAA}', $m[2]);
+    }
+
+    /** Ruta con el año en lugar de {AAAA}, con barras de Windows, para enseñársela al usuario. */
+    public static function rutaWindows(string $carpeta): string
+    {
+        return 'OneDrive\\_Clientes\\'.date('Y').'\\'.str_replace('/', '\\', str_replace('{AAAA}', date('Y'), $carpeta));
+    }
+
     /**
-     * Propuesta para una entidad sin carpeta: nombre del cliente, carpeta anual dentro de _Clientes/{AAAA} y si se detectó en OneDrive.
-     * $raizOneDrive = la carpeta que hace de «OneDrive» (VPS: la copia de trabajo; PC: la real); 
+     * Propuesta para una entidad sin carpeta: nombre del cliente y carpeta donde están (o estarán) sus facturas recibidas dentro de _Clientes/{AAAA}/
+     * (con subcarpetas por mes), y si se detectó en OneDrive. La detección usa el árbol que subió un PC y, si no lo hay, la «OneDrive» de esta máquina.
      */
     public static function proponer(int $entidadId, ?string $raizOneDrive): array
     {
@@ -108,26 +169,46 @@ class ClientesEntidad
                 $nombre = implode(' ', array_map([self::class, 'titulo'], array_slice($pal, 0, $n)));
             }
         }
-        $anual = $nombre.' {AAAA}';
+        $carpeta = $nombre.' {AAAA}/_Facturas';
         $detectada = false;
-        // ¿Hay ya una carpeta de la entidad en _Clientes/<año>? (alias, primera palabra o nombre completo)
         $anio = date('Y');
-        $dirs = $raizOneDrive ? (glob(rtrim($raizOneDrive, '/')."/_Clientes/{$anio}/*", GLOB_ONLYDIR) ?: glob(rtrim($raizOneDrive, '/')."/Clientes/{$anio}/*", GLOB_ONLYDIR) ?: []) : [];
-        $claves = array_filter([self::norm((string) $e->alias), self::norm($pal[0]), self::norm(implode('', $pal))]);
-        foreach ($dirs as $d) {
-            $b = basename($d);
-            if (str_starts_with($b, '_')) {
-                continue;
-            }
-            $stem = self::norm(trim(preg_replace('/\b(19|20)\d\d\b/', '', $b)));
-            if ($stem !== '' && in_array($stem, $claves, true)) {
-                $anual = preg_replace('/\b'.$anio.'\b/', '{AAAA}', $b);
-                $detectada = true;
-                break;
+        $arbol = self::arbol();
+        if ($arbol) {
+            $dirs = $arbol['dirs'];
+        } else {
+            $dirs = [];
+            foreach (['_Clientes', 'Clientes'] as $c) {
+                foreach ($raizOneDrive ? (glob(rtrim($raizOneDrive, '/')."/{$c}/{$anio}/*", GLOB_ONLYDIR) ?: []) : [] as $d) {
+                    $dirs[] = "_Clientes/{$anio}/".basename($d);
+                    foreach (glob($d.'/*', GLOB_ONLYDIR) ?: [] as $sub) {
+                        $dirs[] = "_Clientes/{$anio}/".basename($d).'/'.basename($sub);
+                    }
+                }
             }
         }
+        $claves = array_filter([self::norm((string) $e->alias), self::norm($pal[0]), self::norm(implode('', $pal))]);
+        foreach ($dirs as $d) {
+            if (! preg_match('#^_Clientes/'.$anio.'/([^/]+)$#u', $d, $m) || str_starts_with($m[1], '_')) {
+                continue;
+            }
+            $stem = self::norm(trim(preg_replace('/\b(19|20)\d\d\b/', '', $m[1])));
+            if ($stem === '' || ! in_array($stem, $claves, true)) {
+                continue;
+            }
+            $detectada = true;
+            $raiz = str_replace($anio, '{AAAA}', $m[1]);
+            $carpeta = $raiz.'/_Facturas';
+            // Dentro, la carpeta de facturas recibidas si se la reconoce por el nombre
+            foreach (self::hijas($dirs, $d) as $h) {
+                if (preg_match('/(^_?_?Facturas$|fras?\W*recib|recibid|facturas\W*recib)/iu', $h)) {
+                    $carpeta = $raiz.'/'.str_replace($anio, '{AAAA}', $h);
+                    break;
+                }
+            }
+            break;
+        }
 
-        return ['nombre' => $nombre, 'anual' => $anual, 'detectada' => $detectada, 'entidad' => $e->entidad, 'nif' => (string) $e->nif];
+        return ['nombre' => $nombre, 'carpeta' => $carpeta, 'detectada' => $detectada, 'entidad' => $e->entidad, 'nif' => (string) $e->nif];
     }
 
     /** Nombre válido como carpeta (letras, números, espacio, punto, guion). */
@@ -136,36 +217,45 @@ class ClientesEntidad
         return (bool) preg_match('/^[\p{L}\p{N}][\p{L}\p{N} ._-]{0,38}$/u', $n) && ! str_contains($n, '..');
     }
 
-    public static function anualValida(string $a): bool
+    /** Carpeta de facturas recibidas bajo _Clientes/{AAAA}/ (puede llevar subcarpetas con /). */
+    public static function carpetaValida(string $c): bool
     {
-        return (bool) preg_match('/^[\p{L}\p{N}_][\p{L}\p{N} ._{}-]{0,58}$/u', $a) && ! str_contains($a, '..');
+        if (str_contains($c, '..') || ! str_contains($c, '{AAAA}')) {
+            return false;
+        }
+        foreach (explode('/', $c) as $seg) {
+            if (! preg_match('/^[\p{L}\p{N}_][\p{L}\p{N} ._{}()-]{0,78}$/u', $seg)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
      * Crea el cliente en Facturas OCR y en Bancos (cada uno solo si su carpeta de código existe en esta máquina), enlazado a la entidad.
      * Devuelve los módulos creados.
      */
-    public static function crear(int $entidadId, string $nombre, string $anual, ?string $raizOneDrive): array
+    public static function crear(int $entidadId, string $nombre, string $carpeta, ?string $raizOneDrive): array
     {
         $e = self::activas()[$entidadId] ?? null;
         abort_unless($e, 403, 'Entidad no disponible');
-        abort_unless(self::nombreValido($nombre) && self::anualValida($anual), 422, 'Nombre no válido');
+        abort_unless(self::nombreValido($nombre) && self::carpetaValida($carpeta), 422, 'Nombre no válido');
         $hechos = [];
         $ocr = rtrim((string) config('contabilidad.facturasocr_dir'), '/');
         if ($ocr !== '' && is_dir($ocr) && ! is_dir("$ocr/$nombre")) {
-            $raiz = "{OneDrive}/_Clientes/{AAAA}/{$anual}";
             @mkdir("$ocr/$nombre", 0775, true);
             file_put_contents("$ocr/$nombre/cliente.json", json_encode([
                 'entidad_id' => $entidadId, 'entidad' => $e->entidad, 'nif' => (string) $e->nif,
-                'carpeta_recibidas' => "{OneDrive}/_Clientes/{AAAA}/{$anual}/_Facturas/{MM}",
-                'carpeta_emitidas' => "{OneDrive}/_Clientes/{AAAA}/{$anual}/_Facturas/Emitidas/{MM}",
+                'carpeta_recibidas' => "{OneDrive}/_Clientes/{AAAA}/{$carpeta}/{MM}",
+                'carpeta_emitidas' => "{OneDrive}/_Clientes/{AAAA}/{$carpeta}/Emitidas/{MM}",
                 'serie_recibidas' => '',
                 'datos' => '{OneDrive}/_ClaudeDesarrollo/FacturasOCR/'.$nombre,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $hechos[] = 'Facturas OCR';
             if ($raizOneDrive && is_dir($raizOneDrive)) {   // carpeta anual de este año y datos compartidos
-                $a = str_replace('{AAAA}', date('Y'), $anual);
-                @mkdir(rtrim($raizOneDrive, '/')."/_Clientes/".date('Y')."/$a/_Facturas", 0775, true);
+                $a = str_replace('{AAAA}', date('Y'), $carpeta);
+                @mkdir(rtrim($raizOneDrive, '/').'/_Clientes/'.date('Y')."/$a", 0775, true);
                 @mkdir(rtrim($raizOneDrive, '/').'/_ClaudeDesarrollo/FacturasOCR/'.$nombre, 0775, true);
             }
         }

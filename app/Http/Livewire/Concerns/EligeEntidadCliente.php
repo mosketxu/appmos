@@ -14,7 +14,10 @@ trait EligeEntidadCliente
     public bool $modalNuevo = false;
     public int $nuevoEid = 0;
     public string $nuevoNombre = '';
-    public string $nuevoAnual = '';
+    public string $nuevoCarpeta = '';
+    public bool $explorando = false;
+    public string $expRuta = '';
+    public string $expError = '';
     public string $nuevoEntidad = '';
     public bool $nuevoDetectada = false;
     public string $nuevoError = '';
@@ -56,7 +59,8 @@ trait EligeEntidadCliente
         }
         $this->nuevoEid = $eid;
         $this->nuevoNombre = $p['nombre'];
-        $this->nuevoAnual = $p['anual'];
+        $this->nuevoCarpeta = $p['carpeta'];
+        $this->explorando = false;
         $this->nuevoEntidad = $p['entidad'].($p['nif'] ? ' · '.$p['nif'] : '');
         $this->nuevoDetectada = $p['detectada'];
         $this->nuevoError = '';
@@ -73,14 +77,14 @@ trait EligeEntidadCliente
     public function crearClienteNuevo(): void
     {
         $nombre = trim($this->nuevoNombre);
-        $anual = trim($this->nuevoAnual);
+        $carpeta = trim($this->nuevoCarpeta);
         if (! ClientesEntidad::nombreValido($nombre)) {
             $this->nuevoError = 'El nombre del cliente solo puede llevar letras, números, espacios, punto y guion.';
 
             return;
         }
-        if (! ClientesEntidad::anualValida($anual) || ! str_contains($anual, '{AAAA}')) {
-            $this->nuevoError = 'La carpeta anual debe llevar {AAAA} donde va el año (p. ej. «Fashion {AAAA}»).';
+        if (! ClientesEntidad::carpetaValida($carpeta)) {
+            $this->nuevoError = 'Elige la carpeta de las facturas con «Examinar…».';
 
             return;
         }
@@ -91,7 +95,7 @@ trait EligeEntidadCliente
             return;
         }
         try {
-            $hechos = ClientesEntidad::crear($this->nuevoEid, $nombre, $anual, $this->raizOneDrive());
+            $hechos = ClientesEntidad::crear($this->nuevoEid, $nombre, $carpeta, $this->raizOneDrive());
         } catch (\Throwable $e) {
             $this->nuevoError = 'No se pudo crear: '.$e->getMessage();
 
@@ -105,5 +109,71 @@ trait EligeEntidadCliente
         $this->modalNuevo = false;
         $this->cliente = $this->clienteOk = $nombre;
         $this->alElegirCliente();
+    }
+
+    // ------------------------------------------------------------ explorador de carpetas de OneDrive (el árbol lo lee un PC)
+
+    public function abrirExplorador(): void
+    {
+        $this->expError = '';
+        if (! ClientesEntidad::arbol()) {
+            ClientesEntidad::pedirArbol();
+        }
+        $ruta = '_Clientes/'.date('Y').'/'.str_replace('{AAAA}', date('Y'), $this->nuevoCarpeta);
+        $dirs = ClientesEntidad::arbol()['dirs'] ?? [];
+        while ($ruta !== '' && $dirs && ! in_array($ruta, $dirs, true)) {   // la más cercana que exista
+            $ruta = str_contains($ruta, '/') ? substr($ruta, 0, strrpos($ruta, '/')) : '';
+        }
+        $this->expRuta = $ruta !== '' ? $ruta : '_Clientes/'.date('Y');
+        $this->explorando = true;
+    }
+
+    public function actualizarArbol(): void
+    {
+        ClientesEntidad::pedirArbol();
+    }
+
+    public function cerrarExplorador(): void
+    {
+        $this->explorando = false;
+    }
+
+    public function irACarpeta(string $ruta): void
+    {
+        $dirs = ClientesEntidad::arbol()['dirs'] ?? [];
+        if ($ruta === '_Clientes' || in_array($ruta, $dirs, true)) {
+            $this->expRuta = $ruta;
+        }
+    }
+
+    public function elegirCarpetaExplorada(): void
+    {
+        $c = ClientesEntidad::aCarpeta($this->expRuta);
+        if ($c === null) {
+            $this->expError = 'Entra en la carpeta del cliente (dentro del año) y elige la carpeta donde están las facturas recibidas.';
+
+            return;
+        }
+        $this->nuevoCarpeta = $c;
+        $this->explorando = false;
+    }
+
+    /** Datos para pintar el explorador. */
+    public function datosExplorador(): array
+    {
+        $a = ClientesEntidad::arbol();
+        $partes = $this->expRuta === '' ? [] : explode('/', $this->expRuta);
+        $migas = [];
+        $acum = '';
+        foreach ($partes as $p) {
+            $acum = $acum === '' ? $p : $acum.'/'.$p;
+            $migas[] = ['t' => $p, 'ruta' => $acum];
+        }
+
+        return [
+            'hay' => (bool) $a, 'fecha' => $a['fecha'] ?? '', 'pc' => $a['pc'] ?? '', 'enCurso' => ClientesEntidad::arbolEnCurso(),
+            'migas' => $migas, 'hijas' => $a ? ClientesEntidad::hijas($a['dirs'], $this->expRuta) : [],
+            'padre' => count($partes) > 1 ? implode('/', array_slice($partes, 0, -1)) : null,
+        ];
     }
 }
