@@ -17,7 +17,7 @@
     <span x-show="copiado" style="display:none" class="ml-1 font-sans text-green-600">✓ ruta copiada</span>
     @if (! empty($r['tarea']))
         {{-- fichero que subió un PC trabajador al terminar la tarea (web, 2026-10-03) --}}
-        <button type="button" wire:click='descargarDeTarea({{ (int) $r['tarea'] }}, @js($r['nombre'] ?? ''))'
+        <button type="button" wire:click="descargarDeTarea({{ (int) $r['tarea'] }}, @js($r['nombre'] ?? ''))"
                 class="ml-1 px-1.5 py-0 font-sans text-xs text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50">⬇ Descargar</button>
     @endif
     @if (! empty($r['local']))
