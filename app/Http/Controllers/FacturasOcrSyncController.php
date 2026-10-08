@@ -123,7 +123,8 @@ class FacturasOcrSyncController extends Controller
                 continue;
             }
             $rel = substr($fa['ruta'], strlen($raiz) + 1);
-            if (isset($sha[$rel]) && basename($rel) !== $fa['nombre_original']) {
+            // También las que conservan su nombre (lo normal): el PC mueve = copia en la carpeta del mes y quita la suelta de la raíz si es idéntica (SHA-256)
+            if (isset($sha[$rel])) {
                 $originales[] = ['nombre' => $fa['nombre_original'], 'destino' => $rel, 'sha256' => $sha[$rel]];
             }
         }
