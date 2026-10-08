@@ -312,7 +312,7 @@
                      lineas: @js(array_map(fn ($l) => $l + ['concepto_maestro' => '', 'vale' => ''], $lineasRevisar)),
                      nombres: @js((object) $planCuentas),
                      nuevas: {},
-                     filtro: @js(collect($lineasRevisar)->contains(fn ($l) => empty($l['contrapartida'])) ? 'vacias' : 'todas'), q: '',
+                     filtro: 'todas', q: '',
                      get vacias() { return this.lineas.filter(l => ! l.contrapartida).length },
                      visible(l) {
                          if (this.filtro === 'vacias' && l.contrapartida && ! l.tocada) return false;
