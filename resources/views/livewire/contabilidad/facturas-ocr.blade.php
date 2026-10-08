@@ -295,12 +295,7 @@
     <div class="p-4 space-y-4">
         <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3 gap-y-2">
             <span>Facturas OCR — recibidas —</span>
-            <select wire:model.live="cliente" class="text-base font-normal border-gray-300 rounded-md shadow-sm">
-                @if ($cliente === '')<option value="">— elige una entidad —</option>@endif
-                @foreach ($clientes as $v => $t)
-                    <option value="{{ $v }}">{{ $t }}</option>
-                @endforeach
-            </select>
+            @include('livewire.contabilidad._selector-cliente')
             @if ($entidad)
                 <span class="text-sm font-normal text-gray-500">{{ $entidad->entidad }} · {{ $entidad->nif }}</span>
             @endif
