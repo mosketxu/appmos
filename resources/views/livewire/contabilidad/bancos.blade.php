@@ -248,22 +248,6 @@
                                     @endforeach
                                 </tbody>
                             </table>
-                        @if ($previos)
-                            <div class="p-3 mt-3 text-sm border rounded-md bg-amber-50 border-amber-300">
-                                <div class="font-semibold text-amber-900">⚠️ Ya hay ficheros de bancos de una pasada anterior:</div>
-                                <div class="mt-1 text-amber-900">{{ implode(', ', $previos) }}</div>
-                                <p class="mt-1 text-xs text-amber-800">
-                                    Si los dejas, los movimientos de esas pasadas ya están en la Base como apuntes provisionales y no se repetirán
-                                    (el resultado nuevo saldrá casi vacío o como <b>_2</b>). Si quieres empezar de cero, bórralos: se quitan también
-                                    sus apuntes provisionales de la Base (antes se hace copia de seguridad).
-                                </p>
-                                <div class="flex flex-wrap gap-2 mt-2">
-                                    <x-button.primary wire:click="responderPrevios('borrar')">🗑 Borrarlos y procesar</x-button.primary>
-                                    <x-button.secondary wire:click="responderPrevios('mantener')">Mantenerlos y procesar</x-button.secondary>
-                                    <x-button.secondary wire:click="responderPrevios('cancelar')">Cancelar</x-button.secondary>
-                                </div>
-                            </div>
-                        @endif
                             <div class="mt-3">
                                 <x-button.primary wire:click="conciliar" wire:loading.attr="disabled" wire:target="conciliar">
                                     <span wire:loading.remove wire:target="conciliar">▶ Generar bancos ({{ count($extractos) }} {{ count($extractos) === 1 ? 'extracto' : 'extractos' }})</span>
@@ -926,7 +910,7 @@
         </div>
     @endif
     {{-- Indicador central mientras el servidor trabaja (conciliar, generar, subir ficheros a la base...) --}}
-    <div wire:loading.flex wire:target="conciliar, responderPrevios, descartarSalida, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
+    <div wire:loading.flex wire:target="conciliar, generarBancos, juntarBancos, procesarSubidas, guardarMapeo, anadirExtractos"
          class="fixed inset-0 z-50 items-center justify-center bg-gray-900/40">
         <div class="flex flex-col items-center gap-3 px-8 py-6 bg-white rounded-xl shadow-2xl">
             <svg class="w-14 h-14 text-indigo-600 animate-spin" viewBox="0 0 24 24" fill="none">
