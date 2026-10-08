@@ -1716,10 +1716,13 @@ class FacturasOcr extends Component
             return array_map(fn ($k, $v) => [(string) $k, (string) $v], array_keys($c), $c);
         }
         $out = [];
+        $pats = $this->patrones();
         foreach ($this->proveedores() as $cta => $p) {
-            $out[] = [(string) $cta, trim(($p['razon'] ?? '').' · '.($p['nif'] ?? ''), ' ·')];
+            // El nombre editado aquí (Proveedores → nombre propio) manda sobre el del listado de SAGE
+            $nombre = (string) (($pats[$cta]['nombre_propio'] ?? '') !== '' ? $pats[$cta]['nombre_propio'] : ($p['razon'] ?? ''));
+            $out[] = [(string) $cta, trim($nombre.' · '.($p['nif'] ?? ''), ' ·')];
         }
-        foreach ($this->patrones() as $cta => $pat) {
+        foreach ($pats as $cta => $pat) {
             if (! empty($pat['nuevo'])) {
                 $out[] = [(string) $cta, trim(($pat['proveedor'] ?? '').' · '.($pat['cif'] ?? '').' (nuevo)', ' ·')];
             }
@@ -1818,6 +1821,7 @@ class FacturasOcr extends Component
             $this->provSel = '';
             $this->provForm = [];
             $this->provAviso = '';
+            $this->dispatch('focr-listas');   // los combos de proveedor (en caché en el navegador) vuelven a pedir los nombres
         } else {
             $this->addError('proveedor', trim($this->salida));
         }
