@@ -98,53 +98,41 @@
 
             <div class="hidden sm:flex sm:items-center sm:ml-6 barra-der">
                 @if($entmenu->id)
-                    <div class="hidden p-2 space-x-8 bg-gray-100 rounded-lg sm:-my-px sm:ml-10 sm:flex">
-                        <div class="">
-                            <x-select wire:model.lazy="filtroentidad"  selectname="entidad_id" class="w-full">
-                                <option value="">-- Elige una entidad --</option>
+                    <div class="items-center hidden p-2 space-x-3 bg-gray-100 rounded-lg sm:-my-px sm:ml-4 sm:flex">
+                        {{-- Buscador: se escribe el nombre y se elige de la lista --}}
+                        <div x-data="{ q: @js($entmenu->entidad), ids: @js($entidades->pluck('id','entidad')) }">
+                            <input type="text" list="lista-entidades-menu" x-model="q" @focus="$event.target.select()"
+                                   @change="if (ids[q]) $wire.set('filtroentidad', ids[q])"
+                                   placeholder="Buscar entidad…" class="py-1 text-sm border-gray-300 rounded-md w-36 lg:w-48">
+                            <datalist id="lista-entidades-menu">
                                 @foreach ($entidades as $entidad)
-                                <option value="{{ $entidad->id }}">{{ $entidad->entidad }}</option>
+                                <option value="{{ $entidad->entidad }}"></option>
                                 @endforeach
-                            </x-select>
+                            </datalist>
                         </div>
-                        <x-jet-nav-link href="{{ route('entidad.pu',$entmenu) }}" :active="request()->routeIs('entidad.pu')">
-                            {{ __('Pus') }}
-                        </x-jet-nav-link>
-                        <x-jet-nav-link href="{{ route('entidad.contacto',$entmenu) }}" :active="request()->routeIs('entidad.contacto')">
-                            {{ __('Contactos') }}
-                        </x-jet-nav-link>
-                        <x-jet-nav-link href="{{ route('entidad.edit',$entmenu) }}" :active="request()->routeIs('entidad.edit')">
-                            @can('entidades.editar') {{ __('Editar') }} @else {{ __('Ficha') }} @endcan
-                        </x-jet-nav-link>
-                        @can('facturacion.ver')
-                        <div class="relative mt-1 ">
-                            <x-jet-dropdown align="center" width="w-36" >
+                        <div class="flex items-center">
+                            @php $act = fn ($r) => request()->routeIs($r) ? 'rounded ring-2 ring-indigo-300 bg-white p-0.5' : ''; @endphp
+                            <x-icon.key href="{{ route('entidad.pu',$entmenu) }}" title="Pus" class="{{ $act('entidad.pu') }}"/>
+                            <x-icon.usergroup href="{{ route('entidad.contacto',$entmenu) }}" title="Contactos" class="{{ $act('entidad.contacto') }}"/>
+                            <x-icon.clock-a href="{{ route('entidad.historial',$entmenu) }}" title="Historial" class="{{ $act('entidad.historial') }}"/>
+                            <x-icon.edit-a href="{{ route('entidad.edit',$entmenu) }}" title="{{ auth()->user()->can('entidades.editar') ? 'Editar' : 'Ficha' }}" class="{{ $act('entidad.edit') }}"/>
+                            @can('facturacion.ver')
+                            <x-jet-dropdown align="center" width="w-36">
                                 <x-slot name="trigger">
-                                    <span class="inline-flex rounded-md">
-                                        <button type="button" class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition bg-white border border-transparent rounded-md bg-blu hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-blue-700">
-                                            Facturación
-                                            <svg class="ml-2 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
-                                    </span>
+                                    <button type="button" title="Facturas / Prefacturas" class="mr-2 text-gray-500 transform hover:text-gray-700 hover:scale-125">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm7 0v3h3l-3-3zM7 11h6v1.5H7V11zm0 3h6v1.5H7V14z"/></svg>
+                                    </button>
                                 </x-slot>
                                 <x-slot name="content">
                                     <div class="w-36">
-                                        <x-jet-dropdown-link href="{{ route('facturacion.show',$entmenu)}}" class="text-center">
-                                            {{ __('Facturas') }}
-                                        </x-jet-dropdown-link>
-                                        <x-jet-dropdown-link href="{{ route('facturacion.prefacturasentidad',$entmenu)}}"  class="text-center">
-                                            {{ __('Prefacturas') }}
-                                        </x-jet-dropdown-link>
+                                        <x-jet-dropdown-link href="{{ route('facturacion.show',$entmenu)}}" class="text-center">{{ __('Facturas') }}</x-jet-dropdown-link>
+                                        <x-jet-dropdown-link href="{{ route('facturacion.prefacturasentidad',$entmenu)}}" class="text-center">{{ __('Prefacturas') }}</x-jet-dropdown-link>
                                     </div>
                                 </x-slot>
                             </x-jet-dropdown>
+                            <a href="{{ route('facturacionconcepto.entidad',$entmenu)}}" title="Fac.Conceptos" class="w-5 mr-2 text-green-600 transform hover:text-green-800 hover:scale-125 {{ $act('facturacionconcepto.entidad') }}"><x-icon.coins/></a>
+                            @endcan
                         </div>
-                        <x-jet-nav-link href="{{ route('facturacionconcepto.entidad',$entmenu)}}" :active="request()->routeIs('facturacionconcepto.entidad')">
-                            {{ __('Fac.Conceptos') }}
-                        </x-jet-nav-link>
-                        @endcan
                     </div>
                 @endif
                 {{-- PCs de trabajo (cola de tareas): conectados y tareas en curso, para todos los usuarios --}}

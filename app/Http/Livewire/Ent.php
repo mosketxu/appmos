@@ -22,10 +22,6 @@ class Ent extends Component
     public $estadoOriginal=null;
     public $cambioFecha='';
     public $cambioMotivo='';
-    public $histFecha='';
-    public $histTexto='';
-    public $histImporte='';
-    public $histPeriodo='';
 
     /** A dónde vuelve «Volver»: el listado de Entidades con la búsqueda y filtros con que se salió. */
     public $volver='';
@@ -97,7 +93,7 @@ class Ent extends Component
         $this->contacto=$contacto;
         $this->ruta=$ruta;
         $this->estadoOriginal = $entidad->id ? (string) $entidad->estado : null;
-        $this->cambioFecha = $this->histFecha = now()->toDateString();
+        $this->cambioFecha = now()->toDateString();
         $anterior = url()->previous();
         $this->volver = str_starts_with($anterior, route('entidades')) ? $anterior : route('entidades');
     }
@@ -113,8 +109,7 @@ class Ent extends Component
         $sumas=Suma::all();
         $provincias=Provincia::all();
         $paises=Pais::all();
-        $historico = ($this->entidad['id'] ?? null) ? $entidadModel->historico()->with('user')->get() : collect();
-        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises','entidadModel','historico'));
+        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises','entidadModel'));
     }
 
     public function save()
@@ -213,37 +208,6 @@ class Ent extends Component
             $this->dispatch('notify', 'Contacto añadido con éxito');
         }
         $this->dispatch('notify-saved');
-    }
-
-
-    /** Comentario suelto en el historial de la entidad (se guarda al momento). */
-    public function anadirHistorico()
-    {
-        if (! ($this->entidad['id'] ?? null) || ! auth()->user()->can('entidades.editar')) {
-            return;
-        }
-        $this->validate(['histFecha' => 'required|date', 'histTexto' => 'nullable|string|max:2000', 'histImporte' => 'nullable|numeric', 'histPeriodo' => 'nullable']);
-        if (trim((string) $this->histTexto) === '' && (string) $this->histImporte === '') {
-            $this->addError('histTexto', 'Escribe un comentario o un importe.');
-            return;
-        }
-        \App\Models\EntidadHistorico::create([
-            'entidad_id' => $this->entidad['id'], 'tipo' => 'comentario', 'fecha' => $this->histFecha,
-            'comentario' => trim($this->histTexto) ?: null, 'user_id' => auth()->id(),
-            'importe_facturacion' => (string) $this->histImporte === '' ? null : $this->histImporte,
-            'periodo_facturacion' => (string) $this->histPeriodo === '' ? null : $this->histPeriodo,
-        ]);
-        $this->histTexto = '';
-        $this->histImporte = '';
-        $this->histPeriodo = '';
-        $this->histFecha = now()->toDateString();
-    }
-
-    public function borrarHistorico(int $id)
-    {
-        if (auth()->user()->can('entidades.editar')) {
-            \App\Models\EntidadHistorico::where('entidad_id', $this->entidad['id'])->whereKey($id)->delete();
-        }
     }
 
 }

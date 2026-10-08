@@ -55,6 +55,11 @@ class EntidadController extends Controller
         return view('entidad.facturacionconceptos',compact('entidad'));
     }
 
+    public function historial(Entidad $entidad)
+    {
+        return view('entidad.historial',compact('entidad'));
+    }
+
     public function contactos(Entidad $entidad)
     {
         return view('entidad.contactos',compact('entidad'));

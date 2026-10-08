@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Livewire\ContactoEntidad;
 use App\Http\Livewire\Ent;
+use App\Http\Livewire\EntidadHistorial;
 use App\Http\Livewire\FacturacionConceptos\FacturacionConceptos;
 use App\Http\Livewire\Pu;
 use App\Models\Ciclo;
@@ -124,5 +125,20 @@ class EntidadesLivewireTest extends TestCase
             'concepto' => 'Mantenimiento mensual',
             'importe' => 100,
         ]);
+    }
+
+    public function test_historial_tiene_su_pestana_y_permite_comentar(): void
+    {
+        $entidad = Entidad::create(['entidad' => 'Con Historial SL']);
+
+        $this->assertStringContainsString('/entidad/historial/'.$entidad->id, route('entidad.historial', $entidad));
+
+        Livewire::test(EntidadHistorial::class, ['entidad' => $entidad])
+            ->set('histTexto', 'Llamada con el cliente')
+            ->call('anadirHistorico')
+            ->assertSee('Historial de Con Historial SL')
+            ->assertSee('Llamada con el cliente');
+
+        $this->assertDatabaseHas('entidad_historico', ['entidad_id' => $entidad->id, 'comentario' => 'Llamada con el cliente']);
     }
 }

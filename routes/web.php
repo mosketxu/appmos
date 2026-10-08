@@ -148,6 +148,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         Route::get('/entidades', function () {return view('entidades');})->name('entidades');
         Route::get('/entidad/pu/{entidad}', [EntidadController::class, 'pus'])->name('entidad.pu');
         Route::get('/entidad/contacto/{entidad}', [EntidadController::class, 'contactos'])->name('entidad.contacto');
+        Route::get('/entidad/historial/{entidad}', [EntidadController::class, 'historial'])->name('entidad.historial');
         Route::get('/entidad/planfacturacion/{entidad}', [EntidadController::class, 'planfacturacion'])->name('entidad.planfacturacion');
         Route::resource('entidad', EntidadController::class)->only('edit');
     });
