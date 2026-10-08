@@ -341,6 +341,15 @@
                     @else
                         {{-- Barra fija: «Guardar el Excel para SAGE» y los filtros se quedan arriba al desplazar la lista --}}
                         <div class="flex flex-wrap items-center gap-2 p-2 border-b border-gray-200 focr-barra-fija" style="position:sticky; top:0; z-index:6; background:#fff">
+                            @if ($enExcel)
+                                <button type="button" wire:click="guardarExcel" wire:loading.attr="disabled" class="focr-btn b-verde" style="padding:.3rem .8rem; font-size:.85rem"
+                                        title="Te pregunta dónde guardarlo (ventana de Windows) y cierra el proceso: lo que valides después irá a un Excel nuevo. Copia en {{ $dirDatos }}/Output/Guardados">
+                                    <span wire:loading.remove wire:target="guardarExcel">💾 Guardar el Excel para SAGE ({{ $enExcel }} facturas)</span>
+                                    <span wire:loading wire:target="guardarExcel">Elige dónde guardarlo…</span>
+                                </button>
+                            @else
+                                <span class="text-xs text-gray-400">Nada nuevo para SAGE</span>
+                            @endif
                             <input type="search" wire:model.live.debounce.300ms="filtro" placeholder="Buscar proveedor, cuenta, nº, fichero…" class="focr-in" style="max-width:320px">
                             <select wire:model.live="filtroProceso" class="focr-in" style="max-width:260px" title="Cada vez que guardas el Excel para SAGE se cierra un proceso">
                                 <option value="">Proceso en curso (sin guardar: {{ $enExcel }})</option>
@@ -358,15 +367,6 @@
                             <span class="ml-auto text-xs text-gray-500">
                                 @if ($ultimoExcel) Último guardado: {{ $ultimoExcel['fecha'] }} ({{ $ultimoExcel['facturas'] }} facturas) · @endif
                             </span>
-                            @if ($enExcel)
-                                <button type="button" wire:click="guardarExcel" wire:loading.attr="disabled" class="focr-btn b-verde" style="padding:.3rem .8rem; font-size:.85rem"
-                                        title="Te pregunta dónde guardarlo (ventana de Windows) y cierra el proceso: lo que valides después irá a un Excel nuevo. Copia en {{ $dirDatos }}/Output/Guardados">
-                                    <span wire:loading.remove wire:target="guardarExcel">💾 Guardar el Excel para SAGE ({{ $enExcel }} facturas)</span>
-                                    <span wire:loading wire:target="guardarExcel">Elige dónde guardarlo…</span>
-                                </button>
-                            @else
-                                <span class="text-xs text-gray-400">Nada nuevo para SAGE</span>
-                            @endif
                         </div>
                         <table class="focr-tabla">
                             <thead><tr>
