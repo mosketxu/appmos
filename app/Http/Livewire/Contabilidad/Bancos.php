@@ -118,7 +118,7 @@ class Bancos extends Component
 
     public function mount(): void
     {
-        $this->cliente = $this->clienteOk = $this->clientes()[0] ?? '';
+        $this->cliente = $this->clienteOk = $this->clienteInicial($this->clientes());
         $this->sincronizarCentral();
         $this->cargarMaestro();
         $this->cargarConfig();

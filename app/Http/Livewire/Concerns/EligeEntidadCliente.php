@@ -42,11 +42,20 @@ trait EligeEntidadCliente
         return null;
     }
 
+    /** Cliente con el que se abre la pantalla: el último que se eligió (en Facturas OCR o Bancos) si sigue en la lista; si no, el primero. */
+    protected function clienteInicial(array $lista): string
+    {
+        $c = (string) session('contabilidad_cliente', '');
+
+        return in_array($c, $lista, true) ? $c : ($lista[0] ?? '');
+    }
+
     /** Llamar al principio de updatedCliente(): true si era una entidad sin carpeta (se abre el modal y no se cambia de cliente). */
     protected function interceptaNuevo(): bool
     {
         if (! str_starts_with($this->cliente, 'e:')) {
             $this->clienteOk = $this->cliente;
+            session(['contabilidad_cliente' => $this->cliente]);   // al refrescar o volver a esta pantalla se sigue en el mismo cliente
 
             return false;
         }

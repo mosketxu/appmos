@@ -87,7 +87,7 @@ class FacturasOcr extends Component
 
     public function mount(): void
     {
-        $this->cliente = $this->clienteOk = $this->clientes()[0] ?? '';
+        $this->cliente = $this->clienteOk = $this->clienteInicial($this->clientes());
         $t = intdiv((int) date('n') - 1, 3);   // trimestre natural anterior, para el chequeo contra el mayor
         $this->chequeoPeriodo = $t === 0 ? (date('Y') - 1).'-4T' : date('Y').'-'.$t.'T';
         $this->cargarCliente(true);
