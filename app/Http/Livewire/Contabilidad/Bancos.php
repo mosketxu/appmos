@@ -896,8 +896,8 @@ class Bancos extends Component
             return;
         }
 
-        $etiqueta = "Bancos · {$this->cliente} · ".($fila === 'plan' ? 'plan de cuentas' : 'mayor');
-        if (! in_array($fila, ['plan', 'mayor'], true)) {
+        $etiqueta = "Bancos · {$this->cliente} · ".(['plan' => 'plan de cuentas', 'proveedores' => 'proveedores'][$fila] ?? 'mayor');
+        if (! in_array($fila, ['plan', 'mayor', 'proveedores'], true)) {
             $this->addError('subidas', 'Fila desconocida.');
             return;
         }
@@ -970,7 +970,7 @@ class Bancos extends Component
             $baseCli = $this->baseDir().'/'.$this->cliente.'/Base';
             $marca = $baseCli.'/central_visto.json';
             $visto = is_file($marca) ? (json_decode((string) file_get_contents($marca), true) ?: []) : [];
-            foreach (['plan', 'mayor'] as $tipo) {
+            foreach (['plan', 'mayor', 'proveedores'] as $tipo) {
                 $c = \App\Support\FicherosBase::ultimo($eid, $tipo);
                 if (! $c) {
                     continue;

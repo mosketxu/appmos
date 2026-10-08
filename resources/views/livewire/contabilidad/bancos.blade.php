@@ -31,6 +31,7 @@
             $filasBase = [
                 ['clave' => 'plan', 'icono' => '📘', 'titulo' => 'Plan de cuentas', 'datos' => $estadoBase['plan'] ?? null],
                 ['clave' => 'mayor', 'icono' => '🏦', 'titulo' => 'Mayor', 'datos' => $estadoBase['mayor'] ?? null],
+                ['clave' => 'proveedores', 'icono' => '🏭', 'titulo' => 'Proveedores', 'datos' => $estadoBase['proveedores'] ?? null],
             ];
             $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
         @endphp
@@ -41,6 +42,7 @@
                     El plan de cuentas y el mayor, exportados de SAGE. Cada uno va en su fila (arrástralo encima o pulsa ⬆):
                     se acumulan en la base de {{ $cliente }} y lo repetido no se duplica. El mayor puede traer todas las
                     cuentas: solo se guardan las de banco (las 572… y las que marques abajo).
+                    El listado de proveedores sirve para cruzar las cuentas creadas en Appmos con las que ya existen en SAGE.
                     <b>Los extractos del banco no van aquí</b>, van abajo en «Extracto a procesar».
                 </p>
             </div>
@@ -70,6 +72,8 @@
                         <div class="flex-1 min-w-[14rem] text-xs text-gray-600">
                             @if ($fb['clave'] === 'plan' && $fb['datos'])
                                 <b>{{ $fb['datos']['cuentas'] }}</b> cuentas
+                            @elseif ($fb['clave'] === 'proveedores' && ! empty($fb['datos']['cuentas']))
+                                <b>{{ $fb['datos']['cuentas'] }}</b> proveedores
                             @elseif ($fb['clave'] === 'mayor' && $cuentas)
                                 @foreach ($cuentas as $codigo => $nombreCuenta)
                                     @php $dc = $estadoBase['cuentas'][$codigo] ?? null; @endphp
@@ -94,7 +98,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span x-show="subiendo" x-cloak class="text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
-                            <x-button.secondary x-on:click="$refs.input.click()">⬆ {{ $fb['clave'] === 'plan' ? 'Subir plan' : 'Subir mayor' }}</x-button.secondary>
+                            <x-button.secondary x-on:click="$refs.input.click()">⬆ {{ ['plan' => 'Subir plan', 'proveedores' => 'Subir proveedores'][$fb['clave']] ?? 'Subir mayor' }}</x-button.secondary>
                         </div>
                     </div>
                 @endforeach
@@ -499,6 +503,23 @@
                                                     class="ml-2 text-green-700 hover:underline">✔ Guardar</button>
                                         </td>
                                     </tr>
+                                    @php $sg = $c['sage'] ?? []; @endphp
+                                    @if (! empty($sg['estado']))
+                                        <tr wire:key="cns-{{ $cliente }}-{{ $c['cuenta'] }}-{{ md5(json_encode($sg)) }}"
+                                            class="{{ $sg['estado'] === 'misma' ? 'bg-green-50' : 'bg-red-50' }}">
+                                            <td></td>
+                                            <td colspan="5" class="px-2 py-1 text-xs {{ $sg['estado'] === 'misma' ? 'text-green-800' : 'text-red-700 font-medium' }}">
+                                                @if ($sg['estado'] === 'misma')
+                                                    ✔ Ya está en SAGE como {{ $sg['cuenta'] }} · {{ $sg['nombre'] }}{{ $sg['cp'] !== '' ? ' · CP '.$sg['cp'] : '' }}.
+                                                    Sube el plan de cuentas de SAGE y desaparece de esta lista.
+                                                @elseif ($sg['estado'] === 'otra')
+                                                    ⚠️ SAGE ya tiene este proveedor con OTRO número: {{ $sg['cuenta'] }} · {{ $sg['nombre'] }}. Usa la de SAGE (la {{ $c['cuenta'] }} sobra) y avisa a Facturas OCR.
+                                                @else
+                                                    ⚠️ En SAGE el número {{ $c['cuenta'] }} es OTRO proveedor ({{ $sg['nombre'] }}). Hay que dar a este uno nuevo.
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endif
                                     @if ($prop)
                                         <tr class="bg-indigo-50/50" wire:key="cnp-{{ $cliente }}-{{ $c['cuenta'] }}-{{ md5(json_encode($prop)) }}">
                                             <td></td>
