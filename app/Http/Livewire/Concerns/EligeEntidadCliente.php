@@ -117,6 +117,7 @@ trait EligeEntidadCliente
         }
         $this->modalNuevo = false;
         $this->cliente = $this->clienteOk = $nombre;
+        session(['contabilidad_cliente' => $nombre]);
         $this->alElegirCliente();
     }
 
