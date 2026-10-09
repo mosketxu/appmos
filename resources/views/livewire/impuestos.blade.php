@@ -151,7 +151,7 @@
             @if ($this->puedeTodos())
                 <button type="button" wire:click="$toggle('verTodos')" class="imp-btn {{ $verTodos ? 'on' : '' }}" style="border-radius:6px"
                     title="Por defecto solo ves tus impuestos (los de tus clientes o asignados a ti)">{{ $verTodos ? '👥 Viendo los de todos' : '👤 Solo los míos · ver todos' }}</button>
-                <a href="{{ route('impuestos.libro-iva') }}" class="imp-btn" style="border-radius:6px;text-decoration:none" title="Maquetar el libro de IVA (303) de un cliente">📒 Libro de IVA</a>
+                
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
                 <button type="button" wire:click="actualizarLibros" class="imp-btn" style="border-radius:6px"
@@ -373,5 +373,21 @@
     };
     window.addEventListener('beforeprint', ajustar);
     window.addEventListener('afterprint', () => { const t = document.querySelector('.imp-tabla'); if (t) t.style.zoom = ''; });
+    // Subir un PDF/Excel a una casilla: el selector de ficheros del navegador no se puede abrir en una ruta concreta, así que (1) copia al portapapeles la ruta
+    // de la carpeta del cliente si se conoce (pegarla en «Nombre» del cuadro de Windows y Intro lleva allí) y (2) en Chrome/Edge usa un selector que recuerda
+    // la última carpeta usada por cliente e impuesto (la primera vez navegas; las siguientes se abre ya en ella).
+    window.impSubir = async (wire, clave, id, carpeta) => {
+        wire.subirA = clave;
+        if (carpeta && navigator.clipboard) { try { await navigator.clipboard.writeText(carpeta); } catch (e) {} }
+        if (window.showOpenFilePicker) {
+            try {
+                const [h] = await window.showOpenFilePicker({ id: id, multiple: false, types: [{ description: 'PDF o Excel', accept: {
+                    'application/pdf': ['.pdf'], 'application/vnd.ms-excel': ['.xls'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }] });
+                wire.upload('archivo', await h.getFile(), () => {}, () => {});
+                return;
+            } catch (e) { if (e && e.name === 'AbortError') return; }
+        }
+        document.getElementById('imp-fichero').click();
+    };
 </script>
 @endscript

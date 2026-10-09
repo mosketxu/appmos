@@ -1,5 +1,5 @@
 {{-- Pestañas del TO-DO (7-oct-2026): Tareas (el TO-DO de siempre) e Impuestos. Mismo aspecto de hoja de Excel que la sub-navegación de Contabilidad.
-     $activa: 'todo' | 'impuestos'. Estilos propios (el app.css de Tailwind está compilado y purgado). --}}
+     $activa: 'todo' | 'impuestos' | 'libros-iva'. Estilos propios (el app.css de Tailwind está compilado y purgado). --}}
 <style>
     .hojas { display:flex; align-items:flex-end; gap:2px; padding:10px 16px 0; background:#e5e7eb; border-bottom:1px solid #9ca3af; flex-wrap:wrap; }
     .hojas a { display:block; white-space:nowrap; padding:7px 18px 6px; font-size:.875rem; font-weight:500;
@@ -12,5 +12,6 @@
     <a href="{{ route('todo') }}" class="{{ ($activa ?? '') === 'todo' ? 'activa' : '' }}">Tareas</a>
     @can('impuestos.ver')
         <a href="{{ route('impuestos') }}" class="{{ ($activa ?? '') === 'impuestos' ? 'activa' : '' }}">Impuestos</a>
+        <a href="{{ route('impuestos.libro-iva') }}" class="{{ ($activa ?? '') === 'libros-iva' ? 'activa' : '' }}">Libros IVA</a>
     @endcan
 </nav>

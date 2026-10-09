@@ -1,6 +1,6 @@
 <div>
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
-    @include('livewire._subnav_todo', ['activa' => 'impuestos'])
+    @include('livewire._subnav_todo', ['activa' => 'libros-iva'])
 
 <div class="p-4" style="max-width:1100px" @if ($espera !== '') wire:poll.3s="revisar" @endif>
     <style>
@@ -16,7 +16,6 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <h1 class="text-xl font-semibold">📒 Libro de IVA (303)</h1>
-        <a href="{{ route('impuestos') }}" class="li-btn">← Impuestos</a>
     </div>
 
     @if ($error)<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#991b1b">{{ $error }}</div>@endif
@@ -51,15 +50,15 @@
         <div class="li-h">2 · Carpeta donde están los Excel</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <code style="background:#f3f4f6;padding:4px 8px;border-radius:4px;font-size:13px">{{ $carpeta ? 'OneDrive\\'.str_replace('/', '\\', $carpeta) : '— sin carpeta asignada a esta empresa —' }}</code>
-            @php $carpetasIva = $this->carpetasIva(); @endphp
-            @if ($carpetasIva)
-                <x-buscador-select model="carpetaElegida" valor="" :opciones="$carpetasIva" ancho="30rem" vacio="Ninguna carpeta IVA con ese texto (¿actualizar la lista?)" />
+            @php $arbol = $this->arbolCarpetas(); @endphp
+            @if ($arbol['dirs'])
+                <x-explorador-carpetas model="carpetaElegida" :dirs="$arbol['dirs']" :marcas="$arbol['marcas']" :actual="$carpeta" />
             @endif
             <button type="button" wire:click="actualizarCarpetas" wire:loading.attr="disabled" class="li-btn" @disabled($espera !== '')
-                title="Un PC vuelve a leer las carpetas IVA de OneDrive">🔄 {{ $carpetasIva ? 'Actualizar lista' : 'Buscar carpetas IVA' }}</button>
+                title="Un PC vuelve a leer las carpetas de OneDrive (tarda unos 30 s)">🔄 {{ $arbol['dirs'] ? 'Actualizar lista' : 'Leer carpetas de OneDrive' }}</button>
             <button type="button" wire:click="comprobar" wire:loading.attr="disabled" class="li-btn" @disabled($espera !== '' || $carpeta === '')>🔍 Comprobar carpeta</button>
         </div>
-        <div class="li-gris" style="font-size:12px;margin-top:6px">Escribe para buscar la carpeta IVA de la empresa (la lista la lee un PC de OneDrive; «Actualizar lista» la vuelve a leer). Se recuerda para esta empresa.</div>
+        <div class="li-gris" style="font-size:12px;margin-top:6px">Navega por las carpetas de OneDrive (o escribe para buscar) y elige la carpeta IVA de la empresa; se recuerda. La lista la lee un PC de OneDrive; «Actualizar lista» la vuelve a leer.</div>
         @if ($listado)
             @php $orig = $this->originalDelPeriodo(); @endphp
             <table class="li-t" style="margin-top:10px">

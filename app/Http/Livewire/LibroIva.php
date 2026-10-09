@@ -134,20 +134,21 @@ class LibroIva extends Component
 
     public string $carpetaElegida = '';
 
-    /** Carpetas «IVA» de OneDrive que subió un PC (tarea pc.arbol_carpetas modo iva): [ruta relativa => texto]. */
-    public function carpetasIva(): array
+    /** Árbol de carpetas de OneDrive que subió un PC (tarea pc.arbol_carpetas modo iva): ['dirs' => [...], 'marcas' => [carpetas con Excel de IVA]]. */
+    public function arbolCarpetas(): array
     {
         try {
             $a = ColaTareas::estado('onedrive.arbol_iva');
         } catch (\Throwable $e) {
             $a = null;
         }
-        $out = [];
-        foreach ((array) ($a['dirs'] ?? []) as $d) {
-            $out[$d] = str_replace('/', ' \\ ', $d);
-        }
 
-        return $out;
+        return ['dirs' => array_values((array) ($a['dirs'] ?? [])), 'marcas' => array_values((array) ($a['marcas'] ?? []))];
+    }
+
+    public function carpetasIva(): array
+    {
+        return array_flip($this->arbolCarpetas()['dirs']);
     }
 
     public function actualizarCarpetas(): void

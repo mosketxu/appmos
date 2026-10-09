@@ -493,6 +493,16 @@ class Impuestos extends Component
         return DB::table('tareas')->where('proceso', 'pc.impuestos_pdfs')->orderByDesc('id')->first(['id', 'estado', 'resultado', 'terminada_at', 'created_at']);
     }
 
+    /** Carpeta IVA de OneDrive que se eligió en el Libro de IVA para cada empresa [entidad_id => ruta relativa]: la ruta que se copia al subir un PDF/Excel al 303. */
+    public function getCarpetasLibroProperty(): array
+    {
+        try {
+            return DB::table('libro_iva_carpetas')->pluck('carpeta', 'entidad_id')->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     public function getSinAsignarProperty()
     {
         if (! $this->puedeTodos()) {
