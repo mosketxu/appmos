@@ -51,10 +51,15 @@
         <div class="li-h">2 · Carpeta donde están los Excel</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <code style="background:#f3f4f6;padding:4px 8px;border-radius:4px;font-size:13px">{{ $carpeta ? 'OneDrive\\'.str_replace('/', '\\', $carpeta) : '— sin carpeta asignada a esta empresa —' }}</code>
-            <button type="button" wire:click="elegirCarpeta" wire:loading.attr="disabled" class="li-btn" @disabled($espera !== '')>📁 {{ $carpeta ? 'Cambiar carpeta…' : 'Elegir carpeta…' }}</button>
+            @php $carpetasIva = $this->carpetasIva(); @endphp
+            @if ($carpetasIva)
+                <x-buscador-select model="carpetaElegida" valor="" :opciones="$carpetasIva" ancho="30rem" vacio="Ninguna carpeta IVA con ese texto (¿actualizar la lista?)" />
+            @endif
+            <button type="button" wire:click="actualizarCarpetas" wire:loading.attr="disabled" class="li-btn" @disabled($espera !== '')
+                title="Un PC vuelve a leer las carpetas IVA de OneDrive">🔄 {{ $carpetasIva ? 'Actualizar lista' : 'Buscar carpetas IVA' }}</button>
             <button type="button" wire:click="comprobar" wire:loading.attr="disabled" class="li-btn" @disabled($espera !== '' || $carpeta === '')>🔍 Comprobar carpeta</button>
         </div>
-        <div class="li-gris" style="font-size:12px;margin-top:6px">«Elegir carpeta» abre el selector de carpetas de Windows en el PC trabajador (la web no ve el disco). Se recuerda para esta empresa.</div>
+        <div class="li-gris" style="font-size:12px;margin-top:6px">Escribe para buscar la carpeta IVA de la empresa (la lista la lee un PC de OneDrive; «Actualizar lista» la vuelve a leer). Se recuerda para esta empresa.</div>
         @if ($listado)
             @php $orig = $this->originalDelPeriodo(); @endphp
             <table class="li-t" style="margin-top:10px">

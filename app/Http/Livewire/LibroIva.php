@@ -43,6 +43,9 @@ class LibroIva extends Component
         $this->ejercicio = (string) ($g['ejercicio'] ?? ($t === 0 ? date('Y') - 1 : date('Y')));
         $this->periodo = (string) ($g['periodo'] ?? ($t === 0 ? '4T' : $t.'T'));
         $this->alCambiarEmpresa();
+        if (! $this->carpetasIva()) {   // primera vez: un PC lee las carpetas IVA de OneDrive para el desplegable
+            $this->actualizarCarpetas();
+        }
     }
 
     public function updated($prop): void
@@ -127,6 +130,51 @@ class LibroIva extends Component
         $this->mensaje = 'Se ha abierto el selector de carpetas de Windows en el PC trabajador: elige la carpeta IVA de la empresa.';
     }
 
+    // ------------------------------------------------------------------ carpeta (desplegable con buscador, con las carpetas IVA que lee un PC)
+
+    public string $carpetaElegida = '';
+
+    /** Carpetas «IVA» de OneDrive que subió un PC (tarea pc.arbol_carpetas modo iva): [ruta relativa => texto]. */
+    public function carpetasIva(): array
+    {
+        try {
+            $a = ColaTareas::estado('onedrive.arbol_iva');
+        } catch (\Throwable $e) {
+            $a = null;
+        }
+        $out = [];
+        foreach ((array) ($a['dirs'] ?? []) as $d) {
+            $out[$d] = str_replace('/', ' \\ ', $d);
+        }
+
+        return $out;
+    }
+
+    public function actualizarCarpetas(): void
+    {
+        $this->error = '';
+        if (! $this->hayPc()) {
+            return;
+        }
+        if (! DB::table('tareas')->where('proceso', 'pc.arbol_carpetas')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            ColaTareas::crear('pc.arbol_carpetas', ['modo' => 'iva'], ColaTareas::pcElegido() ?: null, auth()->id());
+        }
+        $this->espera = 'carpetas';
+        $this->mensaje = 'Un PC está leyendo las carpetas IVA de OneDrive (unos segundos)…';
+    }
+
+    public function updatedCarpetaElegida(string $ruta): void
+    {
+        if ($ruta === '' || ! isset($this->carpetasIva()[$ruta]) || ! ColaTareas::rutaRelativaSegura($ruta)) {
+            return;
+        }
+        $this->carpeta = $ruta;
+        $this->carpetaElegida = '';
+        DB::table('libro_iva_carpetas')->updateOrInsert(['entidad_id' => (int) $this->entidadId], ['carpeta' => $ruta, 'user_id' => auth()->id(), 'updated_at' => now(), 'created_at' => now()]);
+        $this->listado = null;
+        $this->comprobar();
+    }
+
     public function cancelarEspera(): void
     {
         $this->espera = $this->ventanaToken = '';
@@ -186,6 +234,16 @@ class LibroIva extends Component
     /** wire:poll mientras se espera a un PC. */
     public function revisar(): void
     {
+        if ($this->espera === 'carpetas') {
+            if (! DB::table('tareas')->where('proceso', 'pc.arbol_carpetas')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+                $this->espera = $this->mensaje = '';
+                if (! $this->carpetasIva()) {
+                    $this->error = 'El PC no ha encontrado carpetas IVA en OneDrive.';
+                }
+            }
+
+            return;
+        }
         if ($this->espera === 'ventana') {
             $e = ColaTareas::estado('onedrive.carpeta_elegida');
             if (! is_array($e) || ($e['token'] ?? '') !== $this->ventanaToken) {
