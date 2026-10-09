@@ -93,7 +93,7 @@
             </table>
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
                 @foreach ($libro['ficheros'] ?? [] as $fi)
-                    <a class="li-btn" href="{{ $this->enlace($fi) }}">⬇ {{ str_ends_with($fi, '.txt') ? 'Avisos (.txt)' : 'Excel del libro' }}</a>
+                    <a class="li-btn" download href="{{ $this->enlace($fi) }}">⬇ {{ str_ends_with($fi, '.txt') ? 'Avisos (.txt)' : 'Excel del libro' }}</a>
                 @endforeach
             </div>
             <div class="li-h" style="margin-top:12px">Avisos ({{ $libro['n_avisos'] ?? count($libro['avisos']) }})</div>
