@@ -63,6 +63,11 @@
                     @foreach ($listaX as $d)
                         <div style="display:flex; gap:6px; align-items:center; padding:3px 6px; font-size:12px">
                             <a href="{{ route('impuestos.documento', $d->id) }}" style="padding:0; width:auto" @if ($d->tipo === 'libro_iva') title="Libro de IVA · actualizado {{ \Illuminate\Support\Carbon::parse($d->updated_at)->format('d/m/Y H:i') }} (se actualiza solo si lo modificas en OneDrive)" @endif>@if ($d->tipo === 'libro_iva')📒 @endif{{ $d->nombre }}</a>
+                            @if ($d->tipo === 'libro_iva' && $d->ruta_origen)
+                                @php $carp = 'E:\\OneDrive\\'.str_replace('/', '\\', dirname($d->ruta_origen)); @endphp
+                                <button type="button" style="width:auto; padding:0 4px" x-data="{ ok: false }" title="Copia la ruta de la carpeta de OneDrive donde está este libro (la que se eligió al generarlo) para pegarla en el Explorador"
+                                    x-on:click="navigator.clipboard.writeText({{ \Illuminate\Support\Js::from($carp) }}); ok = true; setTimeout(() => ok = false, 1800)"><span x-show="!ok">📂 carpeta</span><span x-show="ok" x-cloak>✔ copiada</span></button>
+                            @endif
                             @if ($this->puedeTodos())
                                 <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Borrar este Excel de Appmos? Si no está también en OneDrive, se pierde. No se puede deshacer." title="Borrar de Appmos" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
                             @endif

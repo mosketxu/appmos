@@ -544,7 +544,7 @@ class Impuestos extends Component
         $entIds = $obs->pluck('entidad_id')->unique()->all();
         foreach (array_chunk($entIds ?: [0], 1000) as $trozo) {
             DB::table('impuesto_documentos')->whereNull('quitado_at')->where('ejercicio', $this->ejercicio)->whereIn('entidad_id', $trozo)->whereNotNull('periodo')
-                ->orderBy('id')->get(['id', 'entidad_id', 'modelo', 'etiqueta', 'periodo', 'tipo', 'nombre', 'updated_at'])->each(function ($d) use (&$docs) {
+                ->orderBy('id')->get(['id', 'entidad_id', 'modelo', 'etiqueta', 'periodo', 'tipo', 'nombre', 'updated_at', 'ruta_origen'])->each(function ($d) use (&$docs) {
                     $docs[$d->entidad_id.'|'.$d->modelo.'|'.$d->etiqueta.'|'.$d->periodo][] = $d;
                 });
         }
