@@ -475,6 +475,19 @@ class Impuestos extends Component
         $this->aviso = '«'.$nombre.'» borrado de Appmos.'.($deOneDrive ? ' (El de OneDrive no se toca y no se vuelve a subir.)' : '');
     }
 
+    /** Botón «Actualizar libros IVA»: un PC mira si los Excel «IVA …» registrados en las casillas 303 se han modificado a mano en OneDrive. (Además lo hacen solos cada pocos minutos.) */
+    public function actualizarLibros(): void
+    {
+        abort_unless($this->puedeTodos(), 403);
+        if (DB::table('tareas')->where('proceso', 'pc.libros_iva_sync')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            $this->aviso = 'Ya hay una actualización de libros en marcha.';
+
+            return;
+        }
+        ColaTareas::crear('pc.libros_iva_sync', [], ColaTareas::pcElegido() ?: null, auth()->id());
+        $this->aviso = 'Pedido a un PC: mirará si has modificado algún libro de IVA en OneDrive y lo actualizará aquí.';
+    }
+
     public function getTareaPdfsEstadoProperty(): ?object
     {
         return DB::table('tareas')->where('proceso', 'pc.impuestos_pdfs')->orderByDesc('id')->first(['id', 'estado', 'resultado', 'terminada_at', 'created_at']);
@@ -531,7 +544,7 @@ class Impuestos extends Component
         $entIds = $obs->pluck('entidad_id')->unique()->all();
         foreach (array_chunk($entIds ?: [0], 1000) as $trozo) {
             DB::table('impuesto_documentos')->whereNull('quitado_at')->where('ejercicio', $this->ejercicio)->whereIn('entidad_id', $trozo)->whereNotNull('periodo')
-                ->orderBy('id')->get(['id', 'entidad_id', 'modelo', 'etiqueta', 'periodo', 'tipo', 'nombre'])->each(function ($d) use (&$docs) {
+                ->orderBy('id')->get(['id', 'entidad_id', 'modelo', 'etiqueta', 'periodo', 'tipo', 'nombre', 'updated_at'])->each(function ($d) use (&$docs) {
                     $docs[$d->entidad_id.'|'.$d->modelo.'|'.$d->etiqueta.'|'.$d->periodo][] = $d;
                 });
         }

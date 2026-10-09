@@ -154,6 +154,8 @@
                 <a href="{{ route('impuestos.libro-iva') }}" class="imp-btn" style="border-radius:6px;text-decoration:none" title="Maquetar el libro de IVA (303) de un cliente">📒 Libro de IVA</a>
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
+                <button type="button" wire:click="actualizarLibros" class="imp-btn" style="border-radius:6px"
+                    title="Un PC mira si has modificado a mano algún libro de IVA (Excel «IVA …») en OneDrive y actualiza la copia de la casilla 303. Se hace solo cada pocos minutos; el botón lo fuerza.">📒 Actualizar libros IVA</button>
                 @if ($tarea)
                     @if (in_array($tarea->estado, ['pendiente', 'en_curso']))<span wire:poll.5s class="text-xs text-indigo-700">⏳ buscando…</span>@endif
                     <x-neteges-info>

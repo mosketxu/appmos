@@ -6,6 +6,8 @@ use App\Models\ImpuestoDocumento;
 use App\Support\ColaTareas;
 use App\Support\ImpuestosPdfs;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * API de los PCs trabajadores (X-Token) para la pestaña Impuestos: el PC lista los PDF de las carpetas de impuestos de OneDrive
@@ -33,7 +35,7 @@ class ImpuestosSyncController extends Controller
     {
         $this->autorizar($r);
         $subir = [];
-        $conocidos = ImpuestoDocumento::whereNotNull('ruta_origen')->get(['ruta_origen', 'tam', 'mtime', 'quitado_at'])->keyBy('ruta_origen');
+        $conocidos = ImpuestoDocumento::whereNotNull('ruta_origen')->where(fn ($q) => $q->whereNull('origen')->orWhere('origen', '!=', 'libro_iva'))->get(['ruta_origen', 'tam', 'mtime', 'quitado_at'])->keyBy('ruta_origen');
         foreach ((array) $r->input('ficheros', []) as $f) {
             $ruta = (string) ($f['ruta'] ?? '');
             if (! $this->rutaValida($ruta)) {
@@ -108,6 +110,51 @@ class ImpuestosSyncController extends Controller
         }
 
         return response()->json(['ok' => true, 'id' => $doc->id, 'entidad_id' => $doc->entidad_id, 'modelo' => $doc->modelo, 'periodo' => $doc->periodo]);
+    }
+
+    /** Libros de IVA registrados en casillas (origen libro_iva): el PC comprueba si el Excel de OneDrive ha cambiado desde lo que tiene Appmos. */
+    public function libros(Request $r)
+    {
+        $this->autorizar($r);
+
+        return response()->json(['libros' => ImpuestoDocumento::where('origen', 'libro_iva')->whereNull('quitado_at')->get(['id', 'ruta_origen', 'tam', 'mtime', 'sha256'])]);
+    }
+
+    /**
+     * Cuerpo = el Excel «IVA …» de la carpeta IVA del cliente. Lo usa «Generar» (generado=1: lo registra en la casilla 303 de ese periodo sin tocar
+     * su estado) y la sincronización (el Excel se ha modificado a mano en OneDrive: sustituye la copia de Appmos si es más nuevo).
+     */
+    public function libroSubir(Request $r)
+    {
+        $this->autorizar($r);
+        $ruta = (string) $r->query('ruta');
+        abort_unless(ColaTareas::rutaRelativaSegura($ruta) && strtolower(substr($ruta, -5)) === '.xlsx' && strlen($ruta) < 700, 422, 'Ruta no válida');
+        $cuerpo = $r->getContent();
+        abort_if(strlen($cuerpo) < 100 || substr($cuerpo, 0, 2) !== 'PK', 422, 'No es un Excel');
+        $mtime = (int) $r->query('mtime', 0);
+        $sha = hash('sha256', $cuerpo);
+        $generado = $r->boolean('generado');
+        $doc = ImpuestoDocumento::where('origen', 'libro_iva')->where('ruta_origen', $ruta)->first();
+        if ($doc && ! $generado && ($doc->quitado_at || $sha === $doc->sha256 || $mtime <= (int) $doc->mtime + 1)) {
+            return response()->json(['ok' => true, 'sin_cambios' => true]);
+        }
+        if (! $doc) {
+            $ent = (int) $r->query('entidad_id');
+            $ej = (int) $r->query('ejercicio');
+            $per = (string) $r->query('periodo');
+            abort_unless($ent && $ej && preg_match('/^(T[1-4]|0[1-9]|1[0-2])$/', $per), 422, 'Falta cliente o periodo');
+            $doc = new ImpuestoDocumento(['entidad_id' => $ent, 'modelo' => '303', 'etiqueta' => '', 'ejercicio' => $ej, 'periodo' => $per, 'tipo' => 'libro_iva', 'origen' => 'libro_iva', 'ruta_origen' => $ruta]);
+        }
+        $viejo = $doc->almacen;
+        $almacen = 'impuestos/docs/'.$sha.'.xlsx';
+        Storage::disk('local')->put($almacen, $cuerpo);
+        $doc->fill(['nombre' => basename($ruta), 'almacen' => $almacen, 'tam' => strlen($cuerpo), 'mtime' => $mtime, 'sha256' => $sha, 'quitado_at' => null, 'quitado_por' => null]);
+        $doc->save();
+        if ($viejo && $viejo !== $almacen && ! ImpuestoDocumento::where('almacen', $viejo)->exists() && ! DB::table('impuesto_comentarios')->where('adjunto_almacen', $viejo)->exists()) {
+            Storage::disk('local')->delete($viejo);
+        }
+
+        return response()->json(['ok' => true, 'id' => $doc->id, 'actualizado' => true]);
     }
 
     protected function rutaValida(string $ruta): bool

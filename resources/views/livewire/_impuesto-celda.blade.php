@@ -62,7 +62,7 @@
                 <div class="imp-pop" x-show="o" x-cloak>
                     @foreach ($listaX as $d)
                         <div style="display:flex; gap:6px; align-items:center; padding:3px 6px; font-size:12px">
-                            <a href="{{ route('impuestos.documento', $d->id) }}" style="padding:0; width:auto">{{ $d->nombre }}</a>
+                            <a href="{{ route('impuestos.documento', $d->id) }}" style="padding:0; width:auto" @if ($d->tipo === 'libro_iva') title="Libro de IVA · actualizado {{ \Illuminate\Support\Carbon::parse($d->updated_at)->format('d/m/Y H:i') }} (se actualiza solo si lo modificas en OneDrive)" @endif>@if ($d->tipo === 'libro_iva')📒 @endif{{ $d->nombre }}</a>
                             @if ($this->puedeTodos())
                                 <button type="button" wire:click="quitarPdf({{ $d->id }})" wire:confirm="¿Borrar este Excel de Appmos? Si no está también en OneDrive, se pierde. No se puede deshacer." title="Borrar de Appmos" style="width:auto; margin-left:auto; padding:0 4px; color:#b91c1c">🗑</button>
                             @endif
