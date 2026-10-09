@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Contabilidad;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -27,6 +28,12 @@ class IsPagos extends Component
     public int $ejercicio;
     public string $periodo = '2P';
     public bool $verTodos = false;
+
+    /** Cliente elegido en el desplegable de arriba de la pestaña IS (se actualiza solo al cambiarlo). */
+    #[Reactive]
+    public $entidadActual = '';
+    /** 'cliente' = solo el elegido arriba; 'todos' = todos los que tienen el 202. */
+    public string $alcance = 'cliente';
 
     /** Marcados para preparar: [entidad_id => true]. */
     public array $marcados = [];
@@ -86,13 +93,14 @@ class IsPagos extends Component
                 $j->on('s.entidad_impuesto_id', '=', 'ei.id')->where('s.ejercicio', $this->ejercicio)->where('s.periodo', $est);
             })
             ->where('m.codigo', '202')->whereNull('e.deleted_at')
+            ->when($this->alcance === 'cliente', fn ($q) => $q->where('e.id', (int) $this->entidadActual))
             ->whereNotNull('e.nif')->where('e.nif', '!=', '')
             ->orderBy('e.entidad')
             ->get(['e.id', 'e.entidad', 'e.nif', 's.estado']);
         $out = [];
         foreach ($filas as $f) {
             $estado = $f->estado ?: 'sin';
-            if (! $this->verTodos && in_array($estado, ['no', 'nopresenta', 'presentado', 'visto'], true)) {
+            if ($this->alcance === 'todos' && ! $this->verTodos && in_array($estado, ['no', 'nopresenta', 'presentado', 'visto'], true)) {
                 continue;
             }
             $dir = $this->dirCliente($f->nif);
@@ -183,7 +191,7 @@ class IsPagos extends Component
         if (! $this->autorizado()) {
             return;
         }
-        $ids = array_keys(array_filter($this->marcados));
+        $ids = $this->alcance === 'cliente' ? [(int) $this->entidadActual] : array_map('intval', array_keys(array_filter($this->marcados)));
         if (! $ids) {
             $this->dispatch('proceso-terminado', mensaje: '⚠️ Marca al menos un cliente.');
             return;

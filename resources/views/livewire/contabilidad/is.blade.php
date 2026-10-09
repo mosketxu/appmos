@@ -41,7 +41,7 @@
         <input type="number" wire:model.live.debounce.600ms="ejercicio" min="2024" max="2099" class="w-24 text-base font-normal border-gray-300 rounded-md shadow-sm">
     </h1>
 
-    @livewire('contabilidad.is-pagos')
+    @livewire('contabilidad.is-pagos', ['entidadActual' => $entidadId])
 
     <div x-data="{ ayuda: false }" x-on:keydown.escape.window="ayuda = false">
         <div class="flex flex-wrap items-center gap-3 px-3 py-2 text-sm border rounded-md text-amber-900 border-amber-300 bg-amber-50">

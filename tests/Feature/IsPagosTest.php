@@ -82,9 +82,9 @@ class IsPagosTest extends TestCase
     {
         $this->actingAs($this->adminUser());
         $e = $this->cliente('B06931570', 'Apanemi Invest SL', $this->textoIs('B06931570', 'APANEMI INVEST, S.L.', '60.164,66', '261.737,80'));
-        Livewire::test(IsPagos::class)
+        Livewire::test(IsPagos::class, ['entidadActual' => $e->id])
             ->set('abierto', true)->set('ejercicio', 2026)->set('periodo', '2P')
-            ->set('marcados', [$e->id => true])->set('cnae', [$e->id => '4101'])
+            ->set('cnae', [$e->id => '4101'])
             ->call('preparar')
             ->assertSee('60.164,66')->assertSee('10.829,64');
         $f = $this->dir.'/clientes/B06931570/2026/salida202/B06931570_2026_2P.202';
@@ -106,10 +106,20 @@ class IsPagosTest extends TestCase
         $this->actingAs($this->adminUser());
         $a = $this->cliente('B11111111', 'A SL', $this->textoIs('B11111111', 'A SL', '-1.505,58', '10.000,00'));
         $b = $this->cliente('B22222222', 'B SL', $this->textoIs('B22222222', 'B SL', '5.000,00', '13.959.750,00'));
-        Livewire::test(IsPagos::class)->set('abierto', true)->set('ejercicio', 2026)->set('periodo', '2P')
+        Livewire::test(IsPagos::class)->set('abierto', true)->set('alcance', 'todos')->set('ejercicio', 2026)->set('periodo', '2P')
             ->set('marcados', [$a->id => true, $b->id => true])->call('preparar')
             ->assertSee('sin cuota positiva')->assertSee('modalidad 40.3');
         $this->assertFileDoesNotExist($this->dir.'/clientes/B11111111/2026/salida202/B11111111_2026_2P.202');
         $this->assertFileDoesNotExist($this->dir.'/clientes/B22222222/2026/salida202/B22222222_2026_2P.202');
+    }
+
+    public function test_por_defecto_solo_muestra_el_cliente_elegido_arriba(): void
+    {
+        $this->actingAs($this->adminUser());
+        $a = $this->cliente('B11111111', 'Alfa SL', $this->textoIs('B11111111', 'ALFA SL', '1.000,00', '10.000,00'));
+        $b = $this->cliente('B22222222', 'Beta SL', $this->textoIs('B22222222', 'BETA SL', '2.000,00', '10.000,00'));
+        $c = Livewire::test(IsPagos::class, ['entidadActual' => $a->id])->set('abierto', true)->set('ejercicio', 2026)->set('periodo', '2P');
+        $c->assertSee('Alfa SL')->assertDontSee('Beta SL');
+        $c->set('alcance', 'todos')->assertSee('Alfa SL')->assertSee('Beta SL');
     }
 }

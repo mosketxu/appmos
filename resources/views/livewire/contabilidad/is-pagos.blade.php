@@ -20,9 +20,17 @@
                         <option value="3P">3P (diciembre)</option>
                     </select>
                 </label>
-                <label class="flex items-center gap-1 text-sm text-gray-600">
-                    <input type="checkbox" wire:model.live="verTodos" class="border-gray-300 rounded"> ver también los que no tienen que presentarlo / ya presentados
+                <label class="text-sm text-gray-600">Mostrar
+                    <select wire:model.live="alcance" class="ml-1 border-gray-300 rounded-md shadow-sm">
+                        <option value="cliente">solo el cliente elegido arriba</option>
+                        <option value="todos">todos los clientes con 202</option>
+                    </select>
                 </label>
+                @if ($alcance === 'todos')
+                    <label class="flex items-center gap-1 text-sm text-gray-600">
+                        <input type="checkbox" wire:model.live="verTodos" class="border-gray-300 rounded"> incluir los que no tienen que presentarlo / ya presentados
+                    </label>
+                @endif
                 <span class="ml-auto text-xs text-gray-500">Clientes con el 202 en la pestaña Impuestos. Modalidad 40.2 (18 % de la cuota del IS {{ $ejercicio - 1 }}).</span>
             </div>
 
@@ -53,7 +61,7 @@
                             @php $r = $c['resultado']; @endphp
                             <tr wire:key="pg-{{ $c['id'] }}" class="align-top">
                                 <td class="px-3 py-2">
-                                    <input type="checkbox" wire:model="marcados.{{ $c['id'] }}" @disabled(! $c['tieneIs']) class="border-gray-300 rounded">
+                                    @if ($alcance === 'todos')<input type="checkbox" wire:model="marcados.{{ $c['id'] }}" @disabled(! $c['tieneIs']) class="border-gray-300 rounded">@endif
                                 </td>
                                 <td class="px-3 py-2">
                                     <div class="font-medium text-gray-900">{{ $c['entidad'] }}</div>
@@ -88,17 +96,21 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">No hay clientes con el 202 pendiente en {{ $periodo }} {{ $ejercicio }}.</td></tr>
+                            <tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">
+                                @if ($alcance === 'cliente')El cliente elegido arriba no tiene el 202 en la pestaña Impuestos. Elige otro o pasa a «todos los clientes con 202».
+                                @else No hay clientes con el 202 pendiente en {{ $periodo }} {{ $ejercicio }}.@endif</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-t bg-gray-50">
-                <button type="button" wire:click="marcarTodos" class="text-sm text-indigo-700 underline">Marcar todos</button>
-                <button type="button" wire:click="desmarcarTodos" class="text-sm text-gray-600 underline">Ninguno</button>
+                @if ($alcance === 'todos')
+                    <button type="button" wire:click="marcarTodos" class="text-sm text-indigo-700 underline">Marcar todos</button>
+                    <button type="button" wire:click="desmarcarTodos" class="text-sm text-gray-600 underline">Ninguno</button>
+                @endif
                 <button type="button" wire:click="preparar" wire:loading.attr="disabled" wire:target="preparar" class="px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50">
-                    <span wire:loading.remove wire:target="preparar">Preparar los marcados</span><span wire:loading wire:target="preparar">Preparando…</span>
+                    <span wire:loading.remove wire:target="preparar">{{ $alcance === 'cliente' ? 'Preparar' : 'Preparar los marcados' }}</span><span wire:loading wire:target="preparar">Preparando…</span>
                 </button>
                 <button type="button" wire:click="descargarZip" class="text-sm font-semibold text-blue-700 underline hover:text-blue-900">⬇ Descargar todos (.zip)</button>
             </div>
