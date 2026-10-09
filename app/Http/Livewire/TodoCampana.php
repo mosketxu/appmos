@@ -16,6 +16,14 @@ class TodoCampana extends Component
         return redirect()->route('todo', ['t' => $a->tarea_id]);
     }
 
+    /** «Es correcto, lo he apagado»: deja de avisar de ese PC hasta que vuelva a encenderse. Solo Admin y gestores. */
+    public function silenciarPc(string $nombre): void
+    {
+        $u = auth()->user();
+        abort_unless($u && ($u->hasRole('Admin') || in_array($u->email, config('contabilidad.claude_todo_gestores', []), true)), 403);
+        \App\Support\VigilanciaTrabajadores::silenciar($nombre);
+    }
+
     public function marcarTodas(): void
     {
         TodoAviso::where('user_id', auth()->id())->sinLeer()->update(['leido_at' => now()]);

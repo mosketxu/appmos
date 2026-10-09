@@ -55,4 +55,34 @@ class VigilanciaTrabajadoresTest extends TestCase
         VigilanciaTrabajadores::revisar();
         $this->assertSame(0, TodoTarea::count());
     }
+
+    public function test_un_pc_apagado_a_proposito_no_avisa_y_al_encenderse_se_reactiva(): void
+    {
+        $alex = User::factory()->create(['email' => 'alex.arregui@sumaempresa.com']);
+        config(['contabilidad.claude_todo_gestores' => ['alex.arregui@sumaempresa.com']]);
+        ColaTareas::crearTrabajador('PortalExomen');
+        DB::table('trabajadores')->where('nombre', 'PortalExomen')->update(['ultimo_latido' => now()->subHours(2)]);
+        VigilanciaTrabajadores::revisar();
+        $t = TodoTarea::where('descripcion', 'like', '%[trab-PortalExomen]%')->first();
+        $this->assertNotNull($t);
+
+        $this->actingAs($alex);
+        $this->assertTrue(VigilanciaTrabajadores::silenciar('PortalExomen'));
+        $this->assertSame('hecha', $t->fresh()->estado, 'se cierra el aviso abierto');
+        $this->assertSame([], VigilanciaTrabajadores::caidos());
+
+        Cache::forget('vigilancia.trabajadores');
+        VigilanciaTrabajadores::revisar();   // sigue apagado: no vuelve a avisar
+        $this->assertSame(1, TodoTarea::where('descripcion', 'like', '%[trab-PortalExomen]%')->count());
+
+        $w = DB::table('trabajadores')->where('nombre', 'PortalExomen')->first();
+        ColaTareas::latido($w, []);   // se enciende y da señales
+        $this->assertNull(DB::table('trabajadores')->where('nombre', 'PortalExomen')->value('silenciado_at'));
+        $this->assertTrue(TodoAviso::where('user_id', $alex->id)->where('texto', 'like', '%vigilancia reactivada%')->exists());
+
+        DB::table('trabajadores')->where('nombre', 'PortalExomen')->update(['ultimo_latido' => now()->subHours(1)]);   // si se vuelve a caer, avisa de nuevo
+        Cache::forget('vigilancia.trabajadores');
+        VigilanciaTrabajadores::revisar();
+        $this->assertSame(2, TodoTarea::where('descripcion', 'like', '%[trab-PortalExomen]%')->count());
+    }
 }

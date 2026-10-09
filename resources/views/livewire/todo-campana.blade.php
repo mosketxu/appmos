@@ -2,12 +2,15 @@
 @if (empty($oculta))
     {{-- Banner grande en todas las páginas mientras un PC trabajador esté caído (solo Admin y gestores del TO-DO) --}}
     @foreach (($caidos ?? []) as $c)
-        <a href="{{ route('todo', ['t' => $c['tarea_id']]) }}" wire:key="caido-{{ $c['tarea_id'] }}"
-           style="position:fixed; top:0; left:0; right:0; z-index:200; display:block; padding:.65rem 1rem; background:#dc2626; color:#fff; text-align:center; font-weight:700; font-size:1rem; box-shadow:0 2px 10px rgba(0,0,0,.4)">
-            ⚠ El PC {{ $c['nombre'] }} no da señales: los procesos de Appmos que dependen de él no se ejecutan
-            @if ($c['pendientes']) · {{ $c['pendientes'] }} tarea(s) esperando @endif
-            <span style="font-weight:400; text-decoration:underline; margin-left:.5rem">Ver el aviso</span>
-        </a>
+        <div wire:key="caido-{{ $c['tarea_id'] }}" style="position:fixed; top:0; left:0; right:0; z-index:200; display:flex; align-items:center; justify-content:center; gap:1rem; padding:.55rem 1rem; background:#dc2626; color:#fff; text-align:center; font-weight:700; font-size:1rem; box-shadow:0 2px 10px rgba(0,0,0,.4)">
+            <a href="{{ route('todo', ['t' => $c['tarea_id']]) }}" style="color:#fff">
+                ⚠ El PC {{ $c['nombre'] }} no da señales: los procesos de Appmos que dependen de él no se ejecutan
+                @if ($c['pendientes']) · {{ $c['pendientes'] }} tarea(s) esperando @endif
+                <span style="font-weight:400; text-decoration:underline; margin-left:.5rem">Ver el aviso</span>
+            </a>
+            <button type="button" wire:click="silenciarPc('{{ $c['nombre'] }}')" wire:confirm="¿Está apagado a propósito? No se avisará de {{ $c['nombre'] }} hasta que vuelva a encenderse."
+                style="background:#fff; color:#b91c1c; padding:2px 10px; border-radius:4px; font-weight:700; font-size:.85rem; white-space:nowrap">Es correcto, está apagado</button>
+        </div>
     @endforeach
     <button type="button" @click="open = !open" title="{{ $total ? $total.' aviso(s) del TO-DO' : 'Sin avisos del TO-DO' }}"
         class="relative flex items-center p-2 rounded-full hover:bg-gray-100 focus:outline-none {{ $total ? 'text-red-600' : 'text-gray-400' }}">

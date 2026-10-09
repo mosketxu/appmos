@@ -33,7 +33,7 @@ class VigilanciaTrabajadores
                 return;
             }
             $limite = now()->subMinutes(self::SIN_SENAL_MIN);
-            foreach (DB::table('trabajadores')->where('activo', true)->get() as $w) {
+            foreach (DB::table('trabajadores')->where('activo', true)->whereNull('silenciado_at')->get() as $w) {   // los apagados a propósito no se vigilan
                 $marca = '[trab-'.$w->nombre.']';
                 $abierta = TodoTarea::where('descripcion', 'like', '%'.$marca.'%')->whereNotIn('estado', TodoTarea::CERRADOS)->first();
                 $caido = ! $w->ultimo_latido || \Illuminate\Support\Carbon::parse($w->ultimo_latido)->lt($limite);
@@ -45,6 +45,42 @@ class VigilanciaTrabajadores
             }
         } catch (\Throwable $e) {
             // nunca romper por vigilar
+        }
+    }
+
+    /** «Es correcto, lo he apagado»: no se vigila ese PC hasta que vuelva a dar señales (entonces se reactiva solo y avisa). Cierra el aviso abierto. */
+    public static function silenciar(string $nombre): bool
+    {
+        $w = DB::table('trabajadores')->where('nombre', $nombre)->first();
+        if (! $w) {
+            return false;
+        }
+        DB::table('trabajadores')->where('id', $w->id)->update(['silenciado_at' => now()]);
+        $alex = User::whereIn('email', config('contabilidad.claude_todo_gestores', []))->orderBy('id')->first();
+        $abierta = TodoTarea::where('descripcion', 'like', '%[trab-'.$nombre.']%')->whereNotIn('estado', TodoTarea::CERRADOS)->first();
+        if ($abierta && $alex) {
+            TodoComentario::create(['tarea_id' => $abierta->id, 'user_id' => auth()->id() ?? $alex->id, 'tipo' => 'evento', 'fecha' => now()->format('Y-m-d'),
+                'texto' => 'el PC '.$nombre.' está apagado a propósito ('.now()->format('d/m H:i').'): no se vigila hasta que vuelva a encenderse']);
+            $abierta->update(['estado' => 'hecha', 'cerrada_at' => now()]);
+        }
+
+        return true;
+    }
+
+    /** Un PC silenciado da señales otra vez: vuelve la vigilancia y se avisa por la campana. Lo llama el latido. */
+    public static function reactivar(object $w): void
+    {
+        DB::table('trabajadores')->where('id', $w->id)->update(['silenciado_at' => null]);
+        try {
+            $alex = User::whereIn('email', config('contabilidad.claude_todo_gestores', []))->orderBy('id')->first();
+            if ($alex) {
+                $t = TodoTarea::create(['titulo' => 'El PC '.$w->nombre.' se ha encendido: vigilancia reactivada', 'descripcion' => 'Estaba apagado a propósito; ha vuelto a dar señales y Appmos vuelve a vigilarlo.',
+                    'creador_id' => $alex->id, 'estado' => 'hecha', 'prioridad' => 'baja', 'cerrada_at' => now()]);
+                $t->asignados()->attach($alex->id, ['orden' => TodoTarea::siguienteOrden($alex->id)]);
+                TodoAviso::create(['user_id' => $alex->id, 'tarea_id' => $t->id, 'origen_id' => null, 'texto' => '✔ El PC '.$w->nombre.' se ha encendido: vigilancia reactivada']);
+            }
+        } catch (\Throwable $e) {
+            // no romper por avisar
         }
     }
 

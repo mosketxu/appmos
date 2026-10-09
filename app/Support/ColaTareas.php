@@ -145,6 +145,9 @@ class ColaTareas
 
     public static function latido(object $t, array $capacidades): void
     {
+        if (! empty($t->silenciado_at)) {   // estaba apagado a propósito y ha vuelto: se reactiva la vigilancia
+            VigilanciaTrabajadores::reactivar($t);
+        }
         DB::table('trabajadores')->where('id', $t->id)
             ->update(['ultimo_latido' => now(), 'capacidades' => json_encode(array_values($capacidades)), 'updated_at' => now()]);
         VigilanciaTrabajadores::revisar();   // avisa si OTRO PC lleva rato sin dar señales (como mucho una vez por minuto)
