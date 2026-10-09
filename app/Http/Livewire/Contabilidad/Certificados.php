@@ -13,7 +13,7 @@ use Livewire\Component;
 
 /**
  * Certificados por caducar (2-oct-2026): se puede lanzar en la web y en local. Los certificados están instalados
- * en los PCs, así que solo el escaneo es local; cada escaneo se sube a la web (tabla certificados_escaneos). Paso 1: «Escanear este PC» (cada PC deja su fichero en OneDrive/_Clientes/_Certificados)
+ * en los PCs, así que solo el escaneo es local; cada escaneo se sube a la web (tabla certificados_escaneos). Paso 1: «Escanear este PC» (cada PC deja su fichero en OneDrive/_ClaudeDesarrollo/Certificados)
  * y «Calcular lista»: los que caducan en N meses, sin los ya renovados, avisando de las contradicciones
  * (renovado en un PC y no en el otro). La lista se edita (quitar / añadir filas). Paso 2: correo con la lista,
  * destinatario editable (por defecto Marta Ruiz), con confirmación. Código en Contabilidad/ProcesosMensuales/Certificados.
