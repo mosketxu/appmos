@@ -72,6 +72,10 @@ return [
     'is_dir' => env('IS_DIR', '/mnt/e/Claude/Contabilidad/Impuestos/IS'),
     'is_url' => env('IS_URL'),
     'is_python' => env('IS_PYTHON'),
+    // Motor del modelo 202 (pagos a cuenta de la pestaña IS): en el VPS, <IS_DIR>/motor202; en un PC, el de la carpeta Claude.
+    'is_motor202' => env('IS_MOTOR202') ?: (is_dir(env('IS_DIR', '/mnt/e/Claude/Contabilidad/Impuestos/IS').'/motor202')
+        ? env('IS_DIR', '/mnt/e/Claude/Contabilidad/Impuestos/IS').'/motor202'
+        : dirname(env('IS_DIR', '/mnt/e/Claude/Contabilidad/Impuestos/IS')).'/M202/motor'),
 
     /*
     | Proc.Mensuales: sus datos son los de la base de datos de Appmos (no toca OneDrive),
