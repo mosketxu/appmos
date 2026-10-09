@@ -15,7 +15,6 @@
         ['contabilidad.durcal', 'contabilidad.durcal', 'Durcal', null],
         ['contabilidad.bancos', 'contabilidad.bancos', 'Bancos', config('contabilidad.bancos_url')],
         ['contabilidad.facturasocr', 'contabilidad.facturas-ocr', 'Facturas OCR', null],
-        ['contabilidad.is', 'contabilidad.is', 'IS', config('contabilidad.is_url')],
         ['contabilidad.neteges', 'contabilidad.neteges', 'Neteges', null],
         ['contabilidad.leoybra', 'contabilidad.leoybra', 'LeoyBra', null],
     ];

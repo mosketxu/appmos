@@ -1,6 +1,6 @@
 <div x-data x-on:keydown.escape.window="if ($wire.comOb || $wire.editEnt) $wire.cerrarModales()">
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
-    @include('livewire._subnav_todo', ['activa' => 'impuestos'])
+    @include('livewire._subnav_impuestos', ['activa' => 'seguimiento'])
 
     @php
         $color = \App\Support\Impuestos::COLOR;

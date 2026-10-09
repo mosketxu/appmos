@@ -1,13 +1,17 @@
-<div>
-    <div class="flex flex-wrap items-center gap-3">
-        <button type="button" wire:click="$toggle('abierto')" class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md shadow-sm hover:bg-indigo-700">
-            💰 {{ $abierto ? 'Cerrar pagos a cuenta' : 'Preparar pagos a cuenta (modelo 202)' }}
-        </button>
+<div x-data="{ avisos: [] }" x-on:proceso-terminado.window="avisos.push({ id: Date.now() + '-' + Math.random(), mensaje: $event.detail.mensaje })">
+    <div class="fixed top-4 right-4 z-50 flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-2">
+        <template x-for="aviso in avisos" :key="aviso.id">
+            <div x-on:click="avisos = avisos.filter(a => a.id !== aviso.id)" title="Clic para cerrar" class="cursor-pointer flex items-start gap-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg">
+                <pre class="flex-1 font-sans text-sm text-gray-800 whitespace-pre-wrap" x-text="aviso.mensaje"></pre>
+                <button type="button" class="text-lg leading-none text-gray-400 shrink-0 hover:text-gray-700" x-on:click="avisos = avisos.filter(a => a.id !== aviso.id)">&times;</button>
+            </div>
+        </template>
     </div>
-
-    @if ($abierto)
+    @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'impuestos.pago-cuenta'])
+    @include('livewire._subnav_impuestos', ['activa' => 'pago202'])
+    <div class="p-4">
         @php $euros = fn ($v) => $v === null ? '' : number_format((float) $v, 2, ',', '.'); @endphp
-        <div class="mt-3 space-y-3 bg-white border border-gray-300 rounded-lg shadow-sm">
+        <div class="space-y-3 bg-white border border-gray-300 rounded-lg shadow-sm">
             <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-b bg-gray-50">
                 <h2 class="text-lg font-semibold text-gray-900">Pagos a cuenta del IS (modelo 202)</h2>
                 <label class="text-sm text-gray-600">Ejercicio
@@ -20,13 +24,10 @@
                         <option value="3P">3P (diciembre)</option>
                     </select>
                 </label>
-                <label class="text-sm text-gray-600">Mostrar
-                    <select wire:model.live="alcance" class="ml-1 border-gray-300 rounded-md shadow-sm">
-                        <option value="cliente">solo el cliente elegido arriba</option>
-                        <option value="todos">todos los clientes con 202</option>
-                    </select>
-                </label>
-                @if ($alcance === 'todos')
+                <span class="text-sm text-gray-600">Cliente
+                    <x-buscador-select model="clienteId" :valor="$clienteId" :opciones="$opciones" ancho="24rem" />
+                </span>
+                @if ($clienteId === 'todos')
                     <label class="flex items-center gap-1 text-sm text-gray-600">
                         <input type="checkbox" wire:model.live="verTodos" class="border-gray-300 rounded"> incluir los que no tienen que presentarlo / ya presentados
                     </label>
@@ -61,7 +62,7 @@
                             @php $r = $c['resultado']; @endphp
                             <tr wire:key="pg-{{ $c['id'] }}" class="align-top">
                                 <td class="px-3 py-2">
-                                    @if ($alcance === 'todos')<input type="checkbox" wire:model="marcados.{{ $c['id'] }}" @disabled(! $c['tieneIs']) class="border-gray-300 rounded">@endif
+                                    @if ($clienteId === 'todos')<input type="checkbox" wire:model="marcados.{{ $c['id'] }}" @disabled(! $c['tieneIs']) class="border-gray-300 rounded">@endif
                                 </td>
                                 <td class="px-3 py-2">
                                     <div class="font-medium text-gray-900">{{ $c['entidad'] }}</div>
@@ -97,7 +98,7 @@
                             </tr>
                         @empty
                             <tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">
-                                @if ($alcance === 'cliente')El cliente elegido arriba no tiene el 202 en la pestaña Impuestos. Elige otro o pasa a «todos los clientes con 202».
+                                @if ($clienteId !== 'todos')Este cliente no tiene el 202 en la pestaña Impuestos.
                                 @else No hay clientes con el 202 pendiente en {{ $periodo }} {{ $ejercicio }}.@endif</td></tr>
                         @endforelse
                     </tbody>
@@ -105,12 +106,12 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-t bg-gray-50">
-                @if ($alcance === 'todos')
+                @if ($clienteId === 'todos')
                     <button type="button" wire:click="marcarTodos" class="text-sm text-indigo-700 underline">Marcar todos</button>
                     <button type="button" wire:click="desmarcarTodos" class="text-sm text-gray-600 underline">Ninguno</button>
                 @endif
                 <button type="button" wire:click="preparar" wire:loading.attr="disabled" wire:target="preparar" class="px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50">
-                    <span wire:loading.remove wire:target="preparar">{{ $alcance === 'cliente' ? 'Preparar' : 'Preparar los marcados' }}</span><span wire:loading wire:target="preparar">Preparando…</span>
+                    <span wire:loading.remove wire:target="preparar">{{ $clienteId !== 'todos' ? 'Preparar' : 'Preparar los marcados' }}</span><span wire:loading wire:target="preparar">Preparando…</span>
                 </button>
                 <button type="button" wire:click="descargarZip" class="text-sm font-semibold text-blue-700 underline hover:text-blue-900">⬇ Descargar todos (.zip)</button>
             </div>
@@ -118,5 +119,5 @@
                 <pre class="px-4 pb-3 font-sans text-xs text-red-700 whitespace-pre-wrap">{{ $salida }}</pre>
             @endif
         </div>
-    @endif
+    </div>
 </div>

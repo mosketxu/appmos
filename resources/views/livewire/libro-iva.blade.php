@@ -1,6 +1,6 @@
 <div>
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
-    @include('livewire._subnav_todo', ['activa' => 'libros-iva'])
+    @include('livewire._subnav_impuestos', ['activa' => 'iva'])
 
 <div class="p-4" style="max-width:1100px" @if ($espera !== '') wire:poll.3s="revisar" @endif>
     <style>

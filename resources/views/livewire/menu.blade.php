@@ -6,11 +6,14 @@
         'contabilidad.durcal' => 'contabilidad.durcal',
         'contabilidad.bancos' => 'contabilidad.bancos',
         'contabilidad.facturasocr' => 'contabilidad.facturas-ocr',
-        'contabilidad.is' => 'contabilidad.is',
         'contabilidad.neteges' => 'contabilidad.neteges',
         'contabilidad.leoybra' => 'contabilidad.leoybra',
         'contabilidad.procesosmensuales' => 'contabilidad.procesos-mensuales',
     ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
+@endphp
+@php
+    // Pestaña Impuestos (9-oct-2026): primera subpestaña a la que tiene acceso
+    $rutaImpuestos = auth()->user()->can('impuestos.ver') ? 'impuestos' : (auth()->user()->can('contabilidad.is') ? 'contabilidad.is' : null);
 @endphp
 <nav x-data="{ open: false }" class="relative bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
@@ -42,13 +45,18 @@
                             {{ __('Entidades') }}
                         </x-jet-nav-link>
                     @endcan
-                    <x-jet-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo', 'impuestos')">
+                    <x-jet-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
                         TO-DO
                     </x-jet-nav-link>
+                    @if ($rutaImpuestos)
+                        <x-jet-nav-link href="{{ route($rutaImpuestos) }}" :active="request()->routeIs('impuestos', 'impuestos.*', 'contabilidad.is')">
+                            Impuestos
+                        </x-jet-nav-link>
+                    @endif
                     <a href="{{ route('todo', ['nueva' => 'mejora']) }}" class="inline-flex items-center px-1 pt-1 text-sm font-medium leading-5 text-gray-500 border-b-2 border-transparent hover:text-gray-700"
                        title="Pide una mejora o cuenta qué no te funciona: queda como tarea del TO-DO para Alex">💡 Pedir mejora</a>
                     @if ($rutaContabilidad)
-                        <x-jet-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*')">
+                        <x-jet-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*') && ! request()->routeIs('contabilidad.is')">
                             {{ __('Contabilidad') }}
                         </x-jet-nav-link>
                     @endif
@@ -224,14 +232,19 @@
                     {{ __('Entidades') }}
                 </x-jet-responsive-nav-link>
             @endcan
-            <x-jet-responsive-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo', 'impuestos')">
+            <x-jet-responsive-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
                 TO-DO
             </x-jet-responsive-nav-link>
+            @if ($rutaImpuestos)
+                <x-jet-responsive-nav-link href="{{ route($rutaImpuestos) }}" :active="request()->routeIs('impuestos', 'impuestos.*', 'contabilidad.is')">
+                    Impuestos
+                </x-jet-responsive-nav-link>
+            @endif
             <x-jet-responsive-nav-link href="{{ route('todo', ['nueva' => 'mejora']) }}">
                 💡 Pedir mejora
             </x-jet-responsive-nav-link>
             @if ($rutaContabilidad)
-                <x-jet-responsive-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*')">
+                <x-jet-responsive-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*') && ! request()->routeIs('contabilidad.is')">
                     {{ __('Contabilidad') }}
                 </x-jet-responsive-nav-link>
             @endif

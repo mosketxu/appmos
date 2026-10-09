@@ -62,6 +62,13 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return view('impuestos.index');
     })->name('impuestos')->middleware('can:impuestos.ver');
     Route::get('/impuestos/libro-iva', function () {return view('impuestos.libro-iva');})->name('impuestos.libro-iva')->middleware('can:impuestos.ver');
+    // Pago a cuenta (modelo 202): fichero .202 para la AEAT. Como el IS: se usa desde la web (en un PC redirige)
+    Route::get('/impuestos/pago-cuenta', function () {
+        if (config('contabilidad.is_url') && ! config('contabilidad.is_ejecucion')) {
+            return redirect()->away(preg_replace('#/contabilidad/is/?$#', '/impuestos/pago-cuenta', rtrim(config('contabilidad.is_url'), '/')));
+        }
+        return view('impuestos.pago-cuenta');
+    })->name('impuestos.pago-cuenta')->middleware('can:contabilidad.is');
     Route::get('/impuestos/adjunto/{comentario}', [\App\Http\Controllers\ImpuestosAdjuntoController::class, 'ver'])->name('impuestos.adjunto')->middleware('can:impuestos.ver');
     Route::get('/impuestos/documento/{documento}', [\App\Http\Controllers\ImpuestosDocumentoController::class, 'ver'])->name('impuestos.documento')->middleware('can:impuestos.ver');
 

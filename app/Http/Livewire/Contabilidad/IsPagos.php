@@ -5,12 +5,11 @@ namespace App\Http\Livewire\Contabilidad;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
-use Livewire\Attributes\Reactive;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
 /**
- * «Preparar pagos a cuenta» de la pestaña IS (9-oct-2026): del IS del ejercicio anterior (PDF presentado) saca la cuota y genera el
+ * Pestaña «Pago Cuenta M202» de Impuestos (9-oct-2026; antes un botón dentro del IS): del IS del ejercicio anterior (PDF presentado) saca la cuota y genera el
  * fichero .202 (modelo 202, modalidad 40.2) que se importa en el formulario de la AEAT. Motor: Contabilidad/Impuestos/M202/motor
  * (prepara202.py); guía: M202/PLAN.md. No presenta nada.
  *
@@ -24,16 +23,12 @@ class IsPagos extends Component
 {
     use WithFileUploads;
 
-    public bool $abierto = false;
     public int $ejercicio;
     public string $periodo = '2P';
     public bool $verTodos = false;
 
-    /** Cliente elegido en el desplegable de arriba de la pestaña IS (se actualiza solo al cambiarlo). */
-    #[Reactive]
-    public $entidadActual = '';
-    /** 'cliente' = solo el elegido arriba; 'todos' = todos los que tienen el 202. */
-    public string $alcance = 'cliente';
+    /** Cliente del desplegable: 'todos' (los que tienen el 202 pendiente) o el id de una entidad. */
+    public string $clienteId = 'todos';
 
     /** Marcados para preparar: [entidad_id => true]. */
     public array $marcados = [];
@@ -93,14 +88,14 @@ class IsPagos extends Component
                 $j->on('s.entidad_impuesto_id', '=', 'ei.id')->where('s.ejercicio', $this->ejercicio)->where('s.periodo', $est);
             })
             ->where('m.codigo', '202')->whereNull('e.deleted_at')
-            ->when($this->alcance === 'cliente', fn ($q) => $q->where('e.id', (int) $this->entidadActual))
+            ->when($this->clienteId !== 'todos', fn ($q) => $q->where('e.id', (int) $this->clienteId))
             ->whereNotNull('e.nif')->where('e.nif', '!=', '')
             ->orderBy('e.entidad')
             ->get(['e.id', 'e.entidad', 'e.nif', 's.estado']);
         $out = [];
         foreach ($filas as $f) {
             $estado = $f->estado ?: 'sin';
-            if ($this->alcance === 'todos' && ! $this->verTodos && in_array($estado, ['no', 'nopresenta', 'presentado', 'visto'], true)) {
+            if ($this->clienteId === 'todos' && ! $this->verTodos && in_array($estado, ['no', 'nopresenta', 'presentado', 'visto'], true)) {
                 continue;
             }
             $dir = $this->dirCliente($f->nif);
@@ -191,7 +186,7 @@ class IsPagos extends Component
         if (! $this->autorizado()) {
             return;
         }
-        $ids = $this->alcance === 'cliente' ? [(int) $this->entidadActual] : array_map('intval', array_keys(array_filter($this->marcados)));
+        $ids = $this->clienteId !== 'todos' ? [(int) $this->clienteId] : array_map('intval', array_keys(array_filter($this->marcados)));
         if (! $ids) {
             $this->dispatch('proceso-terminado', mensaje: '⚠️ Marca al menos un cliente.');
             return;
@@ -261,8 +256,24 @@ class IsPagos extends Component
         return response()->download($zip, "202_{$this->ejercicio}_{$this->periodo}.zip")->deleteFileAfterSend(true);
     }
 
+    /** Opciones del desplegable: todos los clientes con el 202 en Impuestos y NIF. */
+    protected function opciones(): array
+    {
+        $o = ['todos' => 'Todos los clientes con pago pendiente'];
+        $filas = DB::table('entidad_impuestos as ei')
+            ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->join('entidades as e', 'e.id', '=', 'ei.entidad_id')
+            ->where('m.codigo', '202')->whereNull('e.deleted_at')->whereNotNull('e.nif')->where('e.nif', '!=', '')
+            ->orderBy('e.entidad')->get(['e.id', 'e.entidad', 'e.nif']);
+        foreach ($filas as $f) {
+            $o[(string) $f->id] = $f->entidad.' · '.$this->nif($f->nif);
+        }
+
+        return $o;
+    }
+
     public function render()
     {
-        return view('livewire.contabilidad.is-pagos', ['clientes' => $this->abierto ? $this->clientes() : []]);
+        return view('livewire.contabilidad.is-pagos', ['clientes' => $this->clientes(), 'opciones' => $this->opciones()]);
     }
 }
