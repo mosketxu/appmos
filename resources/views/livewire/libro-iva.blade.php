@@ -73,6 +73,7 @@
 
     <div class="li-card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <button type="button" wire:click="generar" wire:loading.attr="disabled" class="li-btn pri" @disabled($espera !== '' || $carpeta === '')>▶ Generar libro de IVA {{ $periodo }} {{ $ejercicio }}</button>
+        @if ($this->presentaM216())<span style="font-size:12px;color:#4338ca">Esta empresa presenta el M216: el libro llevará la tabla por proveedor junto al bloque ISP.</span>@endif
         <span class="li-gris" style="font-size:12px">Lo hace un PC con OneDrive y deja el Excel «IVA …» en la misma carpeta, junto al original.</span>
     </div>
 

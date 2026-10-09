@@ -95,6 +95,13 @@ class LibroIva extends Component
         return (string) ($this->empresas()[$this->entidadId] ?? '');
     }
 
+    /** ¿La empresa presenta el modelo 216 (no residentes)? Entonces el libro lleva la tabla por proveedor junto al bloque ISP. */
+    public function presentaM216(): bool
+    {
+        return DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where('ei.entidad_id', (int) $this->entidadId)->where('m.codigo', '216')->whereNull('ei.baja_ejercicio')->exists();
+    }
+
     /** «3T» → 2026-3T · «07» → 2026-07 */
     protected function periodoMotor(): string
     {
@@ -170,7 +177,7 @@ class LibroIva extends Component
         }
         $this->tareaId = ColaTareas::crear('pc.libro_iva', [
             'accion' => $accion, 'carpeta' => $this->carpeta, 'periodo' => $this->periodoMotor(),
-            'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId,
+            'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId, 'm216' => $this->presentaM216(),
         ], ColaTareas::pcElegido() ?: null, auth()->id());
         $this->espera = $accion;
         $this->mensaje = $accion === 'generar' ? 'Pedido a un PC: monta el libro en la carpeta de OneDrive…' : 'Pedido a un PC: mirando la carpeta…';
