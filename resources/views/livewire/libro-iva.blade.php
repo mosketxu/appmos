@@ -35,11 +35,17 @@
                     title="Por defecto solo ves las empresas que llevas tú">{{ $verTodos ? '👥 Viendo todas' : '👤 Solo las mías · ver todas' }}</button>
             @endif
             <input type="number" wire:model.lazy="ejercicio" class="border-gray-300 rounded-md text-sm" style="width:5.5rem">
+            @php $per = $this->periodicidad(); @endphp
             <select wire:model="periodo" class="border-gray-300 rounded-md text-sm">
-                @foreach (['1T','2T','3T','4T'] as $p)<option>{{ $p }}</option>@endforeach
-                <option disabled>── mensual ──</option>
-                @foreach (range(1, 12) as $m)<option>{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
+                @if ($per !== 'M')
+                    @foreach (['1T','2T','3T','4T'] as $p)<option>{{ $p }}</option>@endforeach
+                @endif
+                @if ($per === '')<option disabled>── mensual ──</option>@endif
+                @if ($per !== 'T')
+                    @foreach (range(1, 12) as $m)<option>{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
+                @endif
             </select>
+            @if ($per)<span class="li-gris" style="font-size:12px">{{ $per === 'M' ? 'presenta el 303 mensual' : 'presenta el 303 trimestral' }}</span>@endif
         </div>
         @if ($ultimo)
             <div class="li-gris" style="font-size:12px;margin-top:6px">Último libro de esta empresa: {{ $ultimo['periodo'] }} · {{ $ultimo['tipo'] }} {{ number_format(abs($ultimo['resultado_final']), 2, ',', '.') }} € · {{ $ultimo['fecha'] }} ({{ $ultimo['pc'] }})</div>

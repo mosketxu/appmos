@@ -67,8 +67,38 @@ class LibroIva extends Component
         }
     }
 
+    /** Periodicidad del 303 de la empresa en Impuestos: 'M' mensual, 'T' trimestral o '' si no consta. */
+    public function periodicidad(): string
+    {
+        $p = (string) DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where('ei.entidad_id', (int) $this->entidadId)->where('m.codigo', '303')->whereNull('ei.baja_ejercicio')->value('ei.periodicidad');
+
+        return in_array($p, ['M', 'T'], true) ? $p : '';
+    }
+
+    /** Una empresa mensual trabaja con meses (09 …) y una trimestral con trimestres (3T): si el periodo elegido no es de su tipo, pasa al último ya terminado. */
+    protected function ajustarPeriodo(): void
+    {
+        $per = $this->periodicidad();
+        $esTrimestre = (bool) preg_match('/^[1-4]T$/', $this->periodo);
+        $m = (int) date('n');
+        if ($per === 'M' && $esTrimestre) {
+            $this->periodo = str_pad((string) ($m === 1 ? 12 : $m - 1), 2, '0', STR_PAD_LEFT);
+            if ($m === 1 && (int) $this->ejercicio === (int) date('Y')) {
+                $this->ejercicio = (string) ((int) date('Y') - 1);
+            }
+        } elseif ($per === 'T' && ! $esTrimestre) {
+            $t = intdiv($m - 1, 3);
+            $this->periodo = $t === 0 ? '4T' : $t.'T';
+            if ($t === 0 && (int) $this->ejercicio === (int) date('Y')) {
+                $this->ejercicio = (string) ((int) date('Y') - 1);
+            }
+        }
+    }
+
     protected function alCambiarEmpresa(): void
     {
+        $this->ajustarPeriodo();
         $this->carpeta = (string) (DB::table('libro_iva_carpetas')->where('entidad_id', (int) $this->entidadId)->value('carpeta') ?? '');
         $this->listado = null;
         $this->libro = null;
