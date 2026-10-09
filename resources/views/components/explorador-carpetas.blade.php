@@ -5,7 +5,7 @@
 --}}
 @props(['model', 'dirs' => [], 'marcas' => [], 'actual' => ''])
 <div wire:key="exp-{{ $model }}-{{ count($dirs) }}" x-data="{
-        abierto: false, cur: '', q: '', dirs: @js(array_values($dirs)), marcas: new Set(@js(array_values($marcas))), actual: @js((string) $actual),
+        abierto: false, cur: '', q: '', dirs: (() => { const t = new Set(); @js(array_values($dirs)).forEach(d => { const p = d.split('/'); for (let i = 1; i <= p.length; i++) t.add(p.slice(0, i).join('/')) }); return [...t].sort((a, b) => a.localeCompare(b, 'es', { numeric: true })) })(), marcas: new Set(@js(array_values($marcas))), actual: @js((string) $actual),
         norm(t) { return (t || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() },
         padre(d) { const i = d.lastIndexOf('/'); return i < 0 ? '' : d.slice(0, i) },
         nombre(d) { return d.slice(d.lastIndexOf('/') + 1) },
