@@ -196,7 +196,7 @@
 
         @if ($editEnt)
             <div class="imp-noprint" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center" wire:click.self="cerrarEntidad">
-                <div style="background:#fff; border-radius:8px; padding:14px; width:min(900px, 96vw); max-height:86vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.3)">
+                <div style="background:#fff; border-radius:8px; padding:14px; width:min(1150px, 96vw); max-height:86vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.3)">
                     <div class="flex items-start justify-between gap-3">
                         <div class="font-semibold text-gray-900">{{ \Illuminate\Support\Facades\DB::table('entidades')->where('id', $editEnt)->value('entidad') }}</div>
                         <div class="flex items-center gap-3">

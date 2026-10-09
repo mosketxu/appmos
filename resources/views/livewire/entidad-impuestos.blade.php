@@ -42,7 +42,7 @@
                             </td>
                             <td style="white-space:nowrap">
                                 @if ($o->baja_ejercicio)
-                                    <span class="px-1.5 py-0.5 text-xs text-amber-800 bg-amber-100 rounded" title="Desde ahí no se generan casillas; lo anterior se conserva">
+                                    <span class="px-1.5 py-0.5 text-xs rounded" style="color:#92400e; background:#fef3c7" title="Desde ahí no se generan casillas; lo anterior se conserva">
                                         De baja desde {{ \App\Support\Impuestos::etiquetaPeriodo($o->baja_periodo, $o->baja_ejercicio) }}</span>
                                     @if ($editar) <button type="button" wire:click="reactivar({{ $o->id }})" class="text-xs text-indigo-700 hover:underline">Reactivar</button> @endif
                                 @elseif ($editar)
@@ -55,7 +55,7 @@
                         </tr>
                         @if ($bajaOb === $o->id)
                             <tr wire:key="baja-{{ $o->id }}">
-                                <td colspan="6" class="px-2 py-2 bg-amber-50 rounded">
+                                <td colspan="6" class="px-2 py-2 rounded" style="background:#fffbeb; white-space:normal; max-width:640px">
                                     <span class="text-xs text-gray-700">Dejar de presentarlo <b>desde</b></span>
                                     <select wire:model="bajaEj" class="py-0.5 text-sm border-gray-300 rounded-md">
                                         @foreach ([now()->year - 1, now()->year, now()->year + 1] as $y) <option value="{{ $y }}">{{ $y }}</option> @endforeach
@@ -63,7 +63,7 @@
                                     <select wire:model="bajaPer" class="py-0.5 text-sm border-gray-300 rounded-md">
                                         @foreach (\App\Support\Impuestos::periodos($o->periodicidad) as $p) <option value="{{ $p }}">{{ $p }}</option> @endforeach
                                     </select>
-                                    <button type="button" wire:click="darDeBaja" class="px-2 py-0.5 text-sm text-white bg-amber-600 rounded hover:bg-amber-700">Dar de baja</button>
+                                    <button type="button" wire:click="darDeBaja" style="background:#d97706; color:#fff; padding:2px 10px; border-radius:4px; font-weight:600" class="text-sm">Dar de baja</button>
                                     <button type="button" wire:click="cerrarBaja" class="text-xs text-gray-500 hover:underline">Cancelar</button>
                                     <span class="text-xs text-gray-500">Se conserva todo lo anterior; las casillas pendientes de ahí en adelante desaparecen. Se puede reactivar.</span>
                                 </td>
