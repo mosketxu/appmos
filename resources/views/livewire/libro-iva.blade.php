@@ -29,6 +29,10 @@
             <select wire:model="entidadId" class="border-gray-300 rounded-md text-sm" style="min-width:22rem">
                 @foreach ($empresas as $id => $nom)<option value="{{ $id }}">{{ $nom }}</option>@endforeach
             </select>
+            @if ($this->puedeTodos())
+                <button type="button" wire:click="$toggle('verTodos')" class="li-btn" style="{{ $verTodos ? 'background:#4f46e5;border-color:#4f46e5;color:#fff' : '' }}"
+                    title="Por defecto solo ves las empresas que llevas tú">{{ $verTodos ? '👥 Viendo todas' : '👤 Solo las mías · ver todas' }}</button>
+            @endif
             <input type="number" wire:model.lazy="ejercicio" class="border-gray-300 rounded-md text-sm" style="width:5.5rem">
             <select wire:model="periodo" class="border-gray-300 rounded-md text-sm">
                 @foreach (['1T','2T','3T','4T'] as $p)<option>{{ $p }}</option>@endforeach

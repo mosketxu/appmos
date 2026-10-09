@@ -20,6 +20,8 @@ class LibroIva extends Component
     public string $ejercicio = '';
     public string $periodo = '3T';
     public string $carpeta = '';
+    /** Admin/Suma: ver las empresas de todos (por defecto solo las suyas, como en Impuestos). */
+    public bool $verTodos = false;
 
     /** Qué se espera de un PC: '' | 'ventana' | 'listar' | 'generar'. */
     public string $espera = '';
@@ -33,6 +35,7 @@ class LibroIva extends Component
     public function mount(): void
     {
         $g = (array) session('libro_iva', []);
+        $this->verTodos = $this->puedeTodos() && (bool) ($g['verTodos'] ?? false);
         $emp = $this->empresas();
         $this->entidadId = isset($emp[$g['entidad'] ?? '']) ? (string) $g['entidad'] : (string) ($emp ? array_key_first($emp) : '');
         $m = (int) date('n');
@@ -44,11 +47,18 @@ class LibroIva extends Component
 
     public function updated($prop): void
     {
+        if ($prop === 'verTodos') {
+            $this->verTodos = $this->puedeTodos() && $this->verTodos;
+            if (! isset($this->empresas()[$this->entidadId])) {
+                $this->entidadId = (string) (array_key_first($this->empresas()) ?? '');
+                $prop = 'entidadId';
+            }
+        }
         if ($prop === 'entidadId') {
             $this->alCambiarEmpresa();
         }
-        if (in_array($prop, ['entidadId', 'ejercicio', 'periodo'], true)) {
-            session(['libro_iva' => ['entidad' => $this->entidadId, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo]]);
+        if (in_array($prop, ['entidadId', 'ejercicio', 'periodo', 'verTodos'], true)) {
+            session(['libro_iva' => ['entidad' => $this->entidadId, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'verTodos' => $this->verTodos]]);
             $this->libro = null;
             $this->mensaje = $this->error = '';
         }
@@ -64,13 +74,18 @@ class LibroIva extends Component
         $this->recuperarUltimo();
     }
 
+    public function puedeTodos(): bool
+    {
+        return Imp::esGestor();
+    }
+
     /** Empresas con 303 visibles para el usuario (las mismas reglas que la pestaña Impuestos). */
     public function empresas(): array
     {
         $q = DB::table('entidad_impuestos as ei')->join('entidades as e', 'e.id', '=', 'ei.entidad_id')
             ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')->where('m.codigo', '303')->where('e.estado', 1)
             ->select('e.id', DB::raw('COALESCE(NULLIF(e.alias, ""), e.entidad) as nombre'))->distinct()->orderBy('nombre');
-        Imp::soloVisibles($q, null, Imp::esGestor());
+        Imp::soloVisibles($q, null, $this->verTodos);
 
         return $q->pluck('nombre', 'e.id')->all();
     }
