@@ -151,6 +151,7 @@
             @if ($this->puedeTodos())
                 <button type="button" wire:click="$toggle('verTodos')" class="imp-btn {{ $verTodos ? 'on' : '' }}" style="border-radius:6px"
                     title="Por defecto solo ves tus impuestos (los de tus clientes o asignados a ti)">{{ $verTodos ? '👥 Viendo los de todos' : '👤 Solo los míos · ver todos' }}</button>
+                <a href="{{ route('impuestos.libro-iva') }}" class="imp-btn" style="border-radius:6px;text-decoration:none" title="Maquetar el libro de IVA (303) de un cliente">📒 Libro de IVA</a>
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
                 @if ($tarea)
