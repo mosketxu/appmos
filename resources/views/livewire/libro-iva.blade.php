@@ -95,7 +95,7 @@
             </div>
             <div class="li-h" style="margin-top:12px">Avisos ({{ $libro['n_avisos'] ?? count($libro['avisos']) }})</div>
             @forelse ($libro['avisos'] as $a)<div class="li-gris" style="font-size:13px">• {{ $a }}</div>@empty<div class="li-gris" style="font-size:13px">Sin avisos.</div>@endforelse
-            @if (($libro['n_avisos'] ?? 0) > count($libro['avisos']))<div class="li-gris" style="font-size:12px">… y {{ $libro['n_avisos'] - count($libro['avisos']) }} más en el fichero de avisos.</div>@endif
+            @if (($libro['n_avisos'] ?? 0) > count($libro['avisos']))<div class="li-gris" style="font-size:12px">… y {{ $libro['n_avisos'] - count($libro['avisos']) }} más en la pestaña AVISOS.</div>@endif
         </div>
     @endif
 </div>
