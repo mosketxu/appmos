@@ -22,7 +22,7 @@ contradice, manda aquel. Mapa y memoria de Appmos: `.claude/memoria/appmos/appmo
 | TO-DO y Claude automático | `Todo.php`, `TodoCampana.php`, `TodoClaudeEstado.php`, `App\Support\TodoClaude`, modelos `TodoTarea/TodoComentario/TodoAviso`. Operación: `Contabilidad/TrabajadorWeb/CLAUDE_TODO.md` de la carpeta Claude |
 | Guías de cada pestaña de Contabilidad | `Contabilidad/<proceso>/PLAN.md` de la carpeta Claude (Bancos, IS, Neteges, FacturasOcr, ProcesosMensuales, Verifactu…) — **actualizarlas con cada cambio** |
 
-Pestañas: Entidades · TO-DO · Contabilidad (Procesos FIQ, Facturación PDF, Durcal, Bancos, Facturas OCR, IS, Neteges,
+Pestañas: Entidades · TO-DO · Impuestos (subpestañas Seguimiento, IVA M303, IS M200, Pago Cuenta M202: `livewire/_subnav_impuestos.blade.php`) · Contabilidad (Procesos FIQ, Facturación PDF, Durcal, Bancos, Facturas OCR, Neteges,
 Proc.Mensuales, Seguimiento, Certificados) · Panel de control (solo Admin). La Facturación del propio Appmos está oculta
 (base del proyecto Verifactu).
 
