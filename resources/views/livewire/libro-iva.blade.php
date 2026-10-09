@@ -1,3 +1,7 @@
+<div>
+    @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
+    @include('livewire._subnav_todo', ['activa' => 'impuestos'])
+
 <div class="p-4" style="max-width:1100px" @if ($espera !== '') wire:poll.3s="revisar" @endif>
     <style>
         .li-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:14px 16px; margin-bottom:12px }
@@ -26,9 +30,7 @@
     <div class="li-card">
         <div class="li-h">1 · Empresa y periodo</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <select wire:model="entidadId" class="border-gray-300 rounded-md text-sm" style="min-width:22rem">
-                @foreach ($empresas as $id => $nom)<option value="{{ $id }}">{{ $nom }}</option>@endforeach
-            </select>
+            <x-buscador-select model="entidadId" :valor="$entidadId" :opciones="$empresas" ancho="26rem" />
             @if ($this->puedeTodos())
                 <button type="button" wire:click="$toggle('verTodos')" class="li-btn" style="{{ $verTodos ? 'background:#4f46e5;border-color:#4f46e5;color:#fff' : '' }}"
                     title="Por defecto solo ves las empresas que llevas tú">{{ $verTodos ? '👥 Viendo todas' : '👤 Solo las mías · ver todas' }}</button>
@@ -99,4 +101,5 @@
             @if (($libro['n_avisos'] ?? 0) > count($libro['avisos']))<div class="li-gris" style="font-size:12px">… y {{ $libro['n_avisos'] - count($libro['avisos']) }} más en la pestaña AVISOS.</div>@endif
         </div>
     @endif
+</div>
 </div>
