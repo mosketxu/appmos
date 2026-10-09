@@ -9,12 +9,10 @@
             $tip .= ' '.collect($e['pcs'])->map(fn ($p) => ($p['en_linea'] ? '🟢 ' : '⚪ ').$p['nombre'])->implode(' · ');
             if ($e['activas']) { $tip .= ' — Tareas en cola o en curso: '.$e['activas'].($e['mias'] ? ' (tuyas: '.$e['mias'].')' : ''); }
         @endphp
-        <span title="{{ $tip }}" class="inline-flex items-center px-2 text-xs text-gray-600 border border-gray-200 rounded-md gap-x-1 whitespace-nowrap" style="padding-top:.1rem; padding-bottom:.1rem" data-sin-tema>
-            <span style="font-size:1rem;line-height:1">🖥</span>
-            <span style="display:inline-block;width:.55rem;height:.55rem;border-radius:9999px;background:{{ $color }}"></span>
-            <span>{{ $e['enlinea'] }}/{{ count($e['pcs']) }}</span>
-            @if ($e['activas'])<span class="text-indigo-600">· ⏳ {{ $e['activas'] }}</span>@endif
-        </span>
+        {{-- El antiguo icono 🖥 n/n se quitó (9-oct-2026): los PCs en línea ya se ven con sus puntos (barra de Claude y desplegable «Ejecutar en»). Solo queda el aviso de tareas pendientes --}}
+        @if ($e['activas'])
+            <span title="{{ $tip }}" class="inline-flex items-center px-2 text-xs text-indigo-600 border border-gray-200 rounded-md whitespace-nowrap" style="padding-top:.1rem; padding-bottom:.1rem" data-sin-tema>⏳ {{ $e['activas'] }}</span>
+        @endif
     @endif
     @if ($e)
         {{-- Selector «Ejecutar en»: el PC desde el que trabajas. Se recuerda en ESTE navegador (cookie appmos_pc, 1 año). Si ese PC no responde, el reparto vuelve a automático.
