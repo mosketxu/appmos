@@ -4,7 +4,7 @@
     OneDrive) en la propiedad Livewire $model. Uso: <x-explorador-carpetas model="carpetaElegida" :dirs="$dirs" :marcas="$marcas" :actual="$carpeta" />
 --}}
 @props(['model', 'dirs' => [], 'marcas' => [], 'actual' => ''])
-<div wire:key="exp-{{ $model }}-{{ count($dirs) }}" x-data="{
+<div wire:ignore wire:key="exp-{{ $model }}-{{ count($dirs) }}-{{ md5($actual) }}" x-data="{
         abierto: false, cur: '', q: '', dirs: (() => { const t = new Set(); @js(array_values($dirs)).forEach(d => { const p = d.split('/'); for (let i = 1; i <= p.length; i++) t.add(p.slice(0, i).join('/')) }); return [...t].sort((a, b) => a.localeCompare(b, 'es', { numeric: true })) })(), marcas: new Set(@js(array_values($marcas))), actual: @js((string) $actual),
         norm(t) { return (t || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() },
         padre(d) { const i = d.lastIndexOf('/'); return i < 0 ? '' : d.slice(0, i) },
@@ -26,7 +26,7 @@
             </div>
             <div x-show="!q" style="padding:8px 14px; font-size:13px; border-bottom:1px solid #f1f5f9">
                 <a href="#" x-on:click.prevent="ir('')" style="color:#4338ca">OneDrive</a>
-                <template x-for="m in migas" :key="m.ruta"><span> › <a href="#" x-on:click.prevent="ir(m.ruta)" x-text="m.n" style="color:#4338ca"></a></span></template>
+                <template x-for="(m, i) in migas" :key="i + m.ruta"><span> › <a href="#" x-on:click.prevent="ir(m.ruta)" x-text="m.n" style="color:#4338ca"></a></span></template>
             </div>
             <div style="overflow:auto; flex:1; min-height:12rem">
                 <template x-if="!q">
