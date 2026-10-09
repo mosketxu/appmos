@@ -365,18 +365,10 @@
 </div>
 
 @script
-<script>
-    // Al imprimir, encoge la tabla (zoom) para que quepa en el ancho del folio apaisado
-    const ajustar = () => {
-        const t = document.querySelector('.imp-tabla'); if (!t) return;
-        t.style.zoom = ''; const ancho = t.scrollWidth, util = 1040; if (ancho > util) t.style.zoom = (util / ancho).toFixed(3);
-    };
-    window.addEventListener('beforeprint', ajustar);
-    window.addEventListener('afterprint', () => { const t = document.querySelector('.imp-tabla'); if (t) t.style.zoom = ''; });
+<script>window.impSubir = async (wire, clave, id, carpeta) => {
     // Subir un PDF/Excel a una casilla: el selector de ficheros del navegador no se puede abrir en una ruta concreta, así que (1) copia al portapapeles la ruta
     // de la carpeta del cliente si se conoce (pegarla en «Nombre» del cuadro de Windows y Intro lleva allí) y (2) en Chrome/Edge usa un selector que recuerda
     // la última carpeta usada por cliente e impuesto (la primera vez navegas; las siguientes se abre ya en ella).
-    window.impSubir = async (wire, clave, id, carpeta) => {
         wire.subirA = clave;
         if (carpeta && navigator.clipboard) { try { await navigator.clipboard.writeText(carpeta); } catch (e) {} }
         if (window.showOpenFilePicker) {
@@ -389,5 +381,13 @@
         }
         document.getElementById('imp-fichero').click();
     };
+
+    // Al imprimir, encoge la tabla (zoom) para que quepa en el ancho del folio apaisado
+    const ajustar = () => {
+        const t = document.querySelector('.imp-tabla'); if (!t) return;
+        t.style.zoom = ''; const ancho = t.scrollWidth, util = 1040; if (ancho > util) t.style.zoom = (util / ancho).toFixed(3);
+    };
+    window.addEventListener('beforeprint', ajustar);
+    window.addEventListener('afterprint', () => { const t = document.querySelector('.imp-tabla'); if (t) t.style.zoom = ''; });
 </script>
 @endscript
