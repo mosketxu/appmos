@@ -133,6 +133,12 @@ return [
         ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/LeoyBra")
         ->first(fn ($d) => is_dir($d)) ?? '/var/www/leoybra'),
     'leoybra_python' => env('LEOYBRA_PYTHON'),
+
+    // Intrastat (10-oct-2026): motor en el servidor (INTRASTAT_DIR=/var/www/intrastat); en un PC, la carpeta del repo. Datos fuera del repo.
+    'intrastat_dir' => env('INTRASTAT_DIR') ?: (collect(['e', 'f', 'd'])
+        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/Intrastat")
+        ->first(fn ($d) => is_dir($d)) ?? '/var/www/intrastat'),
+    'intrastat_datos' => env('INTRASTAT_DATOS'),
     'leoybra_entidad' => (int) env('LEOYBRA_ENTIDAD', 2484),   // entidad «GRUPO LEOYBRA, S.L.»: sus ficheros base centrales (FicherosBase)
 
     'neteges_entidad' => (int) env('NETEGES_ENTIDAD', 2552),   // entidad «Neteges Sicilia SL»: sus ficheros base centrales (FicherosBase)

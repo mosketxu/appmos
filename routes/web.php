@@ -62,6 +62,14 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return view('impuestos.index');
     })->name('impuestos')->middleware('can:impuestos.ver');
     Route::get('/impuestos/libro-iva', function () {return view('impuestos.libro-iva');})->name('impuestos.libro-iva')->middleware('can:impuestos.ver');
+    // Intrastat (10-oct-2026): CSV de partidas para la Sede de la AEAT, por cliente (cada uno con su formato de ficheros)
+    Route::get('/impuestos/intrastat', function () {return view('impuestos.intrastat');})->name('impuestos.intrastat')->middleware('can:impuestos.ver');
+    Route::get('/impuestos/intrastat/descargar/{cliente}/{periodo}/{nombre}', function (string $cliente, string $periodo, string $nombre) {
+        abort_unless(preg_match('/^[a-z0-9_]+$/', $cliente) && preg_match('/^\d{4}-\d{2}$/', $periodo), 404);
+        $ruta = rtrim(config('contabilidad.intrastat_datos') ?: storage_path('app/intrastat'), '/').'/'.$cliente.'/'.$periodo.'/salida/'.basename($nombre);
+        abort_unless(is_file($ruta), 404);
+        return response()->download($ruta, basename($ruta));
+    })->name('impuestos.intrastat.descargar')->middleware('can:impuestos.ver');
     // Pago a cuenta (modelo 202): fichero .202 para la AEAT. Como el IS: se usa desde la web (en un PC redirige)
     Route::get('/impuestos/pago-cuenta', function () {
         if (config('contabilidad.is_url') && ! config('contabilidad.is_ejecucion')) {
