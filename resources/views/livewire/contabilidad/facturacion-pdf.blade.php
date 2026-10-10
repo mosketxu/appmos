@@ -155,7 +155,7 @@
                 catch (e) { await escribir(destino, n, await h.getFile()); await desde.removeEntry(h.name); }
             };
             return {
-                sel: 0, arrastrando: null, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
+                sel: 0, arrastrando: null, subidos: false, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
                 hayCarpeta() { return !! dir && this.carpeta !== ''; },
                 get marcados() { return this.ficheros.filter(f => f.marcado); },
                 marcar(v) { this.ficheros.forEach(f => f.marcado = v); },
@@ -201,7 +201,7 @@
                     return '';
                 },
                 async subirSueltos(files) {
-                    dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = [];
+                    dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = []; this.subidos = true;
                     this.ocupado = true;
                     const lista = Array.from(files).filter(f => EXT.test(f.name));
                     await this.$wire.proponerClienteGenerico('', lista.map(f => f.name));
@@ -230,7 +230,12 @@
                     } finally { this.ocupado = false; }
                 },
                 async generar() {
-                    const aviso = this.sueltos && ! dir && this.ficheros.length ? await this.pedirCarpetaDeSueltos() : '';
+                    let aviso = this.sueltos && ! dir && this.ficheros.length ? await this.pedirCarpetaDeSueltos() : '';
+                    // Ficheros subidos arrastrándolos: no hay permiso sobre su carpeta; se pide ahora (antes de cualquier await)
+                    if (this.subidos && ! dir && this.soportado) {
+                        try { dir = await window.showDirectoryPicker({ id: 'generico', mode: 'readwrite' }); this.carpeta = dir.name; }
+                        catch (e) { aviso = 'Sin carpeta elegida: los PDF salen solo en el .zip.'; }
+                    }
                     this.ocupado = true;
                     try {
                         this.estado = 'Generando…';
@@ -243,10 +248,12 @@
                             return;
                         }
                         const log = [];
+                        // El original: el que se eligió, o (ficheros subidos) el que tenga ese nombre en la carpeta elegida
+                        const manejador = async (n) => handles[n] || await dir.getFileHandle(n).catch(() => null);
                         for (const r of res) {
                             try {
                                 if (r.intacto) {
-                                    const h = handles[r.archivo];
+                                    const h = await manejador(r.archivo);
                                     if (! h || r.fichero === r.archivo) continue;
                                     const n = await libre(dir, r.fichero);
                                     await mover(h, dir, dir, n);
@@ -264,8 +271,8 @@
                         if (cambiados.length) {
                             const orig = await dir.getDirectoryHandle('originales', { create: true });
                             for (const a of cambiados) {
-                                const h = handles[a];
-                                if (! h) continue;
+                                const h = await manejador(a);
+                                if (! h) { log.push('ℹ️ ' + a + ': no está en la carpeta elegida, no se mueve a originales'); continue; }
                                 try { const n = await libre(orig, a); await mover(h, dir, orig, n); log.push(a + '  →  originales/' + n); }
                                 catch (e) { log.push('⚠️ ' + a + ' (a originales): ' + e.message); }
                             }
@@ -275,7 +282,7 @@
                         dir = null;   // ya aplicado: no se repite sobre ficheros que ya no están
                     } finally { this.ocupado = false; }
                 },
-                limpiar() { dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = []; this.estado = ''; this.sel = 0; },
+                limpiar() { dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = []; this.estado = ''; this.sel = 0; this.subidos = false; },
             };
         };
     </script>
