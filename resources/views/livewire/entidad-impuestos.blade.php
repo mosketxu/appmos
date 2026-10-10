@@ -1,6 +1,6 @@
 <div class="mt-2 mb-4">
     <div class="px-2 mx-2 mt-2 mb-1 rounded-md bg-blue-50">
-        <h3 class="font-semibold text-gray-600">Impuestos que presenta <span class="text-xs font-normal text-gray-500">— aparecen en TO-DO → Impuestos; se guarda al momento</span></h3>
+        <h3 class="font-semibold text-gray-600">Impuestos que presenta <span class="text-xs font-normal text-gray-500">— aparecen en TO-DO → Impuestos; se guarda al momento{{ $respEntidad ? ' · los ve: '.$respEntidad : '' }}</span></h3>
     </div>
     <div class="mx-2 text-sm text-gray-600">
         @if ($aviso) <p class="px-1 py-1 text-xs text-red-700">{{ $aviso }}</p> @endif
@@ -10,7 +10,7 @@
             <table class="text-sm">
                 <thead>
                     <tr class="text-xs text-left text-gray-500">
-                        <th class="px-1 pr-4">Impuesto</th><th class="px-1 pr-4" title="Solo si el cliente presenta dos declaraciones del mismo impuesto">Etiqueta</th><th class="px-1 pr-4">Periodo</th><th class="px-1 pr-4">Lo lleva</th><th class="px-1 pr-4">Observaciones</th><th></th>
+                        <th class="px-1 pr-4">Impuesto</th><th class="px-1 pr-4" title="Solo si el cliente presenta dos declaraciones del mismo impuesto">Etiqueta</th><th class="px-1 pr-4">Periodo</th><th class="px-1 pr-4">Observaciones</th><th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -25,14 +25,6 @@
                                 <select wire:change="cambiarPeriodicidad({{ $o->id }}, $event.target.value)" @disabled(! $editar) class="py-0.5 text-sm border-gray-300 rounded-md">
                                     @foreach (\App\Support\Impuestos::PERIODICIDADES as $k => $t)
                                         <option value="{{ $k }}" @selected($o->periodicidad === $k)>{{ $t }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
-                            <td class="px-1 pr-4">
-                                <select wire:change="cambiarResponsable({{ $o->id }}, $event.target.value)" @disabled(! $editar) class="py-0.5 text-sm border-gray-300 rounded-md">
-                                    <option value="">Responsable(s) de la entidad{{ $respEntidad ? ": $respEntidad" : '' }}</option>
-                                    @foreach ($responsables as $r)
-                                        <option value="{{ $r->id }}" @selected($o->user_id == $r->id)>{{ $r->nombre }}</option>
                                     @endforeach
                                 </select>
                             </td>

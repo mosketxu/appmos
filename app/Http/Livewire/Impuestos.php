@@ -200,7 +200,7 @@ class Impuestos extends Component
             ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->leftJoin('sumas as s', 's.id', '=', 'e.suma_id')
             ->where('m.activo', true)
-            ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'ei.user_id', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp',
+            ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp',
                 'm.codigo', 'm.nombre as modelo_nombre', 'm.orden', 'm.mes_anual', 'm.despues_de', 'm.desfase')
             ->orderBy('e.entidad')->orderBy('m.orden');
         Imp::soloVisibles($q, null, $this->verTodos);

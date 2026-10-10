@@ -130,8 +130,8 @@ class Impuestos
     }
 
     /**
-     * Limita una consulta sobre entidad_impuestos (alias $ei) a lo que ve el usuario: los impuestos que tiene asignados (user_id) y los
-     * de sus entidades (Responsable Suma + co-responsables) que no tienen responsable propio. Con $todos (solo Admin/Suma) no limita.
+     * Limita una consulta sobre entidad_impuestos (alias $ei) a lo que ve el usuario: los de sus entidades (Responsable Suma +
+     * co-responsables). Con $todos (solo Admin/Suma) no limita.
      */
     public static function soloVisibles(Builder $q, ?User $u = null, bool $todos = false, string $ei = 'ei'): Builder
     {
@@ -141,8 +141,7 @@ class Impuestos
         }
         $propias = Accesos::entidadesPropias($u);
 
-        return $q->where(fn ($w) => $w->where("$ei.user_id", $u->id)
-            ->orWhere(fn ($x) => $x->whereNull("$ei.user_id")->whereIn("$ei.entidad_id", $propias ?: [0])));
+        return $q->whereIn("$ei.entidad_id", $propias ?: [0]);
     }
 
     public static function puedeVer(int $entidadImpuestoId, bool $todos = false): bool
