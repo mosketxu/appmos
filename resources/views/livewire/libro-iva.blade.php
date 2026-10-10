@@ -97,9 +97,9 @@
                 <tr><td>IVA repercutido (emitidas: {{ $libro['emitidas']['emitida'] }} facturas)</td><td class="li-n">{{ $f2($libro['repercutido']) }}</td></tr>
                 <tr><td>IVA soportado (nacionales {{ $libro['recibidas']['nacional'] }} + aduanas {{ $libro['recibidas']['aduanas'] }})</td><td class="li-n">{{ $f2($libro['soportado']) }}</td></tr>
                 <tr><td class="li-gris">ADC {{ $libro['recibidas']['adc'] }} · ISP {{ $libro['recibidas']['isp'] }} · IVA 0 / a revisar {{ $libro['recibidas']['iva0'] }} — no computan (autoliquidado: {{ $f2($libro['adc']) }} / {{ $f2($libro['isp']) }})</td><td></td></tr>
-                <tr><td><b>Resultado del periodo</b></td><td class="li-n"><b>{{ $f2($libro['resultado_periodo']) }}</b></td></tr>
-                <tr><td>Resultado del periodo anterior</td><td class="li-n">{{ $libro['anterior'] === null ? 'no encontrado (0)' : $f2($libro['anterior']) }}</td></tr>
-                <tr class="li-sub"><td>RESULTADO FINAL</td><td class="li-n">{{ $f2($libro['resultado_final']) }} · {{ $libro['tipo'] }}</td></tr>
+                <tr><td><b>Resultado del periodo</b></td><td class="li-n"><b>{{ $f2(abs($libro['resultado_periodo'])) }} · {{ $libro['resultado_periodo'] >= 0 ? 'A PAGAR' : 'A COMPENSAR' }}</b></td></tr>
+                <tr><td>Resultado del periodo anterior</td><td class="li-n">{{ $libro['anterior'] === null ? 'no encontrado (0)' : $f2(abs($libro['anterior'])).' · '.($libro['anterior'] >= 0 ? 'A pagar' : 'A compensar') }}</td></tr>
+                <tr class="li-sub"><td>RESULTADO FINAL</td><td class="li-n">{{ $f2(abs($libro['resultado_final'])) }} · {{ $libro['tipo'] }}</td></tr>
             </table>
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
                 @foreach ($libro['ficheros'] ?? [] as $fi)
