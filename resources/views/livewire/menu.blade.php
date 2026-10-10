@@ -19,6 +19,7 @@
     <!-- Primary Navigation Menu -->
     {{-- Pantalla mediana (640-1599 px): la barra no cabe en una línea, así que pasa a dos (enlaces arriba, campana/Claude/PCs/usuario debajo) en vez de solaparse --}}
     <style>
+        .ico-act { background:#fff; border-radius:.25rem; box-shadow:0 0 0 2px #a5b4fc; width:1.5rem !important; margin-right:.5rem !important }
         @media (min-width:640px) and (max-width:1599px) {
             .barra-sup { flex-wrap:wrap; height:auto !important; min-height:3.5rem; row-gap:.25rem; padding-bottom:.35rem }
             .barra-sup > .barra-izq { min-width:0; flex-wrap:wrap }
@@ -119,10 +120,11 @@
                             </datalist>
                         </div>
                         <div class="flex items-center">
-                            @php $act = fn ($r) => request()->routeIs($r) ? 'rounded ring-2 ring-indigo-300 bg-white p-0.5' : ''; @endphp
+                            @php $act = fn ($r) => request()->routeIs($r) ? 'ico-act' : ''; @endphp
                             <x-icon.key href="{{ route('entidad.pu',$entmenu) }}" title="Pus" class="{{ $act('entidad.pu') }}"/>
                             <x-icon.usergroup href="{{ route('entidad.contacto',$entmenu) }}" title="Contactos" class="{{ $act('entidad.contacto') }}"/>
                             <x-icon.clock-a href="{{ route('entidad.historial',$entmenu) }}" title="Historial" class="{{ $act('entidad.historial') }}"/>
+                            <x-icon.impuestos href="{{ route('entidad.impuestos',$entmenu) }}" title="Impuestos" class="{{ $act('entidad.impuestos') }}"/>
                             <x-icon.edit-a href="{{ route('entidad.edit',$entmenu) }}" title="{{ auth()->user()->can('entidades.editar') ? 'Editar' : 'Ficha' }}" class="{{ $act('entidad.edit') }}"/>
                             @can('facturacion.ver')
                             <x-jet-dropdown align="center" width="w-36">
