@@ -58,7 +58,76 @@
             .tarjeta-ancha .col-der .visor { height:calc(100vh - 2rem); }
         }
         .visor { container-type:size; display:flex; align-items:center; justify-content:center; background:#f3f4f6; border-radius:.5rem; overflow:hidden; }
+        .gen-pag { position:relative; background:#fff; box-shadow:0 4px 16px rgba(0,0,0,.2); }
+        .gen-pag canvas { display:block; }
+        .gen-pag .textLayer { position:absolute; inset:0; overflow:hidden; line-height:1; text-align:initial; }
+        .gen-pag .textLayer span, .gen-pag .textLayer br { color:transparent; position:absolute; white-space:pre; cursor:text; transform-origin:0% 0%; }
+        .gen-pag .textLayer ::selection { background:rgba(59,130,246,.35); }
     </style>
+
+    <script>
+        // Página del Genérico en grande con PDF.js: imagen al instante (miniatura) y encima el PDF con capa de texto seleccionable
+        window.genPdfLib = function () {
+            if (window.pdfjsLib) return Promise.resolve();
+            if (window._genPdfLib) return window._genPdfLib;
+            return window._genPdfLib = new Promise((ok, ko) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                s.onload = () => {
+                    const w = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(URL.createObjectURL(new Blob([`importScripts('${w}');`], { type: 'text/javascript' })));
+                    ok();
+                };
+                s.onerror = ko;
+                document.head.appendChild(s);
+            });
+        };
+        window.genPdfDoc = function (url) {
+            window._genPdfDocs = window._genPdfDocs || {};
+            return window._genPdfDocs[url] = window._genPdfDocs[url]
+                || genPdfLib().then(() => pdfjsLib.getDocument({ url, disableRange: true, disableStream: true }).promise);
+        };
+        window.paginaPdf = function (url, n) {
+            return {
+                hecho: false, clave: null,
+                init() {
+                    const el = this.$el;
+                    new MutationObserver(() => { if (this.hecho) this.pintar(true); }).observe(el, { attributes: true, attributeFilter: ['data-giro'] });
+                },
+                async pintar(forzar) {
+                    const el = this.$el, caja = el.parentElement, dest = this.$refs.destino;
+                    const giro = (parseInt(el.dataset.giro || '0', 10) % 360 + 360) % 360, girado = giro % 180 !== 0;
+                    const W = caja.clientWidth, H = caja.clientHeight;
+                    if (! W || ! H) return;
+                    const clave = giro + '/' + W + 'x' + H;
+                    if (this.clave === clave && ! forzar) return;
+                    this.clave = clave;
+                    try {
+                        const pdf = await genPdfDoc(url), pg = await pdf.getPage(n);
+                        const v1 = pg.getViewport({ scale: 1 });
+                        const aw = girado ? v1.height : v1.width, ah = girado ? v1.width : v1.height;
+                        const esc = Math.min(W / aw, H / ah), dpr = window.devicePixelRatio || 1;
+                        const vp = pg.getViewport({ scale: esc * dpr });
+                        const c = document.createElement('canvas');
+                        c.width = vp.width; c.height = vp.height;
+                        c.style.width = (vp.width / dpr) + 'px'; c.style.height = (vp.height / dpr) + 'px';
+                        const capa = document.createElement('div');
+                        capa.className = 'textLayer';
+                        capa.style.setProperty('--scale-factor', esc);
+                        await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+                        if (this.clave !== clave) return;
+                        dest.style.width = (vp.width / dpr) + 'px'; dest.style.height = (vp.height / dpr) + 'px';
+                        dest.style.transform = 'rotate(' + giro + 'deg)';
+                        dest.innerHTML = '';
+                        dest.appendChild(c); dest.appendChild(capa);
+                        await pdfjsLib.renderTextLayer({ textContentSource: await pg.getTextContent(), container: capa,
+                            viewport: pg.getViewport({ scale: esc }), textDivs: [] }).promise;
+                        this.hecho = true;
+                    } catch (e) { console.warn('Visor PDF.js', e); }
+                },
+            };
+        };
+    </script>
 
     {{-- Genérico con carpeta (2026-09-29): File System Access API (Chrome/Edge). El navegador guarda el
          permiso de la carpeta; se suben COPIAS de los ficheros marcados, Appmos analiza y genera, y al
@@ -663,10 +732,16 @@
                 <div class="visor">
                     @foreach ($genericoPaginas as $i => $f)
                         @php($giro = (int) ($f['giro'] ?? 0))
-                        <img wire:key="gen-grande-{{ $i }}" x-show="sel === {{ $i }}" x-cloak loading="lazy"
-                             src="{{ route('contabilidad.facturacion-pdf.miniatura', [$g['id'], $f['pagina']]) }}" alt="Página {{ $f['pagina'] }}"
-                             style="background:#fff; box-shadow:0 4px 16px rgba(0,0,0,.2); transform:rotate({{ $giro }}deg);
-                                    {{ $giro % 180 ? 'max-width:100cqh; max-height:100cqw' : 'max-width:100cqw; max-height:100cqh' }}">
+                        {{-- Imagen al instante; en cuanto PDF.js pinta la página se cambia por el PDF con texto seleccionable --}}
+                        <div wire:key="gen-grande-{{ $i }}" x-show="sel === {{ $i }}" x-cloak data-giro="{{ $giro % 360 }}"
+                             x-data="paginaPdf('{{ route('contabilidad.facturacion-pdf.master', $g['id']) }}', {{ (int) $f['pagina'] }})"
+                             x-effect="if (sel === {{ $i }}) $nextTick(() => pintar())">
+                            <img loading="lazy" x-show="! hecho"
+                                 src="{{ route('contabilidad.facturacion-pdf.miniatura', [$g['id'], $f['pagina']]) }}" alt="Página {{ $f['pagina'] }}"
+                                 style="background:#fff; box-shadow:0 4px 16px rgba(0,0,0,.2); transform:rotate({{ $giro }}deg);
+                                        {{ $giro % 180 ? 'max-width:100cqh; max-height:100cqw' : 'max-width:100cqw; max-height:100cqh' }}">
+                            <div class="gen-pag" x-ref="destino" wire:ignore x-show="hecho" x-cloak></div>
+                        </div>
                     @endforeach
                 </div>
                 <p class="mt-1 text-xs text-center text-gray-500" x-text="'Página ' + (sel + 1) + ' de {{ count($genericoPaginas) }}'"></p>

@@ -90,6 +90,12 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         abort_unless(is_file($f), 404);
         return response()->file($f, ['Cache-Control' => 'private, max-age=86400']);
     })->whereUuid('id')->whereNumber('pagina')->name('contabilidad.facturacion-pdf.miniatura')->middleware('can:contabilidad.facturacionpdf');
+    // PDF de trabajo del Genérico (el visor lo pinta con PDF.js para poder seleccionar y copiar el texto)
+    Route::get('/contabilidad/facturacion-pdf/master/{id}', function (string $id) {
+        $f = \Illuminate\Support\Facades\Storage::disk('local')->path("facturacion-pdf/Generico/{$id}.pdf");
+        abort_unless(is_file($f), 404);
+        return response()->file($f, ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, max-age=3600']);
+    })->whereUuid('id')->name('contabilidad.facturacion-pdf.master')->middleware('can:contabilidad.facturacionpdf');
     Route::get('/contabilidad/facturacion-pdf/generado/{id}/{n}', function (string $id, int $n) {
         $rutas = json_decode((string) @file_get_contents(\App\Http\Livewire\Contabilidad\FacturacionPdf::rutaGenerados($id)), true) ?: [];
         abort_unless(isset($rutas[$n]) && is_file($rutas[$n]), 404);
