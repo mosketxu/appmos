@@ -15,7 +15,7 @@
     @endphp
 
     <div class="p-3 space-y-3">
-        <div class="flex flex-wrap items-center gap-3 lg:flex-nowrap">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <h1 class="text-2xl font-semibold text-gray-900">Tareas</h1>
             <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">＋ Nueva tarea</button>
 
@@ -32,9 +32,7 @@
                     <span class="px-2 py-0.5 text-xs text-amber-800 bg-amber-100 rounded">Estás viendo la lista de otra persona: arrastra el ⠿ para ordenar sus prioridades</span>
                 @endif
             @endif
-        </div>
 
-        <div class="flex flex-wrap items-center gap-4 text-sm lg:flex-nowrap">
             <div class="inline-flex overflow-hidden border border-gray-300 rounded-md">
                 @foreach (['todas' => 'Todas (creadas y asignadas)', 'mias' => 'Asignadas a '.($yo === auth()->id() ? 'mí' : 'esta persona'), 'pedidas' => 'Que he pedido a otros'] as $k => $t)
                     <button type="button" wire:click="$set('vista','{{ $k }}')"
@@ -46,6 +44,11 @@
                     <button type="button" wire:click="$set('filtroEstado','{{ $k }}')"
                         class="px-3 py-1 {{ $filtroEstado === $k ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">{{ $t }}</button>
                 @endforeach
+            </div>
+            <div class="relative flex-1" style="min-width:14rem">
+                <input type="search" wire:model.live.debounce.250ms="buscar" placeholder="Filtrar tareas…" autocomplete="off"
+                       class="w-full py-1 pl-7 pr-2 text-sm text-gray-800 bg-white border-gray-300 rounded-md shadow-sm">
+                <span class="absolute text-gray-400 pointer-events-none" style="left:.5rem;top:.3rem">🔍</span>
             </div>
         </div>
 
@@ -98,18 +101,6 @@
         <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg">
             <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
-                    <tr>
-                        @if ($filtroEstado !== 'cerradas') <th></th> @endif
-                        <th></th><th></th>
-                        <th class="px-2 pt-2 normal-case">
-                            <div class="relative">
-                                <input type="search" wire:model.live.debounce.250ms="buscar" placeholder="Filtrar tareas…" autocomplete="off"
-                                       class="w-full py-1 pl-7 pr-2 text-sm font-normal text-gray-800 bg-white border-gray-300 rounded-md shadow-sm" style="min-width:16rem">
-                                <span class="absolute text-gray-400 pointer-events-none" style="left:.5rem;top:.3rem">🔍</span>
-                            </div>
-                        </th>
-                        <th colspan="4"></th>
-                    </tr>
                     <tr>
                         @if ($filtroEstado !== 'cerradas') <th class="py-2 pl-2 pr-1 text-center" title="Arrastra el ⠿ para cambiar el orden de TU lista de prioridades">⠿</th> @endif
                         <th class="px-2 py-2">Asignada a</th>
