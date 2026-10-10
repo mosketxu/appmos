@@ -24,7 +24,6 @@
                     @endforeach
                 </select>
             @endif
-            <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md whitespace-nowrap hover:bg-indigo-700">＋ Nueva tarea</button>
 
             <select wire:model.live="vista" class="py-1 text-sm border-gray-300 rounded-md">
                 @foreach (['todas' => 'Todas (creadas y asignadas)', 'mias' => 'Asignadas a '.($yo === auth()->id() ? 'mí' : 'esta persona'), 'pedidas' => 'Que he pedido a otros'] as $k => $t)
@@ -41,6 +40,7 @@
                        class="w-full py-1 pl-7 pr-2 text-sm text-gray-800 bg-white border-gray-300 rounded-md shadow-sm">
                 <span class="absolute text-gray-400 pointer-events-none" style="left:.5rem;top:.3rem">🔍</span>
             </div>
+            <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md whitespace-nowrap hover:bg-indigo-700">＋ Nueva tarea</button>
         </div>
         @if ($this->personas->count() > 1 && $yo !== auth()->id())
             <span class="inline-block px-2 py-0.5 text-xs text-amber-800 bg-amber-100 rounded">Estás viendo la lista de otra persona: arrastra el ⠿ para ordenar sus prioridades</span>
