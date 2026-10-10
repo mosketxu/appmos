@@ -30,7 +30,7 @@
                             </td>
                             <td class="px-1 pr-4">
                                 <select wire:change="cambiarResponsable({{ $o->id }}, $event.target.value)" @disabled(! $editar) class="py-0.5 text-sm border-gray-300 rounded-md">
-                                    <option value="">Los de la entidad (Rpble. Suma)</option>
+                                    <option value="">Responsable(s) de la entidad{{ $respEntidad ? ": $respEntidad" : '' }}</option>
                                     @foreach ($responsables as $r)
                                         <option value="{{ $r->id }}" @selected($o->user_id == $r->id)>{{ $r->nombre }}</option>
                                     @endforeach

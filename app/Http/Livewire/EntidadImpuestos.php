@@ -188,9 +188,13 @@ class EntidadImpuestos extends Component
         $modelos = ImpuestoModelo::where('activo', true)->orderBy('orden')->get();
         $responsables = DB::table('sumas')->join('users', 'users.id', '=', 'sumas.user_id')->orderBy('sumas.nombre')->get(['users.id', 'sumas.nombre']);
 
+        $suma = DB::table('entidades')->join('sumas', 'sumas.id', '=', 'entidades.suma_id')->where('entidades.id', $this->entidadId)->value('sumas.nombre');
+        $co = DB::table('entidad_user')->join('users', 'users.id', '=', 'entidad_user.user_id')->where('entidad_user.entidad_id', $this->entidadId)->pluck('users.name');
+        $respEntidad = collect([$suma])->merge($co)->filter()->unique()->implode(', ');
+
         $conHistorial = DB::table('impuesto_estados')->whereIn('entidad_impuesto_id', $obs->pluck('id')->all() ?: [0])->whereNotIn('estado', ['pendiente', 'no'])->pluck('entidad_impuesto_id')
             ->merge(DB::table('impuesto_comentarios')->whereIn('entidad_impuesto_id', $obs->pluck('id')->all() ?: [0])->pluck('entidad_impuesto_id'))->flip();
 
-        return view('livewire.entidad-impuestos', ['conHistorial' => $conHistorial, 'obs' => $obs, 'modelos' => $modelos, 'responsables' => $responsables, 'editar' => $this->puedeEditar()]);
+        return view('livewire.entidad-impuestos', ['conHistorial' => $conHistorial, 'obs' => $obs, 'modelos' => $modelos, 'responsables' => $responsables, 'respEntidad' => $respEntidad, 'editar' => $this->puedeEditar()]);
     }
 }
