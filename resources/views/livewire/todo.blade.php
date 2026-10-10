@@ -15,42 +15,36 @@
     @endphp
 
     <div class="p-3 space-y-3">
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            <h1 class="text-2xl font-semibold text-gray-900">Tareas</h1>
-            <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">＋ Nueva tarea</button>
-
+        <div class="flex flex-wrap items-center gap-2 text-sm sm:flex-nowrap">
+            <h1 class="text-2xl font-semibold text-gray-900 whitespace-nowrap">{{ $this->personas->count() > 1 ? 'Tareas de' : 'Tareas' }}</h1>
             @if ($this->personas->count() > 1)
-                <label class="flex items-center gap-1 ml-4 text-sm text-gray-600">
-                    {{ $esAdmin ? 'Ver tareas de' : 'Prioridades de' }}
-                    <select wire:model.live="verUsuario" class="py-1 text-sm border-gray-300 rounded-md">
-                        @foreach ($this->personas as $u)
-                            <option value="{{ $u->id }}">{{ $u->name }}{{ $u->id === auth()->id() ? ' (yo)' : '' }}</option>
-                        @endforeach
-                    </select>
-                </label>
-                @if ($yo !== auth()->id())
-                    <span class="px-2 py-0.5 text-xs text-amber-800 bg-amber-100 rounded">Estás viendo la lista de otra persona: arrastra el ⠿ para ordenar sus prioridades</span>
-                @endif
+                <select wire:model.live="verUsuario" class="py-1 text-sm border-gray-300 rounded-md">
+                    @foreach ($this->personas as $u)
+                        <option value="{{ $u->id }}">{{ $u->name }}{{ $u->id === auth()->id() ? ' (yo)' : '' }}</option>
+                    @endforeach
+                </select>
             @endif
+            <button type="button" wire:click="$toggle('nueva')" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md whitespace-nowrap hover:bg-indigo-700">＋ Nueva tarea</button>
 
-            <div class="inline-flex overflow-hidden border border-gray-300 rounded-md">
+            <select wire:model.live="vista" class="py-1 text-sm border-gray-300 rounded-md">
                 @foreach (['todas' => 'Todas (creadas y asignadas)', 'mias' => 'Asignadas a '.($yo === auth()->id() ? 'mí' : 'esta persona'), 'pedidas' => 'Que he pedido a otros'] as $k => $t)
-                    <button type="button" wire:click="$set('vista','{{ $k }}')"
-                        class="px-3 py-1 {{ $vista === $k ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">{{ $t }}</button>
+                    <option value="{{ $k }}">{{ $t }}</option>
                 @endforeach
-            </div>
-            <div class="inline-flex overflow-hidden border border-gray-300 rounded-md">
+            </select>
+            <select wire:model.live="filtroEstado" class="py-1 text-sm border-gray-300 rounded-md">
                 @foreach (['abiertas' => 'Abiertas', 'cerradas' => 'Cerradas', 'todas' => 'Todas'] as $k => $t)
-                    <button type="button" wire:click="$set('filtroEstado','{{ $k }}')"
-                        class="px-3 py-1 {{ $filtroEstado === $k ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">{{ $t }}</button>
+                    <option value="{{ $k }}">{{ $t }}</option>
                 @endforeach
-            </div>
-            <div class="relative flex-1" style="min-width:14rem">
+            </select>
+            <div class="relative flex-1 w-full sm:w-auto" style="min-width:12rem">
                 <input type="search" wire:model.live.debounce.250ms="buscar" placeholder="Filtrar tareas…" autocomplete="off"
                        class="w-full py-1 pl-7 pr-2 text-sm text-gray-800 bg-white border-gray-300 rounded-md shadow-sm">
                 <span class="absolute text-gray-400 pointer-events-none" style="left:.5rem;top:.3rem">🔍</span>
             </div>
         </div>
+        @if ($this->personas->count() > 1 && $yo !== auth()->id())
+            <span class="inline-block px-2 py-0.5 text-xs text-amber-800 bg-amber-100 rounded">Estás viendo la lista de otra persona: arrastra el ⠿ para ordenar sus prioridades</span>
+        @endif
 
         @if ($nueva)
             <form wire:submit="crear" class="grid max-w-4xl gap-2 p-3 bg-white border border-indigo-200 rounded-lg md:grid-cols-4">
