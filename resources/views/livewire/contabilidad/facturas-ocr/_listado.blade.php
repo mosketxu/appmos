@@ -389,7 +389,7 @@
                             <tbody>
                             @forelse ($validadas as $f)
                                 @php $d = $f['datos']; @endphp
-                                <tr wire:key="v-{{ $f['id'] }}" @if ($f['estado'] === 'validada') class="clic" wire:click="abrir('{{ $f['id'] }}')" title="Ver lo validado (y volverla a pendiente para corregirla)" @endif>
+                                <tr wire:key="v-{{ $f['id'] }}" @if ($f['estado'] === 'validada') class="clic" wire:click="verValidada('{{ $f['id'] }}')" title="Ver lo validado (en una ventana; desde ahí se puede volver a pendiente para corregirla)" @endif>
                                     <td x-data x-on:click.stop>@if ($f['estado'] === 'validada')<input type="checkbox" wire:model.live="marcadasValidadas" value="{{ $f['id'] }}" title="Marcar para retroceder">@endif</td>
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
                                     <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>

@@ -1435,6 +1435,37 @@ class FacturasOcr extends Component
         }
     }
 
+    /** Id de la validada que se está viendo en el modal del listado ('' = cerrado). */
+    public string $verValidada = '';
+
+    public function verValidada(string $id): void
+    {
+        $this->verValidada = $id;
+    }
+
+    public function cerrarValidada(): void
+    {
+        $this->verValidada = '';
+    }
+
+    /** ‹ › del modal: la anterior/siguiente de la lista tal como está filtrada y ordenada en pantalla. */
+    public function vecinaValidada(int $paso): void
+    {
+        $ids = array_column($this->validadasListado(), 'id');
+        $i = array_search($this->verValidada, $ids, true);
+        if ($i !== false && isset($ids[$i + $paso])) {
+            $this->verValidada = $ids[$i + $paso];
+        }
+    }
+
+    /** Del modal a la pantalla de revisión: la validada vuelve a pendiente y se abre para corregirla. */
+    public function corregirValidada(string $id): void
+    {
+        $this->verValidada = '';
+        $this->sel = $id;   // reabrir() sigue en ella si es la abierta
+        $this->reabrir($id);
+    }
+
     public function cerrar(): void
     {
         $this->sel = '';
@@ -2484,11 +2515,10 @@ class FacturasOcr extends Component
         return preg_match('/(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})/', $excel, $m) ? "{$m[3]}/{$m[2]}/{$m[1]} {$m[4]}:{$m[5]}" : basename($excel);
     }
 
-    public function render()
+    /** Validadas tal como se ven en el listado: filtros de texto, mes y proceso aplicados, de la más reciente a la más antigua. */
+    protected function validadasListado(): array
     {
-        $valido = $this->clienteValido();
-        $estado = $valido ? $this->estado() : ['facturas' => []];
-        // Las quitadas de la lista (rechazadas/duplicadas ya vistas) no cuentan en ninguna pestaña
+        $estado = $this->clienteValido() ? $this->estado() : ['facturas' => []];
         $todas = array_values(array_filter($estado['facturas'], fn ($f) => empty($f['oculta'])));
         $validadas = array_values(array_filter($todas, fn ($f) => in_array($f['estado'], ['validada', 'validando'], true)));
         if ($this->filtro !== '') {
@@ -2499,6 +2529,22 @@ class FacturasOcr extends Component
         if ($this->filtroMes !== '') {
             $validadas = array_values(array_filter($validadas, fn ($f) => str_starts_with($f['datos']['fecha_registro'] ?? '', $this->filtroMes)));
         }
+        if ($this->filtroProceso !== 'todas') {
+            $validadas = array_values(array_filter($validadas, fn ($f) => $this->filtroProceso === ''
+                ? ! str_starts_with((string) ($f['excel'] ?? ''), 'Guardados/')
+                : ($f['excel'] ?? '') === $this->filtroProceso));
+        }
+        usort($validadas, fn ($a, $b) => strcmp($b['validada_el'] ?? '', $a['validada_el'] ?? ''));
+        return $validadas;
+    }
+
+    public function render()
+    {
+        $valido = $this->clienteValido();
+        $estado = $valido ? $this->estado() : ['facturas' => []];
+        // Las quitadas de la lista (rechazadas/duplicadas ya vistas) no cuentan en ninguna pestaña
+        $todas = array_values(array_filter($estado['facturas'], fn ($f) => empty($f['oculta'])));
+        $validadas = $this->validadasListado();
         // Procesos ya guardados para SAGE (uno por Excel en Output/Guardados), del más reciente al más antiguo
         $procesos = [];
         foreach ($todas as $f) {
@@ -2508,12 +2554,6 @@ class FacturasOcr extends Component
             }
         }
         krsort($procesos);
-        if ($this->filtroProceso !== 'todas') {
-            $validadas = array_values(array_filter($validadas, fn ($f) => $this->filtroProceso === ''
-                ? ! str_starts_with((string) ($f['excel'] ?? ''), 'Guardados/')
-                : ($f['excel'] ?? '') === $this->filtroProceso));
-        }
-        usort($validadas, fn ($a, $b) => strcmp($b['validada_el'] ?? '', $a['validada_el'] ?? ''));
         $mesesReg = array_values(array_unique(array_map(fn ($f) => substr($f['datos']['fecha_registro'] ?? '', 0, 7),
             array_filter($todas, fn ($f) => $f['estado'] === 'validada'))));
         rsort($mesesReg);

@@ -372,6 +372,7 @@
             @endif
         </h1>
         @include('livewire.contabilidad._modal-cliente-nuevo')
+        @include('livewire.contabilidad.facturas-ocr._modal-validada')
 
         @if ($otroPc)
             <div class="focr-nocuadra" style="animation:none; border-color:#f59e0b; background:#fffbeb; color:#78350f">
