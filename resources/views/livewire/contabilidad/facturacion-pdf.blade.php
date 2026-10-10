@@ -236,7 +236,12 @@
                         this.estado = 'Generando…';
                         const res = await this.$wire.generarGenerico();
                         this.estado = aviso;
-                        if (! this.hayCarpeta() || ! res || ! res.length) return;
+                        if (! res || ! res.length) { this.estado = '⚠️ No se han generado PDF: mira la Salida.'; return; }
+                        if (! this.hayCarpeta()) {
+                            if (! aviso) this.estado = '⚠️ No hay carpeta con permiso de escritura, así que los PDF solo están en el .zip. '
+                                + (this.ficheros.length ? 'Vuelve a elegir la carpeta (o los ficheros) y repite.' : 'Para renombrar en tu carpeta, elígela con «Seleccionar carpeta» antes de analizar.');
+                            return;
+                        }
                         const log = [];
                         for (const r of res) {
                             try {
