@@ -155,7 +155,7 @@
                 catch (e) { await escribir(destino, n, await h.getFile()); await desde.removeEntry(h.name); }
             };
             return {
-                sel: 0, arrastrando: null, subidos: false, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
+                sel: 0, arrastrando: null, sobre: null, subidos: false, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
                 hayCarpeta() { return !! dir && this.carpeta !== ''; },
                 get marcados() { return this.ficheros.filter(f => f.marcado); },
                 marcar(v) { this.ficheros.forEach(f => f.marcado = v); },
@@ -670,10 +670,11 @@
                                     <tr wire:key="gen-arch-cab-{{ $i }}"><td colspan="8" class="px-1 pt-2 pb-1 text-xs font-semibold text-gray-600 bg-gray-50">📄 {{ $f['archivo'] ?? '' }}</td></tr>
                                 @endif
                                 <tr wire:key="gen-pag-{{ $f['pagina'] }}" x-on:click="sel = {{ $i }}" x-on:focusin="sel = {{ $i }}"
-                                    :style="sel === {{ $i }} ? 'background:#e0e7ff' : ''" style="cursor:pointer"
-                                    x-on:dragover.prevent x-on:drop.prevent="if (arrastrando !== null && arrastrando !== {{ $i }}) { $wire.moverPagina(arrastrando, {{ $i }}); sel = {{ $i }}; } arrastrando = null">
+                                    :style="(sel === {{ $i }} ? 'background:#e0e7ff;' : '') + (arrastrando !== null && sobre === {{ $i }} && arrastrando !== {{ $i }} ? 'box-shadow:inset 0 3px 0 #4f46e5;' : '')" style="cursor:pointer"
+                                    x-on:dragover.prevent="$event.dataTransfer.dropEffect = 'move'; sobre = {{ $i }}" x-on:drop.prevent="if (arrastrando !== null && arrastrando !== {{ $i }}) { $wire.moverPagina(arrastrando, {{ $i }}); sel = {{ $i }}; } arrastrando = null">
                                     <td class="px-1 py-1 text-gray-400 select-none" style="cursor:grab" draggable="true" title="Arrastra para cambiar el orden"
-                                        x-on:dragstart="arrastrando = {{ $i }}; sel = {{ $i }}" x-on:dragend="arrastrando = null">⠿</td>
+                                        x-on:dragstart="$event.dataTransfer.effectAllowed = 'move'; $event.dataTransfer.setData('text/plain', '{{ $i }}'); $event.dataTransfer.setDragImage($el.parentElement, 0, 0); arrastrando = {{ $i }}"
+                                        x-on:dragend="arrastrando = null; sobre = null">⠿</td>
                                     <td class="px-1 py-1 text-gray-500">{{ $f['pagina'] }}</td>
                                     <td class="px-1 py-1">
                                         <input type="number" min="1" wire:model.blur="genericoPaginas.{{ $i }}.grupo" style="width:3.5rem"
@@ -710,6 +711,10 @@
                                     <td class="px-1 py-1 whitespace-nowrap">
                                         <button type="button" wire:click="girarPagina({{ $i }})"
                                                 class="text-gray-400 hover:text-gray-700" title="Girar 90° (se aplica al generar los PDF)">↻</button>
+                                        <button type="button" x-on:click.stop="if ({{ $i }} > 0) { $wire.moverPagina({{ $i }}, {{ $i - 1 }}); sel = {{ $i - 1 }}; }"
+                                                class="text-gray-400 hover:text-gray-700" title="Subir una posición">▲</button>
+                                        <button type="button" x-on:click.stop="if ({{ $i }} < {{ count($genericoPaginas) - 1 }}) { $wire.moverPagina({{ $i }}, {{ $i + 1 }}); sel = {{ $i + 1 }}; }"
+                                                class="text-gray-400 hover:text-gray-700" title="Bajar una posición">▼</button>
                                         @if ($i > 0)
                                             <button type="button" wire:click="igualQueAnterior({{ $i }})"
                                                     class="text-gray-400 hover:text-gray-700" title="Igual que la anterior (misma factura)">↑=</button>
