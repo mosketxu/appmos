@@ -2214,6 +2214,20 @@ class FacturasOcr extends Component
         $this->dispatch('proceso-terminado', mensaje: ($ok ? '↩ ' : '⚠️ ').($lineas ? implode("\n", $lineas) : trim($this->salida)));
     }
 
+    /** Elimina de la lista (y de la «memoria» de huellas) las validadas marcadas, para poder volver a subirlas como nuevas. */
+    public function eliminarMarcadas(): void
+    {
+        $ids = array_values(array_filter($this->marcadasValidadas, fn ($i) => is_string($i) && preg_match('/^[0-9a-f]{6,}$/', $i)));
+        $this->marcadasValidadas = [];
+        if (! $ids) {
+            return;
+        }
+        $this->salida = '';
+        $ok = $this->ejecutar(['eliminar_varias', implode(',', $ids)], 900, 'Eliminar validadas', false);
+        $lineas = array_values(array_filter(array_map('trim', explode("\n", $this->salida)), fn ($l) => str_contains($l, 'eliminadas de la lista') || str_starts_with($l, 'OJO') || str_starts_with($l, 'No se ha podido')));
+        $this->dispatch('proceso-terminado', mensaje: ($ok ? '🗑 ' : '⚠️ ').($lineas ? implode("\n", $lineas) : trim($this->salida)));
+    }
+
     /** Vuelve a proponer los datos con el texto ya leído (sin OCR): tras mejoras del programa o tras aprender. */
     public function reproponer(): void
     {
