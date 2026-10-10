@@ -108,6 +108,7 @@
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
                         <x-icon.clock-a href="{{ route('entidad.historial',$entidad) }}"  title="Historial"/>
+                        <x-icon.impuestos href="{{ route('entidad.impuestos',$entidad) }}" title="Impuestos" class="hidden sm:inline-block"/>
                         <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
                         {{-- Ocultos a petición: botones Prefactura y Factura
                         <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
