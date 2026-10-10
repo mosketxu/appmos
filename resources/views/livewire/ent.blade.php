@@ -238,6 +238,11 @@
                     <x-jet-input-error for="cuentacontable" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
+                    <x-jet-label for="alias" >{{ __('Alias') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.alias" type="text" id="alias" maxlength="255" class="w-full" title="Nombre corto: si lo tiene, sustituye al nombre en listas como Libros IVA e Impuestos"/>
+                    <x-jet-input-error for="alias" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="codigo_cliente" >{{ __('Cód. Cliente') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.codigo_cliente" type="text" id="codigo_cliente" maxlength="20" class="w-full" title="Código de cliente (no es la cuenta contable)"/>
                     <x-jet-input-error for="codigo_cliente" class="mt-2" />
