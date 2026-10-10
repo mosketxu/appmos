@@ -619,6 +619,7 @@ class FacturacionPdf extends Component
         }
 
         $this->genericoPaginas = $data['paginas'] ?? [];
+        $this->numerarGrupos();
         $this->generico['destinatario'] = $data['destinatario'] ?? '';
         $this->generico['avisos'] = $data['avisos'] ?? [];
         $this->generico['fase'] = 'analizado';
@@ -640,12 +641,83 @@ class FacturacionPdf extends Component
         }
     }
 
+    private function claveFila(array $f): array
+    {
+        return [trim((string) ($f['numero'] ?? '')), trim((string) ($f['proveedor'] ?? '')), $f['tipo'] ?? 'Fra', $f['archivo'] ?? ''];
+    }
+
+    /** Un número de grupo por factura: filas seguidas con mismo número+proveedor+tipo+archivo comparten grupo. */
+    private function numerarGrupos(): void
+    {
+        $g = 0;
+        $prev = null;
+        foreach ($this->genericoPaginas as $i => $f) {
+            $k = $this->claveFila($f);
+            if ($prev === null || $prev !== $k || ($k[0] === '' && $k[1] === '')) {
+                $g++;
+            }
+            $this->genericoPaginas[$i]['grupo'] = $g;
+            $prev = $k;
+        }
+    }
+
     /** Copia número/proveedor/tipo de una fila a la siguiente (para unir una página a la factura anterior). */
     public function igualQueAnterior(int $i): void
     {
         if ($i > 0 && isset($this->genericoPaginas[$i], $this->genericoPaginas[$i - 1])) {
-            foreach (['numero', 'proveedor', 'tipo'] as $k) {
-                $this->genericoPaginas[$i][$k] = $this->genericoPaginas[$i - 1][$k];
+            foreach (['numero', 'proveedor', 'tipo', 'proveedor_completo', 'grupo'] as $k) {
+                if (isset($this->genericoPaginas[$i - 1][$k])) {
+                    $this->genericoPaginas[$i][$k] = $this->genericoPaginas[$i - 1][$k];
+                }
+            }
+        }
+    }
+
+    /** Arrastrar una fila a otra posición: el orden de la tabla es el orden de las páginas dentro de cada PDF. */
+    public function moverPagina(int $desde, int $hasta): void
+    {
+        $n = count($this->genericoPaginas);
+        if ($desde === $hasta || $desde < 0 || $hasta < 0 || $desde >= $n || $hasta >= $n) {
+            return;
+        }
+        $fila = array_splice($this->genericoPaginas, $desde, 1);
+        array_splice($this->genericoPaginas, $hasta, 0, $fila);
+    }
+
+    /**
+     * Cambios en la tabla: si pones a una fila el mismo grupo que otra, copia su tipo/proveedor/número (salen
+     * en el mismo PDF); si al editar número/proveedor/tipo una fila queda igual que la anterior o la siguiente,
+     * pasa a su grupo (como antes, las seguidas iguales se unen).
+     */
+    public function updatedGenericoPaginas($valor, $clave): void
+    {
+        [$i, $campo] = array_pad(explode('.', (string) $clave, 2), 2, null);
+        $i = (int) $i;
+        if (! isset($this->genericoPaginas[$i])) {
+            return;
+        }
+        if ($campo === 'grupo') {
+            $this->genericoPaginas[$i]['grupo'] = max(1, (int) $valor);
+            foreach ($this->genericoPaginas as $j => $f) {
+                if ($j !== $i && (int) ($f['grupo'] ?? 0) === $this->genericoPaginas[$i]['grupo']) {
+                    foreach (['numero', 'proveedor', 'tipo', 'proveedor_completo'] as $k) {
+                        if (isset($f[$k])) {
+                            $this->genericoPaginas[$i][$k] = $f[$k];
+                        }
+                    }
+                    break;
+                }
+            }
+        } elseif (in_array($campo, ['numero', 'proveedor', 'tipo'], true)) {
+            $k = $this->claveFila($this->genericoPaginas[$i]);
+            if ($k[0] === '' && $k[1] === '') {
+                return;
+            }
+            foreach ([$i - 1, $i + 1] as $j) {
+                if (isset($this->genericoPaginas[$j]) && $this->claveFila($this->genericoPaginas[$j]) === $k) {
+                    $this->genericoPaginas[$i]['grupo'] = $this->genericoPaginas[$j]['grupo'] ?? $this->genericoPaginas[$i]['grupo'];
+                    return;
+                }
             }
         }
     }
@@ -674,6 +746,7 @@ class FacturacionPdf extends Component
             'proveedor_completo' => trim((string) ($f['proveedor_completo'] ?? '')),
             'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre', 'Prof'], true) ? $f['tipo'] : 'Fra',
             'giro' => ((int) ($f['giro'] ?? 0)) % 360,
+            'grupo' => (int) ($f['grupo'] ?? 0),
             'archivo' => (string) ($f['archivo'] ?? ''),
         ], $this->genericoPaginas);
         $rutaPlan = $master.'.plan.json';

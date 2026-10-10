@@ -155,7 +155,7 @@
                 catch (e) { await escribir(destino, n, await h.getFile()); await desde.removeEntry(h.name); }
             };
             return {
-                sel: 0, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
+                sel: 0, arrastrando: null, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
                 hayCarpeta() { return !! dir && this.carpeta !== ''; },
                 get marcados() { return this.ficheros.filter(f => f.marcado); },
                 marcar(v) { this.ficheros.forEach(f => f.marcado = v); },
@@ -633,14 +633,17 @@
                 </div>
 
                 <p class="mb-1 text-xs text-gray-500">
-                    Páginas seguidas con el mismo número y proveedor salen en un solo PDF. Corrige lo que el OCR haya leído mal.
+                    Las filas con el mismo <b>Grupo</b> salen en un solo PDF (por defecto, las seguidas con el mismo número y proveedor): para unir
+                    páginas que no se han detectado, pon el mismo número de grupo; para separar, uno distinto. Arrastra ⠿ para cambiar el orden. Corrige lo que el OCR haya leído mal.
                     Clic en una fila para ver su página en grande a la derecha; ↻ la gira 90° (las torcidas ya vienen giradas).
                 </p>
                 <div class="mb-3 overflow-auto border rounded" style="max-height:calc(100vh - 16rem)">
                     <table class="min-w-full text-xs divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
+                                <th class="px-1 py-1"></th>
                                 <th class="px-1 py-1 text-left">Pág.</th>
+                                <th class="px-1 py-1 text-left" title="Mismo grupo = mismo PDF">Grupo</th>
                                 <th class="px-1 py-1"></th>
                                 <th class="px-1 py-1 text-left">Tipo</th>
                                 <th class="px-1 py-1 text-left">Proveedor</th>
@@ -649,13 +652,22 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
+                            @php($grupoRepetido = array_map(fn ($n) => $n > 1, array_count_values(array_column($genericoPaginas, 'grupo'))))
                             @foreach ($genericoPaginas as $i => $f)
                                 @if (count($archivosGenerico) > 1 && ($f['archivo'] ?? '') !== ($genericoPaginas[$i - 1]['archivo'] ?? null))
-                                    <tr wire:key="gen-arch-cab-{{ $i }}"><td colspan="6" class="px-1 pt-2 pb-1 text-xs font-semibold text-gray-600 bg-gray-50">📄 {{ $f['archivo'] ?? '' }}</td></tr>
+                                    <tr wire:key="gen-arch-cab-{{ $i }}"><td colspan="8" class="px-1 pt-2 pb-1 text-xs font-semibold text-gray-600 bg-gray-50">📄 {{ $f['archivo'] ?? '' }}</td></tr>
                                 @endif
-                                <tr wire:key="gen-pag-{{ $i }}" x-on:click="sel = {{ $i }}" x-on:focusin="sel = {{ $i }}"
-                                    :style="sel === {{ $i }} ? 'background:#e0e7ff' : ''" style="cursor:pointer">
+                                <tr wire:key="gen-pag-{{ $f['pagina'] }}" x-on:click="sel = {{ $i }}" x-on:focusin="sel = {{ $i }}"
+                                    :style="sel === {{ $i }} ? 'background:#e0e7ff' : ''" style="cursor:pointer"
+                                    x-on:dragover.prevent x-on:drop.prevent="if (arrastrando !== null && arrastrando !== {{ $i }}) { $wire.moverPagina(arrastrando, {{ $i }}); sel = {{ $i }}; } arrastrando = null">
+                                    <td class="px-1 py-1 text-gray-400 select-none" style="cursor:grab" draggable="true" title="Arrastra para cambiar el orden"
+                                        x-on:dragstart="arrastrando = {{ $i }}; sel = {{ $i }}" x-on:dragend="arrastrando = null">⠿</td>
                                     <td class="px-1 py-1 text-gray-500">{{ $f['pagina'] }}</td>
+                                    <td class="px-1 py-1">
+                                        <input type="number" min="1" wire:model.blur="genericoPaginas.{{ $i }}.grupo" style="width:3.5rem"
+                                               title="Mismo número de grupo = se juntan en un solo PDF"
+                                               class="py-0.5 px-1 text-xs border-gray-300 rounded {{ $grupoRepetido[$f['grupo'] ?? 0] ?? false ? 'bg-indigo-100 font-semibold' : '' }}">
+                                    </td>
                                     <td class="px-1 py-1">
                                         @if ($g['id'])
                                             {{-- La miniatura es de la página tal cual viene; se gira aquí con el giro que se aplicará --}}
@@ -733,7 +745,7 @@
                     @foreach ($genericoPaginas as $i => $f)
                         @php($giro = (int) ($f['giro'] ?? 0))
                         {{-- Imagen al instante; en cuanto PDF.js pinta la página se cambia por el PDF con texto seleccionable --}}
-                        <div wire:key="gen-grande-{{ $i }}" x-show="sel === {{ $i }}" x-cloak data-giro="{{ $giro % 360 }}"
+                        <div wire:key="gen-grande-{{ $f['pagina'] }}" x-show="sel === {{ $i }}" x-cloak data-giro="{{ $giro % 360 }}"
                              x-data="paginaPdf('{{ route('contabilidad.facturacion-pdf.master', $g['id']) }}', {{ (int) $f['pagina'] }})"
                              x-effect="if (sel === {{ $i }}) $nextTick(() => pintar())">
                             <img loading="lazy" x-show="! hecho"
