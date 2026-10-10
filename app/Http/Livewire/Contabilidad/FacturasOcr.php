@@ -59,6 +59,9 @@ class FacturasOcr extends Component
     public string $vista = 'revisar';   // revisar | historico | duplicadas | proveedores
     public string $filtro = '';
     public string $filtroMes = '';
+    /** Validadas: fecha de proceso (validada_el) desde / hasta, AAAA-MM-DD. */
+    public string $filtroDesde = '';
+    public string $filtroHasta = '';
     /** Validadas: '' = las del proceso en curso (aún sin guardar), 'todas', o el Excel guardado (Guardados/...). */
     public string $filtroProceso = '';
 
@@ -2543,7 +2546,14 @@ class FacturasOcr extends Component
         if ($this->filtroMes !== '') {
             $validadas = array_values(array_filter($validadas, fn ($f) => str_starts_with($f['datos']['fecha_registro'] ?? '', $this->filtroMes)));
         }
-        if ($this->filtroProceso !== 'todas') {
+        if ($this->filtroDesde !== '') {
+            $validadas = array_values(array_filter($validadas, fn ($f) => substr((string) ($f['validada_el'] ?? ''), 0, 10) >= $this->filtroDesde));
+        }
+        if ($this->filtroHasta !== '') {
+            $validadas = array_values(array_filter($validadas, fn ($f) => ($d = substr((string) ($f['validada_el'] ?? ''), 0, 10)) !== '' && $d <= $this->filtroHasta));
+        }
+        // Con fecha de proceso elegida se miran todas (guardadas o no), salvo que se haya elegido un proceso concreto
+        if ($this->filtroProceso !== 'todas' && ! ($this->filtroProceso === '' && ($this->filtroDesde !== '' || $this->filtroHasta !== ''))) {
             $validadas = array_values(array_filter($validadas, fn ($f) => $this->filtroProceso === ''
                 ? ! str_starts_with((string) ($f['excel'] ?? ''), 'Guardados/')
                 : ($f['excel'] ?? '') === $this->filtroProceso));

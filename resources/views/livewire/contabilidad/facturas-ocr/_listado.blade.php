@@ -378,6 +378,11 @@
                                     <option value="{{ $m }}">{{ $m }}</option>
                                 @endforeach
                             </select>
+                            <label class="flex items-center gap-1 text-xs text-gray-500" title="Fecha en que se validó la factura (fecha de proceso)">Validada
+                                <input type="date" wire:model.live="filtroDesde" class="focr-in" style="max-width:9.5rem" title="Desde">
+                                <input type="date" wire:model.live="filtroHasta" class="focr-in" style="max-width:9.5rem" title="Hasta">
+                                @if ($filtroDesde !== '' || $filtroHasta !== '')<button type="button" class="text-indigo-600 underline" wire:click="$set('filtroDesde', ''); $set('filtroHasta', '')">quitar</button>@endif
+                            </label>
                             <span class="ml-auto text-xs text-gray-500">
                                 @if ($ultimoExcel) Último guardado: {{ $ultimoExcel['fecha'] }} ({{ $ultimoExcel['facturas'] }} facturas) · @endif
                             </span>
@@ -421,7 +426,7 @@
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="13" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso ? ' con ese filtro' : '').'.' }}</td></tr>
+                                <tr><td colspan="13" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso || $filtroDesde || $filtroHasta ? ' con ese filtro' : '').'.' }}</td></tr>
                             @endforelse
                             </tbody>
                         </table>
