@@ -59,7 +59,7 @@ class FacturasOcr extends Component
     public string $vista = 'revisar';   // revisar | historico | duplicadas | proveedores
     public string $filtro = '';
     public string $filtroMes = '';
-    /** Validadas: fecha de proceso (validada_el) desde / hasta, AAAA-MM-DD. */
+    /** Validadas: fecha de proceso (guardado del Excel para SAGE) desde / hasta, AAAA-MM-DD. */
     public string $filtroDesde = '';
     public string $filtroHasta = '';
     /** Validadas: '' = las del proceso en curso (aún sin guardar), 'todas', o el Excel guardado (Guardados/...). */
@@ -2546,11 +2546,13 @@ class FacturasOcr extends Component
         if ($this->filtroMes !== '') {
             $validadas = array_values(array_filter($validadas, fn ($f) => str_starts_with($f['datos']['fecha_registro'] ?? '', $this->filtroMes)));
         }
+        // Fecha de proceso = cuándo se guardó el Excel para SAGE (sale del nombre: Guardados/…_AAAA-MM-DD_HHMM.xlsx)
+        $guardado = fn ($f) => preg_match('/(\d{4}-\d{2}-\d{2})_\d{4}/', (string) ($f['excel'] ?? ''), $m) && str_starts_with((string) $f['excel'], 'Guardados/') ? $m[1] : '';
         if ($this->filtroDesde !== '') {
-            $validadas = array_values(array_filter($validadas, fn ($f) => substr((string) ($f['validada_el'] ?? ''), 0, 10) >= $this->filtroDesde));
+            $validadas = array_values(array_filter($validadas, fn ($f) => ($d = $guardado($f)) !== '' && $d >= $this->filtroDesde));
         }
         if ($this->filtroHasta !== '') {
-            $validadas = array_values(array_filter($validadas, fn ($f) => ($d = substr((string) ($f['validada_el'] ?? ''), 0, 10)) !== '' && $d <= $this->filtroHasta));
+            $validadas = array_values(array_filter($validadas, fn ($f) => ($d = $guardado($f)) !== '' && $d <= $this->filtroHasta));
         }
         // Con fecha de proceso elegida se miran todas (guardadas o no), salvo que se haya elegido un proceso concreto
         if ($this->filtroProceso !== 'todas' && ! ($this->filtroProceso === '' && ($this->filtroDesde !== '' || $this->filtroHasta !== ''))) {

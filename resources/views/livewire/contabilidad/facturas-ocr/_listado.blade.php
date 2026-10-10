@@ -378,7 +378,7 @@
                                     <option value="{{ $m }}">{{ $m }}</option>
                                 @endforeach
                             </select>
-                            <label class="flex items-center gap-1 text-xs text-gray-500" title="Fecha en que se validó la factura (fecha de proceso)">Validada
+                            <label class="flex items-center gap-1 text-xs text-gray-500" title="Fecha del proceso: el día en que se guardó el Excel para SAGE">Proceso
                                 <input type="date" wire:model.live="filtroDesde" class="focr-in" style="max-width:9.5rem" title="Desde">
                                 <input type="date" wire:model.live="filtroHasta" class="focr-in" style="max-width:9.5rem" title="Hasta">
                                 @if ($filtroDesde !== '' || $filtroHasta !== '')<button type="button" class="text-indigo-600 underline" wire:click="$set('filtroDesde', ''); $set('filtroHasta', '')">quitar</button>@endif
