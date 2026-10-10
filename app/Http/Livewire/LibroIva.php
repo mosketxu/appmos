@@ -164,7 +164,36 @@ class LibroIva extends Component
 
     public string $carpetaElegida = '';
 
-    /** Árbol de carpetas de OneDrive que subió un PC (tarea pc.arbol_carpetas modo iva): ['dirs' => [...], 'marcas' => [carpetas con Excel de IVA]]. */
+    /**
+     * Raíces de OneDrive que puede ver el usuario en el explorador (10-oct-2026): `_Clientes` todos; `_RUR_Marta_Alex` solo Alex y Marta Ruiz
+     * (config contabilidad.libro_iva_acceso_total); `_Suma` además los roles Suma y Admin.
+     */
+    public static function raicesPermitidas(?\App\Models\User $u = null): array
+    {
+        $u ??= auth()->user();
+        $raices = ['_Clientes'];
+        if ($u && in_array(strtolower((string) $u->email), array_map('strtolower', (array) config('contabilidad.libro_iva_acceso_total', [])), true)) {
+            return ['_Clientes', '_RUR_Marta_Alex', '_Suma'];
+        }
+        if ($u && $u->hasAnyRole(['Admin', 'Suma'])) {
+            $raices[] = '_Suma';
+        }
+
+        return $raices;
+    }
+
+    public static function rutaPermitida(string $ruta, ?\App\Models\User $u = null): bool
+    {
+        foreach (self::raicesPermitidas($u) as $r) {
+            if ($ruta === $r || str_starts_with($ruta, $r.'/')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Árbol de carpetas de OneDrive que subió un PC (tarea pc.arbol_carpetas modo iva), filtrado por lo que puede ver el usuario: ['dirs' => [...], 'marcas' => [...]]. */
     public function arbolCarpetas(): array
     {
         try {
@@ -172,8 +201,9 @@ class LibroIva extends Component
         } catch (\Throwable $e) {
             $a = null;
         }
+        $ok = fn ($d) => self::rutaPermitida((string) $d);
 
-        return ['dirs' => array_values((array) ($a['dirs'] ?? [])), 'marcas' => array_values((array) ($a['marcas'] ?? []))];
+        return ['dirs' => array_values(array_filter((array) ($a['dirs'] ?? []), $ok)), 'marcas' => array_values(array_filter((array) ($a['marcas'] ?? []), $ok))];
     }
 
     public function carpetasIva(): array

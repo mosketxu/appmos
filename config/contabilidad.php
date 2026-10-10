@@ -206,6 +206,9 @@ return [
     ],
 
     // Quién puede marcar «visto por Marta» en Impuestos (correos separados por comas)
+    // Libro de IVA: quién ve TODAS las carpetas de OneDrive en el explorador (incluida _RUR_Marta_Alex); el resto no ve _RUR_Marta_Alex y _Suma solo los roles Suma/Admin
+    'libro_iva_acceso_total' => array_filter(array_map('trim', explode(',', (string) env('LIBRO_IVA_ACCESO_TOTAL', 'alex.arregui@sumaempresa.com,marta.ruiz@sumaempresa.com')))),
+
     'impuestos_visto_emails' => array_filter(array_map('trim', explode(',', (string) env('IMPUESTOS_VISTO_EMAILS', 'marta.ruiz@sumaempresa.com')))),
 
     // Carpetas de OneDrive con los PDF de impuestos de cada año ({A}); se buscan en ellas y en sus subcarpetas. «_Clientes» y «Clientes» valen igual.

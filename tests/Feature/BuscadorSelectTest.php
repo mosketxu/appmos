@@ -40,4 +40,23 @@ class BuscadorSelectTest extends TestCase
             }
         }
     }
+
+    /** El explorador del Libro de IVA: Alex y Marta ven todo; Suma/Admin además _Suma; el resto solo _Clientes. */
+    public function test_raices_de_carpetas_por_usuario(): void
+    {
+        config(['contabilidad.libro_iva_acceso_total' => ['alex.arregui@sumaempresa.com', 'marta.ruiz@sumaempresa.com']]);
+        \Spatie\Permission\Models\Role::findOrCreate('Suma', 'web');
+        $alex = \App\Models\User::factory()->create(['email' => 'alex.arregui@sumaempresa.com', 'activo' => true]);
+        $suma = \App\Models\User::factory()->create(['activo' => true]);
+        $suma->assignRole('Suma');
+        $otro = \App\Models\User::factory()->create(['activo' => true]);
+
+        $this->assertSame(['_Clientes', '_RUR_Marta_Alex', '_Suma'], \App\Http\Livewire\LibroIva::raicesPermitidas($alex));
+        $this->assertSame(['_Clientes', '_Suma'], \App\Http\Livewire\LibroIva::raicesPermitidas($suma));
+        $this->assertSame(['_Clientes'], \App\Http\Livewire\LibroIva::raicesPermitidas($otro));
+        $this->assertTrue(\App\Http\Livewire\LibroIva::rutaPermitida('_RUR_Marta_Alex/2026 RMA/IVA', $alex));
+        $this->assertFalse(\App\Http\Livewire\LibroIva::rutaPermitida('_RUR_Marta_Alex/2026 RMA/IVA', $suma));
+        $this->assertFalse(\App\Http\Livewire\LibroIva::rutaPermitida('_Suma2/x', $suma));
+        $this->assertTrue(\App\Http\Livewire\LibroIva::rutaPermitida('_Clientes/2026/X', $otro));
+    }
 }
