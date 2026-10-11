@@ -287,9 +287,44 @@ class LibroIva extends Component
         $this->tareaId = ColaTareas::crear('pc.libro_iva', [
             'accion' => $accion, 'carpeta' => $this->carpeta, 'periodo' => $this->periodoMotor(),
             'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId, 'm216' => $this->presentaM216(),
+            'anterior' => $accion === 'generar' ? $this->anteriorDeImpuesto() : null,
         ], ColaTareas::pcElegido() ?: null, auth()->id());
         $this->espera = $accion;
         $this->mensaje = $accion === 'generar' ? 'Pedido a un PC: monta el libro en la carpeta de OneDrive…' : 'Pedido a un PC: mirando la carpeta…';
+    }
+
+    /**
+     * Resultado del 303 del periodo anterior, tomado del impuesto presentado (PDF de la AEAT subido en Impuestos; casilla 71), no de los Excel,
+     * que pueden estar desactualizados. Devuelve ['valor' (+ a pagar / − a compensar), 'origen'] o, si no hay PDF legible, ['aviso'] y el
+     * motor usa los Excel como antes.
+     */
+    protected function anteriorDeImpuesto(): array
+    {
+        $ej = (int) $this->ejercicio;
+        if (preg_match('/^([1-4])T$/', $this->periodo, $m)) {
+            [$ejA, $perA] = $m[1] === '1' ? [$ej - 1, 'T4'] : [$ej, 'T'.($m[1] - 1)];
+        } else {
+            $mes = (int) $this->periodo;
+            [$ejA, $perA] = $mes === 1 ? [$ej - 1, '12'] : [$ej, sprintf('%02d', $mes - 1)];
+        }
+        $doc = \App\Models\ImpuestoDocumento::where('entidad_id', (int) $this->entidadId)->where('modelo', '303')->where('tipo', 'presentado')
+            ->where('ejercicio', $ejA)->where('periodo', $perA)->whereNull('quitado_at')->orderByDesc('id')->first();
+        if (! $doc) {
+            return ['aviso' => "no hay 303 presentado de $perA $ejA en Impuestos"];
+        }
+        $ruta = storage_path('app/'.$doc->almacen);
+        $script = rtrim((string) config('contabilidad.facturasocr_dir'), '/').'/leer_303.py';
+        if (! is_file($ruta) || ! is_file($script)) {
+            return ['aviso' => "no se puede leer el 303 presentado «{$doc->nombre}»"];
+        }
+        $py = storage_path('app/venv-facturasocr/bin/python');
+        $r = \Illuminate\Support\Facades\Process::timeout(60)->run([is_executable($py) ? $py : 'python3', $script, $ruta]);
+        $d = json_decode(trim($r->output()), true);
+        if (! is_array($d) || ! isset($d['resultado'])) {
+            return ['aviso' => "no encuentro el resultado en el 303 presentado «{$doc->nombre}»".(is_array($d) && isset($d['error']) ? ' ('.$d['error'].')' : '')];
+        }
+
+        return ['valor' => (float) $d['resultado'], 'origen' => "impuesto presentado: «{$doc->nombre}» (casilla 71)"];
     }
 
     /** wire:poll mientras se espera a un PC. */
