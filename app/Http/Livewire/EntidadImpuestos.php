@@ -47,6 +47,13 @@ class EntidadImpuestos extends Component
         $this->nuevaPeriodicidad = (string) ImpuestoModelo::where('codigo', $this->nuevoModelo)->value('periodicidad');
     }
 
+    /** Marcas de la entidad que usan los impuestos: REDEME (devolución mensual) y gran empresa (impuestos mensuales). */
+    public function marcar(string $campo, bool $valor): void
+    {
+        abort_unless($this->puedeEditar() && in_array($campo, ['redeme', 'gran_empresa'], true), 403);
+        DB::table('entidades')->where('id', $this->entidadId)->update([$campo => $valor, 'updated_at' => now()]);
+    }
+
     public function anadir(): void
     {
         abort_unless($this->puedeEditar(), 403);
@@ -188,6 +195,7 @@ class EntidadImpuestos extends Component
         $conHistorial = DB::table('impuesto_estados')->whereIn('entidad_impuesto_id', $obs->pluck('id')->all() ?: [0])->whereNotIn('estado', ['pendiente', 'no'])->pluck('entidad_impuesto_id')
             ->merge(DB::table('impuesto_comentarios')->whereIn('entidad_impuesto_id', $obs->pluck('id')->all() ?: [0])->pluck('entidad_impuesto_id'))->flip();
 
-        return view('livewire.entidad-impuestos', ['conHistorial' => $conHistorial, 'obs' => $obs, 'modelos' => $modelos, 'respEntidad' => $respEntidad, 'editar' => $this->puedeEditar()]);
+        return view('livewire.entidad-impuestos', ['conHistorial' => $conHistorial, 'obs' => $obs, 'modelos' => $modelos, 'respEntidad' => $respEntidad, 'editar' => $this->puedeEditar(),
+            'marcas' => DB::table('entidades')->where('id', $this->entidadId)->first(['redeme', 'gran_empresa'])]);
     }
 }

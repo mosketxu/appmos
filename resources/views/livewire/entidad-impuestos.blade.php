@@ -2,6 +2,12 @@
     <div class="px-2 mx-2 mt-2 mb-1 rounded-md bg-blue-50">
         <h3 class="font-semibold text-gray-600">Impuestos que presenta <span class="text-xs font-normal text-gray-500">— aparecen en TO-DO → Impuestos; se guarda al momento{{ $respEntidad ? ' · los ve: '.$respEntidad : '' }}</span></h3>
     </div>
+    <div class="flex flex-wrap items-center gap-4 mx-2 mt-1 text-sm text-gray-700">
+        <label class="inline-flex items-center gap-1" title="Inscrita en el registro de devolución mensual: un 303 con resultado a favor se puede pedir a devolver (casilla 73) o a compensar (72)">
+            <input type="checkbox" @checked($marcas->redeme) @disabled(! $editar) wire:change="marcar('redeme', $event.target.checked)"> REDEME (devolución mensual)</label>
+        <label class="inline-flex items-center gap-1" title="Gran empresa: presenta los impuestos mensualmente">
+            <input type="checkbox" @checked($marcas->gran_empresa) @disabled(! $editar) wire:change="marcar('gran_empresa', $event.target.checked)"> Gran empresa (impuestos mensuales)</label>
+    </div>
     <div class="mx-2 text-sm text-gray-600">
         @if ($aviso) <p class="px-1 py-1 text-xs text-red-700">{{ $aviso }}</p> @endif
         @if ($obs->isEmpty())

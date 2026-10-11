@@ -15,7 +15,7 @@ class Entidad extends Model
     /** Una entidad nueva NO recibe facturas por correo hasta que se marque «Enviar» (antes la columna tenía por defecto true). */
     protected $attributes = ['enviar' => false];
 
-    protected $fillable=['entidad','alias','grupo_id','favorito',
+    protected $fillable=['entidad','alias','grupo_id','favorito','redeme','gran_empresa',
                         'entidadtipo_id','direccion','codpostal',
                         'localidad','provincia_id','pais_id',
                         'nif','tfno','emailgral','emailadm',

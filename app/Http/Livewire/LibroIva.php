@@ -26,6 +26,8 @@ class LibroIva extends Component
     public string $ejercicio = '';
     public string $periodo = '3T';
     public string $carpeta = '';
+    /** Si el resultado sale a favor: true = «A DEVOLVER», false = «A COMPENSAR». Parte de la marca REDEME de la entidad, se puede cambiar en cada cálculo. */
+    public bool $devolver = false;
     /** Admin/Suma: ver las empresas de todos (por defecto solo las suyas, como en Impuestos). */
     public bool $verTodos = false;
 
@@ -124,6 +126,7 @@ class LibroIva extends Component
     protected function alCambiarEmpresa(): void
     {
         $this->ajustarPeriodo();
+        $this->devolver = (bool) DB::table('entidades')->where('id', (int) $this->entidadId)->value('redeme');
         $this->carpeta = (string) (DB::table('libro_iva_carpetas')->where('entidad_id', (int) $this->entidadId)->value('carpeta') ?? '');
         $this->listado = null;
         $this->libro = null;
@@ -316,7 +319,7 @@ class LibroIva extends Component
         }
         $this->tareaId = ColaTareas::crear('pc.libro_iva', [
             'accion' => $accion, 'carpeta' => $this->carpeta, 'periodo' => $this->periodoMotor(),
-            'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId, 'm216' => $this->presentaM216(),
+            'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId, 'm216' => $this->presentaM216(), 'devolver' => $this->devolver,
             'anterior' => $accion === 'generar' ? $this->anteriorDeImpuesto() : null,
             'entrada' => $subir ? ['archivo' => 'original.xlsx', 'nombre' => basename(str_replace('\\', '/', $this->excelSubido->getClientOriginalName()))] : null,
         ], ColaTareas::pcElegido() ?: null, auth()->id(), null, null, $subir ? 'preparando' : 'pendiente');
