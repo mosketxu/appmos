@@ -1,4 +1,16 @@
 <div>
+<style>
+    .todo-dictable textarea { padding-right:3rem }
+    @media (max-width: 639px) {
+        .todo-resp-fila { flex-direction:column; align-items:stretch !important }
+        .todo-resp-fila > .todo-dictable { order:1; min-width:0 !important; width:100% }
+        .todo-resp-fila > .todo-resp-botones { order:2; flex-direction:column }
+        .todo-resp-fila > input[type=date] { order:3 }
+        .todo-dictable textarea, .todo-resp-fila input { font-size:16px !important }   /* 16 px: iOS no hace zoom al escribir */
+        .todo-resp-botones button { width:100%; padding:.7rem 1rem !important; font-size:1rem !important }
+    }
+</style>
+
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_todo', ['activa' => 'todo'])
 
@@ -52,7 +64,7 @@
                     <input type="text" wire:model="titulo" placeholder="Título de la tarea" class="{{ $campo }}" autofocus>
                     @error('titulo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </div>
-                <textarea wire:model="descripcion" rows="3" placeholder="Descripción (opcional)" class="{{ $campo }} md:col-span-4"></textarea>
+                <div class="relative md:col-span-4 todo-dictable"><textarea wire:model="descripcion" rows="3" placeholder="Descripción (opcional)" class="{{ $campo }}"></textarea><x-boton-dictado /></div>
                 <div class="text-xs text-gray-500 md:col-span-4">Asignar a
                     <x-todo-asignados :usuarios="$this->usuarios" :seleccionados="$asignadosIds" accion="alternarNuevo(%d)" />
                     @error('asignadosIds') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
@@ -264,13 +276,14 @@
                                             @endforelse
 
                                             <form wire:submit="comentar({{ $detalle->id }})" class="space-y-2">
-                                                <div class="flex flex-wrap items-start gap-2">
+                                                <div class="flex flex-wrap items-start gap-2 todo-resp-fila">
                                                     <input type="date" wire:model="fechaComentario" class="text-sm border-gray-300 rounded-md">
-                                                    <div class="flex-1 min-w-[16rem]">
-                                                        <textarea wire:model="comentario" rows="2" placeholder="Escribe tu respuesta…" class="{{ $campo }}"></textarea>
+                                                    <div class="relative flex-1 min-w-[16rem] todo-dictable">
+                                                        <textarea wire:model="comentario" rows="3" placeholder="Escribe o dicta tu respuesta…" class="{{ $campo }}"></textarea>
+                                                        <x-boton-dictado />
                                                         @error('comentario') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                                                     </div>
-                                                    <span class="flex flex-col gap-1">
+                                                    <span class="flex flex-col gap-1 todo-resp-botones">
                                                         <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Responder</button>
                                                         @if ($claudeId && $detalle->asignados->contains('id', $claudeId) && ($esAdmin || $detalle->creador_id === auth()->id()) && $detalle->abierta())
                                                             {{-- Un solo botón: envía la respuesta Y avisa a Claude para que la lea ya, sin esperar a la próxima hora en punto --}}
