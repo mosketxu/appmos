@@ -93,6 +93,25 @@
         @php $f2 = fn ($v) => number_format((float) $v, 2, ',', '.'); @endphp
         <div class="li-card">
             <div class="li-h">3 · Resultado {{ $libro['periodo'] }} <span class="li-gris" style="font-weight:400;font-size:12px">· hecho en {{ $libro['pc'] }}</span></div>
+            @if (! empty($libro['m303']))
+                @php $m = $libro['m303']; $fila = fn ($x) => ($x['base'] ?? 0) != 0 || ($x['cuota'] ?? 0) != 0; @endphp
+                <table class="li-t">
+                    <tr class="li-sub"><td colspan="3">IVA DEVENGADO</td><td class="li-n">Base</td><td class="li-n">Cuota</td></tr>
+                    @foreach ($m['devengado'] as $x)@if ($fila($x))<tr><td class="li-gris">[{{ $x['cas'] }}]</td><td colspan="2">{{ $x['txt'] }}</td><td class="li-n">{{ $f2($x['base']) }}</td><td class="li-n">{{ $f2($x['cuota']) }}</td></tr>@endif @endforeach
+                    <tr><td class="li-gris">[27]</td><td colspan="3"><b>Total cuota devengada</b></td><td class="li-n"><b>{{ $f2($m['total_devengado']) }}</b></td></tr>
+                    <tr class="li-sub"><td colspan="3">IVA DEDUCIBLE</td><td class="li-n">Base</td><td class="li-n">Cuota</td></tr>
+                    @foreach ($m['deducible'] as $x)@if ($fila($x))<tr><td class="li-gris">[{{ $x['cas'] }}]</td><td colspan="2">{{ $x['txt'] }}</td><td class="li-n">{{ $f2($x['base']) }}</td><td class="li-n">{{ $f2($x['cuota']) }}</td></tr>@endif @endforeach
+                    <tr><td class="li-gris">[45]</td><td colspan="3"><b>Total a deducir</b></td><td class="li-n"><b>{{ $f2($m['total_deducible']) }}</b></td></tr>
+                    <tr><td class="li-gris">[46]</td><td colspan="3"><b>Diferencia (27 − 45) · resultado del periodo</b></td><td class="li-n"><b>{{ $f2($m['diferencia']) }}</b></td></tr>
+                    @if ($m['compensar_anterior'] > 0)<tr><td class="li-gris">[78]</td><td colspan="3">Cuotas a compensar de periodos anteriores</td><td class="li-n">−{{ $f2($m['compensar_anterior']) }}</td></tr>@endif
+                    <tr class="li-sub"><td class="li-gris">[71]</td><td colspan="3">RESULTADO DE LA AUTOLIQUIDACIÓN · {{ $m['tipo'] }}</td><td class="li-n">{{ $f2(abs($m['resultado'])) }}</td></tr>
+                    @if (! empty($m['exentas']))
+                        <tr class="li-sub"><td colspan="3">OPERACIONES EXENTAS (informativo)</td><td class="li-n">Base</td><td></td></tr>
+                        @foreach ($m['exentas'] as $x)<tr><td class="li-gris">@if ($x['cas'])[{{ $x['cas'] }}]@endif</td><td colspan="2">{{ $x['txt'] }}</td><td class="li-n">{{ $f2($x['base']) }}</td><td></td></tr>@endforeach
+                    @endif
+                </table>
+                <div class="li-gris" style="font-size:12px;margin-top:6px">Resumen al estilo del modelo 303 (casillas orientativas, sin bienes de inversión ni prorrata). Resultado del periodo anterior: {{ $libro['anterior'] === null ? 'no encontrado (0)' : $f2(abs($libro['anterior'])).' · '.($libro['anterior'] >= 0 ? 'a pagar' : 'a compensar') }}.</div>
+            @else
             <table class="li-t">
                 <tr><td>IVA repercutido (emitidas: {{ $libro['emitidas']['emitida'] }} facturas)</td><td class="li-n">{{ $f2($libro['repercutido']) }}</td></tr>
                 <tr><td>IVA soportado (nacionales {{ $libro['recibidas']['nacional'] }} + aduanas {{ $libro['recibidas']['aduanas'] }})</td><td class="li-n">{{ $f2($libro['soportado']) }}</td></tr>
@@ -101,6 +120,7 @@
                 <tr><td>Resultado del periodo anterior</td><td class="li-n">{{ $libro['anterior'] === null ? 'no encontrado (0)' : $f2(abs($libro['anterior'])).' · '.($libro['anterior'] >= 0 ? 'A pagar' : 'A compensar') }}</td></tr>
                 <tr class="li-sub"><td>RESULTADO FINAL</td><td class="li-n">{{ $f2(abs($libro['resultado_final'])) }} · {{ $libro['tipo'] }}</td></tr>
             </table>
+            @endif
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
                 @foreach ($libro['ficheros'] ?? [] as $fi)
                     <a class="li-btn" download href="{{ $this->enlace($fi) }}">⬇ {{ str_ends_with($fi, '.txt') ? 'Avisos (.txt)' : 'Excel del libro' }}</a>
