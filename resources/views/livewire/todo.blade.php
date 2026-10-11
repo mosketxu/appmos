@@ -1,7 +1,13 @@
 <div>
 <style>
     .todo-dictable textarea { padding-right:3rem }
+    .todo-solo-movil { display:none }
     @media (max-width: 639px) {
+        /* Lista en el móvil: solo Tarea y Estado; el resto (asignada, prioridad, fecha, 💬) va en una línea bajo el título */
+        .todo-oc { display:none !important }
+        .todo-solo-movil { display:block; font-size:.75rem; font-weight:400; color:#6b7280; margin-top:.15rem; white-space:normal }
+        td.todo-titulo { white-space:normal !important; max-width:none !important; overflow:visible !important; text-overflow:clip !important }
+        td.todo-titulo, td.todo-titulo + td { padding-top:.7rem !important; padding-bottom:.7rem !important }
         .todo-resp-fila { flex-direction:column; align-items:stretch !important }
         .todo-resp-fila > .todo-dictable { order:1; min-width:0 !important; width:100% }
         .todo-resp-fila > .todo-resp-botones { order:2; flex-direction:column }
@@ -61,7 +67,7 @@
         @if ($nueva)
             <form wire:submit="crear" class="grid max-w-4xl gap-2 p-3 bg-white border border-indigo-200 rounded-lg md:grid-cols-4">
                 <div class="md:col-span-4">
-                    <input type="text" wire:model="titulo" placeholder="Título de la tarea" class="{{ $campo }}" autofocus>
+                    <div class="relative todo-dictable"><input type="text" wire:model="titulo" placeholder="Título de la tarea" class="{{ $campo }}" style="padding-right:3rem" autofocus><x-boton-dictado /></div>
                     @error('titulo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </div>
                 <div class="relative md:col-span-4 todo-dictable"><textarea wire:model="descripcion" rows="3" placeholder="Descripción (opcional)" class="{{ $campo }}"></textarea><x-boton-dictado /></div>
@@ -108,14 +114,14 @@
             <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
                     <tr>
-                        @if ($filtroEstado !== 'cerradas') <th class="py-2 pl-2 pr-1 text-center" title="Arrastra el ⠿ para cambiar el orden de TU lista de prioridades">⠿</th> @endif
-                        <th class="px-2 py-2">Asignada a</th>
-                        <th class="px-2 py-2">Creada por</th>
+                        @if ($filtroEstado !== 'cerradas') <th class="py-2 pl-2 pr-1 text-center todo-oc" title="Arrastra el ⠿ para cambiar el orden de TU lista de prioridades">⠿</th> @endif
+                        <th class="px-2 py-2 todo-oc">Asignada a</th>
+                        <th class="px-2 py-2 todo-oc">Creada por</th>
                         <th class="px-2 py-2">Tarea</th>
                         <th class="px-2 py-2">Estado</th>
-                        <th class="px-2 py-2">Prioridad</th>
-                        <th class="px-2 py-2">Fecha límite</th>
-                        <th class="px-2 py-2 text-center">💬</th>
+                        <th class="px-2 py-2 todo-oc">Prioridad</th>
+                        <th class="px-2 py-2 todo-oc">Fecha límite</th>
+                        <th class="px-2 py-2 text-center todo-oc">💬</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -153,15 +159,16 @@
                             class="cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
                             style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : 'border-top:1px solid #9ca3af' }}">
                             @if ($filtroEstado !== 'cerradas')
-                                <td class="py-2 pl-2 pr-1 text-center whitespace-nowrap" wire:click.stop>
+                                <td class="py-2 pl-2 pr-1 text-center whitespace-nowrap todo-oc" wire:click.stop>
                                     @if ($mia)
                                         <span data-handle title="Arrastra para cambiar la prioridad de {{ $t->grupo === $yo ? 'tu lista' : 'la lista de Claude' }}" class="inline-block px-1 text-lg leading-none text-gray-400 select-none cursor-grab hover:text-indigo-600">⠿</span>
                                     @endif
                                 </td>
                             @endif
-                            <td class="px-2 py-2">{{ $t->asignados->pluck('name')->implode(', ') }}</td>
-                            <td class="px-2 py-2">{{ $t->creador->name }}</td>
-                            <td class="px-2 py-2 font-medium max-w-xl truncate" title="{{ $t->titulo }}">{{ $t->titulo }}
+                            <td class="px-2 py-2 todo-oc">{{ $t->asignados->pluck('name')->implode(', ') }}</td>
+                            <td class="px-2 py-2 todo-oc">{{ $t->creador->name }}</td>
+                            <td class="px-2 py-2 font-medium max-w-xl truncate todo-titulo" title="{{ $t->titulo }}">{{ $t->titulo }}
+                                <span class="todo-solo-movil">{{ $t->asignados->pluck('name')->implode(', ') }} · {{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}{{ $t->fecha_limite ? ' · '.$t->fecha_limite->format('d/m') : '' }}{{ $t->comentarios_count ? ' · 💬'.$t->comentarios_count : '' }}{{ $vencida ? ' ⚠' : '' }}</span>
                                 @if ($claudeId && $t->asignados->contains('id', $claudeId))
                                     @if (! $t->claude_autorizada_at) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-amber-800 bg-amber-100 rounded" title="Claude necesita el visto bueno de Alex">🤖 sin autorizar</span>
                                     @elseif ($t->claude_pausada) <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-gray-600 bg-gray-200 rounded" title="Pausada para Claude">⏸ pausada</span>
@@ -177,9 +184,9 @@
                                     <span class="ml-1 px-1.5 py-0.5 text-xs font-normal text-yellow-900 bg-yellow-200 border border-yellow-400 rounded" title="{{ $t->prioridadPedidaPor?->name }} pide que se priorice esta tarea ({{ $t->prioridad_pedida_at->format('d/m H:i') }})">⚑ {{ $t->prioridadPedidaPor?->name }} pide prioridad</span>
                                 @endif</td>
                             <td class="px-2 py-2"><button type="button" wire:click.stop="siguienteEstado({{ $t->id }})" title="Clic para pasar al siguiente estado (Pendiente → En curso → Bloqueada → Hecha → Pendiente)" class="px-2 py-0.5 text-xs border rounded-full cursor-pointer hover:opacity-75 {{ $badge[$t->estado] }}">{{ \App\Models\TodoTarea::ESTADOS[$t->estado] }}</button></td>
-                            <td class="px-2 py-2 {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
-                            <td class="px-2 py-2 {{ $vencida ? 'text-red-600 font-semibold' : '' }}">{{ $t->fecha_limite?->format('d/m/Y') ?? '—' }}{{ $vencida ? ' ⚠' : '' }}</td>
-                            <td class="px-2 py-2 text-center">{{ $t->comentarios_count ?: '' }}</td>
+                            <td class="px-2 py-2 todo-oc {{ $prio[$t->prioridad] }}">{{ \App\Models\TodoTarea::PRIORIDADES[$t->prioridad] }}</td>
+                            <td class="px-2 py-2 todo-oc {{ $vencida ? 'text-red-600 font-semibold' : '' }}">{{ $t->fecha_limite?->format('d/m/Y') ?? '—' }}{{ $vencida ? ' ⚠' : '' }}</td>
+                            <td class="px-2 py-2 text-center todo-oc">{{ $t->comentarios_count ?: '' }}</td>
                         </tr>
                         @if ($detalle && $detalle->id === $t->id)
                             <tr wire:key="d{{ $t->id }}" style="background:#eef2ff;box-shadow:inset 4px 0 0 #6366f1;border-bottom:2px solid #6366f1">
