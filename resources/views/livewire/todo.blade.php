@@ -1,4 +1,4 @@
-<div>
+<div class="todo-raiz">
 <style>
     .todo-dictable textarea { padding-right:3rem }
     .todo-solo-movil { display:none }
@@ -6,8 +6,20 @@
         /* Lista en el móvil: solo Tarea y Estado; el resto (asignada, prioridad, fecha, 💬) va en una línea bajo el título */
         .todo-oc { display:none !important }
         .todo-solo-movil { display:block; font-size:.75rem; font-weight:400; color:#6b7280; margin-top:.15rem; white-space:normal }
-        td.todo-titulo { white-space:normal !important; max-width:none !important; overflow:visible !important; text-overflow:clip !important }
-        td.todo-titulo, td.todo-titulo + td { padding-top:.7rem !important; padding-bottom:.7rem !important }
+        /* La tabla se convierte en tarjetas: nada se sale por la derecha, no hay que arrastrar */
+        .todo-raiz { overflow-x:hidden; max-width:100vw }
+        .todo-raiz select, .todo-raiz input:not([type=checkbox]):not([type=radio]) { max-width:100% }
+        .todo-tabla-wrap { overflow-x:hidden !important; border:0 !important; background:transparent !important }
+        .todo-tabla-wrap table, .todo-tabla-wrap tbody, .todo-tabla-wrap tr, .todo-tabla-wrap td { display:block; width:100%; min-width:0 !important; box-sizing:border-box; white-space:normal !important }
+        .todo-tabla-wrap thead { display:none }
+        .todo-tabla-wrap tr.todo-fila { background:#fff; border:1px solid #d1d5db !important; border-radius:.6rem; margin-top:.6rem; display:flex; flex-wrap:nowrap; align-items:center; gap:.5rem; padding:.2rem .3rem }
+        .todo-tabla-wrap tr.todo-esp { display:none }
+        .todo-tabla-wrap tr.todo-sec { margin-top:.9rem }
+        .todo-tabla-wrap tr.todo-sec td { border-radius:.5rem; padding:.5rem .7rem }
+        .todo-tabla-wrap td.todo-titulo { flex:1 1 auto; width:auto; max-width:none !important; overflow:visible !important; text-overflow:clip !important; padding:.55rem .5rem !important; overflow-wrap:anywhere }
+        .todo-tabla-wrap td.todo-titulo + td { flex:0 0 auto; width:auto; padding:.4rem .3rem !important }
+        .todo-tabla-wrap tr.todo-det { background:#eef2ff !important; border-radius:.6rem; margin-top:.3rem }
+        .todo-tabla-wrap tr.todo-det > td { padding:.7rem !important; overflow-wrap:anywhere }
         .todo-resp-fila { flex-direction:column; align-items:stretch !important }
         .todo-resp-fila > .todo-dictable { order:1; min-width:0 !important; width:100% }
         .todo-resp-fila > .todo-resp-botones { order:2; flex-direction:column }
@@ -110,7 +122,7 @@
             </div>
         @endif
 
-        <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg">
+        <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg todo-tabla-wrap">
             <table class="min-w-full text-sm whitespace-nowrap">
                 <thead class="text-xs text-left text-gray-500 uppercase bg-gray-100">
                     <tr>
@@ -142,7 +154,7 @@
                                 $nota = $esMia ? ($yo === auth()->id() ? 'Arrastra el ⠿ para ordenar tu prioridad' : 'Así las ha priorizado esa persona: es suya y no se puede cambiar desde aquí') : ($esClaude ? 'Su propia lista de prioridades: arrastra el ⠿ para ordenar lo que hará primero' : 'Sin prioridad propia: no se ordenan aquí');
                                 $fondo = $esMia ? '#1d4ed8' : ($esClaude ? '#6d28d9' : '#4b5563');
                             @endphp
-                            <tr wire:key="sec-{{ $seccion }}" aria-hidden="true">
+                            <tr wire:key="sec-{{ $seccion }}" aria-hidden="true" class="todo-sec">
                                 <td colspan="8" style="background:{{ $fondo }};color:#fff;padding:.45rem .75rem;border-top:{{ $seccionAnt === null ? '0' : '14px solid #f3f4f6' }}">
                                     <span style="font-weight:700;letter-spacing:.04em">{{ $titulo }}</span>
                                     <span style="opacity:.85"> · {{ $cuentaSecciones[$seccion] }}</span>
@@ -156,7 +168,7 @@
                             $vencida = $t->abierta() && $t->fecha_limite && $t->fecha_limite->isPast() && ! $t->fecha_limite->isToday();
                         @endphp
                         <tr wire:key="t{{ $t->id }}" @if ($mia) data-orden="{{ $t->id }}" data-grupo="{{ $t->grupo }}" @endif wire:click="abrir({{ $t->id }})"
-                            class="cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
+                            class="todo-fila cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
                             style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : 'border-top:1px solid #9ca3af' }}">
                             @if ($filtroEstado !== 'cerradas')
                                 <td class="py-2 pl-2 pr-1 text-center whitespace-nowrap todo-oc" wire:click.stop>
@@ -189,7 +201,7 @@
                             <td class="px-2 py-2 text-center todo-oc">{{ $t->comentarios_count ?: '' }}</td>
                         </tr>
                         @if ($detalle && $detalle->id === $t->id)
-                            <tr wire:key="d{{ $t->id }}" style="background:#eef2ff;box-shadow:inset 4px 0 0 #6366f1;border-bottom:2px solid #6366f1">
+                            <tr wire:key="d{{ $t->id }}" class="todo-det" style="background:#eef2ff;box-shadow:inset 4px 0 0 #6366f1;border-bottom:2px solid #6366f1">
                                 <td colspan="8" class="p-3 whitespace-normal">
                                     <div class="grid gap-4 md:grid-cols-3">
                                         <div class="space-y-2">
@@ -307,7 +319,7 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr wire:key="s{{ $t->id }}" aria-hidden="true"><td colspan="8" style="height:14px;padding:0;background:#f3f4f6"></td></tr>
+                            <tr wire:key="s{{ $t->id }}" aria-hidden="true" class="todo-esp"><td colspan="8" style="height:14px;padding:0;background:#f3f4f6"></td></tr>
                         @endif
                     @empty
                         <tr><td colspan="8" class="px-3 py-6 text-center text-gray-400">No hay tareas aquí.</td></tr>
