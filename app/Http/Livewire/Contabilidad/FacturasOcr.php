@@ -1158,9 +1158,66 @@ class FacturasOcr extends Component
         }
         if (! \Illuminate\Support\Facades\DB::table('tareas')->where('proceso', 'pc.facturasocr')->where('parametros', 'like', '%"cliente":"'.$this->cliente.'"%')
             ->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
-            \App\Support\ColaTareas::crear('pc.facturasocr', ['cliente' => $this->cliente], \App\Support\ColaTareas::pcElegido() ?: (config('contabilidad.facturasocr_pc') ?: null), auth()->id());
+            \App\Support\ColaTareas::crear('pc.facturasocr', ['cliente' => $this->cliente, 'empresa' => $this->nombreEmpresaOcr()], \App\Support\ColaTareas::pcElegido() ?: (config('contabilidad.facturasocr_pc') ?: null), auth()->id());
         }
         $this->sincronizando = true;
+    }
+
+    public ?int $zTarea = null;
+    public string $zAviso = '';
+
+    /** Nombre de la entidad del cliente (para buscar su carpeta en Z:). */
+    protected function nombreEmpresaOcr(): string
+    {
+        $cfg = json_decode((string) @file_get_contents($this->dirCliente().'/cliente.json'), true) ?: [];
+
+        return (string) (\App\Models\Entidad::whereKey((int) ($cfg['entidad_id'] ?? 0))->value('entidad') ?? '');
+    }
+
+    /** «Traer de Z:»: un PC con el disco Z: mira la carpeta de la empresa (este mes y los dos anteriores) y sube lo que el servidor no conoce. */
+    public function traerDeZ(): void
+    {
+        if (! $this->web() || ! $this->clienteValido() || ! \Illuminate\Support\Facades\Schema::hasTable('tareas')) {
+            return;
+        }
+        $conocidas = array_keys($this->pdfsDeEntrada());
+        foreach ($this->estado()['facturas'] as $f) {
+            $conocidas[] = $f['id'];
+        }
+        $meses = [];
+        for ($i = 0; $i < 3; $i++) {
+            $meses[] = now()->startOfMonth()->subMonths($i)->format('Y_m');
+        }
+        $this->zAviso = '';
+        $this->zTarea = \App\Support\ColaTareas::crear('pc.facturasocr_z', ['cliente' => $this->cliente, 'empresa' => $this->nombreEmpresaOcr(), 'meses' => $meses,
+            'conocidas' => array_values(array_unique($conocidas))], config('contabilidad.facturasocr_z_pc') ?: null, auth()->id());
+    }
+
+    /** wire:poll mientras el PC trae de Z:: al terminar deja los PDF en la Entrada y lanza su lectura. */
+    public function revisarZ(): void
+    {
+        if (! $this->zTarea) {
+            return;
+        }
+        $t = \Illuminate\Support\Facades\DB::table('tareas')->find($this->zTarea);
+        if (! $t || in_array($t->estado, ['pendiente', 'en_curso'], true)) {
+            return;
+        }
+        $this->zTarea = null;
+        $r = json_decode($t->resultado ?? 'null', true) ?: [];
+        if ($t->estado !== 'ok') {
+            $this->zAviso = '⚠️ No se ha podido traer de Z:: '.(string) ($r['error'] ?? trim(mb_substr((string) $t->log, -300)) ?: 'error en el PC');
+
+            return;
+        }
+        $dir = \App\Support\ColaTareas::carpetaFicheros($t->id);
+        $archivos = array_map(fn ($f) => ['ruta' => $f, 'nombre' => basename($f)], array_values(array_filter(glob($dir.'/*.pdf') ?: [], 'is_file')));
+        $res = \App\Support\FacturasOcrEntrada::importar($this->cliente, $archivos);
+        $this->zAviso = '📥 Z: '.\App\Support\FacturasOcrEntrada::resumen($res).' ('.($r['ya'] ?? 0).' ya conocidas)'
+            .(! empty($r['sin_carpeta']) ? ' · sin carpeta en Z: '.implode(', ', $r['sin_carpeta']) : '');
+        if ($res['guardadas']) {
+            $this->leerEnSegundoPlano();
+        }
     }
 
     /** wire:poll mientras un PC lleva los ficheros a su OneDrive. */

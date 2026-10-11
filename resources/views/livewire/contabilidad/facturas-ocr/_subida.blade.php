@@ -20,6 +20,12 @@
                                  style="border:2px dashed #cbd5e1; border-radius:.5rem; padding:.55rem; text-align:center; cursor:pointer; color:#475569">
                                 📥 Arrastra aquí los PDF (o clic para elegirlos)
                             </div>
+                            <div class="mt-1 text-xs" style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
+                                <button type="button" wire:click="traerDeZ" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.1rem .5rem; font-size:.72rem" @disabled($zTarea)
+                                        title="Un PC con el disco Z: mira la carpeta de esta empresa («Facturas a procesar», este mes y los 2 anteriores) y trae lo que aún no está">{{ $zTarea ? '⏳ trayendo de Z:…' : '📥 Traer de Z:' }}</button>
+                                @if ($zAviso !== '')<span>{{ $zAviso }}</span>@endif
+                                @if ($zTarea)<span wire:poll.3s="revisarZ"></span>@endif
+                            </div>
                             <template x-if="archivos.length">
                                 <div class="mt-2 text-xs" style="max-height:6.5rem; overflow:auto">
                                     <template x-for="a in archivos" :key="a.clave">

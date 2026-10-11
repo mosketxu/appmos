@@ -267,7 +267,8 @@
                                 }
                             } catch (e) { log.push('⚠️ ' + r.fichero + ': ' + e.message); }
                         }
-                        const cambiados = [...new Set(res.filter(r => ! r.intacto).map(r => r.archivo))];
+                        const cambiados = this.$wire.genericoNoMover ? [] : [...new Set(res.filter(r => ! r.intacto).map(r => r.archivo))];
+                        if (this.$wire.genericoNoMover) log.push('ℹ️ Originales sin mover: se quedan donde estaban.');
                         if (cambiados.length) {
                             const orig = await dir.getDirectoryHandle('originales', { create: true });
                             for (const a of cambiados) {
@@ -730,6 +731,10 @@
                     <input type="checkbox" wire:model="genericoNombreOriginal" class="border-gray-300 rounded">
                     Poner el nombre original detrás (<span class="font-mono">Proveedor Fra 123 - nombre original.pdf</span>)
                 </label>
+                <label class="flex items-center gap-2 mb-2 text-xs text-gray-700" x-show="hayCarpeta() || sueltos">
+                    <input type="checkbox" wire:model="genericoNoMover" class="border-gray-300 rounded">
+                    No mover los originales (se quedan donde están, en todos los marcados; no van a «originales»)
+                </label>
                 <div class="flex flex-wrap gap-2">
                     <x-button.primary x-on:click="generar()" x-bind:disabled="ocupado">
                         <span x-show="! ocupado" x-text="hayCarpeta() || sueltos ? 'Fase 2 · Generar y renombrar en la carpeta' : 'Fase 2 · Generar PDFs'"></span>
@@ -737,6 +742,15 @@
                     </x-button.primary>
                     @if ($g['fase'] === 'generado' && $g['zip'])
                         <x-button.secondary wire:click="descargarZipGenerico">⬇️ Descargar .zip</x-button.secondary>
+                    @endif
+                    @if ($g['fase'] === 'generado' && count($this->clientesOcr))
+                        <span class="flex items-center gap-1">
+                            <select wire:model="genericoOcr" class="py-1 text-xs border-gray-300 rounded-md">
+                                <option value="">Facturas OCR de…</option>
+                                @foreach (array_keys($this->clientesOcr) as $co)<option value="{{ $co }}">{{ $co }}</option>@endforeach
+                            </select>
+                            <x-button.secondary wire:click="pasarAFacturasOcr">📥 Pasar a Facturas OCR</x-button.secondary>
+                        </span>
                     @endif
                     <x-button.secondary
                         wire:click="empezarDeNuevoGenerico" x-on:click="limpiar()"
@@ -746,6 +760,7 @@
                         Empezar de nuevo
                     </x-button.secondary>
                 </div>
+                @if ($avisoOcr !== '')<p class="mt-2 text-xs text-gray-700">{{ $avisoOcr }}</p>@endif
                 <p class="mt-2 text-xs text-gray-600" x-show="estado" x-text="estado"></p>
                 <p class="mt-2 text-xs text-gray-500" x-show="hayCarpeta() || sueltos">
                     En la carpeta: los PDF que salen enteros y sin girar solo se renombran; los que se parten, giran o

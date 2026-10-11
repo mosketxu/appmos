@@ -184,6 +184,7 @@ return [
     // Si ese PC no da señales, el traspaso lo hace un PC de relevo tras ColaTareas::RELEVO_MIN minutos (el OneDrive se sincroniza igual)
     'facturasocr_relevo' => array_filter(explode(',', env('FACTURASOCR_RELEVO', 'PortalExomen'))),
     'vigilancia_correo' => env('VIGILANCIA_CORREO', true),   // correo a Alex cuando un PC trabajador se cae
+    'facturasocr_z_pc' => env('FACTURASOCR_Z_PC'),   // PC con el disco Z: conectado (traer / devolver facturas); vacío = cualquiera
     'facturasocr_pc' => env('FACTURASOCR_PC'),   // PC (nombre del trabajador) cuyo OneDrive recibe lo validado; vacío = cualquiera
 
     /*
@@ -203,6 +204,7 @@ return [
         'pc.estado' => 'Subir el estado de un grupo de procesos (la web no ve OneDrive)',
         'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
         'pc.facturasocr' => 'Llevar al OneDrive de este PC lo validado en Facturas OCR (con comprobación de huellas)',
+        'pc.facturasocr_z' => 'Facturas OCR: traer las facturas a procesar de la carpeta de la empresa en el disco Z:',
         'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',
         'pc.impuestos_pdfs' => 'Subir a Appmos los PDF de impuestos de OneDrive (pestaña Impuestos)',
         'pc.arbol_carpetas' => 'Leer las carpetas de OneDrive/_Clientes (explorador de Facturas OCR y Bancos)',

@@ -114,6 +114,13 @@ class FacturacionPdf extends Component
     /** Poner el nombre del archivo original detrás del nuevo nombre (por defecto sí con varios ficheros). */
     public bool $genericoNombreOriginal = false;
 
+    /** «No mover»: en la carpeta del usuario los originales se quedan donde están (no van a «originales»); vale para todos los marcados. */
+    public bool $genericoNoMover = false;
+
+    /** Cliente de Facturas OCR al que pasar lo generado (vacío = ninguno). */
+    public string $genericoOcr = '';
+    public string $avisoOcr = '';
+
     /** Proceso que se ve en pantalla: 'Suma' | 'Balerga' | 'Generico' (botones junto al título). */
     public string $proceso = 'Suma';
 
@@ -800,6 +807,36 @@ class FacturacionPdf extends Component
     }
 
     /** Lo que el navegador ha hecho en la carpeta del usuario (renombrar, escribir, mover a originales), a la Salida. */
+    /** Clientes de Facturas OCR (carpeta con cliente.json) que el usuario puede ver: [nombre => entidad_id]. */
+    public function getClientesOcrProperty(): array
+    {
+        return config('contabilidad.facturasocr_web') ? \App\Support\FacturasOcrEntrada::clientes() : [];
+    }
+
+    /**
+     * «Pasar a Facturas OCR»: lo generado (ya renombrado y con las páginas agrupadas) se deja en la Entrada del cliente elegido, sin repetir lo que
+     * ya conoce. Se leen al abrir Facturas OCR de ese cliente.
+     */
+    public function pasarAFacturasOcr(): void
+    {
+        $this->avisoOcr = '';
+        $id = $this->generico['id'] ?? null;
+        if (! $id || ($this->generico['fase'] ?? '') !== 'generado') {
+            $this->avisoOcr = 'Primero genera los PDF.';
+
+            return;
+        }
+        if (! array_key_exists($this->genericoOcr, $this->clientesOcr)) {
+            $this->avisoOcr = 'Elige el cliente de Facturas OCR.';
+
+            return;
+        }
+        $rutas = json_decode((string) @file_get_contents(self::rutaGenerados($id)), true) ?: [];
+        $r = \App\Support\FacturasOcrEntrada::importar($this->genericoOcr, array_map(fn ($ruta) => ['ruta' => $ruta, 'nombre' => basename($ruta)], $rutas));
+        $this->avisoOcr = '✔ '.$this->genericoOcr.': '.\App\Support\FacturasOcrEntrada::resumen($r);
+        $this->salida .= "\n\n===== Genérico → Facturas OCR ({$this->genericoOcr}) =====\n".$this->avisoOcr;
+    }
+
     public function anotarCarpeta(string $texto): void
     {
         $this->salida .= "\n\n===== Facturación PDF · Genérico (en tu carpeta) =====\n".mb_substr($texto, 0, 20000);
@@ -832,6 +869,7 @@ class FacturacionPdf extends Component
         }
         $this->archivosGenerico = [];
         $this->genericoNombreOriginal = false;
+        $this->avisoOcr = '';
         $this->generico = $this->genericoVacio();
         $this->genericoPaginas = [];
         $this->nuevoArchivoGenerico = null;
