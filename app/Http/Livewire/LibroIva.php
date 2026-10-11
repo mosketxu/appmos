@@ -7,6 +7,7 @@ use App\Support\Impuestos as Imp;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Libro de IVA (303) maquetado (9-oct-2026). Pestaña Impuestos → «📒 Libro de IVA». Un PC trabajador, con OneDrive, hace el trabajo
@@ -16,6 +17,11 @@ use Livewire\Component;
  */
 class LibroIva extends Component
 {
+    use WithFileUploads;
+
+    /** Excel original del periodo elegido en pantalla cuando no está en la carpeta: el PC lo deja allí al generar. */
+    public $excelSubido = null;
+
     public string $entidadId = '';
     public string $ejercicio = '';
     public string $periodo = '3T';
@@ -284,11 +290,25 @@ class LibroIva extends Component
         if ($accion === 'generar') {
             $this->libro = null;
         }
+        $subir = $accion === 'generar' && $this->excelSubido;
+        if ($subir) {
+            $this->validate(['excelSubido' => 'file|max:20480|mimes:xlsx,xlsm']);
+        }
         $this->tareaId = ColaTareas::crear('pc.libro_iva', [
             'accion' => $accion, 'carpeta' => $this->carpeta, 'periodo' => $this->periodoMotor(),
             'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId, 'm216' => $this->presentaM216(),
             'anterior' => $accion === 'generar' ? $this->anteriorDeImpuesto() : null,
-        ], ColaTareas::pcElegido() ?: null, auth()->id());
+            'entrada' => $subir ? ['archivo' => 'original.xlsx', 'nombre' => basename(str_replace('\\', '/', $this->excelSubido->getClientOriginalName()))] : null,
+        ], ColaTareas::pcElegido() ?: null, auth()->id(), null, null, $subir ? 'preparando' : 'pendiente');
+        if ($subir) {
+            $dir = ColaTareas::carpetaEntradas($this->tareaId);
+            if (! is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
+            copy($this->excelSubido->getRealPath(), $dir.'/original.xlsx');
+            ColaTareas::liberar($this->tareaId);
+            $this->excelSubido = null;
+        }
         $this->espera = $accion;
         $this->mensaje = $accion === 'generar' ? 'Pedido a un PC: monta el libro en la carpeta de OneDrive…' : 'Pedido a un PC: mirando la carpeta…';
     }

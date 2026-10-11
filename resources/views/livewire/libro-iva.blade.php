@@ -83,6 +83,15 @@
         @endif
     </div>
 
+    <div class="li-card">
+        <div class="li-h">¿El Excel del periodo no está en la carpeta?</div>
+        <input type="file" wire:model="excelSubido" accept=".xlsx,.xlsm">
+        <span wire:loading wire:target="excelSubido" class="li-gris" style="font-size:12px">subiendo…</span>
+        @error('excelSubido')<div style="color:#b91c1c;font-size:13px">{{ $message }}</div>@enderror
+        <div class="li-gris" style="font-size:12px;margin-top:4px">Elígelo aquí (el export del libro de IVA de {{ $periodo }} {{ $ejercicio }}): al generar, el PC lo copia a la carpeta de arriba con el nombre que toca y trabaja con él. Si ya había uno del periodo, se guarda el anterior como «_anterior …».</div>
+        @if ($excelSubido)<div style="font-size:13px;margin-top:4px">📎 {{ $excelSubido->getClientOriginalName() }} <button type="button" wire:click="$set('excelSubido', null)" class="li-btn">quitar</button></div>@endif
+    </div>
+
     <div class="li-card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <button type="button" wire:click="generar" wire:loading.attr="disabled" class="li-btn pri" @disabled($espera !== '' || $carpeta === '')>▶ Generar libro de IVA {{ $periodo }} {{ $ejercicio }}</button>
         @if ($this->presentaM216())<span style="font-size:12px;color:#4338ca">Esta empresa presenta el M216: el libro llevará la tabla por proveedor junto al bloque ISP.</span>@endif
