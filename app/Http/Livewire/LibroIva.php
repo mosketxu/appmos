@@ -70,6 +70,25 @@ class LibroIva extends Component
             session(['libro_iva' => ['entidad' => $this->entidadId, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'verTodos' => $this->verTodos]]);
             $this->libro = null;
             $this->mensaje = $this->error = '';
+            $this->cargarLibroGuardado();
+        }
+    }
+
+    /** Al volver a la pantalla (o cambiar de empresa/periodo) se recupera el resultado de la última generación de ese periodo, que queda en la tarea. */
+    protected function cargarLibroGuardado(): void
+    {
+        if (! $this->entidadId || ! $this->periodoValido()) {
+            return;
+        }
+        $t = DB::table('tareas')->where('proceso', 'pc.libro_iva')->where('estado', 'ok')
+            ->where('parametros', 'like', '%"accion":"generar"%')->where('parametros', 'like', '%"entidad_id":'.(int) $this->entidadId.',%')
+            ->where('parametros', 'like', '%"periodo":"'.$this->periodoMotor().'"%')->orderByDesc('id')->first();
+        $libro = $t ? (json_decode($t->resultado ?? 'null', true)['libro'] ?? null) : null;
+        if (is_array($libro)) {
+            $libro['tarea'] = $t->id;
+            $libro['pc'] = (json_decode($t->resultado, true)['pc'] ?? '');
+            $libro['fecha'] = $t->terminada_at ?? $t->updated_at;
+            $this->libro = $libro;
         }
     }
 
@@ -111,6 +130,7 @@ class LibroIva extends Component
         $this->espera = $this->ventanaToken = '';
         $this->tareaId = null;
         $this->recuperarUltimo();
+        $this->cargarLibroGuardado();
     }
 
     public function puedeTodos(): bool

@@ -101,7 +101,7 @@
     @if ($libro)
         @php $f2 = fn ($v) => number_format((float) $v, 2, ',', '.'); @endphp
         <div class="li-card">
-            <div class="li-h">3 · Resultado {{ $libro['periodo'] }} <span class="li-gris" style="font-weight:400;font-size:12px">· hecho en {{ $libro['pc'] }}</span></div>
+            <div class="li-h">3 · Resultado {{ $libro['periodo'] }} <span class="li-gris" style="font-weight:400;font-size:12px">· hecho en {{ $libro['pc'] }}@if (! empty($libro['fecha'])) · {{ \Illuminate\Support\Carbon::parse($libro['fecha'])->format('d/m/Y H:i') }}@endif</span></div>
             @if (! empty($libro['m303']))
                 @php $m = $libro['m303']; $fila = fn ($x) => ($x['base'] ?? 0) != 0 || ($x['cuota'] ?? 0) != 0; @endphp
                 <table class="li-t">
