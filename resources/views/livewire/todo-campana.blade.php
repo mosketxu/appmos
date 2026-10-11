@@ -1,5 +1,7 @@
 <div wire:poll.30s class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape="open = false">
 @if (empty($oculta))
+    {{-- Móvil: el panel de avisos ocupa el ancho de la pantalla (antes salía por la derecha, fuera de la página) --}}
+    <style>@media (max-width: 639px) { .campana-panel { position:fixed !important; left:.5rem; right:.5rem; top:3.6rem; margin:0 } .campana-panel .campana-panel-int { width:auto !important; max-width:none !important } }</style>
     {{-- Banner grande en todas las páginas mientras un PC trabajador esté caído (solo Admin y gestores del TO-DO) --}}
     @foreach (($caidos ?? []) as $c)
         <div wire:key="caido-{{ $c['tarea_id'] }}" style="position:fixed; top:0; left:0; right:0; z-index:200; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.4rem 1rem; padding:.55rem 1rem; background:#dc2626; color:#fff; text-align:center; font-weight:700; font-size:1rem; box-shadow:0 2px 10px rgba(0,0,0,.4)">
@@ -23,8 +25,8 @@
         @endif
     </button>
 
-    <div x-show="open" style="display:none" class="absolute z-30 mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-        <div class="w-80 max-w-[90vw]">
+    <div x-show="open" style="display:none" class="absolute z-30 mt-1 bg-white border border-gray-300 rounded-md shadow-lg campana-panel">
+        <div class="w-80 max-w-[90vw] campana-panel-int">
             <div class="flex items-center justify-between px-3 py-2 text-xs text-gray-500 border-b border-gray-200">
                 <span class="font-semibold">TO-DO · avisos sin leer</span>
                 @if ($total) <button type="button" wire:click="marcarTodas" class="text-indigo-600 underline">Marcar todos como leídos</button> @endif

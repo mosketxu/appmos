@@ -1,4 +1,19 @@
 <div class="">
+<style>
+    .ent-toggle { display:none }
+    @media (max-width: 767px) {
+        /* Móvil: solo el nombre de la entidad y un botón ⋯; al pulsarlo se despliegan acciones y estado */
+        .ent-fila { flex-wrap:wrap }
+        .ent-nombre { flex:1 1 0; width:auto !important; min-width:0 }
+        .ent-toggle { display:inline-flex; align-items:center; justify-content:center; width:2.4rem; height:2.4rem; font-size:1.4rem; line-height:1; color:#4338ca; background:#eef2ff; border:1px solid #c7d2fe; border-radius:.5rem; margin-right:.4rem }
+        .ent-acc, .ent-controles { display:none !important }
+        .ent-abierta .ent-acc { display:block !important; width:100% !important; order:3; padding:.2rem 0 .4rem }
+        .ent-abierta .ent-acc .hidden { display:inline-block !important }
+        .ent-abierta .ent-controles { display:flex !important }
+        .ent-abierta .ent-toggle { background:#4338ca; color:#fff }
+    }
+</style>
+
     {{-- @livewire('navigation-menu')  --}}
     @livewire('menu',['entidad'=>$entidad,'ruta'=>$ruta],key($entidad->id))
 
@@ -73,8 +88,8 @@
                 <div class="w-5/12 md:w-4/12 lg:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
-            <div class="w-full py-0 text-sm font-thin text-gray-500 border-b border-gray-100 lg:border-0" wire:key="ent-{{ $entidad->id }}" wire:loading.class.delay="opacity-50">
-            <div class="flex items-center w-full space-x-1">
+            <div class="w-full py-0 text-sm font-thin text-gray-500 border-b border-gray-100 lg:border-0" x-data="{ abierta: false }" :class="abierta ? 'ent-abierta' : ''" wire:key="ent-{{ $entidad->id }}" wire:loading.class.delay="opacity-50">
+            <div class="flex items-center w-full space-x-1 ent-fila">
                 <div class="items-center hidden ml-2 text-xs text-gray-200 lg:w-10 lg:flex">
                     @if ($entidad->favorito)
                         <x-icon.star-solid class="text-yellow-500"></x-icon.star-solid>
@@ -82,7 +97,7 @@
                         <x-icon.star class="text-gray-500 "></x-icon.star>
                     @endif
                 </div>
-                <div class="w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12">
+                <div class="w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12 ent-nombre">
                     <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
                 </div>
                 <div class="hidden p-1 m-1 xl:block xl:w-1/12">
@@ -103,7 +118,8 @@
                     <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
                 </div>
                 <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
-                <div class="w-5/12 md:w-4/12 lg:w-2/12">
+                <button type="button" class="ent-toggle" x-on:click="abierta = ! abierta" x-bind:aria-expanded="abierta" title="Acciones y estado">⋯</button>
+                <div class="w-5/12 md:w-4/12 lg:w-2/12 ent-acc">
                     <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:flex-nowrap lg:space-x-3">
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
@@ -119,7 +135,7 @@
                 </div>
             </div>
             {{-- Móvil / tablet: los controles debajo del nombre --}}
-            <div class="flex flex-wrap items-center gap-2 px-2 pb-2 lg:hidden">
+            <div class="flex flex-wrap items-center gap-2 px-2 pb-2 lg:hidden ent-controles">
                 @include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])
                 <span class="text-xs text-gray-400">Fact.</span>@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])
                 @include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])
