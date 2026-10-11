@@ -106,11 +106,11 @@
                 @php $m = $libro['m303']; $fila = fn ($x) => ($x['base'] ?? 0) != 0 || ($x['cuota'] ?? 0) != 0; @endphp
                 <table class="li-t">
                     <tr class="li-sub"><td colspan="3">IVA DEVENGADO</td><td class="li-n">Base</td><td class="li-n">Cuota</td></tr>
-                    @foreach ($m['devengado'] as $x)@if ($fila($x))<tr><td class="li-gris">[{{ $x['cas'] }}]</td><td colspan="2">{{ $x['txt'] }}</td><td class="li-n">{{ $f2($x['base']) }}</td><td class="li-n">{{ $f2($x['cuota']) }}</td></tr>@endif @endforeach
-                    <tr><td class="li-gris">[27]</td><td colspan="3"><b>Total cuota devengada</b></td><td class="li-n"><b>{{ $f2($m['total_devengado']) }}</b></td></tr>
+                    @foreach ($m['devengado'] as $x)@if ($fila($x) || ($x['cas'] ?? '') !== '')<tr><td class="li-gris">[{{ $x['cas'] }}]</td><td colspan="2">{{ $x['txt'] }}</td><td class="li-n">{{ $f2($x['base']) }}</td><td class="li-n">{{ $f2($x['cuota']) }}</td></tr>@endif @endforeach
+                    <tr><td class="li-gris">[27]</td><td colspan="3"><b>Total cuota devengada (IVA repercutido)</b></td><td class="li-n"><b>{{ $f2($m['total_devengado']) }}</b></td></tr>
                     <tr class="li-sub"><td colspan="3">IVA DEDUCIBLE</td><td class="li-n">Base</td><td class="li-n">Cuota</td></tr>
-                    @foreach ($m['deducible'] as $x)@if ($fila($x))<tr><td class="li-gris">[{{ $x['cas'] }}]</td><td colspan="2">{{ $x['txt'] }}</td><td class="li-n">{{ $f2($x['base']) }}</td><td class="li-n">{{ $f2($x['cuota']) }}</td></tr>@endif @endforeach
-                    <tr><td class="li-gris">[45]</td><td colspan="3"><b>Total a deducir</b></td><td class="li-n"><b>{{ $f2($m['total_deducible']) }}</b></td></tr>
+                    @foreach ($m['deducible'] as $x)@if ($fila($x) || ($x['cas'] ?? '') !== '')<tr><td class="li-gris">[{{ $x['cas'] }}]</td><td colspan="2">{{ $x['txt'] }}</td><td class="li-n">{{ $f2($x['base']) }}</td><td class="li-n">{{ $f2($x['cuota']) }}</td></tr>@endif @endforeach
+                    <tr><td class="li-gris">[45]</td><td colspan="3"><b>Total a deducir (IVA soportado)</b></td><td class="li-n"><b>{{ $f2($m['total_deducible']) }}</b></td></tr>
                     <tr><td class="li-gris">[46]</td><td colspan="3"><b>Diferencia (27 − 45) · resultado del periodo</b></td><td class="li-n"><b>{{ $f2($m['diferencia']) }}</b></td></tr>
                     @if ($m['compensar_anterior'] > 0)<tr><td class="li-gris">[78]</td><td colspan="3">Cuotas a compensar de periodos anteriores</td><td class="li-n">−{{ $f2($m['compensar_anterior']) }}</td></tr>@endif
                     <tr class="li-sub"><td class="li-gris">[71]</td><td colspan="3">RESULTADO DE LA AUTOLIQUIDACIÓN · {{ $m['tipo'] }}</td><td class="li-n">{{ $f2(abs($m['resultado'])) }}</td></tr>

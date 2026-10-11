@@ -367,10 +367,19 @@ class LibroIva extends Component
         // Lo que se arrastra no es solo la casilla 71 (resultado de ese periodo): las cuotas a compensar de periodos anteriores que quedaron sin
         // aplicar van en la casilla 87 (110 − 78; no incluye lo generado en el propio periodo). Si el resultado fue negativo, se suma a lo pendiente.
         $res = (float) $d['resultado'];
-        $pend = (float) ($d['pendientes'] ?? 0) + max(0.0, -$res);
         $cas = (array) ($d['casillas'] ?? []);
+        // Resultado negativo: el 303 dice qué se hizo con él: casilla 72 = se compensa, casilla 73 = se pide la DEVOLUCIÓN (no se arrastra).
+        $comp72 = (float) ($cas['72'] ?? 0);
+        $dev73 = (float) ($cas['73'] ?? 0);
+        $eligio = $comp72 > 0 || $dev73 > 0;
+        $pend = (float) ($d['pendientes'] ?? 0) + ($eligio ? $comp72 : max(0.0, -$res));
         $texto = "impuesto presentado: «{$doc->nombre}» (casilla 71 = ".number_format($res, 2, ',', '.')
             .(isset($cas['87']) ? '; pendientes de periodos anteriores, casilla 87 = '.number_format((float) $cas['87'], 2, ',', '.') : '').')';
+        if ($dev73 > 0) {
+            $texto .= '; DEVOLUCIÓN SOLICITADA, casilla 73 = '.number_format($dev73, 2, ',', '.').' (no se compensa)';
+        } elseif ($res < 0 && ! $eligio) {
+            $texto .= '; ojo: no consta si se pidió devolución o compensación (casillas 72/73 vacías), se supone compensación';
+        }
         if ($pend > 0.005) {
             return ['valor' => -round($pend, 2), 'origen' => $texto.' → a compensar '.number_format($pend, 2, ',', '.')];
         }
