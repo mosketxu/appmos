@@ -76,7 +76,7 @@
     <div class="p-3 space-y-2" id="imp-pagina">
         <div class="imp-solo-print" style="display:none; font-size:12px">
             <b style="font-size:16px">Impuestos {{ $ejercicio }}</b> · vista: {{ $vista === 'anio' ? 'año completo' : (ctype_digit($vista) ? 'mes '.$vista : $vista) }}
-            @if ($filtroModelo !== '') · impuesto {{ $filtroModelo }} @endif @if (trim($buscar) !== '') · «{{ $buscar }}» @endif @if ($soloPendientes) · solo con pendientes @endif
+            @if ($filtroModelo !== '') · impuesto {{ $filtroModelo }} @endif @if ($filtroGrupo !== '') · grupo {{ $filtroGrupo === 'ninguno' ? 'ninguno' : ($grupos->firstWhere('id', (int) $filtroGrupo)->nombre ?? '') }} @endif @if (trim($buscar) !== '') · «{{ $buscar }}» @endif @if ($soloPendientes) · solo con pendientes @endif
             · {{ $verTodos ? 'todos los clientes' : 'mis clientes' }} · impreso el {{ now()->format('d/m/Y H:i') }}
             <div style="display:flex; flex-wrap:wrap; gap:2px 12px; margin-top:3px; font-size:10px">
                 @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'] as $e)
@@ -144,6 +144,13 @@
                     <option value="{{ $m->codigo }}">{{ $m->codigo }} · {{ $m->nombre }}</option>
                 @endforeach
             </select>
+            @if ($grupos->count())
+                <select wire:model.live="filtroGrupo" class="py-1 text-sm border-gray-300 rounded-md" title="Filtrar por grupo de empresas">
+                    <option value="">Todos los grupos</option>
+                    @foreach ($grupos as $gr)<option value="{{ $gr->id }}">{{ $gr->nombre }}</option>@endforeach
+                    <option value="ninguno">Sin grupo</option>
+                </select>
+            @endif
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="soloPendientes" class="border-gray-300 rounded"> Solo con pendientes</label>
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="incluirBajas" class="border-gray-300 rounded"> Incluir bajas e inactivos</label>
             <button type="button" onclick="window.print()" class="imp-btn" style="border-radius:6px" title="Imprimir la lista tal como está en pantalla (A4 apaisado)" aria-label="Imprimir">🖨</button>
@@ -310,6 +317,7 @@
                                 <button type="button" wire:click="abrirEntidad({{ $entId }})" class="font-medium text-left text-gray-900 hover:underline" style="background:none; border:0; padding:0; cursor:pointer"
                                     title="Añadir o quitar los impuestos de este cliente. Responsable: {{ $ent->resp ?: '—' }}">{{ $ent->entidad }}</button>
                                 @if ($ent->estado_ent != 1) <span class="text-xs text-amber-700">(baja)</span> @endif
+                                @if ($ent->grupo) <span class="text-xs text-indigo-700" style="background:#eef2ff; border-radius:4px; padding:0 4px" title="Grupo">{{ $ent->grupo }}</span> @endif
                             </td>
                             @foreach ($bloques as $bl)
                                 @if ($bl['plegable'] && in_array($bl['k'], $plegados, true))

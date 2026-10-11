@@ -31,6 +31,8 @@ class Impuestos extends Component
 
     public string $buscar = '';
     public string $filtroModelo = '';
+    /** '' = todos · id de grupo · 'ninguno' = entidades sin grupo. */
+    public string $filtroGrupo = '';
     public bool $soloPendientes = false;
     public bool $incluirBajas = false;
     public bool $verTodos = false;
@@ -69,6 +71,7 @@ class Impuestos extends Component
         $this->vista = in_array($g['vista'] ?? '', array_merge(['anio', 'T1', 'T2', 'T3', 'T4'], array_map(fn ($m) => sprintf('%02d', $m), range(1, 12))), true) ? $g['vista'] : $this->vista;
         $this->buscar = (string) ($g['buscar'] ?? '');
         $this->filtroModelo = (string) ($g['filtroModelo'] ?? '');
+        $this->filtroGrupo = (string) ($g['filtroGrupo'] ?? '');
         $this->soloPendientes = (bool) ($g['soloPendientes'] ?? false);
         $this->incluirBajas = (bool) ($g['incluirBajas'] ?? false);
         $this->verTodos = $this->puedeTodos() && (bool) ($g['verTodos'] ?? false);
@@ -77,14 +80,14 @@ class Impuestos extends Component
 
     public function updated($propiedad): void
     {
-        if (in_array($propiedad, ['vista', 'buscar', 'filtroModelo', 'soloPendientes', 'incluirBajas', 'verTodos'], true)) {
+        if (in_array($propiedad, ['vista', 'buscar', 'filtroModelo', 'filtroGrupo', 'soloPendientes', 'incluirBajas', 'verTodos'], true)) {
             $this->recordarFiltros();
         }
     }
 
     protected function recordarFiltros(): void
     {
-        session(['impuestos.filtros' => ['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo,
+        session(['impuestos.filtros' => ['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo, 'filtroGrupo' => $this->filtroGrupo,
             'soloPendientes' => $this->soloPendientes, 'incluirBajas' => $this->incluirBajas, 'verTodos' => $this->verTodos]]);
     }
 
@@ -199,13 +202,19 @@ class Impuestos extends Component
             ->join('entidades as e', 'e.id', '=', 'ei.entidad_id')
             ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->leftJoin('sumas as s', 's.id', '=', 'e.suma_id')
+            ->leftJoin('entidad_grupos as g', 'g.id', '=', 'e.grupo_id')
             ->where('m.activo', true)
-            ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp',
+            ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp', 'g.nombre as grupo',
                 'm.codigo', 'm.nombre as modelo_nombre', 'm.orden', 'm.mes_anual', 'm.despues_de', 'm.desfase')
-            ->orderBy('e.entidad')->orderBy('m.orden');
+            ->orderByRaw('g.nombre IS NULL DESC')->orderBy('g.nombre')->orderBy('e.entidad')->orderBy('m.orden');   // sin grupo primero; cada grupo junto
         Imp::soloVisibles($q, null, $this->verTodos);
         if (! $this->incluirBajas) {
             $q->where('e.estado', 1);
+        }
+        if ($this->filtroGrupo === 'ninguno') {
+            $q->whereNull('e.grupo_id');
+        } elseif ($this->filtroGrupo !== '') {
+            $q->where('e.grupo_id', (int) $this->filtroGrupo);
         }
         if ($this->filtroModelo !== '') {
             $q->where('m.codigo', $this->filtroModelo);
@@ -621,7 +630,8 @@ class Impuestos extends Component
         }
         $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
 
-        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos];
+        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
+            'grupos' => DB::table('entidad_grupos')->orderBy('nombre')->get(['id', 'nombre'])];
     }
 
     public function render()

@@ -243,6 +243,17 @@
                     <x-jet-input-error for="alias" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
+                    <x-jet-label for="grupo_id" >{{ __('Grupo') }}</x-jet-label>
+                    <select wire:model="entidad.grupo_id" id="grupo_id" class="w-full border-gray-300 rounded-md shadow-sm" title="Grupo de empresas al que pertenece (vacío = ninguno). Sirve para agrupar y filtrar en Impuestos">
+                        <option value="">— sin grupo —</option>
+                        @foreach ($grupos as $gr)<option value="{{ $gr->id }}">{{ $gr->nombre }}</option>@endforeach
+                        <option value="__nuevo">➕ Nuevo grupo…</option>
+                    </select>
+                    @if (($entidad['grupo_id'] ?? null) === '__nuevo')
+                        <x-jet-input wire:model.defer="grupoNuevo" type="text" maxlength="60" class="w-full mt-1" placeholder="Nombre del nuevo grupo" autofocus/>
+                    @endif
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="codigo_cliente" >{{ __('Cód. Cliente') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.codigo_cliente" type="text" id="codigo_cliente" maxlength="20" class="w-full" title="Código de cliente (no es la cuenta contable)"/>
                     <x-jet-input-error for="codigo_cliente" class="mt-2" />

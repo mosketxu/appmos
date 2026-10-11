@@ -99,6 +99,9 @@ class Ent extends Component
         $this->volver = str_starts_with($anterior, route('entidades')) ? $anterior : route('entidades');
     }
 
+    /** Grupo nuevo escrito en el desplegable «➕ Nuevo grupo…» (se crea al guardar; si ya existe con ese nombre se usa el existente). */
+    public string $grupoNuevo = '';
+
     public function render(){
         $entidad=$this->entidad;
         $contacto=$this->contacto;
@@ -110,7 +113,20 @@ class Ent extends Component
         $sumas=Suma::all();
         $provincias=Provincia::all();
         $paises=Pais::all();
-        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises','entidadModel'));
+        $grupos=\App\Models\EntidadGrupo::orderBy('nombre')->get();
+        return view('livewire.ent',compact('metodopagos','sumas','provincias','paises','entidadModel','grupos'));
+    }
+
+    protected function resolverGrupo(): ?int
+    {
+        $g = $this->entidad['grupo_id'] ?? null;
+        if ($g === '__nuevo') {
+            $g = \App\Models\EntidadGrupo::buscarOCrear($this->grupoNuevo)?->id;
+            $this->entidad['grupo_id'] = $g;
+            $this->grupoNuevo = '';
+        }
+
+        return $g ? (int) $g : null;
     }
 
     public function save()
@@ -187,6 +203,7 @@ class Ent extends Component
             'cuentacontable'=>$this->entidad['cuentacontable'],
             'codigo_cliente'=>$this->entidad['codigo_cliente'] ?? null,
             'alias'=>trim((string) ($this->entidad['alias'] ?? '')) ?: null,
+            'grupo_id'=>$this->resolverGrupo(),
             'cnae'=>$this->entidad['cnae'] ?? null,
             'epigrafe_iae'=>$this->entidad['epigrafe_iae'] ?? null,
             ]
