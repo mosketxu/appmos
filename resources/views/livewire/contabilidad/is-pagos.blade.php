@@ -111,6 +111,11 @@
                                         @foreach ($r['errores'] ?? [] as $e)<div class="text-red-700">⛔ {{ $e }}</div>@endforeach
                                         @foreach ($r['avisos'] ?? [] as $a)<div class="text-amber-700">⚠ {{ $a }}</div>@endforeach
                                         @foreach ($r['info'] ?? [] as $i)<div class="text-gray-600">ℹ {{ $i }}</div>@endforeach
+                                        @if (! empty($r['no_aplicado']))
+                                            <details class="mt-1"><summary class="cursor-pointer text-indigo-700">Lo que NO se ha aplicado ({{ count($r['no_aplicado']) }})</summary>
+                                                @foreach ($r['no_aplicado'] as $n)<div class="text-gray-700">· {{ $n }}</div>@endforeach
+                                            </details>
+                                        @endif
                                         @if (empty($r['errores']))
                                             <div class="text-green-700">✓ {{ ($r['modalidad'] ?? '40.2') === '40.3' ? '40.3 · ' : '' }}{{ $r['porcentaje'] }} % de {{ $euros($r['base']) }}</div>
                                             @if (! empty($r['detalle']))
@@ -142,6 +147,9 @@
                 <button type="button" wire:click="preparar" wire:loading.attr="disabled" wire:target="preparar" class="px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50">
                     <span wire:loading.remove wire:target="preparar">{{ $clienteId !== 'todos' ? 'Preparar' : 'Preparar los marcados' }}</span><span wire:loading wire:target="preparar">Preparando…</span>
                 </button>
+                <label class="flex items-center gap-1 text-sm text-gray-600" title="Crea un borrador (no se envía) con el cálculo y lo no aplicado, y el .202 adjunto">
+                    <input type="checkbox" wire:model="borradorOutlook" class="border-gray-300 rounded"> dejar borrador en Outlook al preparar
+                </label>
                 <button type="button" wire:click="descargarZip" class="text-sm font-semibold text-blue-700 underline hover:text-blue-900">⬇ Descargar todos (.zip)</button>
             </div>
             @if ($salida)

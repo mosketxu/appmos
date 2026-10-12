@@ -98,6 +98,8 @@ return [
         'client_secret' => env('GRAPH_CLIENT_SECRET') ?: ($graphPc['client_secret'] ?? null),
         'sender' => env('GRAPH_SENDER', 'alex.arregui@sumaempresa.com'),
         'redirect' => env('GRAPH_REDIRECT'),
+        // Destinatarios del borrador del 202 para revisar (separados por comas); vacío = el borrador queda sin destinatario
+        'm202_revisores' => array_values(array_filter(array_map('trim', explode(',', (string) env('M202_REVISORES', ''))))),
     ],
 
 

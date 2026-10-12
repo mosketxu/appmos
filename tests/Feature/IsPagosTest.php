@@ -175,4 +175,24 @@ class IsPagosTest extends TestCase
         $this->assertSame(round(230000 - 68414.41, 2), round($j['detalle']['33'], 2));   // mínimo 23 % del resultado menos pagos anteriores
         $this->assertSame(round(286000 - 68414.41, 2), round($j['detalle']['34'], 2));
     }
+
+    public function test_al_preparar_deja_un_borrador_en_outlook_con_lo_no_aplicado(): void
+    {
+        config(['contabilidad.graph' => ['tenant_id' => 't', 'client_id' => 'c', 'client_secret' => 's', 'sender' => 'alex.arregui@sumaempresa.com', 'redirect' => null, 'm202_revisores' => ['revisora@sumaempresa.com']]]);
+        \Illuminate\Support\Facades\Cache::put('graph_token', 'tok', 60);
+        \Illuminate\Support\Facades\Http::fake([
+            'graph.microsoft.com/v1.0/users/*/messages' => \Illuminate\Support\Facades\Http::response(['id' => 'M1'], 201),
+            'graph.microsoft.com/v1.0/users/*/messages/M1/attachments' => \Illuminate\Support\Facades\Http::response(['id' => 'A1'], 201),
+        ]);
+        $this->actingAs($this->adminUser());
+        $e = $this->cliente('B01756089', 'Espiral Trade SL', $this->textoIs('B01756089', 'ESPIRAL TRADE, S.L.', '427.929,91', '13.959.750,00'));
+        Livewire::test(IsPagos::class)->set('todasEmpresas', true)
+            ->set('clienteId', (string) $e->id)->set('ejercicio', 2026)->set('periodo', '2P')
+            ->set('ajustes403', [$e->id => ['resultado_contable' => '1000000', 'pagos_anteriores' => '68414,41']])
+            ->call('preparar')->assertSee('borrador dejado en Outlook')->assertSee('Lo que NO se ha aplicado');
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => str_ends_with($r->url(), '/messages') && $r['toRecipients'][0]['emailAddress']['address'] === 'revisora@sumaempresa.com'
+            && str_contains($r['body']['content'], 'NO APLICADO') && str_contains($r['subject'], 'ESPIRAL TRADE SL'));
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => str_ends_with($r->url(), '/attachments') && str_ends_with($r['name'], '.202'));
+        \Illuminate\Support\Facades\Http::assertNotSent(fn ($r) => str_contains($r->url(), 'sendMail'));
+    }
 }

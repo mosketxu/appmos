@@ -162,4 +162,32 @@ class GraphMail
             throw new RuntimeException('Microsoft no ha aceptado el correo (HTTP '.$r->status().'): '.mb_substr($r->body(), 0, 200));
         }
     }
+
+    /**
+     * Deja un BORRADOR (no se envía) en la carpeta Borradores del buzón $buzon, con adjuntos ([['nombre' =>, 'contenido' =>, 'tipo' =>]]).
+     * Devuelve el id del mensaje. Con GRAPH_REDIRECT puesto, el destinatario es esa dirección (pruebas).
+     */
+    public static function crearBorrador(string $buzon, array $para, string $asunto, string $texto, array $adjuntos = []): string
+    {
+        if (! self::configurado()) {
+            throw new RuntimeException('Faltan las credenciales de Microsoft Graph en el .env de este servidor.');
+        }
+        if ($redirigir = config('contabilidad.graph.redirect')) {
+            $texto = '[PRUEBA: iba para '.implode(', ', $para)."]\n\n".$texto;
+            $para = [$redirigir];
+        }
+        $m = self::api('post', 'users/'.rawurlencode($buzon).'/messages', [
+            'subject' => $asunto,
+            'body' => ['contentType' => 'HTML', 'content' => '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'.nl2br(e($texto), false).'</div>'],
+            'toRecipients' => array_map(fn ($a) => ['emailAddress' => ['address' => $a]], array_values($para)),
+        ]);
+        foreach ($adjuntos as $a) {
+            self::api('post', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($m['id']).'/attachments', [
+                '@odata.type' => '#microsoft.graph.fileAttachment', 'name' => $a['nombre'], 'contentType' => $a['tipo'] ?? 'application/octet-stream',
+                'contentBytes' => base64_encode($a['contenido']),
+            ]);
+        }
+
+        return (string) $m['id'];
+    }
 }

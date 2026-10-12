@@ -53,12 +53,15 @@ class IsPagos extends Component
         'otras_disminuciones' => 'Otras disminuciones (08)',
         'bin' => 'Compens. bases negativas (14)',
         'retenciones' => 'Retenciones (28)',
+        'bonificaciones' => 'Bonificaciones (27)',
         'pagos_anteriores' => 'Pagos anteriores (30)',
         'porcentaje' => 'Porcentaje (17)',
         'porcentaje_minimo' => '% del mínimo (33)',
     ];
 
     public string $salida = '';
+    /** Al preparar, deja un borrador en Outlook (Graph) con el cálculo y lo no aplicado, para que lo revise otra persona. */
+    public bool $borradorOutlook = true;
 
     public function mount(): void
     {
@@ -316,6 +319,9 @@ class IsPagos extends Component
                 $r = Process::path($motor)->timeout(180)->env(['IS_MOTOR' => $this->baseDir().'/motor'])
                     ->run([$this->pythonBin(), 'prepara202.py', $this->dirCliente($c['nif']), (string) $this->ejercicio, $this->periodo]);
                 $ok = $r->successful();
+                if ($ok && $this->borradorOutlook) {
+                    $this->dejarBorrador($c);
+                }
                 if (! $ok && ! is_file($this->dirCliente($c['nif']).'/'.$this->ejercicio.'/salida202/'.$c['nif'].'_'.$this->ejercicio.'_'.$this->periodo.'.json')) {
                     $this->salida .= "⚠️ {$c['entidad']}: ".trim($r->errorOutput() ?: $r->output())."\n";
                 } else {
@@ -327,6 +333,45 @@ class IsPagos extends Component
             }
         }
         $this->dispatch('proceso-terminado', mensaje: "✅ Pagos a cuenta {$this->periodo} {$this->ejercicio}\n{$hechos} fichero(s) .202 generado(s). Revisa los avisos y errores de la tabla.");
+    }
+
+    /** Borrador en Outlook (sin enviar) con el resultado, lo no aplicado y el .202 adjunto; Alex añade el borrador de la AEAT y se lo pasa a quien revisa. */
+    protected function dejarBorrador(array $c): void
+    {
+        $nombre = $c['nif'].'_'.$this->ejercicio.'_'.$this->periodo;
+        $dir = $this->dirCliente($c['nif']).'/'.$this->ejercicio.'/salida202/';
+        $r = is_file($dir.$nombre.'.json') ? json_decode((string) file_get_contents($dir.$nombre.'.json'), true) : null;
+        if (! is_array($r) || empty($r['fichero']) || ! is_file($dir.$r['fichero'])) {
+            return;
+        }
+        $e = fn ($v) => number_format((float) $v, 2, ',', '.').' €';
+        $d = $r['detalle'] ?? [];
+        $t = "Pago fraccionado del Impuesto sobre Sociedades (modelo 202) · {$r['nombre']} · {$this->periodo} {$this->ejercicio}\n";
+        $t .= 'Modalidad '.($r['modalidad'] ?? '40.2').' · NIF '.$r['nif']."\n\n";
+        if (($r['modalidad'] ?? '') === '40.3') {
+            $t .= 'Resultado contable '.$e($d['04'] ?? 0).' → base imponible previa '.$e($d['13'] ?? 0).' → base del pago '.$e($d['16'] ?? 0)
+                .' × '.$r['porcentaje']." % = {$e($d['18'] ?? 0)}\nPagos anteriores {$e($d['30'] ?? 0)} · mínimo a ingresar {$e($d['33'] ?? 0)}\n";
+        } else {
+            $t .= "Cuota del IS anterior {$e($r['cuota_is'] ?? 0)} × {$r['porcentaje']} %\n";
+        }
+        $t .= 'A INGRESAR: '.$e($r['a_ingresar'] ?? 0)."\n";
+        if (! empty($r['no_aplicado'])) {
+            $t .= "\nNO APLICADO / A REVISAR:\n".implode("\n", array_map(fn ($x) => '- '.$x, $r['no_aplicado']))."\n";
+        }
+        if (! empty($r['avisos'])) {
+            $t .= "\nAvisos:\n".implode("\n", array_map(fn ($x) => '- '.$x, $r['avisos']))."\n";
+        }
+        $t .= "\nAdjunto el fichero .202 para importar en la sede de la AEAT. Pendiente: añadir el borrador que se baja de Hacienda tras importarlo.\n";
+        $u = auth()->user();
+        $buzon = $u && str_ends_with(strtolower((string) $u->email), '@sumaempresa.com') ? $u->email : (string) config('contabilidad.graph.sender');
+        try {
+            \App\Support\GraphMail::crearBorrador($buzon, (array) config('contabilidad.graph.m202_revisores', []),
+                "202 {$this->periodo} {$this->ejercicio} · {$r['nombre']} · para revisar", $t,
+                [['nombre' => $r['fichero'], 'contenido' => (string) file_get_contents($dir.$r['fichero']), 'tipo' => 'text/plain']]);
+            $this->salida .= "✉️ {$c['entidad']}: borrador dejado en Outlook ({$buzon}).\n";
+        } catch (\Throwable $ex) {
+            $this->salida .= "⚠️ {$c['entidad']}: no he podido dejar el borrador en Outlook: ".$ex->getMessage()."\n";
+        }
     }
 
     public function descargar(int $id)
