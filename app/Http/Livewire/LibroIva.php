@@ -114,6 +114,11 @@ class LibroIva extends Component
         foreach (\App\Support\Impuestos::ejercicios() as $ej) {
             \App\Support\Impuestos::asegurarEjercicio($ej, $ob->id);
         }
+        if ($nueva === 'T') {
+            // Trimestral: no puede ser REDEME (devolución mensual) ni gran empresa
+            DB::table('entidades')->where('id', (int) $this->entidadId)->update(['redeme' => 0, 'gran_empresa' => 0, 'updated_at' => now()]);
+            $this->devolver = false;
+        }
         $this->ajustarPeriodo();
         $this->libro = null;
         $this->cargarLibroGuardado();

@@ -54,7 +54,10 @@ class LibroIvaPeriodicidadTest extends TestCase
         $m = $this->empresa('Mal puesta SL', 'M');
         $c = Livewire::test(LibroIva::class)->set('verTodos', true)->set('entidadId', (string) $m->id);
         $this->assertMatchesRegularExpression('/^(0[1-9]|1[0-2])$/', $c->get('periodo'));
+        DB::table('entidades')->where('id', $m->id)->update(['redeme' => 1, 'gran_empresa' => 1]);
         $c->call('cambiarPeriodicidad', 'T');
+        $this->assertSame([0, 0], [(int) DB::table('entidades')->where('id', $m->id)->value('redeme'), (int) DB::table('entidades')->where('id', $m->id)->value('gran_empresa')]);
+        $c->assertSet('devolver', false);
         $this->assertMatchesRegularExpression('/^[1-4]T$/', $c->get('periodo'));
         $this->assertSame('T', DB::table('entidad_impuestos')->where('entidad_id', $m->id)->value('periodicidad'));
     }
