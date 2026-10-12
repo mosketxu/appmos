@@ -43,7 +43,9 @@
                 Sube el <b>IS {{ $ejercicio - 1 }} presentado</b> (PDF) de cada cliente; de ahí salen la cuota, el CNAE y la cifra de negocios. Si el CNAE
                 debe ser el de {{ $ejercicio }} (CNAE-2025), sube también un 202 de este año o escríbelo en la casilla. Se genera el fichero <code>.202</code>
                 para <b>importar en el formulario de la AEAT</b>: allí sacas el borrador y presentas. Aquí no se presenta nada.
-                Las <b>grandes empresas</b> (más de 6 M€ de cifra de negocios, modalidad 40.3) no se calculan aquí.
+                Las empresas de <b>más de 6 M€ de cifra de negocios</b> van por la <b>modalidad 40.3</b> (base imponible acumulada del año): además hace falta el
+                <b>P&amp;G o sumas y saldos de SAGE</b> a 31-mar (1P), 30-sep (2P) o 30-nov (3P) — .xlsx o .csv —, que se sube en la columna «P&amp;G» (o escribe el resultado
+                contable a mano en «ajustes 40.3»). Los pagos anteriores (1P) se sacan solos del 202 de este año si lo subes. <b>Revisa siempre el borrador en la AEAT.</b>
             </div>
 
             <div class="overflow-x-auto">
@@ -54,6 +56,7 @@
                             <th class="px-3 py-2 text-left">Cliente</th>
                             <th class="px-3 py-2 text-left">IS {{ $ejercicio - 1 }} (PDF)</th>
                             <th class="px-3 py-2 text-left">202 de {{ $ejercicio }} (opc.)</th>
+                            <th class="px-3 py-2 text-left">P&amp;G a la fecha (40.3)</th>
                             <th class="px-3 py-2 text-left">CNAE</th>
                             <th class="px-3 py-2 text-right">Cuota IS</th>
                             <th class="px-3 py-2 text-right">A pagar {{ $periodo }}</th>
@@ -83,6 +86,22 @@
                                     @error('subida202.'.$c['id'])<div class="text-xs text-red-700">{{ $message }}</div>@enderror
                                 </td>
                                 <td class="px-3 py-2">
+                                    @if ($c['tienePyg'])<span class="text-green-700">✓ {{ $c['fechaPyg'] }}</span>@endif
+                                    <input type="file" wire:model="subidaPyg.{{ $c['id'] }}" accept=".xlsx,.csv" class="block w-48 mt-1 text-xs">
+                                    @error('subidaPyg.'.$c['id'])<div class="text-xs text-red-700">{{ $message }}</div>@enderror
+                                    <details class="mt-1 text-xs text-gray-600">
+                                        <summary class="cursor-pointer text-indigo-700">ajustes 40.3</summary>
+                                        <div class="mt-1 space-y-1" style="width:15rem">
+                                            @foreach (\App\Http\Livewire\Contabilidad\IsPagos::CAMPOS_403 as $campo => $etq)
+                                                <label class="flex items-center justify-between gap-2">{{ $etq }}
+                                                    <input type="text" wire:model="ajustes403.{{ $c['id'] }}.{{ $campo }}" placeholder="{{ isset($c['ajustes'][$campo]) ? number_format((float) $c['ajustes'][$campo], 2, ',', '.') : '' }}" class="w-24 text-xs text-right border-gray-300 rounded-md">
+                                                </label>
+                                            @endforeach
+                                            <div class="text-gray-500">Lo que escribas se guarda al pulsar «Preparar»; en gris, lo ya guardado. Vacío = no se toca.</div>
+                                        </div>
+                                    </details>
+                                </td>
+                                <td class="px-3 py-2">
                                     <input type="text" wire:model="cnae.{{ $c['id'] }}" maxlength="4" placeholder="{{ $r['cnae'] ?? '' }}" class="w-16 text-sm border-gray-300 rounded-md shadow-sm">
                                 </td>
                                 <td class="px-3 py-2 text-right whitespace-nowrap">{{ $euros($r['cuota_is'] ?? null) }}</td>
@@ -91,7 +110,13 @@
                                     @if ($r)
                                         @foreach ($r['errores'] ?? [] as $e)<div class="text-red-700">⛔ {{ $e }}</div>@endforeach
                                         @foreach ($r['avisos'] ?? [] as $a)<div class="text-amber-700">⚠ {{ $a }}</div>@endforeach
-                                        @if (empty($r['errores']))<div class="text-green-700">✓ {{ $r['porcentaje'] }} % de {{ $euros($r['base']) }}</div>@endif
+                                        @foreach ($r['info'] ?? [] as $i)<div class="text-gray-600">ℹ {{ $i }}</div>@endforeach
+                                        @if (empty($r['errores']))
+                                            <div class="text-green-700">✓ {{ ($r['modalidad'] ?? '40.2') === '40.3' ? '40.3 · ' : '' }}{{ $r['porcentaje'] }} % de {{ $euros($r['base']) }}</div>
+                                            @if (! empty($r['detalle']))
+                                                <div class="text-gray-600">Resultado contable {{ $euros($r['detalle']['04'] ?? null) }} → base previa {{ $euros($r['detalle']['13'] ?? null) }} · cuota {{ $euros($r['detalle']['18'] ?? null) }} · mínimo {{ $euros($r['detalle']['33'] ?? null) }} · pagos ant. {{ $euros($r['detalle']['30'] ?? null) }}</div>
+                                            @endif
+                                        @endif
                                     @endif
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap">
@@ -101,7 +126,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="9" class="px-3 py-6 text-center text-gray-500">
+                            <tr><td colspan="10" class="px-3 py-6 text-center text-gray-500">
                                 @if ($clienteId !== 'todos')Este cliente no tiene el 202 en la pestaña Impuestos.
                                 @else No hay clientes con el 202 pendiente en {{ $periodo }} {{ $ejercicio }}.@endif</td></tr>
                         @endforelse

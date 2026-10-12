@@ -40,6 +40,23 @@ class IsPagos extends Component
     /** Subidas: ['is' => [id => archivo], 'p202' => [id => archivo]]. */
     public $subidaIs = [];
     public $subida202 = [];
+    /** P&G / sumas y saldos de SAGE a la fecha del periodo (solo modalidad 40.3): [id => archivo]. */
+    public $subidaPyg = [];
+    /** Importes a mano de la modalidad 40.3: [id => [campo => texto]]; vacío = no tocar lo guardado. */
+    public array $ajustes403 = [];
+
+    /** Campos de ajustes202.json que se editan desde la pantalla (modalidad 40.3): clave => etiqueta. */
+    public const CAMPOS_403 = [
+        'resultado_contable' => 'Resultado contable (04)',
+        'gasto_is' => 'Gasto por IS (05/06)',
+        'otros_aumentos' => 'Otros aumentos (07)',
+        'otras_disminuciones' => 'Otras disminuciones (08)',
+        'bin' => 'Compens. bases negativas (14)',
+        'retenciones' => 'Retenciones (28)',
+        'pagos_anteriores' => 'Pagos anteriores (30)',
+        'porcentaje' => 'Porcentaje (17)',
+        'porcentaje_minimo' => '% del mínimo (33)',
+    ];
 
     public string $salida = '';
 
@@ -125,7 +142,11 @@ class IsPagos extends Component
             $res = $dir.'/'.$this->ejercicio.'/salida202/'.$nif.'_'.$this->ejercicio.'_'.$this->periodo.'.json';
             $r = is_file($res) ? json_decode((string) file_get_contents($res), true) : null;
             $isPdf = $dir.'/'.($this->ejercicio - 1).'/fuentes/m200_presentado.pdf';
+            $pyg = collect(glob($dir.'/'.$this->ejercicio.'/fuentes/pyg202.*') ?: [])->reject(fn ($x) => str_ends_with($x, '.origen.txt'))->first();
+            $ajf = $dir.'/'.$this->ejercicio.'/ajustes202.json';
             $out[] = [
+                'tienePyg' => (bool) $pyg, 'fechaPyg' => $pyg ? date('d/m/Y', filemtime($pyg)) : null,
+                'ajustes' => is_file($ajf) ? (json_decode((string) file_get_contents($ajf), true) ?: []) : [],
                 'id' => $f->id, 'entidad' => $f->entidad, 'nif' => $nif, 'estado' => $estado,
                 'tieneIs' => is_file($isPdf), 'fechaIs' => is_file($isPdf) ? date('d/m/Y', filemtime($isPdf)) : null,
                 'tiene202' => is_file($dir.'/'.$this->ejercicio.'/fuentes/m202_anterior.pdf'),
@@ -147,9 +168,14 @@ class IsPagos extends Component
         $this->guardarSubida('p202', (int) $id);
     }
 
+    public function updatedSubidaPyg($valor, $id): void
+    {
+        $this->guardarSubida('pyg', (int) $id);
+    }
+
     protected function guardarSubida(string $tipo, int $id): void
     {
-        $prop = $tipo === 'is' ? 'subidaIs' : 'subida202';
+        $prop = ['is' => 'subidaIs', 'p202' => 'subida202', 'pyg' => 'subidaPyg'][$tipo];
         $f = $this->{$prop}[$id] ?? null;
         unset($this->{$prop}[$id]);
         $this->resetErrorBag($prop.'.'.$id);
@@ -166,12 +192,13 @@ class IsPagos extends Component
             $this->addError($prop.'.'.$id, 'La entidad no tiene NIF.');
             return;
         }
-        if (strtolower($f->getClientOriginalExtension()) !== 'pdf') {
-            $this->addError($prop.'.'.$id, 'Tiene que ser un PDF.');
+        $ext = strtolower($f->getClientOriginalExtension());
+        if ($tipo === 'pyg' ? ! in_array($ext, ['xlsx', 'csv'], true) : $ext !== 'pdf') {
+            $this->addError($prop.'.'.$id, $tipo === 'pyg' ? 'Tiene que ser un Excel (.xlsx) o un CSV de SAGE.' : 'Tiene que ser un PDF.');
             return;
         }
         $ej = $tipo === 'is' ? $this->ejercicio - 1 : $this->ejercicio;
-        $clave = $tipo === 'is' ? 'm200_presentado' : 'm202_anterior';
+        $clave = ['is' => 'm200_presentado', 'p202' => 'm202_anterior', 'pyg' => 'pyg202'][$tipo];
         $dir = $this->dirCliente($nif).'/'.$ej.'/fuentes';
         if (! is_dir($dir.'/anteriores') && ! @mkdir($dir.'/anteriores', 0777, true)) {
             $this->addError($prop.'.'.$id, 'No se ha podido crear la carpeta del cliente.');
@@ -180,12 +207,52 @@ class IsPagos extends Component
         foreach (glob($dir.'/'.$clave.'.*') ?: [] as $viejo) {
             @rename($viejo, $dir.'/anteriores/'.date('Ymd-His').' '.basename($viejo));
         }
-        if (! @copy($f->getRealPath(), $dir.'/'.$clave.'.pdf')) {
+        if (! @copy($f->getRealPath(), $dir.'/'.$clave.'.'.$ext)) {
             $this->addError($prop.'.'.$id, 'No se ha podido guardar el fichero.');
             return;
         }
         file_put_contents($dir.'/'.$clave.'.origen.txt', $f->getClientOriginalName()."\n".date('d/m/Y H:i')."\n");
-        $this->dispatch('proceso-terminado', mensaje: '✅ '.($tipo === 'is' ? "IS {$ej}" : "202 {$ej}").': '.$f->getClientOriginalName());
+        $this->dispatch('proceso-terminado', mensaje: '✅ '.['is' => "IS {$ej}", 'p202' => "202 {$ej}", 'pyg' => "P&G {$ej}"][$tipo].': '.$f->getClientOriginalName());
+    }
+
+    /** Importe escrito a mano ('1.234,56' o '1234.56') → número, o null si no es un número. */
+    protected function numero(string $v): ?float
+    {
+        $v = trim(str_replace(' ', '', $v));
+        if ($v === '') {
+            return null;
+        }
+        if (str_contains($v, ',') || preg_match('/^-?\d{1,3}(\.\d{3})+$/', $v)) {   // 1.234,56 · 300.000 (punto de miles)
+            $v = str_replace(',', '.', str_replace('.', '', $v));
+        }
+
+        return is_numeric($v) ? (float) $v : null;
+    }
+
+    /** Guarda en ajustes202.json los importes 40.3 escritos en la pantalla (lo vacío no toca lo ya guardado). */
+    protected function guardarAjustes403(string $nif, array $valores): ?string
+    {
+        $ruta = $this->dirCliente($nif).'/'.$this->ejercicio.'/ajustes202.json';
+        $aj = is_file($ruta) ? (json_decode((string) file_get_contents($ruta), true) ?: []) : [];
+        $cambio = false;
+        foreach (array_keys(self::CAMPOS_403) as $campo) {
+            $v = trim((string) ($valores[$campo] ?? ''));
+            if ($v === '') {
+                continue;
+            }
+            $n = $this->numero($v);
+            if ($n === null) {
+                return self::CAMPOS_403[$campo].': «'.$v.'» no es un número.';
+            }
+            $aj[$campo] = $n;
+            $cambio = true;
+        }
+        if ($cambio) {
+            @mkdir(dirname($ruta), 0777, true);
+            file_put_contents($ruta, json_encode($aj, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+
+        return null;
     }
 
     public function marcarTodos(): void
@@ -236,6 +303,14 @@ class IsPagos extends Component
                 $aj = is_file($ajustes) ? (json_decode((string) file_get_contents($ajustes), true) ?: []) : [];
                 $aj['cnae'] = $cnae;
                 file_put_contents($ajustes, json_encode($aj, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            }
+            if (! empty($this->ajustes403[$c['id']])) {
+                $err = $this->guardarAjustes403($c['nif'], $this->ajustes403[$c['id']]);
+                if ($err) {
+                    $this->salida .= "⚠️ {$c['entidad']}: {$err}\n";
+                    continue;
+                }
+                $this->ajustes403[$c['id']] = [];
             }
             try {
                 $r = Process::path($motor)->timeout(180)->env(['IS_MOTOR' => $this->baseDir().'/motor'])

@@ -29,7 +29,7 @@ class IsPagosTest extends TestCase
         if (! is_file($raiz.'/M202/motor/prepara202.py')) {
             $this->markTestSkipped('No está el motor del 202 junto a appmos.');
         }
-        foreach (['lee_200.py', 'textos.py'] as $f) {
+        foreach (['lee_200.py', 'textos.py', 'lee_sage.py'] as $f) {
             copy($raiz.'/IS/motor/'.$f, $this->dir.'/motor/'.$f);
         }
         config(['contabilidad.is_dir' => $this->dir, 'contabilidad.is_ejecucion' => true, 'contabilidad.is_motor202' => $raiz.'/M202/motor']);
@@ -108,7 +108,7 @@ class IsPagosTest extends TestCase
         $b = $this->cliente('B22222222', 'B SL', $this->textoIs('B22222222', 'B SL', '5.000,00', '13.959.750,00'));
         Livewire::test(IsPagos::class)->set('todasEmpresas', true)->set('ejercicio', 2026)->set('periodo', '2P')
             ->set('marcados', [$a->id => true, $b->id => true])->call('preparar')
-            ->assertSee('sin cuota positiva')->assertSee('modalidad 40.3');
+            ->assertSee('sin cuota positiva')->assertSee('Falta el resultado contable');
         $this->assertFileDoesNotExist($this->dir.'/clientes/B11111111/2026/salida202/B11111111_2026_2P.202');
         $this->assertFileDoesNotExist($this->dir.'/clientes/B22222222/2026/salida202/B22222222_2026_2P.202');
     }
@@ -133,5 +133,46 @@ class IsPagosTest extends TestCase
         $c = Livewire::test(IsPagos::class)->set('ejercicio', 2026)->set('periodo', '2P');
         $c->assertSee('Mia SL')->assertDontSee('Ajena SL');
         $c->set('todasEmpresas', true)->assertSee('Mia SL')->assertSee('Ajena SL');
+    }
+
+    public function test_modalidad_403_con_el_pyg_subido_reproduce_el_1p_de_espiral(): void
+    {
+        $this->actingAs($this->adminUser());
+        $e = $this->cliente('B01756089', 'Espiral Trade SL', $this->textoIs('B01756089', 'ESPIRAL TRADE, S.L.', '427.929,91', '13.959.750,00'));
+        $csv = "Cuenta;Descripcion;Debe;Haber;Saldo\n700000000;Ventas;0;1500000,00;\n600000000;Compras;1189025,39;0;\n630000000;Impuesto sobre beneficios;71524,16;0;\n";
+        Livewire::test(IsPagos::class)->set('todasEmpresas', true)
+            ->set('clienteId', (string) $e->id)->set('ejercicio', 2026)->set('periodo', '1P')
+            ->set('subidaPyg.'.$e->id, \Illuminate\Http\UploadedFile::fake()->createWithContent('pyg.csv', $csv))
+            ->call('preparar')
+            ->assertSee('310.974,61')->assertSee('68.414,41')->assertSee('55.073,60');
+        $d = $this->dir.'/clientes/B01756089/2026';
+        $this->assertFileExists($d.'/fuentes/pyg202.csv');
+        $t = file_get_contents($d.'/salida202/B01756089_2026_1P.202');
+        $this->assertSame(328 + 700 + 900 + 18, strlen($t));
+        $p1 = substr($t, 328, 700);
+        $this->assertSame('B', substr($p1, 147, 1));                        // modalidad 40.3
+        $this->assertSame('1', substr($p1, 146, 1));                        // 10-20 M€
+        $this->assertSame('00000000023945045', substr($p1, 199, 17));       // resultado contable [04]
+        $this->assertSame('00000000031097461', substr($p1, 352, 17));       // base imponible previa [13]
+        $p2 = substr($t, 328 + 700, 900);
+        $this->assertSame('02200', substr($p2, 29, 5));                     // porcentaje [17]
+        $this->assertSame('00000000006841441', substr($p2, 102, 17));       // resultado previo [18]
+        $this->assertSame('00000000006841441', substr($p2, 484, 17));       // a ingresar [34]
+    }
+
+    public function test_modalidad_403_con_importes_a_mano_y_pagos_anteriores(): void
+    {
+        $this->actingAs($this->adminUser());
+        $e = $this->cliente('B01756089', 'Espiral Trade SL', $this->textoIs('B01756089', 'ESPIRAL TRADE, S.L.', '427.929,91', '13.959.750,00'));
+        Livewire::test(IsPagos::class)->set('todasEmpresas', true)
+            ->set('clienteId', (string) $e->id)->set('ejercicio', 2026)->set('periodo', '2P')
+            ->set('ajustes403', [$e->id => ['resultado_contable' => '1.000.000,00', 'gasto_is' => '300.000', 'pagos_anteriores' => '68.414,41']])
+            ->call('preparar')->assertSee('1.300.000,00');
+        $j = json_decode(file_get_contents($this->dir.'/clientes/B01756089/2026/salida202/B01756089_2026_2P.json'), true);
+        $this->assertSame(1300000.0, $j['detalle']['13']);
+        $this->assertSame(285999.99 + 0.01, round($j['detalle']['18'], 2));      // 22 % de 1.300.000
+        $this->assertSame(round(286000 - 68414.41, 2), round($j['detalle']['32'], 2));
+        $this->assertSame(round(230000 - 68414.41, 2), round($j['detalle']['33'], 2));   // mínimo 23 % del resultado menos pagos anteriores
+        $this->assertSame(round(286000 - 68414.41, 2), round($j['detalle']['34'], 2));
     }
 }
