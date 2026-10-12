@@ -45,7 +45,15 @@
                     @foreach (range(1, 12) as $m)<option>{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
                 @endif
             </select>
-            @if ($per)<span class="li-gris" style="font-size:12px">{{ $per === 'M' ? 'presenta el 303 mensual' : 'presenta el 303 trimestral' }}</span>@endif
+            @can('entidades.editar')
+                <select wire:change="cambiarPeriodicidad($event.target.value)" class="border-gray-300 rounded-md text-sm" title="Se guarda en la ficha de la entidad (Impuestos)">
+                    <option value="" @selected($per === '') disabled>303: ¿periodicidad?</option>
+                    <option value="T" @selected($per === 'T')>303 trimestral</option>
+                    <option value="M" @selected($per === 'M')>303 mensual</option>
+                </select>
+            @else
+                @if ($per)<span class="li-gris" style="font-size:12px">{{ $per === 'M' ? 'presenta el 303 mensual' : 'presenta el 303 trimestral' }}</span>@endif
+            @endcan
         </div>
         @if ($ultimo)
             <div class="li-gris" style="font-size:12px;margin-top:6px">Último libro de esta empresa: {{ $ultimo['periodo'] }} · {{ $ultimo['tipo'] }} {{ number_format(abs($ultimo['resultado_final']), 2, ',', '.') }} € · {{ $ultimo['fecha'] }} ({{ $ultimo['pc'] }})</div>

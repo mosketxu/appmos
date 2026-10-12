@@ -103,6 +103,22 @@ class LibroIva extends Component
         return in_array($p, ['M', 'T'], true) ? $p : '';
     }
 
+    /** Cambia la periodicidad del 303 de la empresa (M/T) en Impuestos (entidad_impuestos), que es de donde sale al abrir esta pantalla. */
+    public function cambiarPeriodicidad(string $nueva): void
+    {
+        abort_unless(auth()->user()?->can('entidades.editar') && in_array($nueva, ['M', 'T'], true) && isset($this->empresas()[$this->entidadId]), 403);
+        $modelo = \App\Models\ImpuestoModelo::where('codigo', '303')->firstOrFail();
+        $ob = \App\Models\EntidadImpuesto::where('entidad_id', (int) $this->entidadId)->where('modelo_id', $modelo->id)->whereNull('baja_ejercicio')->first()
+            ?? \App\Models\EntidadImpuesto::create(['entidad_id' => (int) $this->entidadId, 'modelo_id' => $modelo->id, 'etiqueta' => '', 'periodicidad' => $nueva]);
+        $ob->update(['periodicidad' => $nueva]);
+        foreach (\App\Support\Impuestos::ejercicios() as $ej) {
+            \App\Support\Impuestos::asegurarEjercicio($ej, $ob->id);
+        }
+        $this->ajustarPeriodo();
+        $this->libro = null;
+        $this->cargarLibroGuardado();
+    }
+
     /** Una empresa mensual trabaja con meses (09 …) y una trimestral con trimestres (3T): si el periodo elegido no es de su tipo, pasa al último ya terminado. */
     protected function ajustarPeriodo(): void
     {

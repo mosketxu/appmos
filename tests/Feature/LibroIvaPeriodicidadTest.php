@@ -30,7 +30,7 @@ class LibroIvaPeriodicidadTest extends TestCase
         $t = $this->empresa('Trimestral SL', 'T');
         $c = Livewire::test(LibroIva::class)->set('verTodos', true)->set('periodo', '3T')->set('entidadId', (string) $m->id);
         $this->assertMatchesRegularExpression('/^(0[1-9]|1[0-2])$/', $c->get('periodo'));
-        $c->assertSee('presenta el 303 mensual');
+        $c->assertSee('303 mensual');
         $c->set('entidadId', (string) $t->id);
         $this->assertMatchesRegularExpression('/^[1-4]T$/', $c->get('periodo'));
     }
@@ -46,5 +46,16 @@ class LibroIvaPeriodicidadTest extends TestCase
         session(['libro_iva' => ['entidad' => (string) $t->id, 'ejercicio' => '2026', 'periodo' => '3T', 'verTodos' => true]]);
         Livewire::test(LibroIva::class)->assertSee('RESULTADO DE LA AUTOLIQUIDACIÓN')->assertSee('hecho en MINI');
         Livewire::test(LibroIva::class)->set('periodo', '2T')->assertDontSee('RESULTADO DE LA AUTOLIQUIDACIÓN');
+    }
+
+    public function test_se_cambia_la_periodicidad_desde_el_libro_y_queda_en_la_entidad(): void
+    {
+        $this->actingAs($this->adminUser(['activo' => 1]));
+        $m = $this->empresa('Mal puesta SL', 'M');
+        $c = Livewire::test(LibroIva::class)->set('verTodos', true)->set('entidadId', (string) $m->id);
+        $this->assertMatchesRegularExpression('/^(0[1-9]|1[0-2])$/', $c->get('periodo'));
+        $c->call('cambiarPeriodicidad', 'T');
+        $this->assertMatchesRegularExpression('/^[1-4]T$/', $c->get('periodo'));
+        $this->assertSame('T', DB::table('entidad_impuestos')->where('entidad_id', $m->id)->value('periodicidad'));
     }
 }
