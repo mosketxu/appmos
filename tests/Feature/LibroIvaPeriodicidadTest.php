@@ -58,4 +58,15 @@ class LibroIvaPeriodicidadTest extends TestCase
         $this->assertMatchesRegularExpression('/^[1-4]T$/', $c->get('periodo'));
         $this->assertSame('T', DB::table('entidad_impuestos')->where('entidad_id', $m->id)->value('periodicidad'));
     }
+
+    public function test_en_trimestral_solo_se_devuelve_en_el_4t(): void
+    {
+        $this->actingAs($this->adminUser(['activo' => 1]));
+        $t = $this->empresa('Trimestral SL', 'T');
+        DB::table('entidades')->where('id', $t->id)->update(['redeme' => 1]);
+        $c = Livewire::test(LibroIva::class)->set('verTodos', true)->set('entidadId', (string) $t->id)->set('ejercicio', '2026')->set('periodo', '3T');
+        $c->assertSee('En trimestral solo se devuelve en el 4T.');
+        $this->assertTrue($c->get('devolver'));   // la marca sigue, pero no se aplica
+        $c->set('periodo', '4T')->assertDontSee('En trimestral solo se devuelve en el 4T.');
+    }
 }

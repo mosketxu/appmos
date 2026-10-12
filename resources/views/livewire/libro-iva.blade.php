@@ -103,7 +103,8 @@
     <div class="li-card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <label style="font-size:13px" title="Solo cambia el texto del resultado cuando sale a favor. Por defecto, la marca REDEME de la entidad; el 4T/diciembre siempre dice A DEVOLVER.">
             Si sale a favor:
-            <select wire:model="devolver" style="font-size:13px"><option value="1">A DEVOLVER</option><option value="0">A COMPENSAR</option></select></label>
+            <select wire:model="devolver" style="font-size:13px" @disabled($this->soloCuarto())><option value="1" @selected(! $this->soloCuarto() && $devolver)>A DEVOLVER</option><option value="0" @selected($this->soloCuarto() || ! $devolver)>A COMPENSAR</option></select></label>
+        @if ($this->soloCuarto())<span class="li-gris" style="font-size:12px">En trimestral solo se devuelve en el 4T.</span>@endif
         <button type="button" wire:click="generar" wire:loading.attr="disabled" class="li-btn pri" @disabled($espera !== '' || $carpeta === '')>▶ Generar libro de IVA {{ $periodo }} {{ $ejercicio }}</button>
         @if ($this->presentaM216())<span style="font-size:12px;color:#4338ca">Esta empresa presenta el M216: el libro llevará la tabla por proveedor junto al bloque ISP.</span>@endif
         <span class="li-gris" style="font-size:12px">Lo hace un PC con OneDrive y deja el Excel «IVA …» en la misma carpeta, junto al original.</span>

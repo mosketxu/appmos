@@ -139,6 +139,17 @@ class LibroIva extends Component
         }
     }
 
+    /** En un trimestre solo se devuelve en el 4T (el motor ya lo fuerza); el resto de trimestres, a compensar aunque la marca diga otra cosa. */
+    public function soloCuarto(): bool
+    {
+        return (bool) preg_match('/^[1-3]T$/', $this->periodo);
+    }
+
+    protected function devolverEfectivo(): bool
+    {
+        return $this->soloCuarto() ? false : $this->devolver;
+    }
+
     protected function alCambiarEmpresa(): void
     {
         $this->ajustarPeriodo();
@@ -335,7 +346,7 @@ class LibroIva extends Component
         }
         $this->tareaId = ColaTareas::crear('pc.libro_iva', [
             'accion' => $accion, 'carpeta' => $this->carpeta, 'periodo' => $this->periodoMotor(),
-            'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId, 'm216' => $this->presentaM216(), 'devolver' => $this->devolver,
+            'cliente' => $this->nombreEmpresa(), 'entidad_id' => (int) $this->entidadId, 'm216' => $this->presentaM216(), 'devolver' => $this->devolverEfectivo(),
             'anterior' => $accion === 'generar' ? $this->anteriorDeImpuesto() : null,
             'entrada' => $subir ? ['archivo' => 'original.xlsx', 'nombre' => basename(str_replace('\\', '/', $this->excelSubido->getClientOriginalName()))] : null,
         ], ColaTareas::pcElegido() ?: null, auth()->id(), null, null, $subir ? 'preparando' : 'pendiente');
