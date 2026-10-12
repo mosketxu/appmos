@@ -65,8 +65,8 @@ class Impuestos extends Component
     {
         abort_unless(auth()->user()?->can('impuestos.ver'), 403);
         $this->ejercicio = (int) now()->format('Y');
-        // Al volver a la pantalla se recuerdan los filtros de la última vez (en la sesión del usuario)
-        $g = (array) session('impuestos.filtros', []);
+        // Al volver a la pantalla se recuerdan los filtros de la última vez (guardados en el usuario, valen desde cualquier PC)
+        $g = (array) (auth()->user()->impuestos_filtros ?? []);
         $this->ejercicio = (int) ($g['ejercicio'] ?? $this->ejercicio);
         $this->vista = in_array($g['vista'] ?? '', array_merge(['anio', 'T1', 'T2', 'T3', 'T4'], array_map(fn ($m) => sprintf('%02d', $m), range(1, 12))), true) ? $g['vista'] : $this->vista;
         $this->buscar = (string) ($g['buscar'] ?? '');
@@ -87,8 +87,8 @@ class Impuestos extends Component
 
     protected function recordarFiltros(): void
     {
-        session(['impuestos.filtros' => ['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo, 'filtroGrupo' => $this->filtroGrupo,
-            'soloPendientes' => $this->soloPendientes, 'incluirBajas' => $this->incluirBajas, 'verTodos' => $this->verTodos]]);
+        \App\Models\User::whereKey(auth()->id())->update(['impuestos_filtros' => json_encode(['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo, 'filtroGrupo' => $this->filtroGrupo,
+            'soloPendientes' => $this->soloPendientes, 'incluirBajas' => $this->incluirBajas, 'verTodos' => $this->verTodos])]);
     }
 
     public function cambiarEjercicio(int $d): void
