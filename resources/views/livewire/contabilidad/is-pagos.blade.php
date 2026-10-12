@@ -44,7 +44,7 @@
                 debe ser el de {{ $ejercicio }} (CNAE-2025), sube también un 202 de este año o escríbelo en la casilla. Se genera el fichero <code>.202</code>
                 para <b>importar en el formulario de la AEAT</b>: allí sacas el borrador y presentas. Aquí no se presenta nada.
                 Las empresas de <b>más de 6 M€ de cifra de negocios</b> van por la <b>modalidad 40.3</b> (base imponible acumulada del año): además hace falta el
-                <b>P&amp;G o sumas y saldos de SAGE</b> a 31-mar (1P), 30-sep (2P) o 30-nov (3P) — .xlsx o .csv —, que se sube en la columna «P&amp;G» (o escribe el resultado
+                <b>sumas y saldos de SAGE acumulado desde el 1 de enero</b> a 31-mar (1P), 30-sep (2P) o 30-nov (3P) — .xlsx o .csv —, que se sube en la columna «Sumas y saldos» (también vale la Cuenta de Explotación, PL; o escribe el resultado
                 contable a mano en «ajustes 40.3»). Los pagos anteriores (1P) se sacan solos del 202 de este año si lo subes. <b>Revisa siempre el borrador en la AEAT.</b>
             </div>
 
@@ -56,7 +56,7 @@
                             <th class="px-3 py-2 text-left">Cliente</th>
                             <th class="px-3 py-2 text-left">IS {{ $ejercicio - 1 }} (PDF)</th>
                             <th class="px-3 py-2 text-left">202 de {{ $ejercicio }} (opc.)</th>
-                            <th class="px-3 py-2 text-left">P&amp;G a la fecha (40.3)</th>
+                            <th class="px-3 py-2 text-left">Sumas y saldos a {{ ['1P' => '31-mar', '2P' => '30-sep', '3P' => '30-nov'][$periodo] ?? '' }} <span class="normal-case">(solo 40.3)</span></th>
                             <th class="px-3 py-2 text-left">CNAE</th>
                             <th class="px-3 py-2 text-right">Cuota IS</th>
                             <th class="px-3 py-2 text-right">A pagar {{ $periodo }}</th>
@@ -88,6 +88,7 @@
                                 <td class="px-3 py-2">
                                     @if ($c['tienePyg'])<span class="text-green-700">✓ {{ $c['fechaPyg'] }}</span>@endif
                                     <input type="file" wire:model="subidaPyg.{{ $c['id'] }}" accept=".xlsx,.csv" class="block w-48 mt-1 text-xs">
+                                    <div class="mt-1 text-xs text-gray-500" style="width:12rem">Sube el <b>sumas y saldos de SAGE acumulado desde el 1-ene</b> (xlsx). Vale también la Cuenta de Explotación (PL), con menos control.</div>
                                     @error('subidaPyg.'.$c['id'])<div class="text-xs text-red-700">{{ $message }}</div>@enderror
                                     <details class="mt-1 text-xs text-gray-600">
                                         <summary class="cursor-pointer text-indigo-700">ajustes 40.3</summary>
