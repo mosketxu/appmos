@@ -1744,7 +1744,7 @@ class FacturasOcr extends Component
     public function leerZona(string $campo, int $pagina, float $x0, float $y0, float $x1, float $y1): void
     {
         $this->resetErrorBag('zona');
-        if (! $this->sel || ! in_array($campo, ['cif', 'su_factura', 'fecha', 'total'], true)) {
+        if (! $this->sel || ! in_array($campo, ['cif', 'su_factura', 'fecha', 'total', 'proveedor', 'isp'], true)) {
             return;
         }
         $rect = array_map(fn ($v) => round(max(0, min(1, $v)), 4), [min($x0, $x1), min($y0, $y1), max($x0, $x1), max($y0, $y1)]);
@@ -1759,6 +1759,17 @@ class FacturasOcr extends Component
         $valor = (string) ($r['valor'] ?? '');
         if ($valor === '') {
             $this->addError('zona', 'No he sabido sacar el dato del recuadro. Leído: '.mb_substr((string) ($r['texto'] ?? ''), 0, 120));
+            return;
+        }
+        if ($campo === 'isp') {
+            // Inversión del sujeto pasivo marcada a mano: no se guarda como zona; se deja el motivo listo para rechazar con ISP
+            $this->motivo = 'Inversión del sujeto pasivo';
+            $this->addError('zona', 'Marcada la inversión del sujeto pasivo: pulsa el botón ISP para rechazar la factura.');
+            return;
+        }
+        if ($campo === 'proveedor') {
+            $this->form['proveedor'] = $valor;   // solo el nombre; la cuenta se elige a mano o con el NIF
+            $this->sucio = true;
             return;
         }
         if ($campo === 'fecha') {

@@ -547,8 +547,10 @@
                             <button type="button" x-on:click="modo='su_factura'">Nº factura</button>
                             <button type="button" x-on:click="modo='fecha'">Fecha</button>
                             <button type="button" x-on:click="modo='total'">Total</button>
+                            <button type="button" x-on:click="modo='proveedor'">Proveedor</button>
+                            <button type="button" x-on:click="modo='isp'" title="Marcar la leyenda de inversión del sujeto pasivo para rechazar la factura">Inv. suj. pasivo</button>
                         </span>
-                        <span x-show="modo" style="color:#fde68a">Arrastra un recuadro sobre <b x-text="{cif:'el NIF', su_factura:'el nº de factura', fecha:'la fecha', total:'el total'}[modo]"></b>
+                        <span x-show="modo" style="color:#fde68a">Arrastra un recuadro sobre <b x-text="{cif:'el NIF', su_factura:'el nº de factura', fecha:'la fecha', total:'el total', proveedor:'el proveedor', isp:'la inversión del sujeto pasivo'}[modo]"></b>
                             <button type="button" x-on:click="modo=null">Cancelar</button></span>
                     </div>
                     <div class="focr-pags" x-ref="pags" x-on:wheel="if ($event.ctrlKey) { $event.preventDefault(); mas($event.deltaY < 0 ? 1 : -1) }"
