@@ -195,4 +195,20 @@ class IsPagosTest extends TestCase
         \Illuminate\Support\Facades\Http::assertSent(fn ($r) => str_ends_with($r->url(), '/attachments') && str_ends_with($r['name'], '.202'));
         \Illuminate\Support\Facades\Http::assertNotSent(fn ($r) => str_contains($r->url(), 'sendMail'));
     }
+
+    public function test_modalidad_403_lee_la_cuenta_de_explotacion_de_sage(): void
+    {
+        $this->actingAs($this->adminUser());
+        $e = $this->cliente('B01756089', 'Espiral Trade SL', $this->textoIs('B01756089', 'ESPIRAL TRADE, S.L.', '427.929,91', '13.959.750,00'));
+        $x = \Illuminate\Http\UploadedFile::fake()->createWithContent('PL 2026 09.xlsx', file_get_contents(base_path('tests/fixtures/cuenta_explotacion_sage.xlsx')));
+        Livewire::test(IsPagos::class)->set('todasEmpresas', true)
+            ->set('clienteId', (string) $e->id)->set('ejercicio', 2026)->set('periodo', '1P')
+            ->set('subidaPyg.'.$e->id, $x)->call('preparar')->assertSee('Cuenta de Explotación de SAGE');
+        $j = json_decode(file_get_contents($this->dir.'/clientes/B01756089/2026/salida202/B01756089_2026_1P.json'), true);
+        $this->assertSame([], $j['errores']);
+        $this->assertSame(250000.0, $j['detalle']['04']);
+        $this->assertSame(55000.0, round($j['detalle']['18'], 2));          // 22 % de 250.000
+        $this->assertSame(57500.0, round($j['detalle']['33'], 2));          // mínimo 23 %
+        $this->assertSame(57500.0, round($j['detalle']['34'], 2));
+    }
 }
