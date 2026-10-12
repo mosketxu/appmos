@@ -500,8 +500,7 @@ class Neteges extends Component
 
     /**
      * Busca en el Outlook de este PC los listados que manda Neteges (cobros*.xlsx, BBBVA26NET,
-     * SABADELL26NET) y los guarda en Base/Recibidos (bajarAdjuntosNeteges.ps1). Bajo Apache hace
-     * falta WSL_INTEROP para llamar a powershell.exe, como en FacturasOcr.
+     * SABADELL26NET) y los guarda en Base/Recibidos (bajarAdjuntosNeteges.py, por Microsoft Graph).
      */
     public function buscarEnCorreo(): void
     {
@@ -512,23 +511,19 @@ class Neteges extends Component
         }
         if ($this->remoto()) {
             $this->ejecutarEnPc([
-                ['script' => 'bajarAdjuntosNeteges.ps1', 'args' => ['-Destino', '{DIRWIN}\\Base\\Recibidos'], 'timeout' => 600, 'etiqueta' => $etiqueta],
+                ['script' => 'bajarAdjuntosNeteges.py', 'args' => ['--destino', '{DIR}/Base/Recibidos'], 'timeout' => 600, 'etiqueta' => $etiqueta],
                 ['script' => 'neteges_cobros.py', 'args' => [], 'timeout' => 120, 'etiqueta' => $etiqueta],
             ], $etiqueta, [], 'postBuscarEnCorreo');
             return;
         }
-        $ps = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
         try {
             $r = Process::path($this->baseDir())->timeout(600)
-                ->env(getenv('WSL_INTEROP') ? [] : ['WSL_INTEROP' => '/run/WSL/1_interop'])
-                ->run([is_file($ps) ? $ps : 'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
-                    $this->rutaWindows($this->baseDir().'/bajarAdjuntosNeteges.ps1'),
-                    '-Destino', $this->rutaWindows($this->baseDir().'/Base/Recibidos')]);
+                ->run([$this->pythonBin(), 'bajarAdjuntosNeteges.py', '--destino', $this->baseDir().'/Base/Recibidos']);
             $lineas = array_filter(array_map('trim', explode("\n", $r->output())));
             $nuevos = array_map(fn ($l) => '• '.basename(str_replace('\\', '/', substr($l, 9))), array_filter($lineas, fn ($l) => str_starts_with($l, 'GUARDADO|')));
             $texto = $r->successful()
                 ? ($nuevos ? "Nuevos:\n".implode("\n", $nuevos) : 'No hay ficheros nuevos de Neteges en el correo.')
-                : '⚠️ No se ha podido leer el Outlook: '.trim($r->output()."\n".$r->errorOutput());
+                : '⚠️ No se ha podido leer el correo: '.trim($r->output()."\n".$r->errorOutput());
             $res = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'neteges_cobros.py']);
             $texto .= "\n\n".trim($res->output());
         } catch (\Throwable $e) {
@@ -548,7 +543,7 @@ class Neteges extends Component
         $resto = trim(implode("\n", array_filter($lineas, fn ($l) => ! str_starts_with($l, 'GUARDADO|'))));
         $texto = ($oks[0] ?? false)
             ? ($nuevos ? "Nuevos:\n".implode("\n", $nuevos) : 'No hay ficheros nuevos de Neteges en el correo.')."\n\n".$resto
-            : '⚠️ No se ha podido leer el Outlook del PC: '.$resto;
+            : '⚠️ No se ha podido leer el correo: '.$resto;
         $this->salida = "===== {$ctx['etiqueta']} =====\n".trim($texto);
         $this->cargarEstado();
     }

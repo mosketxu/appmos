@@ -247,7 +247,7 @@ return [
         // Neteges: la base (xlsx) va por git, así que solo un PC debe modificarla: NETEGES_PC=AlexMiniPC en el .env del VPS.
         'neteges' => ['pc' => env('NETEGES_PC'), 'exclusivo' => true, 'relevo' => array_filter(explode(',', env('NETEGES_RELEVO', 'PortalExomen'))), 'scripts' => [
             'neteges_base.py', 'neteges_cobros.py', 'neteges_conciliar.py', 'neteges_estado.py', 'neteges_extractos.py',
-            'neteges_plugin.py', 'neteges_ventas.py', 'bajarAdjuntosNeteges.ps1',
+            'neteges_plugin.py', 'neteges_ventas.py', 'bajarAdjuntosNeteges.py',
         ]],
     ],
 

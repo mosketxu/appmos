@@ -67,7 +67,7 @@ return [
         'disk' => null,        // Example: 'local', 's3'              | Default: 'default'
         'rules' => ['required', 'file', 'max:51200'], // 50 MB (PDF escaneados del Genérico). PHP: upload_max_filesize/post_max_size >= 64M. Example: ['file', 'mimes:png,jpg']  | Default: ['required', 'file', 'max:12288'] (12MB)
         'directory' => null,   // Example: 'tmp'                      | Default: 'livewire-tmp'
-        'middleware' => null,  // Example: 'throttle:5,1'             | Default: 'throttle:60,1'
+        'middleware' => 'throttle:2000,1',  // Default 'throttle:60,1': el Genérico sube una carpeta entera de uno en uno y a partir de ~58 ficheros el servidor daba 429 (12-oct-2026)
         'preview_mimes' => [   // Supported file types for temporary pre-signed file URLs...
             'png', 'gif', 'bmp', 'svg', 'wav', 'mp4',
             'mov', 'avi', 'wmv', 'mp3', 'm4a',

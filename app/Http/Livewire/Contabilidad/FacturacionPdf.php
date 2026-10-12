@@ -541,11 +541,26 @@ class FacturacionPdf extends Component
     /** Cada fichero que sube el navegador (de uno en uno) se guarda al momento y se añade al lote. */
     public function updatedNuevoArchivoGenerico(): void
     {
-        $this->validate(['nuevoArchivoGenerico' => 'required|file|max:51200|mimes:pdf,jpg,jpeg,png,tif,tiff,bmp,gif,webp']);
         $f = $this->nuevoArchivoGenerico;
         $nombre = $f->getClientOriginalName();
         $ext = strtolower($f->getClientOriginalExtension() ?: 'pdf');
+        // Por extensión, no por tipo detectado: un PDF guardado de un correo puede llevar cabeceras delante y finfo lo ve como octet-stream (2600245, 12-oct-2026)
+        if (! in_array($ext, ['pdf', 'jpg', 'jpeg', 'jfif', 'png', 'tif', 'tiff', 'bmp', 'gif', 'webp'], true)) {
+            $this->addError('nuevoArchivoGenerico', "«{$nombre}»: solo PDF o imágenes.");
+            $this->nuevoArchivoGenerico = null;
+            return;
+        }
+        $this->validate(['nuevoArchivoGenerico' => 'required|file|max:51200']);
         $rel = $f->storeAs('facturacion-pdf/Generico/lotes/'.Str::uuid(), 'f.'.$ext, 'local');
+        if ($ext === 'pdf') {
+            // Quita lo que haya antes de «%PDF-» (cabeceras de correo pegadas delante)
+            $ruta = Storage::disk('local')->path($rel);
+            $ini = (string) @file_get_contents($ruta, false, null, 0, 4096);
+            $pos = strpos($ini, '%PDF-');
+            if ($pos !== false && $pos > 0) {
+                file_put_contents($ruta, substr((string) file_get_contents($ruta), $pos));
+            }
+        }
         $this->archivosGenerico[] = ['nombre' => $nombre, 'ruta' => Storage::disk('local')->path($rel)];
         $this->nuevoArchivoGenerico = null;
         if (count($this->archivosGenerico) === 2) {

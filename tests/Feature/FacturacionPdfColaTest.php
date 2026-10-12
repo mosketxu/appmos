@@ -103,6 +103,16 @@ class FacturacionPdfColaTest extends TestCase
         $this->assertStringNotContainsString('filas', $c->get('salida'));
         $this->assertStringNotContainsString('pedido a los PCs', $c->get('salida'));
     }
+
+    public function test_generico_acepta_pdf_con_cabeceras_delante_y_las_quita(): void
+    {
+        $f = UploadedFile::fake()->createWithContent('2600245.pdf', "date: Tue, 28 Jul 2026\r\nfrom: x\r\n\r\n%PDF-1.4\n%%EOF\n");
+        $c = Livewire::test(FacturacionPdf::class)->set('nuevoArchivoGenerico', $f)->assertHasNoErrors();
+        $arch = $c->get('archivosGenerico');
+        $this->assertCount(1, $arch);
+        $this->assertSame('2600245.pdf', $arch[0]['nombre']);
+        $this->assertStringStartsWith('%PDF-', file_get_contents($arch[0]['ruta']));
+    }
 }
 
 class MenuFalsoFacturacion extends \Livewire\Component

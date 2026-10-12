@@ -218,10 +218,23 @@
                             const lista = this.marcados;
                             if (! lista.length) { this.estado = 'Elige una carpeta o ficheros y marca al menos uno.'; return; }
                             await this.$wire.empezarLoteCarpeta();
-                            for (let i = 0; i < lista.length; i++) {
-                                this.estado = 'Subiendo ' + (i + 1) + ' de ' + lista.length + ': ' + lista[i].nombre;
-                                const file = await handles[lista[i].nombre].getFile();
+                            const subir = async (nombre, i, n) => {
+                                this.estado = 'Subiendo ' + i + ' de ' + n + ': ' + nombre;
+                                const file = await handles[nombre].getFile();
                                 await new Promise(ok => this.$wire.upload('nuevoArchivoGenerico', file, ok, ok));
+                            };
+                            for (let i = 0; i < lista.length; i++) await subir(lista[i].nombre, i + 1, lista.length);
+                            // Comprobar qué ha llegado de verdad (los errores de subida no se ven): reintentar lo que falte
+                            const faltan = () => { const hay = new Set((this.$wire.archivosGenerico || []).map(a => a.nombre)); return lista.map(f => f.nombre).filter(n => ! hay.has(n)); };
+                            for (let ronda = 0; ronda < 3 && faltan().length; ronda++) {
+                                await new Promise(r => setTimeout(r, 3000));
+                                const f = faltan();
+                                for (let i = 0; i < f.length; i++) await subir(f[i], i + 1, f.length);
+                            }
+                            const sin = faltan();
+                            if (sin.length) {
+                                this.estado = '⚠️ No se han podido subir ' + sin.length + ' fichero(s): ' + sin.join(', ') + '. Revisa que se abran bien y repite solo esos.';
+                                if (! confirm('No se han subido ' + sin.length + ' fichero(s):\n' + sin.join('\n') + '\n\n¿Analizar igualmente los demás?')) return;
                             }
                         }
                         this.estado = 'Leyendo (OCR)…';
@@ -268,7 +281,19 @@
                             } catch (e) { log.push('⚠️ ' + r.fichero + ': ' + e.message); }
                         }
                         const cambiados = this.$wire.genericoNoMover ? [] : [...new Set(res.filter(r => ! r.intacto).map(r => r.archivo))];
-                        if (this.$wire.genericoNoMover) log.push('ℹ️ Originales sin mover: se quedan donde estaban.');
+                        if (this.$wire.genericoNoMover) {
+                            log.push('ℹ️ Originales sin mover: se quedan donde estaban.');
+                            // Los que se han partido se marcan en el nombre para no volver a pasarlos ni confundirlos con una factura entera
+                            for (const a of [...new Set(res.filter(r => ! r.intacto).map(r => r.archivo))]) {
+                                try {
+                                    const h = await manejador(a);
+                                    if (! h || /SE HA PARTICIONADO/i.test(a)) continue;
+                                    const n = await libre(dir, a.replace(/(\.[^.]+)?$/, ' - SE HA PARTICIONADO$1'));
+                                    await mover(h, dir, dir, n);
+                                    log.push(a + '  →  ' + n);
+                                } catch (e) { log.push('⚠️ ' + a + ' (marcar como particionado): ' + e.message); }
+                            }
+                        }
                         if (cambiados.length) {
                             const orig = await dir.getDirectoryHandle('originales', { create: true });
                             for (const a of cambiados) {
