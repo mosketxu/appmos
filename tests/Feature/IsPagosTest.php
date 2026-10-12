@@ -82,7 +82,7 @@ class IsPagosTest extends TestCase
     {
         $this->actingAs($this->adminUser());
         $e = $this->cliente('B06931570', 'Apanemi Invest SL', $this->textoIs('B06931570', 'APANEMI INVEST, S.L.', '60.164,66', '261.737,80'));
-        Livewire::test(IsPagos::class)
+        Livewire::test(IsPagos::class)->set('todasEmpresas', true)
             ->set('clienteId', (string) $e->id)->set('ejercicio', 2026)->set('periodo', '2P')
             ->set('cnae', [$e->id => '4101'])
             ->call('preparar')
@@ -106,7 +106,7 @@ class IsPagosTest extends TestCase
         $this->actingAs($this->adminUser());
         $a = $this->cliente('B11111111', 'A SL', $this->textoIs('B11111111', 'A SL', '-1.505,58', '10.000,00'));
         $b = $this->cliente('B22222222', 'B SL', $this->textoIs('B22222222', 'B SL', '5.000,00', '13.959.750,00'));
-        Livewire::test(IsPagos::class)->set('ejercicio', 2026)->set('periodo', '2P')
+        Livewire::test(IsPagos::class)->set('todasEmpresas', true)->set('ejercicio', 2026)->set('periodo', '2P')
             ->set('marcados', [$a->id => true, $b->id => true])->call('preparar')
             ->assertSee('sin cuota positiva')->assertSee('modalidad 40.3');
         $this->assertFileDoesNotExist($this->dir.'/clientes/B11111111/2026/salida202/B11111111_2026_2P.202');
@@ -118,8 +118,20 @@ class IsPagosTest extends TestCase
         $this->actingAs($this->adminUser());
         $a = $this->cliente('B11111111', 'Alfa SL', $this->textoIs('B11111111', 'ALFA SL', '1.000,00', '10.000,00'));
         $b = $this->cliente('B22222222', 'Beta SL', $this->textoIs('B22222222', 'BETA SL', '2.000,00', '10.000,00'));
-        $c = Livewire::test(IsPagos::class)->set('clienteId', (string) $a->id)->set('ejercicio', 2026)->set('periodo', '2P');
+        $c = Livewire::test(IsPagos::class)->set('todasEmpresas', true)->set('clienteId', (string) $a->id)->set('ejercicio', 2026)->set('periodo', '2P');
         $c->assertSee('B11111111 · pendiente')->assertDontSee('B22222222 · pendiente');
         $c->set('clienteId', 'todos')->assertSee('B11111111 · pendiente')->assertSee('B22222222 · pendiente');
+    }
+
+    public function test_por_defecto_solo_salen_las_empresas_del_usuario_y_admin_puede_ver_todas(): void
+    {
+        $admin = $this->adminUser();
+        $this->actingAs($admin);
+        $mia = $this->cliente('A11111111', 'Mia SL', 'x');
+        $ajena = $this->cliente('B22222222', 'Ajena SL', 'x');
+        DB::table('entidad_user')->insert(['user_id' => $admin->id, 'entidad_id' => $mia->id]);
+        $c = Livewire::test(IsPagos::class)->set('ejercicio', 2026)->set('periodo', '2P');
+        $c->assertSee('Mia SL')->assertDontSee('Ajena SL');
+        $c->set('todasEmpresas', true)->assertSee('Mia SL')->assertSee('Ajena SL');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire\Contabilidad;
 
+use App\Support\Impuestos as Imp;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
@@ -26,6 +27,8 @@ class IsPagos extends Component
     public int $ejercicio;
     public string $periodo = '2P';
     public bool $verTodos = false;
+    /** Admin/Suma: ver las empresas de todos (por defecto, como en el resto de Impuestos, solo las del usuario). */
+    public bool $todasEmpresas = false;
 
     /** Cliente del desplegable: 'todos' (los que tienen el 202 pendiente) o el id de una entidad. */
     public string $clienteId = 'todos';
@@ -45,6 +48,24 @@ class IsPagos extends Component
         $this->ejercicio = (int) date('Y');
         $m = (int) date('n');
         $this->periodo = $m <= 6 ? '1P' : ($m >= 11 ? '3P' : '2P');
+    }
+
+    public function updatedTodasEmpresas(): void
+    {
+        $this->todasEmpresas = $this->puedeTodas() && $this->todasEmpresas;
+        $this->clienteId = 'todos';
+        $this->marcados = [];
+    }
+
+    public function puedeTodas(): bool
+    {
+        return Imp::esGestor();
+    }
+
+    /** Limita una consulta sobre entidad_impuestos (alias ei) a las empresas que ve el usuario. */
+    protected function visibles($q)
+    {
+        return Imp::soloVisibles($q, null, $this->todasEmpresas && $this->puedeTodas());
     }
 
     protected function baseDir(): string
@@ -88,6 +109,7 @@ class IsPagos extends Component
                 $j->on('s.entidad_impuesto_id', '=', 'ei.id')->where('s.ejercicio', $this->ejercicio)->where('s.periodo', $est);
             })
             ->where('m.codigo', '202')->whereNull('e.deleted_at')
+            ->tap(fn ($q) => $this->visibles($q))
             ->when($this->clienteId !== 'todos', fn ($q) => $q->where('e.id', (int) $this->clienteId))
             ->whereNotNull('e.nif')->where('e.nif', '!=', '')
             ->orderBy('e.entidad')
@@ -134,7 +156,12 @@ class IsPagos extends Component
         if (! $f instanceof UploadedFile || ! $this->autorizado()) {
             return;
         }
-        $nif = (string) DB::table('entidades')->where('id', $id)->value('nif');
+        $visible = $this->visibles(DB::table('entidad_impuestos as ei')->where('ei.entidad_id', $id))->exists();
+        $nif = $visible ? (string) DB::table('entidades')->where('id', $id)->value('nif') : '';
+        if (! $visible) {
+            $this->addError($prop.'.'.$id, 'No tienes acceso a esa empresa.');
+            return;
+        }
         if ($this->nif($nif) === '') {
             $this->addError($prop.'.'.$id, 'La entidad no tiene NIF.');
             return;
@@ -263,7 +290,7 @@ class IsPagos extends Component
         $filas = DB::table('entidad_impuestos as ei')
             ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->join('entidades as e', 'e.id', '=', 'ei.entidad_id')
-            ->where('m.codigo', '202')->whereNull('e.deleted_at')->whereNotNull('e.nif')->where('e.nif', '!=', '')
+            ->where('m.codigo', '202')->whereNull('e.deleted_at')->tap(fn ($q) => $this->visibles($q))->whereNotNull('e.nif')->where('e.nif', '!=', '')
             ->orderBy('e.entidad')->get(['e.id', 'e.entidad', 'e.nif']);
         foreach ($filas as $f) {
             $o[(string) $f->id] = $f->entidad.' · '.$this->nif($f->nif);
