@@ -64,7 +64,7 @@
         .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; font-size: 13px; line-height: 1; cursor: pointer; color: #9ca3af; opacity: .7; }
         .imp-av.comunicado { color: #2563eb; opacity: 1; }
         .imp-av.respondido { color: #16a34a; opacity: 1; }
-        .imp-av.parcial { color: #dc2626; opacity: 1; font-weight: 700; }
+        .imp-falta { font-size: 12px; margin-left: 1px; }
         .imp-av.sin_comunicar:hover { opacity: 1; }
         .imp-avp { text-align: left; white-space: normal; width: 300px; padding: 8px; left: 0; right: auto; font-size: 12px; }
         .imp-avp .e { display: block; width: 100%; padding: 3px 6px; margin-bottom: 2px; border-radius: 4px; border: 1px solid transparent; background: none; text-align: left; cursor: pointer; }

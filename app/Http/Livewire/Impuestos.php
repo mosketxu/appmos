@@ -270,11 +270,11 @@ class Impuestos extends Component
         abort_unless($ver, 403);
     }
 
-    /** Aviso al cliente (uno por cliente y periodo/bloque): sin_comunicar | comunicado | parcial (falta comunicar algún impuesto) | respondido. La fecha es la del primer paso a comunicado/parcial. */
+    /** Aviso al cliente (uno por cliente y periodo/bloque): sin_comunicar | comunicado | respondido (la marca «falta comunicar algún impuesto» va aparte, ver alternarFalta). La fecha es la del primer paso a comunicado/parcial. */
     public function fijarAviso(int $entidadId, string $bloque, string $estado): void
     {
         $this->autorizarAviso($entidadId);
-        abort_unless(in_array($estado, ['sin_comunicar', 'comunicado', 'parcial', 'respondido'], true), 422);
+        abort_unless(in_array($estado, ['sin_comunicar', 'comunicado', 'respondido'], true), 422);
         $clave = ['entidad_id' => $entidadId, 'ejercicio' => $this->ejercicio, 'bloque' => $bloque];
         $fila = DB::table('impuesto_avisos')->where($clave)->first();
         $fecha = $estado === 'sin_comunicar' ? null : ($fila->avisado_at ?? now());
@@ -283,6 +283,19 @@ class Impuestos extends Component
             DB::table('impuesto_avisos')->where('id', $fila->id)->update($datos);
         } else {
             DB::table('impuesto_avisos')->insert($clave + $datos + ['created_at' => now()]);
+        }
+    }
+
+    /** Marca/desmarca «falta comunicar algún impuesto» (❗ a la derecha del sobre; no cambia el estado). */
+    public function alternarFalta(int $entidadId, string $bloque): void
+    {
+        $this->autorizarAviso($entidadId);
+        $clave = ['entidad_id' => $entidadId, 'ejercicio' => $this->ejercicio, 'bloque' => $bloque];
+        $fila = DB::table('impuesto_avisos')->where($clave)->first();
+        if ($fila) {
+            DB::table('impuesto_avisos')->where('id', $fila->id)->update(['falta' => ! $fila->falta, 'user_id' => auth()->id(), 'updated_at' => now()]);
+        } else {
+            DB::table('impuesto_avisos')->insert($clave + ['estado' => 'sin_comunicar', 'falta' => true, 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
         }
     }
 
@@ -604,7 +617,7 @@ class Impuestos extends Component
         }
         $avisos = [];   // [entidad|bloque] => [estado, fecha]
         DB::table('impuesto_avisos')->where('ejercicio', $this->ejercicio)->get()->each(function ($r) use (&$avisos) {
-            $avisos[$r->entidad_id.'|'.$r->bloque] = [$r->estado, $r->avisado_at];
+            $avisos[$r->entidad_id.'|'.$r->bloque] = [$r->estado, $r->avisado_at, (bool) $r->falta];
         });
         $avisoCom = [];   // [entidad|bloque] => [[texto, autor, fecha, id, user_id]]
         DB::table('impuesto_aviso_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')->where('c.ejercicio', $this->ejercicio)
