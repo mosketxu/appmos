@@ -73,13 +73,13 @@
                     <tbody class="divide-y divide-gray-100">
                         @forelse ($clientes as $c)
                             @php $r = $c['resultado']; @endphp
-                            <tr wire:key="pg-{{ $c['id'] }}" class="align-top {{ in_array($c['estado'], ['revision', 'revisado', 'presentado', 'visto'], true) ? 'bg-green-50' : '' }}">
+                            <tr wire:key="pg-{{ $c['id'] }}" class="align-top" @if (isset(\App\Support\Impuestos::COLOR[$c['estado']])) style="background-color: {{ \App\Support\Impuestos::COLOR[$c['estado']] }}1f" @endif>
                                 <td class="px-3 py-2">
                                     @if ($clienteId === 'todos')<input type="checkbox" wire:model="marcados.{{ $c['id'] }}" @disabled(! $c['tieneIs']) class="border-gray-300 rounded">@endif
                                 </td>
                                 <td class="px-3 py-2">
                                     <div class="font-medium text-gray-900">{{ $c['entidad'] }}</div>
-                                    <div class="text-xs text-gray-500">{{ $c['nif'] }} · @if (in_array($c['estado'], ['revision', 'revisado', 'presentado', 'visto'], true))<span class="font-medium text-green-700">✓ {{ \App\Support\Impuestos::ESTADOS[$c['estado']] }}</span>@else{{ \App\Support\Impuestos::ESTADOS[$c['estado']] ?? $c['estado'] }}@endif</div>
+                                    <div class="text-xs text-gray-500">{{ $c['nif'] }} · @php $col = \App\Support\Impuestos::COLOR[$c['estado']] ?? null; @endphp<span @if ($col) class="font-medium" style="color: {{ $col }}" @endif>{{ \App\Support\Impuestos::ESTADOS[$c['estado']] ?? $c['estado'] }}</span></div>
                                 </td>
                                 <td class="px-3 py-2">
                                     @if ($c['tieneIs'])<span class="text-green-700">✓ {{ $c['fechaIs'] }}</span>@else<span class="text-red-700">falta</span>@endif
