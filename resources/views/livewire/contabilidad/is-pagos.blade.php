@@ -32,8 +32,13 @@
                         title="Por defecto solo ves las empresas que llevas tú">{{ $todasEmpresas ? '👥 Viendo todas' : '👤 Solo las mías · ver todas' }}</button>
                 @endif
                 @if ($clienteId === 'todos')
-                    <label class="flex items-center gap-1 text-sm text-gray-600">
-                        <input type="checkbox" wire:model.live="verTodos" class="border-gray-300 rounded"> incluir los que no tienen que presentarlo / ya presentados
+                    <label class="flex items-center gap-1 text-sm text-gray-600">Estado
+                        <select wire:model.live="filtroEstado" class="py-1 text-sm border-gray-300 rounded-md">
+                            <option value="activos">Los que hay que presentar</option>
+                            <option value="todos">Todos</option>
+                            <option value="sin">Sin marcar</option>
+                            @foreach (\App\Support\Impuestos::ESTADOS as $k => $v)<option value="{{ $k }}">{{ $v }}</option>@endforeach
+                        </select>
                     </label>
                 @endif
                 <span class="ml-auto text-xs text-gray-500">Clientes con el 202 en la pestaña Impuestos. Modalidad 40.2 (18 % de la cuota del IS {{ $ejercicio - 1 }}).</span>
@@ -68,13 +73,13 @@
                     <tbody class="divide-y divide-gray-100">
                         @forelse ($clientes as $c)
                             @php $r = $c['resultado']; @endphp
-                            <tr wire:key="pg-{{ $c['id'] }}" class="align-top">
+                            <tr wire:key="pg-{{ $c['id'] }}" class="align-top {{ in_array($c['estado'], ['revision', 'revisado', 'presentado', 'visto'], true) ? 'bg-green-50' : '' }}">
                                 <td class="px-3 py-2">
                                     @if ($clienteId === 'todos')<input type="checkbox" wire:model="marcados.{{ $c['id'] }}" @disabled(! $c['tieneIs']) class="border-gray-300 rounded">@endif
                                 </td>
                                 <td class="px-3 py-2">
                                     <div class="font-medium text-gray-900">{{ $c['entidad'] }}</div>
-                                    <div class="text-xs text-gray-500">{{ $c['nif'] }} · {{ $c['estado'] }}</div>
+                                    <div class="text-xs text-gray-500">{{ $c['nif'] }} · @if (in_array($c['estado'], ['revision', 'revisado', 'presentado', 'visto'], true))<span class="font-medium text-green-700">✓ {{ \App\Support\Impuestos::ESTADOS[$c['estado']] }}</span>@else{{ \App\Support\Impuestos::ESTADOS[$c['estado']] ?? $c['estado'] }}@endif</div>
                                 </td>
                                 <td class="px-3 py-2">
                                     @if ($c['tieneIs'])<span class="text-green-700">✓ {{ $c['fechaIs'] }}</span>@else<span class="text-red-700">falta</span>@endif

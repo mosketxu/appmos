@@ -26,7 +26,8 @@ class IsPagos extends Component
 
     public int $ejercicio;
     public string $periodo = '2P';
-    public bool $verTodos = false;
+    /** Filtro por estado del seguimiento: 'activos' (todos menos «no tiene que presentarlo»/«no se presenta»), 'todos', 'sin' o una clave de Impuestos::ESTADOS. */
+    public string $filtroEstado = 'activos';
     /** Admin/Suma: ver las empresas de todos (por defecto, como en el resto de Impuestos, solo las del usuario). */
     public bool $todasEmpresas = false;
 
@@ -137,8 +138,11 @@ class IsPagos extends Component
         $out = [];
         foreach ($filas as $f) {
             $estado = $f->estado ?: 'sin';
-            if ($this->clienteId === 'todos' && ! $this->verTodos && in_array($estado, ['no', 'nopresenta', 'presentado', 'visto'], true)) {
-                continue;
+            if ($this->clienteId === 'todos') {
+                $f_ = $this->filtroEstado;
+                if ($f_ === 'activos' ? in_array($estado, ['no', 'nopresenta'], true) : ($f_ !== 'todos' && $estado !== $f_)) {
+                    continue;
+                }
             }
             $dir = $this->dirCliente($f->nif);
             $nif = $this->nif($f->nif);
