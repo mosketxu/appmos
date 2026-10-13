@@ -34,7 +34,7 @@
                 @if ($clienteId === 'todos')
                     <label class="flex items-center gap-1 text-sm text-gray-600">Estado
                         <select wire:model.live="filtroEstado" class="py-1 text-sm border-gray-300 rounded-md">
-                            <option value="activos">Los que hay que presentar</option>
+                            <option value="activos">Aplican</option>
                             <option value="todos">Todos</option>
                             <option value="sin">Sin marcar</option>
                             @foreach (\App\Support\Impuestos::ESTADOS as $k => $v)<option value="{{ $k }}">{{ $v }}</option>@endforeach
