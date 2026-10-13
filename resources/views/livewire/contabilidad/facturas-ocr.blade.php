@@ -690,11 +690,17 @@
                                 </div>
                             </div>
                             @if ($analitica)
-                                <div style="flex:0 0 4.6rem;position:relative" x-data="{ open: false }"><label class="focr-lbl" title="Canal (analítica)">Canal</label><input type="text" wire:model.blur="form.canal" class="focr-in" style="text-align:center" autocomplete="off" x-on:focus="open = true; $el.select()" x-on:blur="open = false" x-on:keydown.escape="open = false">
+                                <div style="flex:0 0 4.6rem;position:relative" x-data="{ open: false, i: -1, opts: @js($this->canalesCliente()),
+                                        pick(v) { $wire.set('form.canal', v); this.$refs.cn.value = v; this.open = false; },
+                                        abrir() { this.open = true; this.i = this.opts.indexOf(String($wire.form.canal ?? '')); },
+                                        mover(d) { if (! this.open) { this.abrir(); } else if (this.opts.length) { this.i = (this.i + d + this.opts.length) % this.opts.length; } } }"><label class="focr-lbl" title="Canal (analítica)">Canal</label><input type="text" x-ref="cn" wire:model.blur="form.canal" class="focr-in" style="text-align:center" autocomplete="off"
+                                        x-on:focus="abrir(); $el.select()" x-on:blur="open = false" x-on:keydown.escape="open = false"
+                                        x-on:keydown.arrow-down.prevent="mover(1)" x-on:keydown.arrow-up.prevent="mover(-1)"
+                                        x-on:keydown.enter="if (open && i >= 0) { $event.preventDefault(); pick(opts[i]); }">
                                     <div x-show="open" x-cloak style="position:absolute;z-index:40;left:0;min-width:100%;background:#fff;border:1px solid #cbd5e1;border-radius:.4rem;box-shadow:0 4px 12px rgba(0,0,0,.15);margin-top:2px">
-                                        @foreach ($this->canalesCliente() as $cn)
-                                            <div x-on:mousedown.prevent="$wire.set('form.canal', '{{ $cn }}'); open = false" style="padding:.25rem .5rem;text-align:center;cursor:pointer" :style="($wire.form.canal ?? '') === '{{ $cn }}' ? 'background:#dbeafe;font-weight:600' : ''" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">{{ $cn }}</div>
-                                        @endforeach
+                                        <template x-for="(o, n) in opts" :key="o">
+                                            <div x-on:mousedown.prevent="pick(o)" x-on:mouseenter="i = n" x-text="o" style="padding:.25rem .5rem;text-align:center;cursor:pointer" :style="n === i ? 'background:#dbeafe;font-weight:600' : ''"></div>
+                                        </template>
                                     </div></div>
                             @endif
                         </div>
