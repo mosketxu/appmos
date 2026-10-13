@@ -113,6 +113,14 @@
                                             @if ($adyenSettlement)<span class="text-green-700">✓ {{ $adyenSettlement->getClientOriginalName() }}</span>@endif
                                         </label>
                                     @endif
+                                    @if ($id === 'laboral')
+                                        <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}2026…» de versión más alta en la carpeta Laboral 2026 del mes.">
+                                            <span>Imputación de costes (.xlsx, opcional)</span>
+                                            <input type="file" wire:model="laboralFichero" accept=".xlsx,.xls" class="text-xs">
+                                            <span wire:loading wire:target="laboralFichero" class="text-gray-500">⏳ subiendo…</span>
+                                            @if ($laboralFichero)<span class="text-green-700">✓ {{ $laboralFichero->getClientOriginalName() }}</span>@endif
+                                        </label>
+                                    @endif
                                     @if ($id === 'cashflow')
                                         @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
                                         <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"

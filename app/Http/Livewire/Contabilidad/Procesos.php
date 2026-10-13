@@ -29,6 +29,8 @@ class Procesos extends Component
 
     /** Adyen: settlement elegido a mano (opcional; si no, el script lo busca en la carpeta del mes). */
     public $adyenSettlement = null;
+    /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
+    public $laboralFichero = null;
 
     protected string $grupoPc = 'fiq';
 
@@ -594,9 +596,25 @@ class Procesos extends Component
                 $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--settlement', $f->getRealPath()]);
             }
         }
+        if ($id === 'laboral' && $this->laboralFichero) {
+            $f = $this->laboralFichero;
+            if (! in_array(strtolower($f->getClientOriginalExtension()), ['xlsx', 'xls'], true)) {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ El fichero de imputación de costes tiene que ser un Excel (.xlsx).');
+                return;
+            }
+            if ($this->remoto()) {
+                $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--fichero', '{E0}']);
+                $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/laboral_in']];
+            } else {
+                $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--fichero', $f->getRealPath()]);
+            }
+        }
         $this->lanzar($pasos, $opc);
         if ($id === 'adyen') {
             $this->adyenSettlement = null;
+        }
+        if ($id === 'laboral') {
+            $this->laboralFichero = null;
         }
     }
 
