@@ -47,7 +47,7 @@ class Pu extends Component
                     });
                 })
             ->orderBy('destino')
-            ->paginate();
+            ->get();
         return view('livewire.pu',compact('ent','pus'));
     }
 

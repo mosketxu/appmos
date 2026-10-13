@@ -131,9 +131,6 @@
                     </x-slot>
                 </x-table>
             </div>
-            <div>
-                {{ $pus->links() }}
-            </div>
             <div class="flex mt-0 ml-2 space-x-4">
                 <div class="space-x-3">
                     <x-jet-secondary-button  onclick="location.href = '{{url()->previous()}}'">{{ __('Volver') }}</x-jet-secondary-button>
