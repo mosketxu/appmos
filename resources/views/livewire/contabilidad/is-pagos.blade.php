@@ -28,8 +28,10 @@
                     <x-buscador-select model="clienteId" :valor="$clienteId" :opciones="$opciones" ancho="24rem" />
                 </span>
                 @if ($this->puedeTodas())
-                    <button type="button" wire:click="$toggle('todasEmpresas')" class="px-3 py-1 text-sm border rounded-md {{ $todasEmpresas ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-gray-300 text-gray-700' }}"
-                        title="Por defecto solo ves las empresas que llevas tú">{{ $todasEmpresas ? '👥 Viendo todas' : '👤 Solo las mías · ver todas' }}</button>
+                    <span class="inline-flex overflow-hidden text-sm border border-gray-300 rounded-md" title="Por defecto solo ves las empresas que llevas tú">
+                        <button type="button" wire:click="$set('todasEmpresas', false)" class="px-3 py-1 {{ ! $todasEmpresas ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700' }}">Mías</button>
+                        <button type="button" wire:click="$set('todasEmpresas', true)" class="px-3 py-1 border-l border-gray-300 {{ $todasEmpresas ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700' }}">Todas</button>
+                    </span>
                 @endif
                 @if ($clienteId === 'todos')
                     <label class="flex items-center gap-1 text-sm text-gray-600">Estado
