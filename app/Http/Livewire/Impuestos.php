@@ -263,6 +263,22 @@ class Impuestos extends Component
         }
     }
 
+    /** Aviso al cliente de una casilla: sin avisar → avisado (guarda la fecha) → respondido → sin avisar. */
+    public function avisar(int $obId, string $periodo): void
+    {
+        $this->autorizarCasilla($obId);
+        $fila = DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $obId, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo])->first();
+        if (! $fila) {
+            return;
+        }
+        $nuevo = ['sin_avisar' => 'avisado', 'avisado' => 'respondido'][$fila->aviso_estado ?? 'sin_avisar'] ?? 'sin_avisar';
+        DB::table('impuesto_estados')->where('id', $fila->id)->update([
+            'aviso_estado' => $nuevo,
+            'aviso_at' => $nuevo === 'sin_avisar' ? null : ($nuevo === 'avisado' ? now() : $fila->aviso_at),
+            'aviso_user_id' => auth()->id(),
+        ]);
+    }
+
     /** Se ha elegido un PDF para la casilla $subirA: se guarda como borrador (revisión/revisado) o como presentado. */
     public function updatedArchivo(): void
     {
@@ -552,11 +568,12 @@ class Impuestos extends Component
     {
         $obs = $this->consulta()->get();
         $ids = $obs->pluck('id')->all();
-        $estados = [];
+        $estados = $avisos = [];
         foreach (array_chunk($ids ?: [0], 1000) as $trozo) {
             DB::table('impuesto_estados')->where('ejercicio', $this->ejercicio)->whereIn('entidad_impuesto_id', $trozo)
-                ->get(['entidad_impuesto_id', 'periodo', 'estado'])->each(function ($r) use (&$estados) {
+                ->get(['entidad_impuesto_id', 'periodo', 'estado', 'aviso_estado', 'aviso_at'])->each(function ($r) use (&$estados, &$avisos) {
                     $estados[$r->entidad_impuesto_id][$r->periodo] = $r->estado;
+                    $avisos[$r->entidad_impuesto_id.'|'.$r->periodo] = [$r->aviso_estado, $r->aviso_at];
                 });
         }
         $docs = [];
@@ -630,7 +647,7 @@ class Impuestos extends Component
         }
         $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
 
-        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
+        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'avisos' => $avisos, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
             'grupos' => DB::table('entidad_grupos')->orderBy('nombre')->get(['id', 'nombre'])];
     }
 

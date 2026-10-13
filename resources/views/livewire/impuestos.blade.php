@@ -61,6 +61,11 @@
             thead { display: table-header-group; }
         }
         .imp-cel { position: relative; }
+        .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; font-size: 13px; line-height: 1; cursor: pointer; color: #9ca3af; opacity: .6; }
+        .imp-av.avisado { color: #d97706; opacity: 1; }
+        .imp-av.respondido { color: #16a34a; opacity: 1; }
+        .imp-av.sin_avisar { visibility: hidden; }
+        .imp-cel:hover .imp-av.sin_avisar { visibility: visible; }
         .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 0; cursor: pointer; color: #9ca3af; }
         .imp-com svg { width: 19px; height: 19px; }
         .imp-com.tiene { color: #f59e0b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
