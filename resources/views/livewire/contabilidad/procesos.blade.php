@@ -47,8 +47,14 @@
          proceso de monthlyFIQ/checklist.json, ⓘ con el detalle, botón si se lanza
          desde aquí y un check por mes (se marca solo al terminar bien; a mano:
          clic = ✓ → «no toca» → vacío). Las marcas viven en OneDrive. --}}
-    <div id="procesos-mes" class="bg-white border rounded-lg shadow">
+    <div id="procesos-mes" class="bg-white border rounded-lg shadow"
+         x-data="{ q: '', norm(t) { return (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); },
+                   ver(t) { return this.q.trim() === '' || this.norm(t).includes(this.norm(this.q).trim()); } }">
         <div class="flex flex-wrap items-center px-3 py-2 border-b border-gray-200 gap-x-4 gap-y-2 bg-gray-50">
+            <span class="flex items-center gap-1">
+                <input type="search" x-model="q" placeholder="🔍 Buscar proceso…" class="px-2 py-1 text-sm border-gray-300 rounded-md shadow-sm" style="width:14rem">
+                <button type="button" x-show="q !== ''" x-on:click="q = ''" class="text-xs text-gray-500 hover:text-gray-800">✕ quitar filtro</button>
+            </span>
             <span class="text-xs text-gray-500">Los que se ejecutan desde aquí se marcan solos al terminar bien; el resto, con «Marcar» (mes del título, resaltado). Clic en un check de cualquier mes: ✓ → «no toca» → vacío (con envío: P procesado sin enviar → ✓ enviado). ⠿ = arrastrar para cambiar el orden.</span>
         </div>
         @php
@@ -73,7 +79,7 @@
                 x-on:dragend.window="arrastrando = null; sobre = null">
                 @forelse ($this->checklist as $p)
                     @php $id = $p['id']; $auto = $p['auto'] ?? null; @endphp
-                    <tr wire:key="chk-{{ $id }}" @if ($id === 'cash_in_store') id="cash-in-store" @endif class="align-top hover:bg-gray-50"
+                    <tr wire:key="chk-{{ $id }}" x-show="ver($el.textContent)" @if ($id === 'cash_in_store') id="cash-in-store" @endif class="align-top hover:bg-gray-50"
                         x-on:dragover.prevent="if (arrastrando && arrastrando !== '{{ $id }}') { sobre = '{{ $id }}'; debajo = $event.clientY > $el.getBoundingClientRect().top + $el.offsetHeight / 2 }"
                         x-on:drop.prevent="if (arrastrando && arrastrando !== '{{ $id }}') $wire.moverChecklist(arrastrando, '{{ $id }}', debajo); arrastrando = null; sobre = null"
                         x-bind:style="(sobre === '{{ $id }}' ? (debajo ? 'box-shadow: inset 0 -2px 0 #6366f1;' : 'box-shadow: inset 0 2px 0 #6366f1;') : '') + (arrastrando === '{{ $id }}' ? 'opacity:.4' : '')">
@@ -179,7 +185,7 @@
                         @endforeach
                     </tr>
                     @if ($id === 'cash_in_store' && $cisFilas && $cisAbierto)
-                        <tr wire:key="chk-cis-detalle">
+                        <tr wire:key="chk-cis-detalle" x-show="ver('cash in store')">
                             <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-2">
                                 <table class="text-sm text-gray-800 border border-collapse border-gray-300">
                                     <tr class="text-xs text-left text-gray-600 bg-gray-50">
