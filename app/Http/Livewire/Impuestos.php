@@ -33,6 +33,8 @@ class Impuestos extends Component
     public string $filtroModelo = '';
     /** '' = todos · id de grupo · 'ninguno' = entidades sin grupo. */
     public string $filtroGrupo = '';
+    /** '' = todos · sin_comunicar | comunicado | respondido | falta (❗ falta comunicar algún impuesto): según el aviso al cliente de algún periodo visible. */
+    public string $filtroAviso = '';
     public bool $soloPendientes = false;
     public bool $incluirBajas = false;
     public bool $verTodos = false;
@@ -72,6 +74,7 @@ class Impuestos extends Component
         $this->buscar = (string) ($g['buscar'] ?? '');
         $this->filtroModelo = (string) ($g['filtroModelo'] ?? '');
         $this->filtroGrupo = (string) ($g['filtroGrupo'] ?? '');
+        $this->filtroAviso = in_array($g['filtroAviso'] ?? '', ['sin_comunicar', 'comunicado', 'respondido', 'falta'], true) ? $g['filtroAviso'] : '';
         $this->soloPendientes = (bool) ($g['soloPendientes'] ?? false);
         $this->incluirBajas = (bool) ($g['incluirBajas'] ?? false);
         $this->verTodos = $this->puedeTodos() && (bool) ($g['verTodos'] ?? false);
@@ -80,14 +83,14 @@ class Impuestos extends Component
 
     public function updated($propiedad): void
     {
-        if (in_array($propiedad, ['vista', 'buscar', 'filtroModelo', 'filtroGrupo', 'soloPendientes', 'incluirBajas', 'verTodos'], true)) {
+        if (in_array($propiedad, ['vista', 'buscar', 'filtroModelo', 'filtroGrupo', 'filtroAviso', 'soloPendientes', 'incluirBajas', 'verTodos'], true)) {
             $this->recordarFiltros();
         }
     }
 
     protected function recordarFiltros(): void
     {
-        \App\Models\User::whereKey(auth()->id())->update(['impuestos_filtros' => json_encode(['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo, 'filtroGrupo' => $this->filtroGrupo,
+        \App\Models\User::whereKey(auth()->id())->update(['impuestos_filtros' => json_encode(['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo, 'filtroGrupo' => $this->filtroGrupo, 'filtroAviso' => $this->filtroAviso,
             'soloPendientes' => $this->soloPendientes, 'incluirBajas' => $this->incluirBajas, 'verTodos' => $this->verTodos])]);
     }
 
@@ -680,6 +683,19 @@ class Impuestos extends Component
             }
             if (! $hay || ($this->soloPendientes && ! $pend)) {
                 continue;
+            }
+            if ($this->filtroAviso !== '') {
+                $coincide = false;
+                foreach (array_keys($matriz) as $bk) {
+                    [$av, , $falta] = $avisos[$entId.'|'.$bk] ?? ['sin_comunicar', null, false];
+                    if ($this->filtroAviso === 'falta' ? $falta : $av === $this->filtroAviso) {
+                        $coincide = true;
+                        break;
+                    }
+                }
+                if (! $coincide) {
+                    continue;
+                }
             }
             $filas[$entId] = ['ent' => $lista->first(), 'matriz' => $matriz, 'resumen' => $resumen];
         }
