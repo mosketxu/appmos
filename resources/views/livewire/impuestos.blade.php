@@ -325,6 +325,12 @@
                                 @if ($ent->grupo) <span class="text-xs text-indigo-700" style="background:#eef2ff; border-radius:4px; padding:0 4px" title="Grupo">{{ $ent->grupo }}</span> @endif
                             </td>
                             @foreach ($bloques as $bl)
+                                @php
+                                    [$av, $avAt] = ($avisos[$entId.'|'.$bl['k']] ?? ['sin_avisar', null]);
+                                    $avFecha = $avAt ? \Illuminate\Support\Carbon::parse($avAt)->format('d/m/Y') : '';
+                                    $avTit = ['sin_avisar' => 'Aviso al cliente ('.$bl['titulo'].'): sin avisar (clic: marcar avisado)', 'avisado' => 'Cliente avisado el '.$avFecha.' (clic: marcar respondido)', 'respondido' => 'Cliente respondió (avisado el '.$avFecha.') (clic: volver a sin avisar)'][$av];
+                                    $sobre = isset($f['matriz'][$bl['k']]) ? '<button type="button" class="imp-av '.$av.'" wire:click="avisar('.$entId.', \''.$bl['k'].'\')" title="'.e($avTit).'">✉'.($av === 'respondido' ? '✔' : '').'</button>' : '';
+                                @endphp
                                 @if ($bl['plegable'] && in_array($bl['k'], $plegados, true))
                                     @php
                                         $res = $f['resumen'][$bl['k']] ?? [];
@@ -332,6 +338,7 @@
                                         $tit = collect($res)->map(fn ($n, $e) => $n.' '.strtolower($etq[$e]))->implode(' · ');
                                     @endphp
                                     <td class="imp-qb" style="text-align:center" title="{{ $tit }}">
+                                        {!! $sobre !!}
                                         @if ($peor)
                                             <span class="imp-m" style="background:{{ $color[$peor] }}; cursor:default">{{ $peor === 'pendiente' ? $res['pendiente'] : $letra[$peor] }}</span>
                                         @endif
@@ -341,6 +348,7 @@
                                     @foreach ($bl['cols'] as $ci => $col)
                                         @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
                                         <td class="{{ $loop->first ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
+                                            @if ($loop->first) {!! $sobre !!} @endif
                                             @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
                                                 @if ($ob->etiqueta !== '')
                                                     <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>

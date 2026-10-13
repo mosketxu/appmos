@@ -81,14 +81,6 @@
             <button type="button" class="imp-pdf gris imp-xl" x-on:click="{!! $subir !!}" title="Subir un Excel de esta casilla">@include('livewire._impuesto-xls')</button>
         @endif
     @endif
-    @if ($e !== 'no')
-        @php
-            [$av, $avAt] = ($avisos ?? [])[$ob->id.'|'.$per] ?? ['sin_avisar', null];
-            $avFecha = $avAt ? \Illuminate\Support\Carbon::parse($avAt)->format('d/m/Y') : '';
-            $avTit = ['sin_avisar' => 'Aviso al cliente: sin avisar (clic: marcar avisado)', 'avisado' => 'Cliente avisado el '.$avFecha.' (clic: marcar respondido)', 'respondido' => 'Cliente respondió (avisado el '.$avFecha.') (clic: volver a sin avisar)'][$av] ?? '';
-        @endphp
-        <button type="button" class="imp-av {{ $av }}" wire:click="avisar({{ $ob->id }}, '{{ $per }}')" title="{{ $avTit }}">✉@if ($av === 'respondido')✔@endif</button>
-    @endif
     <button type="button" class="imp-com {{ $cm ? 'tiene' : ($e === 'no' ? 'oculta' : '') }}" wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
         title="{{ $cm ? $cmTitulo : 'Añadir un comentario' }}">@include('livewire._impuesto-globo', ['n' => count($cm)])</button>
 </span>

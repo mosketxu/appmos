@@ -263,20 +263,21 @@ class Impuestos extends Component
         }
     }
 
-    /** Aviso al cliente de una casilla: sin avisar → avisado (guarda la fecha) → respondido → sin avisar. */
-    public function avisar(int $obId, string $periodo): void
+    /** Aviso al cliente (uno por cliente y periodo/bloque): sin avisar → avisado (guarda la fecha) → respondido → sin avisar. */
+    public function avisar(int $entidadId, string $bloque): void
     {
-        $this->autorizarCasilla($obId);
-        $fila = DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $obId, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo])->first();
-        if (! $fila) {
-            return;
+        abort_unless(auth()->user()?->can('impuestos.ver'), 403);
+        $ver = DB::table('entidad_impuestos')->where('entidad_id', $entidadId)->pluck('id')->first(fn ($id) => Imp::puedeVer($id, $this->verTodos));
+        abort_unless($ver, 403);
+        $clave = ['entidad_id' => $entidadId, 'ejercicio' => $this->ejercicio, 'bloque' => $bloque];
+        $fila = DB::table('impuesto_avisos')->where($clave)->first();
+        $nuevo = ['sin_avisar' => 'avisado', 'avisado' => 'respondido'][$fila->estado ?? 'sin_avisar'] ?? 'sin_avisar';
+        $datos = ['estado' => $nuevo, 'avisado_at' => $nuevo === 'sin_avisar' ? null : ($nuevo === 'avisado' ? now() : ($fila->avisado_at ?? now())), 'user_id' => auth()->id(), 'updated_at' => now()];
+        if ($fila) {
+            DB::table('impuesto_avisos')->where('id', $fila->id)->update($datos);
+        } else {
+            DB::table('impuesto_avisos')->insert($clave + $datos + ['created_at' => now()]);
         }
-        $nuevo = ['sin_avisar' => 'avisado', 'avisado' => 'respondido'][$fila->aviso_estado ?? 'sin_avisar'] ?? 'sin_avisar';
-        DB::table('impuesto_estados')->where('id', $fila->id)->update([
-            'aviso_estado' => $nuevo,
-            'aviso_at' => $nuevo === 'sin_avisar' ? null : ($nuevo === 'avisado' ? now() : $fila->aviso_at),
-            'aviso_user_id' => auth()->id(),
-        ]);
     }
 
     /** Se ha elegido un PDF para la casilla $subirA: se guarda como borrador (revisión/revisado) o como presentado. */
@@ -568,14 +569,17 @@ class Impuestos extends Component
     {
         $obs = $this->consulta()->get();
         $ids = $obs->pluck('id')->all();
-        $estados = $avisos = [];
+        $estados = [];
         foreach (array_chunk($ids ?: [0], 1000) as $trozo) {
             DB::table('impuesto_estados')->where('ejercicio', $this->ejercicio)->whereIn('entidad_impuesto_id', $trozo)
-                ->get(['entidad_impuesto_id', 'periodo', 'estado', 'aviso_estado', 'aviso_at'])->each(function ($r) use (&$estados, &$avisos) {
+                ->get(['entidad_impuesto_id', 'periodo', 'estado'])->each(function ($r) use (&$estados) {
                     $estados[$r->entidad_impuesto_id][$r->periodo] = $r->estado;
-                    $avisos[$r->entidad_impuesto_id.'|'.$r->periodo] = [$r->aviso_estado, $r->aviso_at];
                 });
         }
+        $avisos = [];   // [entidad|bloque] => [estado, fecha]
+        DB::table('impuesto_avisos')->where('ejercicio', $this->ejercicio)->get()->each(function ($r) use (&$avisos) {
+            $avisos[$r->entidad_id.'|'.$r->bloque] = [$r->estado, $r->avisado_at];
+        });
         $docs = [];
         $entIds = $obs->pluck('entidad_id')->unique()->all();
         foreach (array_chunk($entIds ?: [0], 1000) as $trozo) {
