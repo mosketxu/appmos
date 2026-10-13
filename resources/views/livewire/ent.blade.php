@@ -238,6 +238,11 @@
                     <x-jet-input-error for="cuentacontable" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
+                    <x-jet-label for="digitos_cuenta" title="Cuántas cifras tienen las cuentas de proveedor y cliente en SAGE de esta empresa (Fashion 7, Neteges 9, el resto 6). Lo usan Facturas OCR, LeoyBra y Bancos para crear cuentas nuevas.">{{ __('Cifras de cuenta SAGE') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.digitos_cuenta" type="number" min="6" max="12" id="digitos_cuenta" name="digitos_cuenta" class="w-full"/>
+                    <x-jet-input-error for="digitos_cuenta" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="alias" >{{ __('Alias') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.alias" type="text" id="alias" maxlength="255" class="w-full" title="Nombre corto: si lo tiene, sustituye al nombre en listas como Libros IVA e Impuestos"/>
                     <x-jet-input-error for="alias" class="mt-2" />
