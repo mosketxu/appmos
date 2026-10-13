@@ -690,7 +690,7 @@
                                 </div>
                             </div>
                             @if ($analitica)
-                                <div style="flex:0 0 4.6rem"><label class="focr-lbl" title="Canal (analítica)">Canal</label><input type="text" wire:model.blur="form.canal" class="focr-in" style="text-align:center"></div>
+                                <div style="flex:0 0 4.6rem"><label class="focr-lbl" title="Canal (analítica)">Canal</label><input type="text" list="focr-canales" wire:model.blur="form.canal" class="focr-in" style="text-align:center"><datalist id="focr-canales">@foreach ($this->canalesCliente() as $cn)<option value="{{ $cn }}">@endforeach</datalist></div>
                             @endif
                         </div>
                         @if ($sii)

@@ -208,6 +208,24 @@ class FacturasOcr extends Component
         return self::rutaDatos($this->dirCliente());
     }
 
+    /** Canales (analítica) que ofrece el desplegable: cliente.json → "canales", o los ya usados en los patrones del cliente. */
+    public function canalesCliente(): array
+    {
+        $c = array_map('strval', (array) ($this->cfg()['canales'] ?? []));
+        if (! $c) {
+            $pat = json_decode((string) @file_get_contents($this->dirDatos().'/patrones.json'), true) ?: [];
+            foreach ($pat as $v) {
+                if (is_array($v) && trim((string) ($v['canal'] ?? '')) !== '') {
+                    $c[] = (string) $v['canal'];
+                }
+            }
+        }
+        $c = array_values(array_unique($c));
+        sort($c, SORT_NATURAL);
+
+        return $c;
+    }
+
     protected function cfg(): array
     {
         return json_decode((string) @file_get_contents($this->dirCliente().'/cliente.json'), true) ?: [];
