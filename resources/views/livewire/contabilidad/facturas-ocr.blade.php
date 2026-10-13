@@ -690,7 +690,12 @@
                                 </div>
                             </div>
                             @if ($analitica)
-                                <div style="flex:0 0 4.6rem"><label class="focr-lbl" title="Canal (analítica)">Canal</label><input type="text" list="focr-canales" wire:model.blur="form.canal" onfocus="this.dataset.v=this.value;this.value=''" onblur="if(this.value==='')this.value=this.dataset.v||''" autocomplete="off" class="focr-in" style="text-align:center"><datalist id="focr-canales">@foreach ($this->canalesCliente() as $cn)<option value="{{ $cn }}">@endforeach</datalist></div>
+                                <div style="flex:0 0 4.6rem;position:relative" x-data="{ open: false }"><label class="focr-lbl" title="Canal (analítica)">Canal</label><input type="text" wire:model.blur="form.canal" class="focr-in" style="text-align:center" autocomplete="off" x-on:focus="open = true; $el.select()" x-on:blur="open = false" x-on:keydown.escape="open = false">
+                                    <div x-show="open" x-cloak style="position:absolute;z-index:40;left:0;min-width:100%;background:#fff;border:1px solid #cbd5e1;border-radius:.4rem;box-shadow:0 4px 12px rgba(0,0,0,.15);margin-top:2px">
+                                        @foreach ($this->canalesCliente() as $cn)
+                                            <div x-on:mousedown.prevent="$wire.set('form.canal', '{{ $cn }}'); open = false" style="padding:.25rem .5rem;text-align:center;cursor:pointer" :style="($wire.form.canal ?? '') === '{{ $cn }}' ? 'background:#dbeafe;font-weight:600' : ''" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">{{ $cn }}</div>
+                                        @endforeach
+                                    </div></div>
                             @endif
                         </div>
                         @if ($sii)
