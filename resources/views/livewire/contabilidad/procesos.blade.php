@@ -99,6 +99,14 @@
                                         <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">▶ Ejecutar</span>
                                         <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
                                     </button>
+                                    @if ($id === 'adyen')
+                                        <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes.">
+                                            <span>Settlement (.xlsx, opcional)</span>
+                                            <input type="file" wire:model="adyenSettlement" accept=".xlsx" class="text-xs">
+                                            <span wire:loading wire:target="adyenSettlement" class="text-gray-500">⏳ subiendo…</span>
+                                            @if ($adyenSettlement)<span class="text-green-700">✓ {{ $adyenSettlement->getClientOriginalName() }}</span>@endif
+                                        </label>
+                                    @endif
                                     @if ($id === 'cashflow')
                                         @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
                                         <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"

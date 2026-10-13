@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Pantalla para lanzar, desde Appmos, los scripts Node/Python de
@@ -24,6 +25,10 @@ class Procesos extends Component
 {
     // En la web los scripts los hacen los PCs trabajadores por la cola de tareas (ver el trait).
     use EjecutaEnPcs;
+    use WithFileUploads;
+
+    /** Adyen: settlement elegido a mano (opcional; si no, el script lo busca en la carpeta del mes). */
+    public $adyenSettlement = null;
 
     protected string $grupoPc = 'fiq';
 
@@ -575,7 +580,24 @@ class Procesos extends Component
                 'windows' => ! empty($p['windows']),
             ];
         }
-        $this->lanzar($pasos, ['resultados' => $id, 'post' => 'postProceso', 'ctx' => ['id' => $id, 'mes' => $this->mes]]);
+        $opc = ['resultados' => $id, 'post' => 'postProceso', 'ctx' => ['id' => $id, 'mes' => $this->mes]];
+        if ($id === 'adyen' && $this->adyenSettlement) {
+            $f = $this->adyenSettlement;
+            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ El settlement tiene que ser un .xlsx.');
+                return;
+            }
+            if ($this->remoto()) {
+                $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--settlement', '{E0}']);
+                $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/adyen_in']];
+            } else {
+                $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--settlement', $f->getRealPath()]);
+            }
+        }
+        $this->lanzar($pasos, $opc);
+        if ($id === 'adyen') {
+            $this->adyenSettlement = null;
+        }
     }
 
     /** Fin de un proceso de la tabla: si todo fue bien, marca el checklist (con envío aparte: «procesado», no «hecho»). */
