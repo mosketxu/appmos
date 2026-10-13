@@ -61,7 +61,7 @@
             thead { display: table-header-group; }
         }
         .imp-cel { position: relative; }
-        .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; font-size: 13px; line-height: 1; cursor: pointer; color: #9ca3af; opacity: .7; }
+        .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; font-size: 13px; line-height: 1; white-space: nowrap; cursor: pointer; color: #9ca3af; opacity: .7; }
         .imp-av.comunicado { color: #2563eb; opacity: 1; }
         .imp-av.respondido { color: #16a34a; opacity: 1; }
         .imp-falta { font-size: 12px; margin-left: 1px; }
