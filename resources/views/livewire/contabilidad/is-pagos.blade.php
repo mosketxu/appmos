@@ -40,6 +40,7 @@
             </div>
 
             <div class="px-4 text-xs text-gray-600">
+                <b>Modalidad 40.2</b> (hasta 6 M€): el pago se calcula con la <b>casilla 00599</b> del IS {{ $ejercicio - 1 }} (cuota a ingresar, ya descontadas deducciones, bonificaciones y retenciones) <b>× 18 %</b>; es el mismo importe en 1P, 2P y 3P. Si la casilla 00599 no es positiva, no hay pago.
                 Sube el <b>IS {{ $ejercicio - 1 }} presentado</b> (PDF) de cada cliente; de ahí salen la cuota, el CNAE y la cifra de negocios. Si el CNAE
                 debe ser el de {{ $ejercicio }} (CNAE-2025), sube también un 202 de este año o escríbelo en la casilla. Se genera el fichero <code>.202</code>
                 para <b>importar en el formulario de la AEAT</b>: allí sacas el borrador y presentas. Aquí no se presenta nada.
