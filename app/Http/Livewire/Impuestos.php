@@ -263,20 +263,46 @@ class Impuestos extends Component
         }
     }
 
-    /** Aviso al cliente (uno por cliente y periodo/bloque): sin avisar → avisado (guarda la fecha) → respondido → sin avisar. */
-    public function avisar(int $entidadId, string $bloque): void
+    protected function autorizarAviso(int $entidadId): void
     {
         abort_unless(auth()->user()?->can('impuestos.ver'), 403);
         $ver = DB::table('entidad_impuestos')->where('entidad_id', $entidadId)->pluck('id')->first(fn ($id) => Imp::puedeVer($id, $this->verTodos));
         abort_unless($ver, 403);
+    }
+
+    /** Aviso al cliente (uno por cliente y periodo/bloque): sin_comunicar | comunicado | parcial (falta comunicar algún impuesto) | respondido. La fecha es la del primer paso a comunicado/parcial. */
+    public function fijarAviso(int $entidadId, string $bloque, string $estado): void
+    {
+        $this->autorizarAviso($entidadId);
+        abort_unless(in_array($estado, ['sin_comunicar', 'comunicado', 'parcial', 'respondido'], true), 422);
         $clave = ['entidad_id' => $entidadId, 'ejercicio' => $this->ejercicio, 'bloque' => $bloque];
         $fila = DB::table('impuesto_avisos')->where($clave)->first();
-        $nuevo = ['sin_avisar' => 'avisado', 'avisado' => 'respondido'][$fila->estado ?? 'sin_avisar'] ?? 'sin_avisar';
-        $datos = ['estado' => $nuevo, 'avisado_at' => $nuevo === 'sin_avisar' ? null : ($nuevo === 'avisado' ? now() : ($fila->avisado_at ?? now())), 'user_id' => auth()->id(), 'updated_at' => now()];
+        $fecha = $estado === 'sin_comunicar' ? null : ($fila->avisado_at ?? now());
+        $datos = ['estado' => $estado, 'avisado_at' => $fecha, 'user_id' => auth()->id(), 'updated_at' => now()];
         if ($fila) {
             DB::table('impuesto_avisos')->where('id', $fila->id)->update($datos);
         } else {
             DB::table('impuesto_avisos')->insert($clave + $datos + ['created_at' => now()]);
+        }
+    }
+
+    public function comentarAviso(int $entidadId, string $bloque, string $texto): void
+    {
+        $this->autorizarAviso($entidadId);
+        $texto = trim($texto);
+        if ($texto === '') {
+            return;
+        }
+        DB::table('impuesto_aviso_comentarios')->insert(['entidad_id' => $entidadId, 'ejercicio' => $this->ejercicio, 'bloque' => $bloque,
+            'texto' => mb_substr($texto, 0, 2000), 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    public function borrarComentarioAviso(int $id): void
+    {
+        $c = DB::table('impuesto_aviso_comentarios')->find($id);
+        if ($c && ($c->user_id === auth()->id() || $this->puedeTodos())) {
+            $this->autorizarAviso($c->entidad_id);
+            DB::table('impuesto_aviso_comentarios')->where('id', $id)->delete();
         }
     }
 
@@ -580,6 +606,11 @@ class Impuestos extends Component
         DB::table('impuesto_avisos')->where('ejercicio', $this->ejercicio)->get()->each(function ($r) use (&$avisos) {
             $avisos[$r->entidad_id.'|'.$r->bloque] = [$r->estado, $r->avisado_at];
         });
+        $avisoCom = [];   // [entidad|bloque] => [[texto, autor, fecha, id, user_id]]
+        DB::table('impuesto_aviso_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')->where('c.ejercicio', $this->ejercicio)
+            ->orderBy('c.id')->get(['c.id', 'c.entidad_id', 'c.bloque', 'c.texto', 'c.created_at', 'c.user_id', 'u.name'])->each(function ($c) use (&$avisoCom) {
+                $avisoCom[$c->entidad_id.'|'.$c->bloque][] = [$c->texto, $c->name, $c->created_at, $c->id, $c->user_id];
+            });
         $docs = [];
         $entIds = $obs->pluck('entidad_id')->unique()->all();
         foreach (array_chunk($entIds ?: [0], 1000) as $trozo) {
@@ -651,7 +682,7 @@ class Impuestos extends Component
         }
         $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
 
-        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'avisos' => $avisos, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
+        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'avisos' => $avisos, 'avisoCom' => $avisoCom, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
             'grupos' => DB::table('entidad_grupos')->orderBy('nombre')->get(['id', 'nombre'])];
     }
 

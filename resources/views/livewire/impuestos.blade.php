@@ -46,7 +46,7 @@
         .imp-btn.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
         @page { size: A4 landscape; margin: 8mm; }
         @media print {
-            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-xl, .imp-qx, .imp-com:not(.tiene), .imp-av.sin_avisar, #imp-fichero, button[title="Información"] { display: none !important; }
+            nav, header, .hojas, .imp-noprint, .imp-pdfw, .imp-pdf, .imp-xl, .imp-qx, .imp-com:not(.tiene), .imp-av.sin_comunicar, #imp-fichero, button[title="Información"] { display: none !important; }
             body { background: #fff !important; }
             .imp-solo-print { display: block !important; }
             #imp-pagina { padding: 0 !important; }
@@ -61,11 +61,14 @@
             thead { display: table-header-group; }
         }
         .imp-cel { position: relative; }
-        .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; font-size: 13px; line-height: 1; cursor: pointer; color: #9ca3af; opacity: .6; }
-        .imp-av.avisado { color: #d97706; opacity: 1; }
+        .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; font-size: 13px; line-height: 1; cursor: pointer; color: #9ca3af; opacity: .7; }
+        .imp-av.comunicado { color: #2563eb; opacity: 1; }
         .imp-av.respondido { color: #16a34a; opacity: 1; }
-        .imp-av.sin_avisar { opacity: .55; }
-        .imp-av.sin_avisar:hover { opacity: 1; }
+        .imp-av.parcial { color: #dc2626; opacity: 1; font-weight: 700; }
+        .imp-av.sin_comunicar:hover { opacity: 1; }
+        .imp-avp { text-align: left; white-space: normal; width: 300px; padding: 8px; left: 0; right: auto; font-size: 12px; }
+        .imp-avp .e { display: block; width: 100%; padding: 3px 6px; margin-bottom: 2px; border-radius: 4px; border: 1px solid transparent; background: none; text-align: left; cursor: pointer; }
+        .imp-avp .e.on { border-color: #9ca3af; background: #f3f4f6; font-weight: 600; }
         .imp-com { background: none; border: 0; padding: 0; margin: 0; line-height: 0; cursor: pointer; color: #9ca3af; }
         .imp-com svg { width: 19px; height: 19px; }
         .imp-com.tiene { color: #f59e0b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -325,12 +328,6 @@
                                 @if ($ent->grupo) <span class="text-xs text-indigo-700" style="background:#eef2ff; border-radius:4px; padding:0 4px" title="Grupo">{{ $ent->grupo }}</span> @endif
                             </td>
                             @foreach ($bloques as $bl)
-                                @php
-                                    [$av, $avAt] = ($avisos[$entId.'|'.$bl['k']] ?? ['sin_avisar', null]);
-                                    $avFecha = $avAt ? \Illuminate\Support\Carbon::parse($avAt)->format('d/m/Y') : '';
-                                    $avTit = ['sin_avisar' => 'Aviso al cliente ('.$bl['titulo'].'): sin avisar (clic: marcar avisado)', 'avisado' => 'Cliente avisado el '.$avFecha.' (clic: marcar respondido)', 'respondido' => 'Cliente respondió (avisado el '.$avFecha.') (clic: volver a sin avisar)'][$av];
-                                    $sobre = isset($f['matriz'][$bl['k']]) ? '<button type="button" class="imp-av '.$av.'" wire:click="avisar('.$entId.', \''.$bl['k'].'\')" title="'.e($avTit).'">✉'.($av === 'respondido' ? '✔' : '').'</button>' : '';
-                                @endphp
                                 @if ($bl['plegable'] && in_array($bl['k'], $plegados, true))
                                     @php
                                         $res = $f['resumen'][$bl['k']] ?? [];
@@ -338,7 +335,7 @@
                                         $tit = collect($res)->map(fn ($n, $e) => $n.' '.strtolower($etq[$e]))->implode(' · ');
                                     @endphp
                                     <td class="imp-qb" style="text-align:center" title="{{ $tit }}">
-                                        {!! $sobre !!}
+                                        @if (isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
                                         @if ($peor)
                                             <span class="imp-m" style="background:{{ $color[$peor] }}; cursor:default">{{ $peor === 'pendiente' ? $res['pendiente'] : $letra[$peor] }}</span>
                                         @endif
@@ -348,7 +345,7 @@
                                     @foreach ($bl['cols'] as $ci => $col)
                                         @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
                                         <td class="{{ $loop->first ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
-                                            @if ($loop->first) {!! $sobre !!} @endif
+                                            @if ($loop->first && isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
                                             @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
                                                 @if ($ob->etiqueta !== '')
                                                     <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
