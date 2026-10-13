@@ -263,6 +263,9 @@ class Impuestos extends Component
         }
     }
 
+    /** Panel de aviso que se mantiene abierto tras un comentario (clave «entidad|bloque»). */
+    public string $avisoAbierto = '';
+
     protected function autorizarAviso(int $entidadId): void
     {
         abort_unless(auth()->user()?->can('impuestos.ver'), 403);
@@ -274,6 +277,7 @@ class Impuestos extends Component
     public function fijarAviso(int $entidadId, string $bloque, string $estado): void
     {
         $this->autorizarAviso($entidadId);
+        $this->avisoAbierto = '';
         abort_unless(in_array($estado, ['sin_comunicar', 'comunicado', 'respondido'], true), 422);
         $clave = ['entidad_id' => $entidadId, 'ejercicio' => $this->ejercicio, 'bloque' => $bloque];
         $fila = DB::table('impuesto_avisos')->where($clave)->first();
@@ -308,6 +312,7 @@ class Impuestos extends Component
         }
         DB::table('impuesto_aviso_comentarios')->insert(['entidad_id' => $entidadId, 'ejercicio' => $this->ejercicio, 'bloque' => $bloque,
             'texto' => mb_substr($texto, 0, 2000), 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+        $this->avisoAbierto = $entidadId.'|'.$bloque;
     }
 
     public function borrarComentarioAviso(int $id): void

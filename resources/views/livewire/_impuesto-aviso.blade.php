@@ -6,14 +6,15 @@
     $estados = ['sin_comunicar' => ['Sin comunicar', '#6b7280', '✉'], 'comunicado' => ['Comunicado', '#2563eb', '✉'], 'respondido' => ['Respondido', '#16a34a', '✉✔']];
     $tit = $estados[$av][0].($avFecha && $av !== 'sin_comunicar' ? ' · comunicado el '.$avFecha : '').($falta ? ' · ❗ falta comunicar algún impuesto' : '').($coms ? ' · '.count($coms).' comentario(s)' : '').' (clic: cambiar / comentar)';
 @endphp
-<span class="imp-pdfw" x-data="{ o: false, t: '' }" x-on:click.outside="o = false">
+@php $clk = $entId.'|'.$bl['k']; @endphp
+<span class="imp-pdfw" wire:key="av-{{ $entId }}-{{ $bl['k'] }}-{{ $av }}-{{ (int) $falta }}-{{ count($coms) }}" x-data="{ o: {{ $avisoAbierto === $clk ? 'true' : 'false' }}, t: '' }" x-on:click.outside="o = false">
     <button type="button" class="imp-av {{ $av }}" x-on:click="o = !o" title="{{ $tit }}">{{ $estados[$av][2] }}@if ($coms)<sup>{{ count($coms) }}</sup>@endif</button>@if ($falta)<span class="imp-falta" title="Falta comunicar algún impuesto (clic en el sobre para quitarlo)">❗</span>@endif
     <div class="imp-pop imp-avp" x-show="o" x-cloak>
         <div style="font-weight:600; margin-bottom:4px">Aviso al cliente · {{ $bl['titulo'] }}</div>
         @foreach ($estados as $k => [$nom, $col])
-            <button type="button" class="e {{ $av === $k ? 'on' : '' }}" style="color:{{ $col }}" wire:click="fijarAviso({{ $entId }}, '{{ $bl['k'] }}', '{{ $k }}')">{{ $estados[$k][2] }} {{ $nom }}</button>
+            <button type="button" class="e {{ $av === $k ? 'on' : '' }}" style="color:{{ $col }}" x-on:click="o = false" wire:click="fijarAviso({{ $entId }}, '{{ $bl['k'] }}', '{{ $k }}')">{{ $estados[$k][2] }} {{ $nom }}</button>
         @endforeach
-        <button type="button" class="e {{ $falta ? 'on' : '' }}" style="color:#dc2626" wire:click="alternarFalta({{ $entId }}, '{{ $bl['k'] }}')">❗ Falta comunicar algún impuesto {{ $falta ? '(quitar)' : '' }}</button>
+        <button type="button" class="e {{ $falta ? 'on' : '' }}" style="color:#dc2626" x-on:click="o = false" wire:click="alternarFalta({{ $entId }}, '{{ $bl['k'] }}')">❗ Falta comunicar algún impuesto {{ $falta ? '(quitar)' : '' }}</button>
         @if ($avFecha && $av !== 'sin_comunicar') <div style="color:#6b7280; margin:2px 0 6px">Comunicado el {{ $avFecha }}</div> @endif
         @foreach ($coms as [$texto, $autor, $fecha, $cid, $cuid])
             <div style="border-top:1px solid #e5e7eb; padding:4px 0">
