@@ -880,6 +880,9 @@ class FacturasOcr extends Component
         $conocidas = [];
         foreach ($items as $it) {
             $id = (string) ($it[0] ?? '');
+            if ($this->copiaConOtroNombre($id, (string) ($it[1] ?? ''), $enEntrada)) {
+                continue;   // mismo contenido que una ya conocida pero otro nombre: se sube y va a Duplicadas (recibirPdfs)
+            }
             if (isset($enEntrada[$id])) {
                 $conocidas[$id] = 'ya está en el servidor';
             } elseif (isset($estados[$id])) {
@@ -890,10 +893,33 @@ class FacturasOcr extends Component
         return ['conocidas' => $conocidas];
     }
 
+    /**
+     * ¿Es un PDF idéntico (misma huella) a una factura ya conocida pero subido con otro nombre? (14-oct-2026: Xatélite 26-000589_ de Sunbelt).
+     * Esas no se descartan como «ya estaban»: van directas, con _DUPLICADA, a la carpeta Duplicadas del periodo.
+     */
+    protected function copiaConOtroNombre(string $id, string $nombre, array $enEntrada): bool
+    {
+        $limpio = fn ($n) => mb_strtolower(trim(preg_replace('/\.pdf$/i', '', basename(str_replace('\\', '/', (string) $n)))));
+        $nombre = $limpio($nombre);
+        if ($nombre === '' || preg_match('/[_ ]duplicada( \(\d+\))?$/u', $nombre)) {
+            return false;   // ya es la copia de Duplicadas (p.ej. al volver a subir la carpeta entera): no se aparta otra vez
+        }
+        $nombres = isset($enEntrada[$id]) ? [$limpio($enEntrada[$id])] : [];
+        foreach ($this->estado()['facturas'] as $f) {
+            if ($f['id'] === $id) {
+                $nombres[] = $limpio($f['ruta'] ?? '');
+                $nombres[] = $limpio($f['nombre_original'] ?? '');
+                $nombres[] = $limpio($f['ruta_antes_rechazo'] ?? '');
+            }
+        }
+
+        return $nombres !== [] && ! in_array($nombre, $nombres, true);
+    }
+
     /** Termina una subida: guarda en la carpeta de entrada los PDF nuevos y lanza su lectura. */
     public function recibirPdfs(): array
     {
-        $res = ['guardadas' => [], 'repetidas' => [], 'rechazadas' => [], 'recuperadas' => []];
+        $res = ['guardadas' => [], 'repetidas' => [], 'rechazadas' => [], 'recuperadas' => [], 'duplicadas' => []];
         if (! $this->web() || ! $this->clienteValido()) {
             return $res;
         }
@@ -917,6 +943,12 @@ class FacturasOcr extends Component
                 $enEntrada[$id] = basename($destino);
                 $this->ejecutar(['recuperar', $oculta, '--carpeta', $destino], 60, 'Recuperar '.$nombre, false);
                 $res['recuperadas'][] = basename($destino);
+            } elseif ($this->copiaConOtroNombre($id, $nombre, $enEntrada)) {
+                @mkdir($this->dirDatos().'/_tmp', 0775, true);
+                $tmp = $this->dirDatos().'/_tmp/'.$nombre;
+                copy($f->getRealPath(), $tmp);
+                $this->ejecutar(['copia_duplicada', $id, '--carpeta', $tmp, '--periodo', $this->periodo ?: $this->periodoActual()], 60, 'Duplicada '.$nombre, false);
+                $res['duplicadas'][] = $nombre;
             } elseif (isset($conocidas[$id]) || isset($enEntrada[$id])) {
                 $res['repetidas'][] = $nombre;
             } else {
@@ -932,6 +964,7 @@ class FacturasOcr extends Component
         $this->salida = count($res['guardadas']).' factura(s) recibida(s) en el servidor'
             .($res['recuperadas'] ? ', '.count($res['recuperadas']).' recuperada(s) (estaban quitadas de la lista: vuelven a Por revisar)' : '')
             .($res['repetidas'] ? ', '.count($res['repetidas']).' ya estaban (no se han vuelto a subir)' : '')
+            .($res['duplicadas'] ? ', '.count($res['duplicadas']).' idéntica(s) a otra ya subida con otro nombre → a Duplicadas con _DUPLICADA: '.implode(', ', $res['duplicadas']) : '')
             .($res['rechazadas'] ? ', '.count($res['rechazadas']).' no son PDF: '.implode(', ', $res['rechazadas']) : '').'.';
         if ($res['guardadas']) {
             $this->leerEnSegundoPlano();
