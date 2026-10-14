@@ -21,7 +21,7 @@
                         contrapartidas (manda la más usada el último año; distinta del listado en {{ $base['difieren'] ?? 0 }} proveedores),
                         reconocer el formato del nº de factura y avisar de facturas ya contabilizadas. El <b>plan de cuentas</b>
                         (…Plan….xlsx, exportado de SAGE con "Código cuenta" y "Descripción") llena el combo de contrapartida con todas las cuentas.</p>
-                    <table class="mt-2 focr-tabla" style="font-size:.78rem">
+                    <table class="mt-2 focr-tabla" style="font-size:.78rem; width:auto; max-width:100%">
                         @foreach ([
                             'prov' => ['Listado de proveedores', 'subidaProv', 'Vale el último que subes; el anterior pasa a Base/OLD. Lo puesto a mano aquí (●, proveedores nuevos) no se toca.'],
                             'mayor' => ['Mayor', 'subidaMayor', 'El anterior pasa a Base/OLD pero se sigue sumando: uno de los últimos meses completa al de años anteriores (un asiento que esté en los dos se toma del más reciente).'],
@@ -29,7 +29,7 @@
                         ] as $tipo => [$titulo, $prop, $ayuda])
                             <tr>
                                 <td style="width:11rem; vertical-align:top"><b>{{ $titulo }}</b></td>
-                                <td style="vertical-align:top">
+                                <td style="vertical-align:top; width:40rem; max-width:60vw">
                                     @forelse ($ficherosBase[$tipo] ?? [] as $k => $fb)
                                         <div class="{{ $k && $tipo === 'plan' ? 'text-gray-400' : '' }}">
                                             <a href="#" wire:click.prevent="descargar(@js('Base/'.$fb['nombre']))" class="text-indigo-600 underline" title="Abrir (se descarga una copia)">📄 {{ $fb['nombre'] }}</a> <span class="text-gray-500">· {{ $fb['fecha'] }} · {{ $fb['mb'] }} MB</span>
@@ -43,7 +43,7 @@
                                         @if ($ficherosBase['old_'.$tipo] ?? 0) ({{ $ficherosBase['old_'.$tipo] }} en OLD{{ $tipo === 'mayor' ? ', sumándose' : '' }}.) @endif
                                         ✕ = quitar el de arriba (vuelve el anterior de OLD).</div>
                                 </td>
-                                <td style="width:15rem; vertical-align:top">
+                                <td style="width:12rem; vertical-align:top">
                                     <label class="focr-btn b-gris" style="padding:.2rem .6rem; font-size:.75rem; cursor:pointer">
                                         <span wire:loading.remove wire:target="{{ $prop }}">📂 Elegir uno nuevo…</span>
                                         <span wire:loading wire:target="{{ $prop }}">Subiendo y rehaciendo…</span>
