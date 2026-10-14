@@ -210,7 +210,7 @@
                 get res() {
                     const q = norm(this.q);
                     // Un número que no está en la lista (cuenta que aún no existe en SAGE, p.ej. 216000): se ofrece tal cual para elegirlo
-                    const nueva = /^\d{3,}$/.test(q.trim()) && !this.lista.some((r) => r[0] === q.trim()) ? [[q.trim(), '➕ cuenta nueva (no está en la lista): Intro para ponerla']] : [];
+                    const nueva = /^\d{3,}$/.test(q.trim()) && !this.lista.some((r) => r[0] === q.trim()) ? [[q.trim(), '➕ cuenta nueva (no está en la lista): Intro para crearla', true]] : [];
                     if (this.lista.length === 1 && !this.lista[0][0]) return nueva.length ? nueva : this.lista;   // mensaje de error
                     if (!q || q === norm(this.etiqueta(this.valor()))) return this.lista;
                     const ps = q.split(/\s+/).filter(Boolean);
@@ -222,11 +222,27 @@
                 cerrar() { this.open = false; this.mostrar(); },
                 salir() { setTimeout(() => { if (this.open) this.cerrar(); }, 150); },
                 mover(d) { this.open = true; this.i = Math.max(0, Math.min(this.res.length - 1, this.i + d)); },
-                elegir(r) { if (!r[0]) return; this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); this.$refs.q.classList.remove('falta'); },
+                elegir(r) {
+                    if (!r[0]) return;
+                    if (r[2] && campo === 'contrapartida') return this.crearCuenta(r[0]);
+                    this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); this.$refs.q.classList.remove('falta'); },
+                // Cuenta de contrapartida que no existe: se pregunta si crearla y su nombre; queda guardada para este cliente
+                async crearCuenta(cta) {
+                    this.open = false;
+                    if (!confirm('La cuenta ' + cta + ' no está en el plan de cuentas. ¿Quieres crear una cuenta nueva?')) { this.mostrar(); return; }
+                    const nombre = prompt('Nombre (concepto) de la cuenta ' + cta + ':', '');
+                    if (nombre === null || !nombre.trim()) { this.mostrar(); return; }
+                    const err = await this.$wire.crearCuenta(cta, nombre);
+                    if (err) { alert(err); this.mostrar(); return; }
+                    this.lista = [...this.lista.filter((x) => x[0] !== cta), [cta, nombre.trim() + ' (nueva, crearla en SAGE)']];
+                    this.q = this.etiqueta(cta);
+                    this.$refs.q.classList.remove('falta');
+                },
                 intro() {
                     const r = this.res[this.i];
                     if (this.open && r) return this.elegir(r);
                     const v = this.q.trim().split(/[\s·]/)[0];
+                    if (campo === 'contrapartida' && /^\d{3,}$/.test(v) && !this.lista.some((x) => x[0] === v)) return this.crearCuenta(v);
                     if (/^\d{3,}$/.test(v)) { this.open = false; this.$wire.set('form.' + campo, v); this.$refs.q.classList.remove('falta'); }
                 },
             };

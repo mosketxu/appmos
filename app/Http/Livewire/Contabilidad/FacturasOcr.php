@@ -1847,6 +1847,53 @@ class FacturasOcr extends Component
         $this->sucio = true;
     }
 
+    /**
+     * Cuentas de contrapartida: las del plan de SAGE (proveedores.json → cuentas) más las creadas aquí sobre la marcha
+     * (cuentas_propias.json en la carpeta de datos, 14-oct-2026: 216000 Mobiliario de Sleep). [cuenta => nombre]
+     */
+    protected function cuentasContables(): array
+    {
+        $plan = json_decode((string) @file_get_contents($this->dirCliente().'/Base/proveedores.json'), true)['cuentas'] ?? [];
+        $propias = json_decode((string) @file_get_contents($this->dirDatos().'/cuentas_propias.json'), true) ?: [];
+        foreach ($propias as $cta => $c) {
+            if (! isset($plan[$cta])) {
+                $plan[(string) $cta] = ($c['nombre'] ?? '').' (nueva, crearla en SAGE)';
+            }
+        }
+        ksort($plan, SORT_STRING);
+
+        return $plan;
+    }
+
+    /** Cuenta de contrapartida que no está en el plan: se guarda con su nombre y aparece ya en el combo. */
+    public function crearCuenta(string $cuenta, string $nombre): string
+    {
+        $cuenta = trim($cuenta);
+        $nombre = trim(preg_replace('/\s+/u', ' ', $nombre));
+        if (! $this->clienteValido() || ! preg_match('/^\d{3,12}$/', $cuenta)) {
+            return 'Cuenta no válida: solo números.';
+        }
+        if ($nombre === '') {
+            return 'Falta el nombre de la cuenta.';
+        }
+        $plan = $this->cuentasContables();
+        $largos = array_count_values(array_map('strlen', array_map('strval', array_keys($plan))));
+        arsort($largos);
+        $largo = (int) (array_key_first($largos) ?? 0);
+        if ($largo && strlen($cuenta) !== $largo) {
+            return "Las cuentas de este cliente tienen {$largo} cifras y {$cuenta} tiene ".strlen($cuenta).'.';
+        }
+        $f = $this->dirDatos().'/cuentas_propias.json';
+        $propias = json_decode((string) @file_get_contents($f), true) ?: [];
+        $propias[$cuenta] = ['nombre' => mb_substr($nombre, 0, 60), 'creada' => now()->format('Y-m-d H:i'), 'por' => (string) (auth()->user()->name ?? '')];
+        file_put_contents($f, json_encode($propias, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $this->form['contrapartida'] = $cuenta;
+        $this->sucio = true;
+        $this->dispatch('focr-listas');
+
+        return '';
+    }
+
     /** Listas para los buscadores del formulario (se piden una vez desde el navegador). */
     public function lista(string $cual): array
     {
@@ -1865,7 +1912,7 @@ class FacturasOcr extends Component
             }
         }
         if ($cual === 'cuentas') {
-            $c = json_decode((string) @file_get_contents($f), true)['cuentas'] ?? [];
+            $c = $this->cuentasContables();
             if (! $c) {
                 // Que se vea en el propio desplegable por qué está vacío
                 return [['', '⚠️ No hay cuentas de contrapartida: '.($error !== '' ? mb_substr(preg_replace('/\s+/', ' ', $error), -300)
@@ -1993,7 +2040,7 @@ class FacturasOcr extends Component
             $q = mb_strtolower($this->filtroProv);
             $provs = array_filter($provs, fn ($p) => str_contains(mb_strtolower($p['cuenta'].' '.$p['nombre'].' '.$p['cif'].' '.$p['contrapartida']), $q));
         }
-        $nombres = json_decode((string) @file_get_contents($this->dirCliente().'/Base/proveedores.json'), true)['cuentas'] ?? [];
+        $nombres = $this->cuentasContables();
         return response()->streamDownload(function () use ($provs, $nombres) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
@@ -2742,7 +2789,7 @@ class FacturasOcr extends Component
             // Factura abierta con proveedor que no está en SAGE: se puede buscar su CIF/CP en internet
             'provFueraSage' => $this->sel !== '' && ! isset($this->proveedores()[$this->form['cuenta'] ?? '']),
             'nombresCuentas' => $this->vista === 'proveedores' && $valido
-                ? (json_decode((string) @file_get_contents($this->dirCliente().'/Base/proveedores.json'), true)['cuentas'] ?? []) : [],
+                ? $this->cuentasContables() : [],
             'mesesReg' => $mesesReg,
             'actual' => $actual,
             'posicion' => $actual ? array_search($this->sel, array_column($cola, 'id'), true) : false,
