@@ -223,7 +223,7 @@
                             <span x-show="subiendo" class="text-xs text-gray-400">Subiendo…</span>
                         </label>
                         @if ($ocrRevisar)
-                            @php($rev = $ocrRevisar[0])
+                            @php $rev = $ocrRevisar[0]; @endphp
                             {{-- Extracto en imagen/PDF cuyo OCR no cuadra: a la izquierda el extracto, a la derecha lo leído, editable --}}
                             <div class="fixed inset-0 z-50 flex items-center justify-center p-3" style="background:rgba(17,24,39,.55)"
                                  wire:key="ocr-{{ md5($rev['nombre'].count($ocrRevisar)) }}"
