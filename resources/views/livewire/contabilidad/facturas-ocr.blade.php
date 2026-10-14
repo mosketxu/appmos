@@ -209,12 +209,14 @@
                 },
                 get res() {
                     const q = norm(this.q);
-                    // Un número que no está en la lista (cuenta que aún no existe en SAGE, p.ej. 216000): se ofrece tal cual para elegirlo
-                    const nueva = /^\d{3,}$/.test(q.trim()) && !this.lista.some((r) => r[0] === q.trim()) ? [[q.trim(), '➕ cuenta nueva (no está en la lista): Intro para crearla', true]] : [];
-                    // Antes que lo demás: si el número ya quedó puesto (Intro de antes) sin estar en la lista, también se ofrece crearla
-                    if (nueva.length && campo === 'contrapartida') return nueva;
+                    // Un número de cuenta que no está en la lista (p.ej. 216000) se ofrece como «➕ cuenta nueva»; solo cuando el filtro
+                    // no encuentra nada, así mientras se escribe se sigue pudiendo elegir una existente
+                    const num = q.trim();
+                    const nueva = campo === 'contrapartida' && /^\d{3,}$/.test(num) && !this.lista.some((r) => r[0] === num)
+                        ? [[num, '➕ cuenta nueva (no está en la lista): Intro para crearla', true]] : [];
                     if (this.lista.length === 1 && !this.lista[0][0]) return nueva.length ? nueva : this.lista;   // mensaje de error
-                    if (!q || q === norm(this.etiqueta(this.valor()))) return this.lista;
+                    if (!q) return this.lista;
+                    if (q === norm(this.etiqueta(this.valor()))) return nueva.length ? nueva : this.lista;   // puesta antes sin crearla
                     const ps = q.split(/\s+/).filter(Boolean);
                     const f = this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); });
                     return f.length ? f : nueva;
