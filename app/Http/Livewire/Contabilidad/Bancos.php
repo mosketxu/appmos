@@ -120,10 +120,74 @@ class Bancos extends Component
     {
         $this->cliente = $this->clienteOk = $this->clienteInicial($this->clientes());
         $this->sincronizarCentral();
+        $this->precargar(true);
         $this->cargarMaestro();
         $this->cargarConfig();
         $this->cargarFormatos();
         $this->abrirUltimaRevision();
+    }
+
+    /** Salidas de los scripts ya lanzadas por precargar(), por comando; solo viven durante la petición. */
+    protected array $pre = [];
+
+    /** Ejecuta un script de Bancos con el python de Bancos (o recoge su salida si ya lo lanzó precargar()). */
+    protected function py(array $args, int $timeout = 60)
+    {
+        $k = implode("\0", $args);
+        if (isset($this->pre[$k])) {
+            $r = $this->pre[$k];
+            unset($this->pre[$k]);
+            return $r;
+        }
+        return Process::path($this->baseDir())->timeout($timeout)->run(array_merge([$this->pythonBin()], $args));
+    }
+
+    /**
+     * Al abrir la pantalla o cambiar de cliente hacen falta 5-6 scripts (estado de la base, maestro, formatos,
+     * revisión...): se lanzan a la vez en vez de uno tras otro (de ~4 s a ~1,5 s).
+     */
+    protected function precargar(bool $config): void
+    {
+        $cmds = $config ? [['bancos_config.py', 'listar']] : [];
+        if ($this->clienteValido()) {
+            $c = $this->cliente;
+            $cmds[] = ['bancos_base.py', $c, '--estado'];
+            $cmds[] = ['bancos_formatos.py', $c, 'listar'];
+            if (is_file($this->basePath())) {
+                $cmds[] = ['bancos_maestro.py', $c, 'cuentas_nuevas'];
+                $cmds[] = ['bancos_maestro.py', $c, 'listar'];
+            }
+            if (($g = $this->ultimoGenerado()) !== null) {
+                $cmds[] = ['bancos_maestro.py', $c, 'lineas', $g];
+            }
+        }
+        if (count($cmds) < 2) {
+            return;
+        }
+        try {
+            $res = Process::concurrently(function ($pool) use ($cmds) {
+                foreach ($cmds as $a) {
+                    $pool->as(implode("\0", $a))->path($this->baseDir())->timeout(90)->command(array_merge([$this->pythonBin()], $a));
+                }
+            });
+            foreach ($cmds as $a) {
+                $this->pre[implode("\0", $a)] = $res[implode("\0", $a)];
+            }
+        } catch (\Throwable $e) {
+            $this->pre = [];   // si falla el lanzamiento en paralelo, cada carga lo ejecuta por su cuenta
+        }
+    }
+
+    protected function ultimoGenerado(): ?string
+    {
+        $mejor = null;
+        foreach ($this->ficherosBancosGenerados() as $g) {
+            $t = (int) @filemtime($this->baseDir().'/'.$this->cliente.'/Output/'.$g);
+            if ($mejor === null || $t >= $mejor[0]) {
+                $mejor = [$t, $g];
+            }
+        }
+        return $mejor[1] ?? null;
     }
 
     /** Al entrar (o cambiar de cliente) abre la revisión con el último bancos<cuenta>.xlsx generado, para no tener que buscarla. */
@@ -132,15 +196,8 @@ class Bancos extends Component
         if ($this->revisar !== '' || ! $this->clienteValido()) {
             return;
         }
-        $mejor = null;
-        foreach ($this->ficherosBancosGenerados() as $g) {
-            $t = (int) @filemtime($this->baseDir().'/'.$this->cliente.'/Output/'.$g);
-            if ($mejor === null || $t >= $mejor[0]) {
-                $mejor = [$t, $g];
-            }
-        }
-        if ($mejor) {
-            $this->revisar = $mejor[1];
+        if (($g = $this->ultimoGenerado()) !== null) {
+            $this->revisar = $g;
             $this->cargarRevision();
         }
     }
@@ -151,7 +208,7 @@ class Bancos extends Component
     protected function formatosPy(array $args): array
     {
         try {
-            $r = Process::path($this->baseDir())->timeout(90)->run(array_merge([$this->pythonBin(), 'bancos_formatos.py', $this->cliente], $args));
+            $r = $this->py(array_merge(['bancos_formatos.py', $this->cliente], $args), 90);
             $datos = json_decode(trim($r->output()), true);
             if (! is_array($datos)) {
                 $datos = ['error' => trim($r->output()."\n".$r->errorOutput())];
@@ -282,7 +339,7 @@ class Bancos extends Component
     protected function config_py(array $args): array
     {
         try {
-            $r = Process::path($this->baseDir())->timeout(60)->run(array_merge([$this->pythonBin(), 'bancos_config.py'], $args));
+            $r = $this->py(array_merge(['bancos_config.py'], $args));
             return [$r->successful(), trim($r->output()."\n".$r->errorOutput())];
         } catch (\Throwable $e) {
             return [false, $e->getMessage()];
@@ -420,6 +477,7 @@ class Bancos extends Component
     protected function alElegirCliente(): void
     {
         $this->sincronizarCentral();
+        $this->precargar(false);
         $this->resultados = [];
         $this->cuenta = '';
         $this->extractos = $this->cuentasExtracto = $this->origenCuenta = $this->avisoCuenta = $this->previos = [];
@@ -473,7 +531,7 @@ class Bancos extends Component
         }
         try {
             // También sin base: las otras cuentas de banco se pueden marcar antes del primer mayor
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_base.py', $this->cliente, '--estado']);
+            $r = $this->py(['bancos_base.py', $this->cliente, '--estado']);
             $this->estadoBase = $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
         } catch (\Throwable $e) {
             // Sin el estado solo se pierde el resumen de cada fila; no debe romper la pantalla.
@@ -482,13 +540,13 @@ class Bancos extends Component
             return;
         }
         try {
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'cuentas_nuevas']);
+            $r = $this->py(['bancos_maestro.py', $this->cliente, 'cuentas_nuevas']);
             $this->cuentasNuevas = $r->successful() ? (json_decode($r->output(), true)['cuentas'] ?? []) : [];
         } catch (\Throwable $e) {
             $this->cuentasNuevas = [];
         }
         try {
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'listar']);
+            $r = $this->py(['bancos_maestro.py', $this->cliente, 'listar']);
             $datos = json_decode($r->output(), true);
             if (! $r->successful() || ! is_array($datos)) {
                 $this->avisoMaestro = 'No se ha podido leer el Maestro: '.trim($r->output()."\n".$r->errorOutput());
@@ -555,7 +613,7 @@ class Bancos extends Component
             return;
         }
         try {
-            $r = Process::path($this->baseDir())->timeout(60)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'lineas', $this->revisar]);
+            $r = $this->py(['bancos_maestro.py', $this->cliente, 'lineas', $this->revisar]);
             $datos = json_decode($r->output(), true);
             if (! is_array($datos) || isset($datos['error'])) {
                 $this->avisoRevisar = $datos['error'] ?? trim($r->output()."\n".$r->errorOutput());

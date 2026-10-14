@@ -236,6 +236,7 @@ return [
             'imputacionCostes.js', 'adyenReparto.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
             'enviarRentasVariables.py', 'pagosFinMes.py', 'FacturasEmitidas/facturasEmitidas.py', 'CashFlow/cashflow.py',
             'CashInStore/cashInStore.py',
+            'ComunicarImpuestos/comunicarImpuestos.py',
         ]],
         // Facturación PDF (Suma/Balerga): el PDF subido viaja como entrada y el PC lo procesa con su OneDrive.
         'facturacion' => ['scripts' => ['procesar_facturas.py', 'herramientas/listar_destinatarios.py', 'herramientas/editar_destinatario.py']],
