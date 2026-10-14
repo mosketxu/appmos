@@ -72,7 +72,7 @@
                          x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
                          :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''"
                          class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
-                        <input type="file" multiple accept=".xlsx,.xls" class="hidden" x-ref="input"
+                        <input type="file" multiple accept=".xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp" class="hidden" x-ref="input"
                                x-on:change="subir($event.target.files); $event.target.value = ''">
                         <div class="w-64 text-sm font-medium text-gray-800">{{ $fb['icono'] }} {{ $fb['titulo'] }}</div>
                         <div class="flex-1 min-w-[14rem] text-xs text-gray-600">
@@ -213,10 +213,10 @@
                          x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)">
                         <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
                                class="flex items-center gap-2 px-3 py-3 text-sm border-2 border-dashed rounded-md cursor-pointer">
-                            <input type="file" multiple accept=".xlsx,.xls" class="hidden"
+                            <input type="file" multiple accept=".xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp" class="hidden"
                                    x-on:change="subir($event.target.files); $event.target.value = ''">
                             <span>📄</span>
-                            <span class="text-gray-700">Arrastra aquí los extractos del banco (uno o varios) o haz clic para elegirlos</span>
+                            <span class="text-gray-700">Arrastra aquí los extractos del banco (uno o varios: Excel, o foto/PDF escaneado, que se pasa a Excel) o haz clic para elegirlos</span>
                             <span x-show="subiendo" class="text-xs text-gray-400">Subiendo…</span>
                         </label>
                         @error('extractos')

@@ -789,9 +789,18 @@ class Bancos extends Component
         $this->nuevosExtractos = [];
         $malos = [];
         $buenos = [];
+        $notaOcr = [];
         foreach ($nuevos as $f) {
             $nombre = $f->getClientOriginalName();
-            if (! in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['xlsx', 'xls'], true)) {
+            $ext = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
+            if (in_array($ext, self::EXT_OCR, true)) {
+                [$f, $nota] = $this->extractoDeImagen($f);
+                if (! $f) {
+                    $this->addError('extractos', "«{$nombre}»: {$nota}");
+                    continue;
+                }
+                $notaOcr[count($buenos)] = $nota;
+            } elseif (! in_array($ext, ['xlsx', 'xls'], true)) {
                 $malos[] = $nombre;
                 continue;
             }
@@ -807,11 +816,46 @@ class Bancos extends Component
             $this->extractos[] = $f;
             $this->cuentasExtracto[] = $cuenta;
             $this->origenCuenta[] = $motivo;
-            $this->avisoCuenta[] = $aviso;
+            $this->avisoCuenta[] = trim(($notaOcr[$i] ?? '').' '.$aviso);
         }
         if ($malos) {
-            $this->addError('extractos', 'Solo Excel (.xlsx / .xls). No se han añadido: '.implode(', ', $malos));
+            $this->addError('extractos', 'Solo Excel (.xlsx / .xls), imagen (.jpg / .png) o PDF. No se han añadido: '.implode(', ', $malos));
         }
+    }
+
+    /** Extractos que llegan como foto, captura o PDF escaneado: se pasan a Excel con bancos_ocr.py antes de nada. */
+    private const EXT_OCR = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+
+    /**
+     * Convierte el extracto en imagen/PDF en un Excel (Fecha, Fecha valor, Concepto, Importe, Saldo) que entra en la
+     * lista como si se hubiera subido así. Devuelve [fichero|null, nota para el usuario].
+     */
+    protected function extractoDeImagen(UploadedFile $f): array
+    {
+        $nombre = $f->getClientOriginalName();
+        $xlsx = pathinfo($nombre, PATHINFO_FILENAME).' (OCR).xlsx';
+        $tmp = \Livewire\Features\SupportFileUploads\TemporaryUploadedFile::createFromLivewire(
+            \Illuminate\Support\Str::random(30).'-meta'.str_replace('/', '_', base64_encode($xlsx)).'-.xlsx');
+        @mkdir(dirname($tmp->getRealPath()), 0775, true);
+        // La copia conserva la extensión: bancos_ocr.py decide por ella si es imagen o PDF.
+        $origen = sys_get_temp_dir().'/bancos-ocr-'.\Illuminate\Support\Str::random(8).'.'.strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
+        try {
+            if (! @copy($f->getRealPath(), $origen)) {
+                return [null, 'no se ha podido leer el fichero subido.'];
+            }
+            $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'bancos_ocr.py', $origen, $tmp->getRealPath()]);
+            $d = json_decode(trim($r->output()), true);
+            if (! is_array($d) || empty($d['ok']) || ! is_file($tmp->getRealPath())) {
+                return [null, 'no se ha podido pasar a Excel: '.($d['error'] ?? trim($r->output()."\n".$r->errorOutput()))];
+            }
+        } finally {
+            @unlink($origen);
+        }
+        $nota = "📷 Pasado a Excel desde «{$nombre}» ({$d['filas']} movimientos";
+        $nota .= $d['cuadra'] && ! $d['sin_saldo']
+            ? ', los saldos cuadran fila a fila).'
+            : '). ⚠ REVISA el Excel antes de conciliar: '.($d['cuadra'] ? "{$d['sin_saldo']} filas sin saldo" : 'los saldos no cuadran en las filas '.implode(', ', $d['descuadres'])).'.';
+        return [$tmp, $nota];
     }
 
     public function quitarExtracto(int $i): void
