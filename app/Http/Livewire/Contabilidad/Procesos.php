@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Contabilidad;
 
 use App\Http\Livewire\Concerns\EjecutaEnPcs;
 use App\Support\ColaTareas;
+use App\Support\IntrastatMotor;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
@@ -148,6 +149,8 @@ class Procesos extends Component
         $this->sincronizarEstado('fiq.checklist_def');
         $this->retomarTareas();
         $this->cargarCashInStore();
+        $this->cargarIntrastat();
+        $this->cargarComunicarImpuestos();
     }
 
     protected function confPagosFinMes(): array
@@ -553,6 +556,13 @@ class Procesos extends Component
             $this->updatedPfMes();
         }
         $this->cargarCashInStore($this->cisAbierto);
+        if (! array_filter($this->ciImp, fn ($v) => trim((string) $v) !== '')) {
+            $this->cargarComunicarImpuestos();
+        } else {
+            $m = $this->confComunicarImpuestos()['meses'][sprintf('%02d', $this->mes)] ?? [];
+            $this->ciEnviado = (string) ($m['enviado'] ?? $this->ciEnviado);
+            $this->ciBorrador = (string) ($m['borrador'] ?? $this->ciBorrador);
+        }
     }
 
     protected function ejecutarUno(string $id): void
@@ -1085,6 +1095,9 @@ class Procesos extends Component
         $this->resultados = [];
         $this->updatedPfMes();
         $this->cargarCashInStore();
+        $this->cargarIntrastat();
+        $this->cargarComunicarImpuestos();
+        $this->intrastatFichero = null;
     }
 
     protected function cisMm(): string
@@ -1241,6 +1254,224 @@ class Procesos extends Component
             $this->marcarChecklist('cash_in_store', $ctx['mes']);
         }
     }
+
+    // ---- Intrastat (14-oct-2026) ----------------------------------------------
+    // "Que pueda elegir el fichero en la tarea Intrastat y que cuando lo procese se marque como hecho": el Excel
+    // «Outbound Fashion IQ PPI & PS - MM.2026.xlsx» pasa por el motor de Impuestos → Intrastat (en el servidor,
+    // sin PC trabajador; cliente «fashioniq», periodo 2026-MM) y deja el CSV para la Sede.
+
+    public $intrastatFichero = null;
+    /** resumen.json del mes del título (partidas, avisos, fichero…) o null. */
+    public ?array $intrastatRes = null;
+
+    protected function intrastatPeriodo(): string
+    {
+        return sprintf('2026-%02d', $this->mes);
+    }
+
+    protected function cargarIntrastat(): void
+    {
+        try {
+            $this->intrastatRes = IntrastatMotor::resumen('fashioniq', $this->intrastatPeriodo());
+        } catch (\Throwable $e) {
+            $this->intrastatRes = null;
+        }
+    }
+
+    public function procesarIntrastat(): void
+    {
+        if (! $this->autorizar('intrastat')) {
+            return;
+        }
+        $periodo = $this->intrastatPeriodo();
+        $etiqueta = "Intrastat {$periodo}";
+        $f = $this->intrastatFichero;
+        if ($f) {
+            if (! in_array(strtolower($f->getClientOriginalExtension()), ['xlsx', 'xlsm'], true)) {
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nTiene que ser el Excel (.xlsx) de Outbound.");
+                return;
+            }
+            $entrada = IntrastatMotor::carpeta('fashioniq', $periodo, 'entrada');
+            foreach (glob($entrada.'/*') ?: [] as $viejo) {
+                @unlink($viejo); // el fichero elegido sustituye a lo que hubiera de ese mes
+            }
+            copy($f->getRealPath(), $entrada.'/'.IntrastatMotor::nombreEntrada($f->getClientOriginalName()));
+            $this->intrastatFichero = null;
+        }
+        $error = IntrastatMotor::generar('fashioniq', $periodo);
+        $this->salida .= "\n\n===== {$etiqueta} =====\n";
+        if ($error) {
+            $this->salida .= "⚠️ {$error}\n   👉 Qué hacer: elige el Excel «Outbound Fashion IQ PPI & PS - ".substr($periodo, 5).".2026.xlsx» y vuelve a procesar.";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\n{$error}");
+            return;
+        }
+        $this->cargarIntrastat();
+        $r = $this->intrastatRes ?? [];
+        $avisos = $r['avisos'] ?? [];
+        $this->salida .= ($r['partidas'] ?? 0).' partidas · '.number_format((float) ($r['valor'] ?? 0), 2, ',', '.').' € · '
+            .number_format((float) ($r['uds'] ?? 0), 0, ',', '.').' unidades · de: '.implode(', ', $r['entradas'] ?? [])
+            .($avisos ? "\n⚠️ ".count($avisos)." avisos (revísalos antes de subirlo):\n  • ".implode("\n  • ", $avisos) : "\nSin avisos.")
+            ."\nCSV para la Sede: {$r['fichero']} (⬇ en la fila Intrastat).";
+        $this->marcarChecklist('intrastat', $this->mes);
+        $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\n".($r['partidas'] ?? 0).' partidas'.($avisos ? ' y '.count($avisos).' avisos para revisar.' : '.'));
+    }
+
+    public function descargarIntrastat()
+    {
+        if (! $this->autorizar('intrastat') || empty($this->intrastatRes['fichero'])) {
+            return null;
+        }
+        $ruta = IntrastatMotor::datosDir().'/fashioniq/'.$this->intrastatPeriodo().'/salida/'.basename($this->intrastatRes['fichero']);
+        return is_file($ruta) ? response()->download($ruta, basename($ruta)) : null;
+    }
+
+    // ---- Comunicar impuestos a Plein (14-oct-2026) ----------------------------
+    // Correo «<Month> Taxes» con lo que se va a presentar y el día del cargo en BBVA (como «August Taxes»).
+    // M303 lo busca el script en el Excel de IVA del mes; M111/M115/M216 los escribe Alex. Script:
+    // monthlyFIQ/ComunicarImpuestos/comunicarImpuestos.py (destinatarios y lo de cada mes en su .json).
+
+    /** Orden del correo: clave => [modelo, texto del correo, día límite del mes siguiente (0 = el 30 o el último)]. */
+    public const CI_FILAS = ['m111' => ['M111', 'Withholding payrolls', 20], 'm115' => ['M115', 'Withholding rent', 20],
+        'm216' => ['M216', 'Withholding non-residents', 20], 'm303' => ['M303', 'VAT', 0]];
+
+    public array $ciImp = ['m111' => '', 'm115' => '', 'm216' => '', 'm303' => ''];
+    public array $ciFecha = ['m111' => '', 'm115' => '', 'm216' => '', 'm303' => ''];
+    public string $ciTo = '';
+    public string $ciCc = '';
+    public string $ciEnviado = '';
+    public string $ciBorrador = '';
+    public string $ciEmailPrueba = 'alex.arregui@sumaempresa.com';
+    public bool $ciAbierto = false;
+    /** Primer paso del envío real (el segundo es «Confirmar envío REAL»). */
+    public bool $ciArmado = false;
+
+    protected function confComunicarImpuestos(): array
+    {
+        return $this->estadoFiq('fiq.comunicarImpuestos', $this->scriptDir().'/ComunicarImpuestos/comunicarImpuestos.json') ?? [];
+    }
+
+    /** Mismo criterio que el script: 20 (o 30/último día) del mes siguiente; sábado/domingo → lunes. */
+    protected function ciFechaDefecto(string $clave): string
+    {
+        $d = \Carbon\Carbon::create(2026, $this->mes, 1)->addMonthNoOverflow();
+        $dia = self::CI_FILAS[$clave][2];
+        $d->day($dia ?: min(30, $d->daysInMonth));
+        while ($d->isWeekend()) {
+            $d->addDay();
+        }
+        return $d->format('d/m/Y');
+    }
+
+    protected function cargarComunicarImpuestos(): void
+    {
+        $conf = $this->confComunicarImpuestos();
+        $m = $conf['meses'][sprintf('%02d', $this->mes)] ?? [];
+        foreach (self::CI_FILAS as $k => $_) {
+            $this->ciImp[$k] = (string) ($m[$k] ?? '');
+            $this->ciFecha[$k] = (string) ($m['f'.substr($k, 1)] ?? $this->ciFechaDefecto($k));
+        }
+        $this->ciTo = implode(', ', $conf['to'] ?? []);
+        $this->ciCc = implode(', ', $conf['cc'] ?? []);
+        $this->ciEnviado = (string) ($m['enviado'] ?? '');
+        $this->ciBorrador = (string) ($m['borrador'] ?? '');
+        $this->ciArmado = false;
+    }
+
+    /** Filas tal como saldrán en el correo (solo las que tienen importe). */
+    public function getCiLineasProperty(): array
+    {
+        $out = [];
+        foreach (self::CI_FILAS as $k => [$modelo, $texto]) {
+            $v = $this->cisNum((string) $this->ciImp[$k]);
+            if ($v !== null) {
+                $out[] = [$texto, number_format($v, 2, ',', '.'), $this->ciFecha[$k] ?: $this->ciFechaDefecto($k)];
+            }
+        }
+        return $out;
+    }
+
+    public function buscar303(): void
+    {
+        if (! $this->autorizar('comunicar_impuestos')) {
+            return;
+        }
+        $mm = $this->cisMm();
+        $this->lanzar([['script' => 'ComunicarImpuestos/comunicarImpuestos.py', 'args' => [(string) $this->mes, '--buscar'], 'timeout' => 120,
+            'etiqueta' => "Comunicar impuestos {$mm} · buscar 303"]], ['post' => 'postBuscar303', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    protected function postBuscar303(array $ctx, int $desde, array $oks): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        if ($ctx['mes'] === $this->mes && preg_match('/^DATO m303=(-?[\d.]+)\s*$/m', $nuevo, $m)) {
+            $this->ciImp['m303'] = number_format((float) $m[1], 2, ',', '.');
+        }
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^DATO .*(\r?\n)?/m', '', $nuevo));
+    }
+
+    /** Primer paso del envío real: enseña «Confirmar envío REAL». */
+    public function armarComunicarImpuestos(): void
+    {
+        if ($this->autorizar('comunicar_impuestos')) {
+            $this->ciArmado = ! $this->ciArmado;
+        }
+    }
+
+    /** $modo: 'vista', 'prueba', 'borrador' (Borradores de Outlook, no se envía) o 'real' (solo tras armar). */
+    public function comunicarImpuestos(string $modo): void
+    {
+        if (! $this->autorizar('comunicar_impuestos') || ! in_array($modo, ['vista', 'prueba', 'borrador', 'real'], true)) {
+            return;
+        }
+        $mm = $this->cisMm();
+        $etiqueta = "Comunicar impuestos {$mm} · ".['vista' => 'vista previa', 'prueba' => 'prueba a '.trim($this->ciEmailPrueba),
+            'borrador' => 'borrador en Outlook', 'real' => 'ENVÍO REAL a Plein'][$modo];
+        if ($modo === 'real' && ! $this->ciArmado) {
+            return; // sin el primer paso no se envía nada
+        }
+        $this->ciArmado = false;
+        $error = match (true) {
+            ! array_filter($this->ciImp, fn ($v) => trim((string) $v) !== '') => 'no hay ningún importe.',
+            in_array($modo, ['borrador', 'real'], true) && trim($this->ciTo) === '' => 'el «Para» está vacío.',
+            $modo === 'prueba' && trim($this->ciEmailPrueba) === '' => 'pon un correo de prueba.',
+            default => null,
+        };
+        if ($error) {
+            $this->salida .= "\n\n===== {$etiqueta} =====\n⚠️ ".ucfirst($error);
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\n".ucfirst($error));
+            return;
+        }
+        $args = [(string) $this->mes];
+        foreach (self::CI_FILAS as $k => $_) {
+            // con «=»: un importe negativo no se confunde con una opción
+            array_push($args, "--{$k}=".trim((string) $this->ciImp[$k]), '--f'.substr($k, 1).'='.trim((string) $this->ciFecha[$k]));
+        }
+        array_push($args, '--to', $this->ciTo, '--cc', $this->ciCc);
+        $args = array_merge($args, match ($modo) {
+            'real' => ['--real'],
+            'borrador' => ['--borrador'],
+            'prueba' => ['--test', trim($this->ciEmailPrueba)],
+            default => ['--sin-enviar'],
+        });
+        $this->lanzar([['script' => 'ComunicarImpuestos/comunicarImpuestos.py', 'args' => $args, 'timeout' => 240, 'etiqueta' => $etiqueta]],
+            ['resultados' => 'ci', 'post' => 'postComunicarImpuestos', 'ctx' => ['mes' => $this->mes, 'modo' => $modo]]);
+    }
+
+    protected function postComunicarImpuestos(array $ctx, int $desde, array $oks): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        if (! in_array(false, $oks, true)) {
+            if ($ctx['modo'] === 'real' && str_contains($nuevo, 'ENVIADO_REAL')) {
+                $this->marcarChecklist('comunicar_impuestos', $ctx['mes'], 'ok');
+                $this->ciEnviado = date('Y-m-d H:i');
+            } elseif ($ctx['modo'] === 'borrador' && str_contains($nuevo, 'BORRADOR_OK')) {
+                $this->marcarChecklist('comunicar_impuestos', $ctx['mes'], 'proc');
+                $this->ciBorrador = date('Y-m-d H:i');
+            }
+        }
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^(ENVIADO_REAL|BORRADOR_OK)\s*$/m', '', $nuevo));
+    }
+
 
     // ---- Checklist de cierre (pedido 2026-10-01) -----------------------------
     // "Guardar un registro de que se ha hecho cada mes para no volverme loco":

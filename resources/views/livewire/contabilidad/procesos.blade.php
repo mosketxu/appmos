@@ -168,6 +168,39 @@
                                         <x-contabilidad.resultado-fichero :r="$r" />
                                     @endforeach
                                 </div>
+                            @elseif ($auto === 'intrastat')
+                                {{-- 14-oct-2026: se elige el Excel de Outbound, se procesa con el motor de Impuestos → Intrastat y se marca hecho --}}
+                                <div class="flex flex-wrap items-start gap-x-2 gap-y-1">
+                                    <label class="flex flex-col text-xs text-gray-600" title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.2026.xlsx». Sustituye al que hubiera procesado de este mes.">
+                                        <span>Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} (.xlsx)</span>
+                                        <input type="file" wire:model="intrastatFichero" accept=".xlsx,.xlsm" class="text-xs">
+                                        <span wire:loading wire:target="intrastatFichero" class="text-gray-500">⏳ subiendo…</span>
+                                        @if ($intrastatFichero)<span class="text-green-700">✓ {{ $intrastatFichero->getClientOriginalName() }}</span>@endif
+                                    </label>
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                        wire:click="procesarIntrastat" wire:loading.attr="disabled" wire:target="procesarIntrastat,intrastatFichero"
+                                        @if (! $intrastatFichero && ! $intrastatRes) disabled title="Elige antes el Excel" @endif>
+                                        <span wire:loading.remove wire:target="procesarIntrastat">▶ Procesar</span>
+                                        <span wire:loading wire:target="procesarIntrastat">⏳…</span>
+                                    </button>
+                                    @if ($intrastatRes)
+                                        <div class="flex flex-col text-xs text-gray-600">
+                                            <span>
+                                                <button type="button" wire:click="descargarIntrastat" class="text-indigo-700 underline hover:text-indigo-900">⬇ {{ $intrastatRes['fichero'] ?? 'CSV' }}</button>
+                                                · {{ $intrastatRes['partidas'] ?? 0 }} partidas · {{ $intrastatRes['generado'] ?? '' }}
+                                            </span>
+                                            @if (! empty($intrastatRes['avisos']))
+                                                <a href="{{ route('impuestos.intrastat') }}" class="text-yellow-800 hover:underline" title="{{ implode("\n", array_slice($intrastatRes['avisos'], 0, 15)) }}">⚠️ {{ count($intrastatRes['avisos']) }} avisos · ver en Impuestos → Intrastat</a>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @elseif ($auto === 'comunicar-impuestos')
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" wire:click="$toggle('ciAbierto')">{{ $ciAbierto ? '▴ Plegar' : '✎ Preparar correo' }}</button>
+                                    @if ($ciEnviado)<span class="text-xs text-green-700">✓ enviado el {{ $ciEnviado }}</span>
+                                    @elseif ($ciBorrador)<span class="text-xs text-yellow-700">P borrador en Outlook el {{ $ciBorrador }}</span>@endif
+                                </div>
                             @elseif ($auto && $auto !== 'pendiente')
                                 <button type="button" x-on:click="$dispatch('abrir-panel', '{{ $auto }}')" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50">abrir ↓</button>
                             @else
@@ -192,6 +225,80 @@
                             </td>
                         @endforeach
                     </tr>
+                    @if ($id === 'comunicar_impuestos' && $ciAbierto)
+                        {{-- Correo «<Month> Taxes» a Plein (14-oct-2026) --}}
+                        <tr wire:key="chk-ci-detalle" x-show="ver('comunicar impuestos taxes')">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-3">
+                                <div class="flex flex-wrap gap-6 p-2 border border-gray-200 rounded">
+                                    <div style="flex:1 1 420px;min-width:0">
+                                        <div class="mb-1 text-sm font-semibold text-gray-800">«{{ \Carbon\Carbon::create(2026, $mes, 1)->locale('en')->monthName }} Taxes» · importes en euros (vacío = no va en el correo)</div>
+                                        <table class="text-sm text-gray-800">
+                                            <tr class="text-xs text-left text-gray-500"><th class="pr-2">Modelo</th><th class="pr-2">En el correo</th><th class="pr-2">Importe</th><th>Día de cargo</th></tr>
+                                            @foreach (\App\Http\Livewire\Contabilidad\Procesos::CI_FILAS as $k => [$modelo, $texto])
+                                                <tr wire:key="ci-{{ $k }}">
+                                                    <td class="py-0.5 pr-2 font-semibold">{{ $modelo }}</td>
+                                                    <td class="py-0.5 pr-2 text-gray-600">{{ $texto }}</td>
+                                                    <td class="py-0.5 pr-2">
+                                                        <input type="text" wire:model.blur="ciImp.{{ $k }}" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:110px"
+                                                            placeholder="{{ $k === 'm303' ? 'Buscar 303' : '' }}">
+                                                    </td>
+                                                    <td class="py-0.5"><input type="text" wire:model.blur="ciFecha.{{ $k }}" class="px-1 py-0 text-sm border-gray-300 rounded" style="width:95px" placeholder="dd/mm/aaaa"></td>
+                                                </tr>
+                                            @endforeach
+                                        </table>
+                                        <div class="flex flex-wrap items-center mt-2 gap-x-2 gap-y-1">
+                                            <label class="text-xs font-medium text-gray-600 shrink-0">To</label>
+                                            <input type="text" wire:model="ciTo" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                                        </div>
+                                        <div class="flex flex-wrap items-center mt-1 gap-x-2 gap-y-1">
+                                            <label class="text-xs font-medium text-gray-600 shrink-0">CC</label>
+                                            <input type="text" wire:model="ciCc" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                                        </div>
+                                        <div class="flex flex-wrap items-center mt-2 gap-x-2 gap-y-2">
+                                            @php $ciT = 'buscar303,comunicarImpuestos,armarComunicarImpuestos'; @endphp
+                                            <x-button.secondary wire:click="buscar303" wire:loading.attr="disabled" wire:target="{{ $ciT }}">🔎 Buscar 303</x-button.secondary>
+                                            <x-button.secondary wire:click="comunicarImpuestos('vista')" wire:loading.attr="disabled" wire:target="{{ $ciT }}">Vista previa</x-button.secondary>
+                                            <input type="email" wire:model="ciEmailPrueba" class="text-sm border-gray-300 rounded-md shadow-sm" style="min-width:200px">
+                                            <x-button.secondary wire:click="comunicarImpuestos('prueba')" wire:loading.attr="disabled" wire:target="{{ $ciT }}">Enviar a prueba</x-button.secondary>
+                                            <x-button.secondary wire:click="comunicarImpuestos('borrador')" wire:loading.attr="disabled" wire:target="{{ $ciT }}" title="Lo deja en Borradores de Outlook para revisarlo y enviarlo desde allí (queda P)">✉ Borrador en Outlook</x-button.secondary>
+                                            @if (! $ciArmado)
+                                                <x-button.primary wire:click="armarComunicarImpuestos" wire:loading.attr="disabled" wire:target="{{ $ciT }}">Enviar a Plein…</x-button.primary>
+                                            @else
+                                                <button type="button" wire:click="comunicarImpuestos('real')" wire:loading.attr="disabled" wire:target="{{ $ciT }}"
+                                                    class="inline-flex items-center px-3 py-1 text-sm font-semibold text-white bg-red-600 border border-red-700 rounded shadow-sm hover:bg-red-700">⚠️ Confirmar envío REAL a Plein</button>
+                                                <button type="button" wire:click="armarComunicarImpuestos" class="text-xs text-gray-600 underline">cancelar</button>
+                                            @endif
+                                            <span wire:loading wire:target="{{ $ciT }}" class="text-sm text-gray-500">⏳ …</span>
+                                        </div>
+                                        @if (! empty($resultados['ci']))
+                                            <div class="flex flex-col mt-2 gap-y-1">
+                                                @foreach ($resultados['ci'] as $r)
+                                                    <x-contabilidad.resultado-fichero :r="$r" />
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div style="flex:1 1 320px;min-width:0">
+                                        <div class="mb-1 text-xs font-semibold text-gray-600">Así sale la tabla del correo</div>
+                                        <table class="text-sm text-gray-800 border-collapse">
+                                            <tr><td></td><td></td><td class="px-2 border border-gray-500"><b>BBVA DD</b></td></tr>
+                                            <tr>
+                                                <td class="px-2 border border-gray-500"><b>{{ \Carbon\Carbon::create(2026, $mes, 1)->locale('en')->monthName }} 2026</b></td>
+                                                <td class="px-2 border border-gray-500"><b>Amount</b></td>
+                                                <td class="px-2 border border-gray-500"><b>Payment day</b></td>
+                                            </tr>
+                                            @forelse ($this->ciLineas as [$t, $v, $d])
+                                                <tr><td class="px-2 border border-gray-500">{{ $t }}</td><td class="px-2 text-right border border-gray-500">{{ $v }}</td><td class="px-2 text-right border border-gray-500">{{ $d }}</td></tr>
+                                            @empty
+                                                <tr><td colspan="3" class="px-2 text-xs text-gray-500 border border-gray-500">Sin importes todavía.</td></tr>
+                                            @endforelse
+                                        </table>
+                                        <p class="mt-1 text-xs text-gray-500">Si el M303 está vacío al preparar el correo, el script lo busca solo. Al enviar o dejar el borrador, los destinatarios quedan como base del mes siguiente.</p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
                     @if ($id === 'cash_in_store' && $cisFilas && $cisAbierto)
                         <tr wire:key="chk-cis-detalle" x-show="ver('cash in store')">
                             <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-2">
