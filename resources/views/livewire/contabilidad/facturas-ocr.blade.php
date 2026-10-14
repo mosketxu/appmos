@@ -780,7 +780,11 @@
                                  al cambiar los datos de la factura (p.ej. tras "Leer con OCR" ya cuadraba y seguía preguntando) --}}
                             <button @disabled($lecturaDesde) type="button" data-atajo="validar" title="Validar (Ctrl + Intro)" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde acc-validar" style="flex:0 0 auto"
                                     data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
-                                    x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1', !!m)">
+                                    data-choque="{{ $choqueCuenta ?? '' }}"
+                                    x-data x-on:click="const c = $el.dataset.choque;
+                                        if (c && !confirm(c + ' Si la usas, en SAGE quedarían dos proveedores en la misma cuenta. ¿Quieres usarla igualmente?')) return;
+                                        if (c && !confirm('¿Seguro del todo? Solo tiene sentido si el listado de proveedores de SAGE que tengo no está al día y esa cuenta es de verdad de este proveedor.')) return;
+                                        const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1', !!m, !!c)">
                                 <span wire:loading.remove wire:target="validar">✅ Validar <small style="opacity:.75; font-weight:400">Ctrl+Intro</small></span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>

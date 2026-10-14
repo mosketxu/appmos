@@ -2222,7 +2222,31 @@ class FacturasOcr extends Component
     /** Pendientes con el mismo nº que la abierta cuando la abierta es la primera: se avisa, no es duplicada. */
     protected array $gemelas = [];
 
-    public function validar(bool $forzar = false, bool $confirmado = false): void
+    /**
+     * La cuenta de proveedor nuevo del formulario ya está dada aquí (o en Bancos) a otro proveedor con otro CIF: texto del aviso, o null.
+     * No se impide: el botón pregunta dos veces y, si Alex insiste, se valida (puede que no tengamos el listado de SAGE al día).
+     */
+    protected function choqueCuenta(): ?string
+    {
+        $cta = trim((string) ($this->form['cuenta'] ?? ''));
+        if ($cta === '' || isset($this->proveedores()[$cta])) {
+            return null;
+        }
+        $limpio = fn ($n) => preg_replace('/^ES(?=.{9}$)/', '', strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $n)));
+        $cif = $limpio($this->form['cif'] ?? '');
+        $pat = $this->patrones()[$cta] ?? [];
+        $suyos = array_filter(array_map($limpio, array_merge($pat['nifs'] ?? [], [$pat['cif'] ?? ''])));
+        if (! empty($pat['nuevo']) && $suyos && ! in_array($cif, $suyos, true)) {
+            return "La cuenta {$cta} ya se dio a otro proveedor nuevo: ".($pat['proveedor'] ?? '').' ('.($pat['cif'] ?? '').').';
+        }
+        $b = $this->cuentasBancos()[$cta] ?? [];
+        if (($b['cif'] ?? '') !== '' && $limpio($b['cif']) !== $cif) {
+            return "La cuenta {$cta} está dada en Bancos a otro proveedor: ".($b['nombre'] ?? '').' ('.$b['cif'].').';
+        }
+        return null;
+    }
+
+    public function validar(bool $forzar = false, bool $confirmado = false, bool $forzarCuenta = false): void
     {
         $this->resetErrorBag();
         if (! $this->sel) {
@@ -2253,6 +2277,10 @@ class FacturasOcr extends Component
             $this->addError('validar', "La contrapartida {$cp} no está en el plan de cuentas: escríbela en Contrapartida y elige «➕ cuenta nueva» para darle nombre.");
             return;
         }
+        if (($choque = $this->choqueCuenta()) && ! $forzarCuenta) {
+            $this->addError('validar', $choque.' Pulsa «+ Cuenta nueva» o, si la quieres igualmente, vuelve a validar y confirma las dos preguntas.');
+            return;
+        }
         if (! $this->ejecutaAqui()) {
             $this->addError('validar', 'Opción no válida. Solo ejecutable desde un terminal autorizado.');
             return;
@@ -2262,7 +2290,7 @@ class FacturasOcr extends Component
         $cola = $this->dirDatos().'/_cola';
         @mkdir($cola, 0777, true);
         file_put_contents($cola.'/'.date('Ymd-His').'-'.substr((string) hrtime(true), -6).'-'.$this->sel.'.json',
-            json_encode(['id' => $this->sel, 'datos' => $datos, 'forzar' => $forzar], JSON_UNESCAPED_UNICODE));
+            json_encode(['id' => $this->sel, 'datos' => $datos + ($choque ? ['forzar_cuenta' => true] : []), 'forzar' => $forzar], JSON_UNESCAPED_UNICODE));
         $sel = $this->sel;
         $this->modificarEstado(function (array $e) use ($sel, $datos) {
             foreach ($e['facturas'] as &$f) {
@@ -2875,7 +2903,8 @@ class FacturasOcr extends Component
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
             'duplicados' => $this->sel ? $this->duplicados() : [],
-            'planCp' => $this->sel ? $this->cuentasContables() : [],   // para preguntar al validar si la contrapartida no está en el plan
+            'planCp' => $this->sel ? $this->cuentasContables() : [],
+            'choqueCuenta' => $this->sel ? $this->choqueCuenta() : null,   // para preguntar al validar si la contrapartida no está en el plan
             'gemelas' => $this->gemelas,
             'duplicadas' => array_values(array_filter($todas, fn ($f) => $f['estado'] === 'duplicada')),
             'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,
