@@ -78,6 +78,8 @@ class FacturasOcrController extends Controller
             $base = $raiz;
         } elseif ($carpeta === 'entrada') {
             $base = \App\Http\Livewire\Contabilidad\FacturasOcr::rutaDatos($dir).'/Entrada';
+        } elseif ($trim && preg_match('/^[Tt][1-4]$/', $carpeta)) {   // suelta dentro de un trimestre (fuera de Recibidas)
+            $base = $raiz.'/'.$carpeta;
         } elseif (preg_match('/^(0[1-9]|1[0-2])$/', $carpeta)) {
             $base = str_replace(['{MM}', '{T}'], [$carpeta, (string) intdiv((int) $carpeta + 2, 3)], $plantilla);
         } else {

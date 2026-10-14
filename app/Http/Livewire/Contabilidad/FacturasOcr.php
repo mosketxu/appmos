@@ -693,14 +693,16 @@ class FacturasOcr extends Component
         if ($aplicar) {
             $args[] = '--aplicar';
             $aj = [];
+            // Clave = el «fichero» de la simulación (por trimestres puede ser «T2/…»: suelta dentro de un trimestre)
+            $clave = fn ($f) => str_contains((string) $f, '..') ? '' : ltrim((string) $f, '/');
             foreach ($this->ordenarAccion as $f => $acc) {
-                if (in_array($acc, ['MOVER', 'QUITAR', 'A PROCESAR', 'NADA'], true)) {
-                    $aj[basename((string) $f)]['accion'] = $acc;
+                if ($clave($f) !== '' && in_array($acc, ['MOVER', 'QUITAR', 'A PROCESAR', 'NADA'], true)) {
+                    $aj[$clave($f)]['accion'] = $acc;
                 }
             }
             foreach (array_filter($this->ordenarMes) as $f => $mm) {
-                if (preg_match('/^(0[1-9]|1[0-2])$/', (string) $mm)) {
-                    $aj[basename((string) $f)]['mes'] = (string) $mm;
+                if ($clave($f) !== '' && preg_match('/^((0[1-9]|1[0-2])|T[1-4])$/', (string) $mm)) {
+                    $aj[$clave($f)]['mes'] = (string) $mm;
                 }
             }
             @mkdir($this->dirDatos().'/Output', 0775, true);

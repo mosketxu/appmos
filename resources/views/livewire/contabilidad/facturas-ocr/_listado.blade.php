@@ -10,7 +10,7 @@
                     </button>
                     <button type="button" wire:click="$set('vista','proveedores')" class="{{ $vista === 'proveedores' ? 'on' : '' }}">Proveedores</button>
                     <button type="button" wire:click="$set('vista','chequeo')" class="{{ $vista === 'chequeo' ? 'on' : '' }}" title="Comprueba que las facturas de las carpetas de un periodo están en el mayor, y al revés">Chequeo mayor</button>
-                    <button type="button" wire:click="$set('vista','ordenar')" class="{{ $vista === 'ordenar' ? 'on' : '' }}" title="Facturas sueltas en la raíz de _Facturas: renombrarlas y moverlas a su mes según el mayor (primero simula)">Ordenar sueltas</button>
+                    <button type="button" wire:click="$set('vista','ordenar')" class="{{ $vista === 'ordenar' ? 'on' : '' }}" title="Facturas sueltas fuera de las carpetas de mes o trimestre: renombrarlas y moverlas a la suya según el mayor (primero simula)">Ordenar sueltas</button>
                     @if ($cuenta['duplicada'] ?? 0)
                         <button type="button" wire:click="$set('vista','duplicadas')" class="{{ $vista === 'duplicadas' ? 'on' : '' }}">
                             Duplicadas ({{ $cuenta['duplicada'] }})
@@ -108,7 +108,7 @@
                         <div class="p-3" style="display:flex; flex-direction:column; gap:.6rem">
                                                         <div style="border-top:1px solid #e5e7eb; padding-top:.7rem; display:flex; flex-direction:column; gap:.5rem">
                                 <div class="focr-barra-fija" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; padding:.2rem 0">
-                                    <b class="text-sm">Facturas sueltas en la raíz de «_Facturas»</b>
+                                    <b class="text-sm">Facturas sueltas (fuera de las carpetas de cada mes o trimestre)</b>
                                     <button type="button" wire:click="ordenarSueltas(false)" wire:loading.attr="disabled" wire:target="ordenarSueltas" class="focr-btn b-gris" style="padding:.25rem .8rem">
                                         <span wire:loading.remove wire:target="ordenarSueltas">🔎 Simular (no toca nada)</span><span wire:loading wire:target="ordenarSueltas">Trabajando…</span>
                                     </button>
@@ -151,17 +151,18 @@
                                                             <span class="focr-chip {{ $col }}" style="white-space:nowrap">{{ $ef === 'NADA' ? 'NO TOCAR' : $ef }}</span>
                                                         @endif
                                                     </td>
-                                                    <td style="max-width:240px; word-break:break-all"><a href="{{ route('contabilidad.facturas-ocr.archivo', [$cliente, 'raiz', $x['fichero']]) }}?a={{ substr($chequeoPeriodo, 0, 4) }}" target="_blank" style="color:#1d4ed8; text-decoration:underline" title="Abrir la factura">{{ $x['fichero'] }}</a></td>
+                                                    <td style="max-width:240px; word-break:break-all"><a href="{{ route('contabilidad.facturas-ocr.archivo', [$cliente, str_contains($x['fichero'], '/') ? strstr($x['fichero'], '/', true) : 'raiz', basename($x['fichero'])]) }}?a={{ substr($chequeoPeriodo, 0, 4) }}" target="_blank" style="color:#1d4ed8; text-decoration:underline" title="Abrir la factura">{{ $x['fichero'] }}</a></td>
                                                     <td>{{ $x['cuenta'] }} {{ $x['proveedor'] }}</td><td>{{ $x['num'] }}</td>
                                                     <td style="text-align:right">{{ $x['total'] !== null ? number_format((float) $x['total'], 2, ',', '.') : '' }}</td>
                                                     <td class="text-xs" style="word-break:break-all">
                                                         @if ($ef === 'MOVER' && ! $ordenar['aplicado'])
                                                             @php $mesSel = $ordenarMes[$x['fichero']] ?? ''; $mesProp = $x['accion'] === 'MOVER' ? ($partes[0] ?? '') : ($x['mes_def'] ?? ''); @endphp
                                                             <select x-on:change="$wire.set('ordenarMes.' + @js($x['fichero']), $event.target.value)" class="py-0 text-xs border-gray-300 rounded" style="height:1.5rem" title="Carpeta de destino">
-                                                                <option value="">{{ $mesProp }} · {{ $meses[$mesProp] ?? '' }} (propuesta)</option>
-                                                                @foreach ($meses as $mm => $nm) <option value="{{ $mm }}" @selected($mesSel === $mm)>{{ $mm }} · {{ $nm }}</option> @endforeach
+                                                                @php $opc = ! empty($x['trimestral']) ? ['T1' => '1er trimestre', 'T2' => '2º trimestre', 'T3' => '3er trimestre', 'T4' => '4º trimestre'] : $meses; @endphp
+                                                                <option value="">{{ $mesProp }} · {{ $opc[$mesProp] ?? '' }} (propuesta)</option>
+                                                                @foreach ($opc as $mm => $nm) <option value="{{ $mm }}" @selected($mesSel === $mm)>{{ $mm }} · {{ $nm }}</option> @endforeach
                                                             </select>
-                                                            <span class="text-gray-500">/ {{ $x['accion'] === 'MOVER' ? ($partes[1] ?? '') : $x['fichero'] }}</span>
+                                                            <span class="text-gray-500">/ {{ $x['accion'] === 'MOVER' ? implode('/', array_slice($partes, 1)) : basename($x['fichero']) }}</span>
                                                         @elseif ($ef === 'NADA') <span class="text-gray-400">se queda donde está</span>
                                                         @elseif ($ef === 'A PROCESAR') <span class="text-gray-500">vuelve a «Por revisar»</span>
                                                         @else {{ $x['destino'] }} @endif
