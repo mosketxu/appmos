@@ -71,14 +71,15 @@ class FacturasOcrController extends Controller
         abort_if($permitidas !== null && ! in_array((int) ($cfg['entidad_id'] ?? 0), $permitidas, true), 403);
         $anio = preg_match('/^\d{4}$/', (string) request()->query('a')) ? request()->query('a') : date('Y');
         $plantilla = str_replace(['{OneDrive}', '{AAAA}'], [rtrim((string) config('contabilidad.facturasocr_onedrive'), '/'), $anio], (string) ($cfg['carpeta_recibidas'] ?? ''));
-        abort_unless($plantilla !== '' && str_contains($plantilla, '{MM}'), 404);
-        $raiz = dirname(str_replace('{MM}', '01', $plantilla));
+        $trim = str_contains($plantilla, '{T}');   // por trimestres (…/T{T}/Recibidas): el mes que llega dice el trimestre
+        abort_unless($plantilla !== '' && (str_contains($plantilla, '{MM}') || $trim), 404);
+        $raiz = $trim ? dirname(substr($plantilla, 0, strpos($plantilla, '{T}'))) : dirname(str_replace('{MM}', '01', $plantilla));
         if ($carpeta === 'raiz') {
             $base = $raiz;
         } elseif ($carpeta === 'entrada') {
             $base = \App\Http\Livewire\Contabilidad\FacturasOcr::rutaDatos($dir).'/Entrada';
         } elseif (preg_match('/^(0[1-9]|1[0-2])$/', $carpeta)) {
-            $base = str_replace('{MM}', $carpeta, $plantilla);
+            $base = str_replace(['{MM}', '{T}'], [$carpeta, (string) intdiv((int) $carpeta + 2, 3)], $plantilla);
         } else {
             abort(404);
         }

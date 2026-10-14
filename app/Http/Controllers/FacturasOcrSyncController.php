@@ -48,7 +48,16 @@ class FacturasOcrSyncController extends Controller
         $raiz = $this->raiz();
         $out = [FacturasOcr::rutaDatos($dir)];
         $plantilla = (string) ($cfg['carpeta_recibidas'] ?? '');
-        if ($plantilla !== '' && str_contains($plantilla, '{MM}')) {
+        if ($plantilla !== '' && str_contains($plantilla, '{T}')) {   // por trimestres: la carpeta de recibidas de cada trimestre
+            foreach ([date('Y'), date('Y') - 1] as $anio) {
+                foreach ([1, 2, 3, 4] as $t) {
+                    $c = $raiz.substr(str_replace(['{AAAA}', '{T}'], [(string) $anio, (string) $t], $plantilla), strlen('{OneDrive}'));
+                    if (is_dir($c)) {
+                        $out[] = $c;
+                    }
+                }
+            }
+        } elseif ($plantilla !== '' && str_contains($plantilla, '{MM}')) {
             $padre = dirname(substr($plantilla, 0, strpos($plantilla, '{MM}') + 4));   // …/_Facturas
             foreach ([date('Y'), date('Y') - 1] as $anio) {
                 $c = $raiz.substr(str_replace('{AAAA}', (string) $anio, $padre), strlen('{OneDrive}'));

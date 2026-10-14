@@ -23,7 +23,12 @@
                 @endif
                 <span class="text-xs {{ $nuevoDetectada ? 'text-green-700' : 'text-amber-700' }}">
                     {{ $nuevoDetectada ? '✔ He encontrado la carpeta del cliente en OneDrive.' : '⚠ No he encontrado la carpeta del cliente en OneDrive: es una suposición; usa «Examinar…» (abre el selector de carpetas de Windows).' }}
-                    Dentro tiene que haber una subcarpeta por mes (01, 02…); las facturas validadas van a la del mes de registro.
+                    @if (str_contains($nuevoCarpeta, '{T}'))
+                        Cliente por trimestres: las facturas validadas van a la carpeta de recibidas del trimestre de registro (T1, T2…; si falta, se crea).
+                    @else
+                        Dentro tiene que haber una subcarpeta por mes (01, 02…); las facturas validadas van a la del mes de registro.
+                    @endif
+                    Esta carpeta solo la usa Facturas OCR; a Bancos no le afecta.
                 </span>
             </div>
 

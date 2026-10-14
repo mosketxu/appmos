@@ -138,6 +138,11 @@ class ClientesEntidad
      */
     public static function aCarpeta(string $ruta): ?string
     {
+        // Elegida la de un trimestre («…/T2/Recibidas» o «…/T2»): vale para todos → «…/T{T}/Recibidas»
+        $ruta = preg_replace('#/([Tt])[1-4](?=/|$)#u', '/$1{T}', $ruta, 1);
+        if (str_ends_with($ruta, '{T}')) {
+            $ruta .= '/Recibidas';
+        }
         if (preg_match('#^_Clientes/((?:19|20)\d\d)/(.+)$#u', $ruta, $m)) {
             return str_replace($m[1], '{AAAA}', $m[2]);
         }
@@ -157,7 +162,7 @@ class ClientesEntidad
     /** Ruta con el año en lugar de {AAAA}, con barras de Windows, para enseñársela al usuario. */
     public static function rutaWindows(string $carpeta): string
     {
-        return 'OneDrive\\'.str_replace('/', '\\', str_replace('{AAAA}', date('Y'), self::rutaOneDrive($carpeta)));
+        return 'OneDrive\\'.str_replace('/', '\\', str_replace(['{AAAA}', '{T}'], [date('Y'), (string) intdiv((int) date('n') + 2, 3)], self::rutaOneDrive($carpeta)));
     }
 
     /**
@@ -210,6 +215,21 @@ class ClientesEntidad
             $detectada = true;
             $raiz = str_replace($anio, '{AAAA}', $m[1]);
             $carpeta = $raiz.'/_Facturas';
+            // Cliente organizado por trimestres (T1…T4, cada uno con su carpeta de recibidas): <cliente>/T{T}/<Recibidas>
+            $trims = array_values(array_filter(self::hijas($dirs, $d), fn ($h) => preg_match('/^T[1-4]$/i', $h)));
+            if ($trims) {
+                $sub = 'Recibidas';
+                foreach ($trims as $t) {   // se respeta cómo se llama ya (p.ej. «recibidas» en minúscula: en el VPS importa)
+                    foreach (self::hijas($dirs, $d.'/'.$t) as $h) {
+                        if (preg_match('/^(fras?\W*)?recibid/iu', $h)) {
+                            $sub = $h;
+                            break 2;
+                        }
+                    }
+                }
+                $carpeta = $raiz.'/'.(ctype_upper($trims[0][0]) ? 'T' : 't').'{T}/'.$sub;
+                break;
+            }
             // Dentro, la carpeta de facturas recibidas si se la reconoce por el nombre
             foreach (self::hijas($dirs, $d) as $h) {
                 if (preg_match('/(^_?_?Facturas$|fras?\W*recib|recibid|facturas\W*recib)/iu', $h)) {
@@ -258,19 +278,21 @@ class ClientesEntidad
         abort_unless($e, 403, 'Entidad no disponible');
         abort_unless(self::nombreValido($nombre) && self::carpetaValida($carpeta), 422, 'Nombre no válido');
         $hechos = [];
+        $trimestral = str_contains($carpeta, '{T}');
         $ocr = rtrim((string) config('contabilidad.facturasocr_dir'), '/');
         if ($ocr !== '' && is_dir($ocr) && ! is_dir("$ocr/$nombre")) {
             @mkdir("$ocr/$nombre", 0775, true);
             file_put_contents("$ocr/$nombre/cliente.json", json_encode([
                 'entidad_id' => $entidadId, 'entidad' => $e->entidad, 'nif' => (string) $e->nif,
-                'carpeta_recibidas' => '{OneDrive}/'.self::rutaOneDrive($carpeta).'/{MM}_{AAAA}',
-                'carpeta_emitidas' => '{OneDrive}/'.self::rutaOneDrive($carpeta).'/Emitidas/{MM}_{AAAA}',
+                // Por meses: <carpeta>/MM_AAAA. Por trimestres la carpeta ya lleva {T} (…/T{T}/Recibidas) y las emitidas van al lado.
+                'carpeta_recibidas' => '{OneDrive}/'.self::rutaOneDrive($carpeta).($trimestral ? '' : '/{MM}_{AAAA}'),
+                'carpeta_emitidas' => '{OneDrive}/'.($trimestral ? dirname(self::rutaOneDrive($carpeta)).'/Emitidas' : self::rutaOneDrive($carpeta).'/Emitidas/{MM}_{AAAA}'),
                 'serie_recibidas' => '',
                 'datos' => '{OneDrive}/_ClaudeDesarrollo/FacturasOCR/'.$nombre,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $hechos[] = 'Facturas OCR';
             if ($raizOneDrive && is_dir($raizOneDrive)) {   // carpeta anual de este año y datos compartidos
-                @mkdir(rtrim($raizOneDrive, '/').'/'.str_replace('{AAAA}', date('Y'), self::rutaOneDrive($carpeta)), 0775, true);
+                @mkdir(rtrim($raizOneDrive, '/').'/'.str_replace(['{AAAA}', '{T}'], [date('Y'), (string) intdiv((int) date('n') + 2, 3)], self::rutaOneDrive($carpeta)), 0775, true);
                 @mkdir(rtrim($raizOneDrive, '/').'/_ClaudeDesarrollo/FacturasOCR/'.$nombre, 0775, true);
             }
         }
