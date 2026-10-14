@@ -1330,7 +1330,7 @@ class Procesos extends Component
     // M303 lo busca el script en el Excel de IVA del mes; M111/M115/M216 los escribe Alex. Script:
     // monthlyFIQ/ComunicarImpuestos/comunicarImpuestos.py (destinatarios y lo de cada mes en su .json).
 
-    /** Orden del correo: clave => [modelo, texto del correo, día límite del mes siguiente (0 = el 30 o el último)]. */
+    /** Orden del correo: clave => [modelo, texto del correo, (sin uso: el día lo da PlazosAeat)]. */
     public const CI_FILAS = ['m111' => ['M111', 'Withholding payrolls', 20], 'm115' => ['M115', 'Withholding rent', 20],
         'm216' => ['M216', 'Withholding non-residents', 20], 'm303' => ['M303', 'VAT', 0]];
 
@@ -1350,16 +1350,12 @@ class Procesos extends Component
         return $this->estadoFiq('fiq.comunicarImpuestos', $this->scriptDir().'/ComunicarImpuestos/comunicarImpuestos.json') ?? [];
     }
 
-    /** Mismo criterio que el script: 20 (o 30/último día) del mes siguiente; sábado/domingo → lunes. */
+    /** Último día de plazo (= cargo domiciliado), como el script: App\Support\PlazosAeat (calendario AEAT). */
     protected function ciFechaDefecto(string $clave): string
     {
-        $d = \Carbon\Carbon::create(2026, $this->mes, 1)->addMonthNoOverflow();
-        $dia = self::CI_FILAS[$clave][2];
-        $d->day($dia ?: min(30, $d->daysInMonth));
-        while ($d->isWeekend()) {
-            $d->addDay();
-        }
-        return $d->format('d/m/Y');
+        $extra = array_map(fn ($f) => \Carbon\Carbon::createFromFormat('d/m/Y', $f)->format('Y-m-d'),
+            $this->confComunicarImpuestos()['festivos_extra'] ?? []);
+        return \App\Support\PlazosAeat::finPlazo($clave, 2026, $this->mes, false, $extra)->format('d/m/Y');
     }
 
     protected function cargarComunicarImpuestos(): void
