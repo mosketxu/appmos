@@ -96,6 +96,9 @@
         .focr-rev-form { display:flex; flex-direction:column; }
         .focr-rev-form > * { flex-shrink:0; }
         .focr-acciones { margin-top:auto; position:sticky; bottom:-.75rem; padding:.55rem 0 .75rem; background:#f9fafb; box-shadow:0 -6px 8px -6px rgba(0,0,0,.18); }
+        .focr-acciones .focr-btn { padding:.35rem .95rem; font-size:.8rem; justify-content:center; }
+        .focr-acciones .focr-btn.acc-validar { min-width:14rem; }
+        @media (min-width:1280px) { .focr-acciones .focr-btn { padding-top:.85rem; padding-bottom:.85rem; } .focr-acciones .focr-in { padding-top:.6rem; padding-bottom:.6rem; } }
         .focr-rev-form { flex:0 0 var(--focr-form-ancho, 45%); min-width:300px; background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
         /* Pantallas anchas (apaisadas): mitad y mitad; en las normales 55/45 */
         @media (min-width:1600px) { .focr-rev-form { flex-basis:var(--focr-form-ancho, 50%); } }
@@ -750,17 +753,17 @@
                             @endphp
                             {{-- La pregunta se lee del propio botón al pulsar (data-*): wire:confirm se quedaba con la de antes
                                  al cambiar los datos de la factura (p.ej. tras "Leer con OCR" ya cuadraba y seguía preguntando) --}}
-                            <button @disabled($lecturaDesde) type="button" data-atajo="validar" title="Validar (Ctrl + Intro)" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde" style="flex:0 0 auto; min-width:13rem; justify-content:center"
+                            <button @disabled($lecturaDesde) type="button" data-atajo="validar" title="Validar (Ctrl + Intro)" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde acc-validar" style="flex:0 0 auto"
                                     data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
                                     x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1')">
                                 <span wire:loading.remove wire:target="validar">✅ Validar <small style="opacity:.75; font-weight:400">Ctrl+Intro</small></span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>
-                            <button @disabled($lecturaDesde) type="button" wire:click="rechazar('ISP')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.3rem .7rem; font-size:.8rem" title="Rechazar por inversión del sujeto pasivo: añade _ISP al final del nombre del PDF">ISP</button>
-                            <button @disabled($lecturaDesde) type="button" wire:click="rechazar('ADC')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" style="padding:.3rem .7rem; font-size:.8rem" title="Rechazar por ADC (adquisición intracomunitaria): añade _ADC al final del nombre del PDF">ADC</button>
-                            <button @disabled($lecturaDesde) type="button" wire:click="marcarDuplicada" wire:loading.attr="disabled" wire:target="marcarDuplicada" class="focr-btn b-gris" style="padding:.3rem .7rem; font-size:.8rem" title="Duplicada: añade _DUPLICADA al final del nombre y la mueve a la carpeta Duplicadas del periodo elegido">Duplicada</button>
-                            <button @disabled($lecturaDesde) type="button" data-atajo="rechazar" title="Rechazar (Alt + Intro): el motivo se añade al final del nombre del PDF (sin motivo, _RECHAZADA); no se mueve" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo" style="padding:.3rem .7rem; font-size:.8rem">✖ Rechazar</button>
+                            <button @disabled($lecturaDesde) type="button" wire:click="rechazar('ISP')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" title="Rechazar por inversión del sujeto pasivo: añade _ISP al final del nombre del PDF">ISP</button>
+                            <button @disabled($lecturaDesde) type="button" wire:click="rechazar('ADC')" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-gris" title="Rechazar por ADC (adquisición intracomunitaria): añade _ADC al final del nombre del PDF">ADC</button>
+                            <button @disabled($lecturaDesde) type="button" wire:click="marcarDuplicada" wire:loading.attr="disabled" wire:target="marcarDuplicada" class="focr-btn b-gris" title="Duplicada: añade _DUPLICADA al final del nombre y la mueve a la carpeta Duplicadas del periodo elegido">Duplicada</button>
                             <input type="text" wire:model.blur="motivo" class="focr-in" style="flex:1; min-width:8rem; max-width:22rem" placeholder="Motivo del rechazo">
+                            <button @disabled($lecturaDesde) type="button" data-atajo="rechazar" title="Rechazar (Alt + Intro): el motivo se añade al final del nombre del PDF (sin motivo, _RECHAZADA); no se mueve" wire:click="rechazar" wire:loading.attr="disabled" wire:target="rechazar" class="focr-btn b-rojo">✖ Rechazar</button>
                         </div>
                         @if (in_array($actual['estado'], ['rechazada', 'ilegible'], true))
                             <div style="margin-top:.35rem">
