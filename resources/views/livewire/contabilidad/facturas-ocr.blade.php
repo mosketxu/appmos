@@ -209,22 +209,25 @@
                 },
                 get res() {
                     const q = norm(this.q);
-                    if (this.lista.length === 1 && !this.lista[0][0]) return this.lista;   // mensaje de error
+                    // Un número que no está en la lista (cuenta que aún no existe en SAGE, p.ej. 216000): se ofrece tal cual para elegirlo
+                    const nueva = /^\d{3,}$/.test(q.trim()) && !this.lista.some((r) => r[0] === q.trim()) ? [[q.trim(), '➕ cuenta nueva (no está en la lista): Intro para ponerla']] : [];
+                    if (this.lista.length === 1 && !this.lista[0][0]) return nueva.length ? nueva : this.lista;   // mensaje de error
                     if (!q || q === norm(this.etiqueta(this.valor()))) return this.lista;
                     const ps = q.split(/\s+/).filter(Boolean);
-                    return this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); });
+                    const f = this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps.every((p) => t.includes(p)); });
+                    return f.length ? f : nueva;
                 },
                 abrir() { this.open = true; this.i = 0; },
                 alternar() { if (this.open) return this.cerrar(); this.$refs.q.focus(); },
                 cerrar() { this.open = false; this.mostrar(); },
                 salir() { setTimeout(() => { if (this.open) this.cerrar(); }, 150); },
                 mover(d) { this.open = true; this.i = Math.max(0, Math.min(this.res.length - 1, this.i + d)); },
-                elegir(r) { if (!r[0]) return; this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); },
+                elegir(r) { if (!r[0]) return; this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); this.$refs.q.classList.remove('falta'); },
                 intro() {
                     const r = this.res[this.i];
                     if (this.open && r) return this.elegir(r);
                     const v = this.q.trim().split(/[\s·]/)[0];
-                    if (/^\d{3,}$/.test(v)) { this.open = false; this.$wire.set('form.' + campo, v); }
+                    if (/^\d{3,}$/.test(v)) { this.open = false; this.$wire.set('form.' + campo, v); this.$refs.q.classList.remove('falta'); }
                 },
             };
         };
