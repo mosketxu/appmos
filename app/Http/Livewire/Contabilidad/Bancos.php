@@ -477,7 +477,7 @@ class Bancos extends Component
         $this->precargar(false);
         $this->resultados = [];
         $this->cuenta = '';
-        $this->extractos = $this->cuentasExtracto = $this->origenCuenta = $this->avisoCuenta = $this->previos = [];
+        $this->extractos = $this->cuentasExtracto = $this->origenCuenta = $this->avisoCuenta = $this->previos = $this->ocrDatos = $this->ocrRevisar = [];
         $this->mapeo = null;
         $this->revisar = '';
         $this->cargarMaestro();
@@ -789,12 +789,12 @@ class Bancos extends Component
         $this->nuevosExtractos = [];
         $malos = [];
         $buenos = [];
-        $notaOcr = [];
+        $notaOcr = $revOcr = [];
         foreach ($nuevos as $f) {
             $nombre = $f->getClientOriginalName();
             $ext = strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
             if (in_array($ext, self::EXT_OCR, true)) {
-                [$f, $nota] = $this->extractoDeImagen($f);
+                [$f, $nota, $rev] = $this->extractoDeImagen($f);
                 if (! $f) {
                     if ($nota !== '') {
                         $this->addError('extractos', "«{$nombre}»: {$nota}");
@@ -802,20 +802,21 @@ class Bancos extends Component
                     continue;   // sin nota: espera en la pantalla de revisión
                 }
                 $notaOcr[count($buenos)] = $nota;
+                $revOcr[count($buenos)] = $rev;
             } elseif (! in_array($ext, ['xlsx', 'xls'], true)) {
                 $malos[] = $nombre;
                 continue;
             }
             $buenos[] = $f;
         }
-        $this->anadirALista($buenos, $notaOcr);
+        $this->anadirALista($buenos, $notaOcr, $revOcr);
         if ($malos) {
             $this->addError('extractos', 'Solo Excel (.xlsx / .xls), imagen (.jpg / .png) o PDF. No se han añadido: '.implode(', ', $malos));
         }
     }
 
     /** Mete los extractos en la lista con su cuenta propuesta (por el contenido o por el nombre). */
-    protected function anadirALista(array $buenos, array $notaOcr = []): void
+    protected function anadirALista(array $buenos, array $notaOcr = [], array $revOcr = []): void
     {
         $contenido = $this->proponerPorContenido($buenos);
         foreach ($buenos as $i => $f) {
@@ -828,6 +829,7 @@ class Bancos extends Component
             $this->cuentasExtracto[] = $cuenta;
             $this->origenCuenta[] = $motivo;
             $this->avisoCuenta[] = trim(($notaOcr[$i] ?? '').' '.$aviso);
+            $this->ocrDatos[] = $revOcr[$i] ?? null;
         }
     }
 
@@ -885,15 +887,44 @@ class Bancos extends Component
         }
         $nota = "📷 Pasado a Excel desde «{$rev['nombre']}» y revisado a mano ({$d['filas']} movimientos"
             .($d['descuadres'] ? '; ⚠ los saldos siguen sin cuadrar en las filas '.implode(', ', $d['descuadres']).').' : ', los saldos cuadran).');
-        $this->descartarOcr();
-        $this->anadirALista([$tmp], [$nota]);
+        $this->resetErrorBag('ocr');
+        array_shift($this->ocrRevisar);
+        $this->anadirALista([$tmp], [$nota], [['nombre' => $rev['nombre'], 'imagenes' => $rev['imagenes'], 'filas' => $limpias]]);
+        if (! empty($rev['volver'][1])) {   // la cuenta que ya se había elegido para este extracto se mantiene
+            $this->cuentasExtracto[count($this->cuentasExtracto) - 1] = $rev['volver'][1];
+        }
     }
 
-    /** Quita el extracto que se está revisando (no se añade a la lista). */
+    /** Datos del OCR de cada extracto de la lista (null si se subió en Excel), para volver a abrir la revisión. */
+    public array $ocrDatos = [];
+
+    /** «✏ Revisar» un extracto pasado por OCR que ya está en la lista: sale de la lista y se abre la pantalla de revisión. */
+    public function revisarOcr(int $i): void
+    {
+        $rev = $this->ocrDatos[$i] ?? null;
+        if (! $rev) {
+            return;
+        }
+        // Para «Cancelar»: vuelve a la lista tal como estaba
+        $rev['volver'] = [$this->extractos[$i]->getFilename(), $this->cuentasExtracto[$i] ?? '', $this->origenCuenta[$i] ?? '', $this->avisoCuenta[$i] ?? ''];
+        $this->quitarExtracto($i);
+        array_unshift($this->ocrRevisar, $rev);
+    }
+
+    /** Cierra la revisión: el extracto nuevo no se añade; el abierto con «✏ Revisar» vuelve a la lista como estaba. */
     public function descartarOcr(): void
     {
         $this->resetErrorBag('ocr');
-        array_shift($this->ocrRevisar);
+        $rev = array_shift($this->ocrRevisar);
+        if (! empty($rev['volver'])) {   // abierta con «✏ Revisar» y cancelada: el extracto vuelve a la lista sin cambios
+            [$fn, $cuenta, $motivo, $aviso] = $rev['volver'];
+            unset($rev['volver']);
+            $this->extractos[] = \Livewire\Features\SupportFileUploads\TemporaryUploadedFile::createFromLivewire($fn);
+            $this->cuentasExtracto[] = $cuenta;
+            $this->origenCuenta[] = $motivo;
+            $this->avisoCuenta[] = $aviso;
+            $this->ocrDatos[] = $rev;
+        }
     }
 
     /** Extractos que llegan como foto, captura o PDF escaneado: se pasan a Excel con bancos_ocr.py antes de nada. */
@@ -901,7 +932,7 @@ class Bancos extends Component
 
     /**
      * Convierte el extracto en imagen/PDF en un Excel (Fecha, Fecha valor, Concepto, Importe, Saldo) que entra en la
-     * lista como si se hubiera subido así. Devuelve [fichero|null, nota para el usuario].
+     * lista como si se hubiera subido así. Devuelve [fichero|null, nota para el usuario, datos para «✏ Revisar»].
      */
     protected function extractoDeImagen(UploadedFile $f): array
     {
@@ -914,45 +945,47 @@ class Bancos extends Component
         $origen = sys_get_temp_dir().'/bancos-ocr-'.\Illuminate\Support\Str::random(8).'.'.strtolower(pathinfo($nombre, PATHINFO_EXTENSION));
         try {
             if (! @copy($f->getRealPath(), $origen)) {
-                return [null, 'no se ha podido leer el fichero subido.'];
+                return [null, 'no se ha podido leer el fichero subido.', null];
             }
             $dirPag = dirname($tmp->getRealPath()).'/ocr-'.\Illuminate\Support\Str::random(10);
             $r = Process::path($this->baseDir())->timeout(300)->run([$this->pythonBin(), 'bancos_ocr.py', $origen, $tmp->getRealPath(), '--paginas', $dirPag]);
             $d = json_decode(trim($r->output()), true);
             if (! is_array($d) || empty($d['ok']) || ! is_file($tmp->getRealPath())) {
-                return [null, 'no se ha podido pasar a Excel: '.($d['error'] ?? trim($r->output()."\n".$r->errorOutput()))];
+                return [null, 'no se ha podido pasar a Excel: '.($d['error'] ?? trim($r->output()."\n".$r->errorOutput())), null];
             }
         } finally {
             @unlink($origen);
         }
-        if (! $d['cuadra'] || $d['sin_saldo']) {
-            // Dudoso: pantalla de revisión con el extracto a la izquierda y los movimientos leídos (editables) a la derecha
-            $imagenes = [];
-            foreach ($d['paginas'] ?? [] as $png) {   // PDF: una imagen por página, al almacén temporal de Livewire para poder enseñarla
-                $t = \Livewire\Features\SupportFileUploads\TemporaryUploadedFile::createFromLivewire(
-                    \Illuminate\Support\Str::random(30).'-meta'.str_replace('/', '_', base64_encode(basename($png))).'-.png');
-                if (@rename($png, $t->getRealPath())) {
-                    $imagenes[] = $t->getFilename();
-                }
+        // Para la pantalla de revisión: el extracto a la izquierda y los movimientos leídos (editables) a la derecha
+        $imagenes = [];
+        foreach ($d['paginas'] ?? [] as $png) {   // PDF: una imagen por página, al almacén temporal de Livewire para poder enseñarla
+            $t = \Livewire\Features\SupportFileUploads\TemporaryUploadedFile::createFromLivewire(
+                \Illuminate\Support\Str::random(30).'-meta'.str_replace('/', '_', base64_encode(basename($png))).'-.png');
+            if (@rename($png, $t->getRealPath())) {
+                $imagenes[] = $t->getFilename();
             }
-            @rmdir($dirPag);
-            if (! $imagenes && $f instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile && $f->isPreviewable()) {
-                $imagenes[] = $f->getFilename();
-            }
+        }
+        @rmdir($dirPag);
+        if (! $imagenes && $f instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile && $f->isPreviewable()) {
+            $imagenes[] = $f->getFilename();
+        }
+        $rev = ['nombre' => $nombre, 'imagenes' => $imagenes, 'filas' => $d['movimientos'] ?? []];
+        if (! $d['cuadra'] || $d['sin_saldo']) {   // dudoso: la pantalla de revisión se abre sola
             @unlink($tmp->getRealPath());
-            $this->ocrRevisar[] = ['nombre' => $nombre, 'imagenes' => $imagenes, 'filas' => $d['movimientos'] ?? []];
-            return [null, ''];
+            $this->ocrRevisar[] = $rev;
+            return [null, '', null];
         }
         $nota = "📷 Pasado a Excel desde «{$nombre}» ({$d['filas']} movimientos";
         $nota .= $d['cuadra'] && ! $d['sin_saldo']
             ? ', los saldos cuadran fila a fila).'
             : '). ⚠ REVISA el Excel antes de conciliar: '.($d['cuadra'] ? "{$d['sin_saldo']} filas sin saldo" : 'los saldos no cuadran en las filas '.implode(', ', $d['descuadres'])).'.';
-        return [$tmp, $nota];
+        return [$tmp, $nota, $rev];
     }
 
     public function quitarExtracto(int $i): void
     {
-        unset($this->extractos[$i], $this->cuentasExtracto[$i], $this->origenCuenta[$i], $this->avisoCuenta[$i]);
+        unset($this->extractos[$i], $this->cuentasExtracto[$i], $this->origenCuenta[$i], $this->avisoCuenta[$i], $this->ocrDatos[$i]);
+        $this->ocrDatos = array_values($this->ocrDatos);
         $this->avisoCuenta = array_values($this->avisoCuenta);
         $this->extractos = array_values($this->extractos);
         $this->cuentasExtracto = array_values($this->cuentasExtracto);

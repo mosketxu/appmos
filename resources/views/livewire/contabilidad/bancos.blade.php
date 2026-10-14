@@ -282,7 +282,7 @@
                                     </div>
                                     <div class="flex flex-wrap items-center justify-end gap-2 px-4 py-2 border-t">
                                         @error('ocr') <span class="mr-auto text-sm text-red-700">{{ $message }}</span> @enderror
-                                        <x-button.secondary wire:click="descartarOcr">Descartar este extracto</x-button.secondary>
+                                        <x-button.secondary wire:click="descartarOcr">{{ empty($rev['volver']) ? 'Descartar este extracto' : 'Cancelar (dejarlo como estaba)' }}</x-button.secondary>
                                         <x-button.primary x-on:click="guardar()" wire:loading.attr="disabled" wire:target="guardarOcr">✔ Usar estos movimientos</x-button.primary>
                                     </div>
                                 </div>
@@ -323,6 +323,9 @@
                                                 @endif
                                             </td>
                                             <td class="py-1">
+                                                @if (! empty($ocrDatos[$i]))
+                                                    <button type="button" wire:click="revisarOcr({{ $i }})" class="mr-2 text-xs text-indigo-700 hover:underline" title="Ver el extracto y corregir lo leído (conceptos, importes, saldos)">✏ Revisar</button>
+                                                @endif
                                                 <button type="button" wire:click="quitarExtracto({{ $i }})" class="text-xs text-red-600 hover:underline">quitar</button>
                                             </td>
                                         </tr>
