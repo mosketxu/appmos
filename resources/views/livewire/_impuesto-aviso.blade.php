@@ -8,7 +8,7 @@
 @endphp
 @php $clk = $entId.'|'.$bl['k']; @endphp
 <span class="imp-pdfw" wire:key="av-{{ $entId }}-{{ $bl['k'] }}-{{ $av }}-{{ (int) $falta }}-{{ count($coms) }}" x-data="{ o: {{ $avisoAbierto === $clk ? 'true' : 'false' }}, t: '' }" x-on:click.outside="o = false">
-    <button type="button" class="imp-av {{ $av }}" x-on:click="o = !o" title="{{ $tit }}"><svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" style="vertical-align:middle"><path fill="currentColor" d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1.6 2 7.4 5.6L19.4 7H4.6zM4 17h16V9.4l-8 6-8-6V17z"/></svg>@if ($av === 'respondido')<b style="font-size:11px">✔</b>@endif @if ($coms)<sup>{{ count($coms) }}</sup>@endif</button>@if ($falta)<span class="imp-falta" style="color:#dc2626; font-weight:700" title="Falta comunicar algún impuesto (clic en el sobre para quitarlo)">❗</span>@endif
+    <button type="button" class="imp-av {{ $av }}" x-on:click="o = !o" title="{{ $tit }}"><svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" style="vertical-align:middle"><path fill="currentColor" d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1.6 2 7.4 5.6L19.4 7H4.6zM4 17h16V9.4l-8 6-8-6V17z"/></svg>@if ($av === 'respondido')<b class="ok">✔</b>@endif @if ($coms)<sup>{{ count($coms) }}</sup>@endif</button>@if ($falta)<span class="imp-falta" style="color:#dc2626; font-weight:700" title="Falta comunicar algún impuesto (clic en el sobre para quitarlo)">❗</span>@endif
     <div class="imp-pop imp-avp" x-show="o" x-cloak>
         <div style="font-weight:600; margin-bottom:4px">Aviso al cliente · {{ $bl['titulo'] }}</div>
         @foreach ($estados as $k => [$nom, $col])

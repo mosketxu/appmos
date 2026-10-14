@@ -2,8 +2,8 @@
 
 namespace App\Http\Livewire;
 
+use App\Support\IntrastatMotor;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Process;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -37,36 +37,10 @@ class Intrastat extends Component
         $this->cargar();
     }
 
-    protected function motorDir(): string
-    {
-        return rtrim(config('contabilidad.intrastat_dir'), '/');
-    }
-
-    protected function datosDir(): string
-    {
-        return rtrim(config('contabilidad.intrastat_datos') ?: storage_path('app/intrastat'), '/');
-    }
-
-    protected function python(): string
-    {
-        foreach ([config('contabilidad.leoybra_python'), storage_path('app/venv-facturasocr/bin/python')] as $p) {
-            if ($p && is_file($p)) {
-                return $p;
-            }
-        }
-        return 'python3';
-    }
-
-    protected function motor(array $args, int $timeout = 300)
-    {
-        return Process::path($this->motorDir())->timeout($timeout)->env(['PYTHONIOENCODING' => 'utf-8'])
-            ->run(array_merge([$this->python(), '-I', $this->motorDir().'/intrastat.py'], $args));
-    }
-
     protected function leerClientes(): array
     {
         try {
-            $r = $this->motor(['clientes'], 30);
+            $r = IntrastatMotor::ejecutar(['clientes'], 30);
             return $r->successful() ? (json_decode($r->output(), true) ?: []) : [];
         } catch (\Throwable $e) {
             report($e);
@@ -82,9 +56,7 @@ class Intrastat extends Component
     protected function carpeta(string $sub): string
     {
         abort_unless($this->validos(), 422, 'Cliente o mes no válidos.');
-        $d = $this->datosDir().'/'.$this->cliente.'/'.$this->periodo.'/'.$sub;
-        @mkdir($d, 0775, true);
-        return $d;
+        return IntrastatMotor::carpeta($this->cliente, $this->periodo, $sub);
     }
 
     public function updatedCliente(): void
@@ -105,13 +77,7 @@ class Intrastat extends Component
         if (! $this->validos()) {
             return;
         }
-        $f = $this->datosDir().'/'.$this->cliente.'/'.$this->periodo.'/salida/resumen.json';
-        if (is_file($f)) {
-            $this->resultado = json_decode((string) file_get_contents($f), true) ?: null;
-            if ($this->resultado) {
-                $this->resultado['generado'] = date('d/m/Y H:i', filemtime($f));
-            }
-        }
+        $this->resultado = IntrastatMotor::resumen($this->cliente, $this->periodo);
     }
 
     public function entradas(): array
@@ -129,7 +95,7 @@ class Intrastat extends Component
                 $this->error = "«{$f->getClientOriginalName()}» no es un Excel (.xlsx).";
                 continue;
             }
-            copy($f->getRealPath(), $this->carpeta('entrada').'/'.preg_replace('/[^A-Za-z0-9._ &()-]+/', '_', $f->getClientOriginalName()));
+            copy($f->getRealPath(), $this->carpeta('entrada').'/'.IntrastatMotor::nombreEntrada($f->getClientOriginalName()));
         }
     }
 
@@ -147,23 +113,7 @@ class Intrastat extends Component
             $this->error = 'Elige cliente y mes.';
             return;
         }
-        $entradas = glob($this->carpeta('entrada').'/*') ?: [];
-        if (! $entradas) {
-            $this->error = 'Sube primero los ficheros del cliente para este mes.';
-            return;
-        }
-        $salida = $this->carpeta('salida');
-        foreach (glob($salida.'/*') ?: [] as $viejo) {
-            @unlink($viejo);
-        }
-        try {
-            $r = $this->motor(array_merge(['generar', $this->cliente, $this->periodo], $entradas, ['--salida', $salida]));
-        } catch (\Throwable $e) {
-            $this->error = 'No se pudo generar: '.$e->getMessage();
-            return;
-        }
-        if (! $r->successful()) {
-            $this->error = 'No se pudo generar: '.trim($r->errorOutput() ?: $r->output());
+        if ($this->error = IntrastatMotor::generar($this->cliente, $this->periodo)) {
             return;
         }
         $this->cargar();

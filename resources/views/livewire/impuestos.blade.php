@@ -61,7 +61,8 @@
             thead { display: table-header-group; }
         }
         .imp-cel { position: relative; }
-        .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; font-size: 13px; line-height: 1; white-space: nowrap; cursor: pointer; color: #9ca3af; opacity: .7; }
+        .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; position: relative; display: inline-flex; align-items: center; vertical-align: middle; font-size: 13px; line-height: 1; white-space: nowrap; cursor: pointer; color: #9ca3af; opacity: .7; }
+        .imp-av .ok { position: absolute; right: -3px; bottom: -3px; font-size: 9px; line-height: 1; background: #fff; border-radius: 50%; padding: 0 1px; }
         .imp-av.comunicado { color: #2563eb; opacity: 1; }
         .imp-av.respondido { color: #16a34a; opacity: 1; }
         .imp-falta { font-size: 12px; margin-left: 1px; }
