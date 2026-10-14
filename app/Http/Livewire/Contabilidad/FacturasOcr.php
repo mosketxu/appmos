@@ -2222,7 +2222,7 @@ class FacturasOcr extends Component
     /** Pendientes con el mismo nº que la abierta cuando la abierta es la primera: se avisa, no es duplicada. */
     protected array $gemelas = [];
 
-    public function validar(bool $forzar = false): void
+    public function validar(bool $forzar = false, bool $confirmado = false): void
     {
         $this->resetErrorBag();
         if (! $this->sel) {
@@ -2245,10 +2245,11 @@ class FacturasOcr extends Component
             $this->addError('validar', 'Faltan datos: '.implode(', ', $faltan));
             return;
         }
-        // Contrapartida que no está en el plan ni creada aquí (sin nombre): hay que crearla antes (combo → ➕ cuenta nueva)
+        // Contrapartida que no está en el plan ni creada aquí: se pregunta en el botón y, si Alex confirma, se valida igual
+        // (14-oct-2026: el que decide es él; los avisos preguntan, no bloquean)
         $plan = $this->cuentasContables();
         $cp = (string) ($datos['contrapartida'] ?? '');
-        if ($plan && ! isset($plan[$cp])) {
+        if (! $confirmado && $plan && ! isset($plan[$cp])) {
             $this->addError('validar', "La contrapartida {$cp} no está en el plan de cuentas: escríbela en Contrapartida y elige «➕ cuenta nueva» para darle nombre.");
             return;
         }
@@ -2874,6 +2875,7 @@ class FacturasOcr extends Component
             'descuadre' => $this->sel ? $this->descuadre() : null,
             'lineasMal' => $this->sel ? $this->lineasMal() : [],
             'duplicados' => $this->sel ? $this->duplicados() : [],
+            'planCp' => $this->sel ? $this->cuentasContables() : [],   // para preguntar al validar si la contrapartida no está en el plan
             'gemelas' => $this->gemelas,
             'duplicadas' => array_values(array_filter($todas, fn ($f) => $f['estado'] === 'duplicada')),
             'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,

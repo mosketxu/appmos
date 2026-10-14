@@ -772,13 +772,15 @@
                     @if ($actual['estado'] !== 'validada')
                         <div class="flex gap-2 focr-acciones" style="align-items:center">
                             @php
-                                $pregunta = trim(($duplicados ? 'Parece DUPLICADA. ' : '').($noCuadra ? 'La factura NO CUADRA. ' : ''));
+                                $cpNueva = $planCp && ($form['contrapartida'] ?? '') !== '' && ! isset($planCp[(string) $form['contrapartida']]);
+                                $pregunta = trim(($duplicados ? 'Parece DUPLICADA. ' : '').($noCuadra ? 'La factura NO CUADRA. ' : '')
+                                    .($cpNueva ? 'La contrapartida '.$form['contrapartida'].' no está en el plan de cuentas (puedes crearla con «➕ cuenta nueva»). ' : ''));
                             @endphp
                             {{-- La pregunta se lee del propio botón al pulsar (data-*): wire:confirm se quedaba con la de antes
                                  al cambiar los datos de la factura (p.ej. tras "Leer con OCR" ya cuadraba y seguía preguntando) --}}
                             <button @disabled($lecturaDesde) type="button" data-atajo="validar" title="Validar (Ctrl + Intro)" wire:loading.attr="disabled" wire:target="validar" class="focr-btn b-verde acc-validar" style="flex:0 0 auto"
                                     data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
-                                    x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1')">
+                                    x-data x-on:click="const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1', !!m)">
                                 <span wire:loading.remove wire:target="validar">✅ Validar <small style="opacity:.75; font-weight:400">Ctrl+Intro</small></span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>
