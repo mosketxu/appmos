@@ -11,10 +11,10 @@ namespace App\Support;
 class FicherosBase
 {
     public const TIPOS = [
-        'mayor' => ['titulo' => 'Mayor', 'icono' => '📒', 'ayuda' => 'Mayor de SAGE (Excel). Se puede subir uno nuevo en cualquier momento: los procesos usan el último.'],
         'plan' => ['titulo' => 'Plan de cuentas', 'icono' => '📘', 'ayuda' => 'Plan de cuentas de SAGE (Excel).'],
-        'proveedores' => ['titulo' => 'Proveedores', 'icono' => '🏭', 'ayuda' => 'Listado de proveedores de SAGE (Excel).'],
         'clientes' => ['titulo' => 'Clientes', 'icono' => '👥', 'ayuda' => 'Listado de clientes de SAGE (Excel).'],
+        'proveedores' => ['titulo' => 'Proveedores', 'icono' => '🏭', 'ayuda' => 'Listado de proveedores de SAGE (Excel).'],
+        'mayor' => ['titulo' => 'Mayor', 'icono' => '📒', 'ayuda' => 'Mayor de SAGE (Excel). Se puede subir uno nuevo en cualquier momento: los procesos usan el último.'],
     ];
 
     public static function raiz(): string

@@ -40,9 +40,9 @@
         <div style="flex:1 1 24rem; min-width:20rem">
             <div class="bg-white border rounded-lg shadow">
                 <div class="px-4 py-2 text-sm font-semibold text-gray-700 border-b">Ficheros base <span class="font-normal text-gray-500">(de SAGE; se suben una vez y se actualizan cuando cambien)</span></div>
-                @foreach ([['mayor', '📒 Mayor', 'Mayor de SAGE del cliente. Se pueden subir varios (se suman). Con él se sabe la cuenta de gasto de cada proveedor, la de ventas y la compensación de IVA.'],
-                           ['plan', '📘 Plan de cuentas', 'Plan de cuentas de SAGE del cliente.'],
+                @foreach ([['plan', '📘 Plan de cuentas', 'Plan de cuentas de SAGE del cliente.'],
                            ['proveedores', '🏭 Proveedores', 'Listado de proveedores de SAGE (cuenta 410, CIF, contrapartida).'],
+                           ['mayor', '📒 Mayor', 'Mayor de SAGE del cliente. Se pueden subir varios (se suman). Con él se sabe la cuenta de gasto de cada proveedor, la de ventas y la compensación de IVA.'],
                            ['clientes', '👥 Clientes', 'Listado de clientes de SAGE (cuenta 430 y CIF). Sin él, las ventas van a clientes varios (430000).']] as [$clave, $titulo, $ayuda])
                     <div wire:key="fila-{{ $clave }}"
                          x-data="{ encima: false, subiendo: false, procesando: false,

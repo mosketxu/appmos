@@ -23,9 +23,9 @@
                         (…Plan….xlsx, exportado de SAGE con "Código cuenta" y "Descripción") llena el combo de contrapartida con todas las cuentas.</p>
                     <table class="mt-2 focr-tabla" style="font-size:.78rem; width:auto; max-width:100%">
                         @foreach ([
+                            'plan' => ['Plan de cuentas', 'subidaPlan', 'Vale el último que subes; el anterior pasa a Base/OLD.'],
                             'prov' => ['Listado de proveedores', 'subidaProv', 'Vale el último que subes; el anterior pasa a Base/OLD. Lo puesto a mano aquí (●, proveedores nuevos) no se toca.'],
                             'mayor' => ['Mayor', 'subidaMayor', 'El anterior pasa a Base/OLD pero se sigue sumando: uno de los últimos meses completa al de años anteriores (un asiento que esté en los dos se toma del más reciente).'],
-                            'plan' => ['Plan de cuentas', 'subidaPlan', 'Vale el último que subes; el anterior pasa a Base/OLD.'],
                         ] as $tipo => [$titulo, $prop, $ayuda])
                             <tr>
                                 <td style="width:11rem; vertical-align:top"><b>{{ $titulo }}</b></td>

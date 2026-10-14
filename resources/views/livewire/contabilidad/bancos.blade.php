@@ -30,8 +30,8 @@
         @php
             $filasBase = [
                 ['clave' => 'plan', 'icono' => '📘', 'titulo' => 'Plan de cuentas', 'datos' => $estadoBase['plan'] ?? null],
-                ['clave' => 'mayor', 'icono' => '🏦', 'titulo' => 'Mayor', 'datos' => $estadoBase['mayor'] ?? null],
                 ['clave' => 'proveedores', 'icono' => '🏭', 'titulo' => 'Proveedores', 'datos' => $estadoBase['proveedores'] ?? null],
+                ['clave' => 'mayor', 'icono' => '🏦', 'titulo' => 'Mayor', 'datos' => $estadoBase['mayor'] ?? null],
             ];
             $otrasCuentas = $estadoBase['otras_cuentas'] ?? [];
         @endphp
