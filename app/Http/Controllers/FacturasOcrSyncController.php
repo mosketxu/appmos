@@ -146,12 +146,14 @@ class FacturasOcrSyncController extends Controller
             }
         }
 
-        // Rechazadas que solo existen en la Entrada del servidor (con su sufijo ISP / ADC): el PC renombra su copia con el mismo contenido
+        // Rechazadas (con el motivo al final del nombre, 14-oct-2026), en la Entrada del servidor o en su copia de OneDrive: el PC renombra
+        // su copia con el mismo contenido, sin moverla
         $entrada = [];
         $datos = realpath(FacturasOcr::rutaDatos($dir).'/Entrada');
         foreach ($estado['facturas'] ?? [] as $fa) {
             $ruta = realpath((string) ($fa['ruta'] ?? ''));
-            if (($fa['estado'] ?? '') === 'rechazada' && $datos && $ruta && str_starts_with($ruta, $datos.'/') && is_file($ruta)) {
+            if (($fa['estado'] ?? '') === 'rechazada' && $ruta && is_file($ruta)
+                    && (($datos && str_starts_with($ruta, $datos.'/')) || str_starts_with($ruta, $raiz.'/'))) {
                 $entrada[] = ['nombre' => basename($ruta), 'sha256' => hash_file('sha256', $ruta), 'tam' => filesize($ruta)];
             }
         }

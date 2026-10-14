@@ -2237,7 +2237,7 @@ class FacturasOcr extends Component
         Process::run(['bash', '-c', $cmd]);
     }
 
-    /** Confirmada como duplicada: el PDF va a la subcarpeta Duplicadas y sale de la cola. */
+    /** Confirmada como duplicada: el PDF, con «_DUPLICADA» al final, va a la subcarpeta Duplicadas del periodo elegido y sale de la cola. */
     public function marcarDuplicada(): void
     {
         if (! $this->sel) {
@@ -2245,14 +2245,14 @@ class FacturasOcr extends Component
         }
         $this->salida = '';
         $antes = array_column($this->cola(), 'id');
-        if ($this->ejecutar(['duplicada', $this->sel, '--motivo', $this->motivo], 60, 'Duplicada', false)) {
+        if ($this->ejecutar(['duplicada', $this->sel, '--motivo', $this->motivo, '--periodo', $this->periodo ?: $this->periodoActual()], 60, 'Duplicada', false)) {
             $this->siguiente($antes);
         } else {
             $this->addError('validar', trim($this->salida));
         }
     }
 
-    /** Rechaza la factura abierta. Con $sufijo (ISP / ADC) además lo añade al final del nombre del PDF y al motivo. */
+    /** Rechaza la factura abierta: el motivo va al final del nombre del PDF (no se mueve). Con $sufijo (ISP / ADC) el motivo empieza por él. */
     public function rechazar(?string $sufijo = null): void
     {
         if (! $this->sel) {
