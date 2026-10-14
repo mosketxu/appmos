@@ -1499,6 +1499,9 @@ class FacturasOcr extends Component
         return $fs;
     }
 
+    /** mtime de patrones / cuentas propias / proveedores la última vez que se abrió una factura (para refrescar los combos). */
+    public string $marcaListas = '';
+
     public function abrir(string $id): void
     {
         $f = $this->factura($id);
@@ -1520,6 +1523,16 @@ class FacturasOcr extends Component
                 $f = $this->factura($id) ?? $f;
             }
             $this->salida = $salida;
+        }
+        // Si desde la última factura se creó un proveedor o una cuenta (al validar, en otra pestaña...), los combos vuelven a pedir sus listas
+        clearstatcache();
+        $marca = @filemtime($this->dirDatos().'/patrones.json').'-'.@filemtime($this->dirDatos().'/cuentas_propias.json')
+            .'-'.@filemtime($this->dirCliente().'/Base/proveedores.json');
+        if ($marca !== $this->marcaListas) {
+            if ($this->marcaListas !== '') {
+                $this->dispatch('focr-listas');
+            }
+            $this->marcaListas = $marca;
         }
         $this->resetErrorBag();
         $this->sel = $id;
@@ -2192,6 +2205,13 @@ class FacturasOcr extends Component
         }
         if ($faltan) {
             $this->addError('validar', 'Faltan datos: '.implode(', ', $faltan));
+            return;
+        }
+        // Contrapartida que no está en el plan ni creada aquí (sin nombre): hay que crearla antes (combo → ➕ cuenta nueva)
+        $plan = $this->cuentasContables();
+        $cp = (string) ($datos['contrapartida'] ?? '');
+        if ($plan && ! isset($plan[$cp])) {
+            $this->addError('validar', "La contrapartida {$cp} no está en el plan de cuentas: escríbela en Contrapartida y elige «➕ cuenta nueva» para darle nombre.");
             return;
         }
         if (! $this->ejecutaAqui()) {
