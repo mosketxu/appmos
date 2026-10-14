@@ -2285,7 +2285,7 @@ class FacturasOcr extends Component
         }
     }
 
-    /** Rechaza la factura abierta: el motivo va al final del nombre del PDF (no se mueve). Con $sufijo (ISP / ADC) el motivo empieza por él. */
+    /** Rechaza la factura abierta: el motivo va al final del nombre del PDF (no se mueve). Con $sufijo (ISP / ADC / EMITIDA) el motivo empieza por él. */
     public function rechazar(?string $sufijo = null): void
     {
         if (! $this->sel) {
@@ -2294,7 +2294,7 @@ class FacturasOcr extends Component
         $this->salida = '';
         $antes = array_column($this->cola(), 'id');
         $args = ['rechazar', $this->sel, '--motivo', $this->motivo];
-        if (in_array($sufijo, ['ISP', 'ADC'], true)) {
+        if (in_array($sufijo, ['ISP', 'ADC', 'EMITIDA'], true)) {
             $args[3] = trim($sufijo.' '.trim(preg_replace('/^'.$sufijo.'\b\s*/u', '', $this->motivo)));
             array_push($args, '--sufijo', $sufijo);
         }
