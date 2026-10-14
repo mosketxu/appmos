@@ -72,10 +72,11 @@
                          x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
                          :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''"
                          class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
-                        <input type="file" multiple accept=".xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp" class="hidden" x-ref="input"
+                        <input type="file" multiple accept=".xlsx,.xls" class="hidden" x-ref="input"
                                x-on:change="subir($event.target.files); $event.target.value = ''">
                         <div class="w-64 text-sm font-medium text-gray-800">{{ $fb['icono'] }} {{ $fb['titulo'] }}</div>
-                        <div class="flex-1 min-w-[14rem] text-xs text-gray-600">
+                        {{-- Ancho fijo (igual que en «Otras cuentas de banco»): los botones ⬆ quedan en columna con «Añadir» --}}
+                        <div class="text-xs text-gray-600" style="width:34rem; max-width:100%">
                             @if ($fb['clave'] === 'plan' && $fb['datos'])
                                 <b>{{ $fb['datos']['cuentas'] }}</b> cuentas
                             @elseif ($fb['clave'] === 'proveedores' && ! empty($fb['datos']['cuentas']))
@@ -108,8 +109,9 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="flex flex-wrap items-center px-4 py-2 text-xs text-gray-600 gap-x-2 gap-y-1">
+                <div class="flex flex-wrap items-center px-4 py-2 text-xs text-gray-600 gap-x-4 gap-y-1">
                     <span class="w-64 text-sm font-medium text-gray-800">＋ Otras cuentas de banco</span>
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1" style="width:34rem; max-width:100%">
                     <span class="text-gray-400">Además de las 572…, que siempre lo son:</span>
                     @forelse ($otrasCuentas as $oc)
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 border rounded-full">
@@ -123,6 +125,7 @@
                     @endforelse
                     <input type="text" wire:model="otraCuenta" wire:keydown.enter="anadirOtraCuenta" placeholder="p.ej. 551002"
                            class="w-32 py-0.5 text-xs border-gray-300 rounded-md shadow-sm">
+                    </div>
                     <x-button.secondary wire:click="anadirOtraCuenta" wire:loading.attr="disabled" wire:target="anadirOtraCuenta">Añadir</x-button.secondary>
                     @error('otraCuenta')
                         <span class="text-red-600">{{ $message }}</span>
@@ -219,6 +222,72 @@
                             <span class="text-gray-700">Arrastra aquí los extractos del banco (uno o varios: Excel, o foto/PDF escaneado, que se pasa a Excel) o haz clic para elegirlos</span>
                             <span x-show="subiendo" class="text-xs text-gray-400">Subiendo…</span>
                         </label>
+                        @if ($ocrRevisar)
+                            @php($rev = $ocrRevisar[0])
+                            {{-- Extracto en imagen/PDF cuyo OCR no cuadra: a la izquierda el extracto, a la derecha lo leído, editable --}}
+                            <div class="fixed inset-0 z-50 flex items-center justify-center p-3" style="background:rgba(17,24,39,.55)"
+                                 wire:key="ocr-{{ md5($rev['nombre'].count($ocrRevisar)) }}"
+                                 x-data="{
+                                     filas: @js($rev['filas']),
+                                     vacio(v) { return v === null || v === '' || isNaN(+v) },
+                                     mal(i) {
+                                         const b = this.filas[i];
+                                         if (this.vacio(b.importe) || this.vacio(b.saldo) || ! b.fecha) return true;
+                                         if (i === 0) return false;
+                                         const a = this.filas[i - 1];
+                                         return ! this.vacio(a.saldo) && Math.abs((+a.saldo) + (+b.importe) - (+b.saldo)) > 0.005;
+                                     },
+                                     get nMal() { return this.filas.filter((f, i) => this.mal(i)).length },
+                                     nueva(i) { this.filas.splice(i + 1, 0, { fecha: this.filas[i]?.fecha ?? '', concepto: '', importe: '', saldo: '' }) },
+                                     guardar() {
+                                         if (this.nMal && ! confirm(this.nMal + ' fila(s) siguen sin cuadrar. ¿Usar los movimientos igualmente?')) return;
+                                         $wire.guardarOcr(this.filas);
+                                     },
+                                 }">
+                                <div class="flex flex-col w-full h-full max-w-7xl bg-white rounded-lg shadow-xl">
+                                    <div class="flex flex-wrap items-center gap-3 px-4 py-2 border-b">
+                                        <h2 class="text-base font-semibold text-gray-900">📷 Revisar el extracto «{{ $rev['nombre'] }}»</h2>
+                                        <span class="text-sm" :class="nMal ? 'text-red-700 font-semibold' : 'text-green-700 font-semibold'"
+                                              x-text="nMal ? '⚠ ' + nMal + ' fila(s) no cuadran (en rojo): corrige el importe o el saldo mirando el extracto' : '✔ Los saldos cuadran fila a fila'"></span>
+                                        @if (count($ocrRevisar) > 1) <span class="text-xs text-gray-500">(después quedan {{ count($ocrRevisar) - 1 }} más)</span> @endif
+                                    </div>
+                                    <div class="flex flex-1 min-h-0">
+                                        <div class="w-1/2 p-2 overflow-auto border-r bg-gray-50">
+                                            @forelse ($this->imagenesOcr() as $url)
+                                                <img src="{{ $url }}" class="w-full mb-2 border" alt="Extracto">
+                                            @empty
+                                                <p class="p-4 text-sm text-gray-500">No se puede enseñar el extracto aquí; ábrelo aparte para compararlo.</p>
+                                            @endforelse
+                                        </div>
+                                        <div class="w-1/2 p-2 overflow-auto">
+                                            <p class="mb-1 text-xs text-gray-500">Del más antiguo al más reciente. Cada saldo tiene que ser el anterior más el importe (cargos en negativo).</p>
+                                            <table class="w-full text-xs">
+                                                <thead><tr class="text-left text-gray-500"><th>Fecha</th><th>Concepto</th><th class="text-right">Importe</th><th class="text-right">Saldo</th><th></th></tr></thead>
+                                                <tbody>
+                                                    <template x-for="(f, i) in filas" :key="i">
+                                                        <tr :class="mal(i) ? 'bg-red-50' : ''">
+                                                            <td><input type="date" x-model="f.fecha" class="py-0.5 px-1 text-xs border-gray-300 rounded" style="width:8.5rem"></td>
+                                                            <td><input type="text" x-model="f.concepto" class="w-full py-0.5 px-1 text-xs border-gray-300 rounded"></td>
+                                                            <td><input type="number" step="0.01" x-model="f.importe" class="py-0.5 px-1 text-xs text-right rounded" :class="mal(i) ? 'border-red-500' : 'border-gray-300'" style="width:6.5rem"></td>
+                                                            <td><input type="number" step="0.01" x-model="f.saldo" class="py-0.5 px-1 text-xs text-right rounded" :class="mal(i) ? 'border-red-500' : 'border-gray-300'" style="width:6.5rem"></td>
+                                                            <td class="whitespace-nowrap">
+                                                                <button type="button" x-on:click="nueva(i)" class="px-1 text-gray-500 hover:text-indigo-700" title="Añadir una fila debajo">＋</button>
+                                                                <button type="button" x-on:click="filas.splice(i, 1)" class="px-1 text-gray-400 hover:text-red-600" title="Quitar esta fila">&times;</button>
+                                                            </td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap items-center justify-end gap-2 px-4 py-2 border-t">
+                                        @error('ocr') <span class="mr-auto text-sm text-red-700">{{ $message }}</span> @enderror
+                                        <x-button.secondary wire:click="descartarOcr">Descartar este extracto</x-button.secondary>
+                                        <x-button.primary x-on:click="guardar()" wire:loading.attr="disabled" wire:target="guardarOcr">✔ Usar estos movimientos</x-button.primary>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                         @error('extractos')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
