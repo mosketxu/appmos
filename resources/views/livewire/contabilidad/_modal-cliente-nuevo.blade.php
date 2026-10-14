@@ -4,11 +4,12 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(17,24,39,.5)">
         <div class="w-full max-w-2xl p-5 space-y-3 bg-white rounded-lg shadow-xl" wire:keydown.escape="cancelarNuevo">
             <h2 class="text-lg font-semibold text-gray-900">Nuevo cliente: {{ $nuevoEntidad }}</h2>
-            <p class="text-sm text-gray-600">Esta entidad aún no tiene carpeta en Facturas OCR / Bancos. Se crea ahora; revisa lo que propongo.</p>
+            <p class="text-sm text-gray-600">{{ $this->pideCarpetaFacturas() ? 'Esta entidad aún no está en Facturas OCR. Se crea ahora; revisa lo que propongo.' : 'Esta entidad aún no está en Bancos. Se crea ahora con este nombre.' }}</p>
             <label class="block text-sm">
                 <span class="font-medium text-gray-700">Nombre del cliente</span>
                 <input type="text" wire:model="nuevoNombre" class="block w-full mt-1 border-gray-300 rounded-md shadow-sm">
             </label>
+            @if ($this->pideCarpetaFacturas())
             <div class="text-sm">
                 <span class="font-medium text-gray-700">Carpeta de OneDrive con las facturas recibidas</span>
                 <div class="flex items-stretch gap-2 mt-1">
@@ -24,11 +25,10 @@
                 <span class="text-xs {{ $nuevoDetectada ? 'text-green-700' : 'text-amber-700' }}">
                     {{ $nuevoDetectada ? '✔ He encontrado la carpeta del cliente en OneDrive.' : '⚠ No he encontrado la carpeta del cliente en OneDrive: es una suposición; usa «Examinar…» (abre el selector de carpetas de Windows).' }}
                     @if (str_contains($nuevoCarpeta, '{T}'))
-                        Cliente por trimestres: las facturas validadas van a la carpeta de recibidas del trimestre de registro (T1, T2…; si falta, se crea).
+                        Cliente por trimestres («1…4» = vale para los cuatro): cada factura validada va a la carpeta de recibidas del trimestre de su fecha de registro (si falta, se crea).
                     @else
                         Dentro tiene que haber una subcarpeta por mes (01, 02…); las facturas validadas van a la del mes de registro.
                     @endif
-                    Esta carpeta solo la usa Facturas OCR; a Bancos no le afecta.
                 </span>
             </div>
 
@@ -65,6 +65,7 @@
                         </span>
                     </div>
                 </div>
+            @endif
             @endif
 
             @if ($nuevoError)

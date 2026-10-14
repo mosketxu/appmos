@@ -162,7 +162,7 @@ class ClientesEntidad
     /** Ruta con el año en lugar de {AAAA}, con barras de Windows, para enseñársela al usuario. */
     public static function rutaWindows(string $carpeta): string
     {
-        return 'OneDrive\\'.str_replace('/', '\\', str_replace(['{AAAA}', '{T}'], [date('Y'), (string) intdiv((int) date('n') + 2, 3)], self::rutaOneDrive($carpeta)));
+        return 'OneDrive\\'.str_replace('/', '\\', str_replace(['{AAAA}', '{T}'], [date('Y'), '«1…4»'], self::rutaOneDrive($carpeta)));   // por trimestres: T«1…4» (vale para los cuatro)
     }
 
     /**
@@ -272,7 +272,7 @@ class ClientesEntidad
      * Crea el cliente en Facturas OCR y en Bancos (cada uno solo si su carpeta de código existe en esta máquina), enlazado a la entidad.
      * Devuelve los módulos creados.
      */
-    public static function crear(int $entidadId, string $nombre, string $carpeta, ?string $raizOneDrive): array
+    public static function crear(int $entidadId, string $nombre, string $carpeta, ?string $raizOneDrive, bool $conFacturasOcr = true): array
     {
         $e = self::activas()[$entidadId] ?? null;
         abort_unless($e, 403, 'Entidad no disponible');
@@ -280,7 +280,7 @@ class ClientesEntidad
         $hechos = [];
         $trimestral = str_contains($carpeta, '{T}');
         $ocr = rtrim((string) config('contabilidad.facturasocr_dir'), '/');
-        if ($ocr !== '' && is_dir($ocr) && ! is_dir("$ocr/$nombre")) {
+        if ($conFacturasOcr && $ocr !== '' && is_dir($ocr) && ! is_dir("$ocr/$nombre")) {
             @mkdir("$ocr/$nombre", 0775, true);
             file_put_contents("$ocr/$nombre/cliente.json", json_encode([
                 'entidad_id' => $entidadId, 'entidad' => $e->entidad, 'nif' => (string) $e->nif,

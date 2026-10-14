@@ -407,6 +407,12 @@ class Bancos extends Component
         $this->pruebaResultado = is_array($datos) ? $datos : ['limpio' => '⚠️ '.$out, 'palabras' => []];
     }
 
+    /** Bancos no usa la carpeta de facturas recibidas: el cliente nuevo se crea solo con el nombre (Facturas OCR la pedirá cuando haga falta). */
+    public function pideCarpetaFacturas(): bool
+    {
+        return false;
+    }
+
     protected function baseDir(): string
     {
         return rtrim(config('contabilidad.bancos_dir'), '/');

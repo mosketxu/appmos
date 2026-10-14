@@ -79,6 +79,12 @@ trait EligeEntidadCliente
         return true;
     }
 
+    /** La carpeta de facturas recibidas solo la usa Facturas OCR: Bancos crea su cliente sin preguntarla (devuelve false). */
+    public function pideCarpetaFacturas(): bool
+    {
+        return true;
+    }
+
     public function cancelarNuevo(): void
     {
         $this->modalNuevo = false;
@@ -93,7 +99,7 @@ trait EligeEntidadCliente
 
             return;
         }
-        if (! ClientesEntidad::carpetaValida($carpeta)) {
+        if ($this->pideCarpetaFacturas() && ! ClientesEntidad::carpetaValida($carpeta)) {
             $this->nuevoError = 'Elige la carpeta de las facturas con «Examinar…».';
 
             return;
@@ -105,7 +111,7 @@ trait EligeEntidadCliente
             return;
         }
         try {
-            $hechos = ClientesEntidad::crear($this->nuevoEid, $nombre, $carpeta, $this->raizOneDrive());
+            $hechos = ClientesEntidad::crear($this->nuevoEid, $nombre, $carpeta, $this->raizOneDrive(), $this->pideCarpetaFacturas());
         } catch (\Throwable $e) {
             $this->nuevoError = 'No se pudo crear: '.$e->getMessage();
 
