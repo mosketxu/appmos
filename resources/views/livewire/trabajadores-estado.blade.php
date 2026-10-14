@@ -18,7 +18,7 @@
         {{-- Selector «Ejecutar en»: el PC desde el que trabajas. Se recuerda en ESTE navegador (cookie appmos_pc, 1 año). Si ese PC no responde, el reparto vuelve a automático.
              Desplegable propio (9-oct-2026): nombre corto (Serv/Mini/Port) y, al abrirlo, dos columnas: corto + completo. --}}
         @php
-            $corto = ['miniServ' => 'Serv', 'AlexMiniPC' => 'Mini', 'PortalExomen' => 'Port'];
+            $corto = ['miniServ' => 'Serv', 'AlexMiniPC' => 'Alex', 'PortalExomen' => 'Port'];
             $orden = array_flip(array_keys($corto));
             $lista = collect($e['pcs'])->sortBy(fn ($p) => $orden[$p['nombre']] ?? 99)->values()
                 ->map(fn ($p) => ['n' => $p['nombre'], 'c' => $corto[$p['nombre']] ?? $p['nombre'], 'on' => $p['en_linea']])->all();

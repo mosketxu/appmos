@@ -2,7 +2,7 @@
     @if ($ec)
         @php
             $p = $ec['plan'];
-            $corto = ['miniServ' => 'Serv', 'AlexMiniPC' => 'Mini', 'PortalExomen' => 'Port'];
+            $corto = ['miniServ' => 'Serv', 'AlexMiniPC' => 'Alex', 'PortalExomen' => 'Port'];
             $orden = array_flip(['miniServ', 'AlexMiniPC', 'PortalExomen']);
             $pcs = collect($ec['trabajadores'])->sortBy(fn ($w) => $orden[$w['nombre']] ?? 99)->values();
             $hoverClaude = 'Tareas del TO-DO que Claude hace solo desde los PCs.';
