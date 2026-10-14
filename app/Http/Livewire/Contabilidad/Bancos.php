@@ -144,7 +144,8 @@ class Bancos extends Component
 
     /**
      * Al abrir la pantalla o cambiar de cliente hacen falta 5-6 scripts (estado de la base, maestro, formatos,
-     * revisión...): se lanzan a la vez en vez de uno tras otro (de ~4 s a ~1,5 s).
+     * revisión...): se ejecutan en un solo python (bancos_carga.py): el VPS tiene un núcleo y cada python
+     * paga ~250 ms solo en importar openpyxl.
      */
     protected function precargar(bool $config): void
     {
@@ -165,16 +166,12 @@ class Bancos extends Component
             return;
         }
         try {
-            $res = Process::concurrently(function ($pool) use ($cmds) {
-                foreach ($cmds as $a) {
-                    $pool->as(implode("\0", $a))->path($this->baseDir())->timeout(90)->command(array_merge([$this->pythonBin()], $a));
-                }
-            });
-            foreach ($cmds as $a) {
-                $this->pre[implode("\0", $a)] = $res[implode("\0", $a)];
+            $r = Process::path($this->baseDir())->timeout(120)->run([$this->pythonBin(), 'bancos_carga.py', json_encode($cmds)]);
+            foreach ((array) json_decode($r->output(), true) as $k => $v) {
+                $this->pre[$k] = Process::result($v['out'] ?? '', $v['err'] ?? '', (int) ($v['code'] ?? 1));
             }
         } catch (\Throwable $e) {
-            $this->pre = [];   // si falla el lanzamiento en paralelo, cada carga lo ejecuta por su cuenta
+            $this->pre = [];   // si falla, cada carga ejecuta su script por su cuenta
         }
     }
 
