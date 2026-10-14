@@ -1733,6 +1733,22 @@ class FacturasOcr extends Component
     public function cuentaNueva(): void
     {
         $cif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $this->form['cif'] ?? ''));
+        // El CIF del formulario es el del proveedor que ya tiene puesto (mal reconocido): se pide otro proveedor,
+        // así que cuenta libre y datos del proveedor en blanco (14-oct-2026, Subiñas propuesta como Espumalia)
+        $actual = trim((string) ($this->form['cuenta'] ?? ''));
+        if ($cif !== '' && $actual !== '') {
+            $p = $this->proveedores()[$actual] ?? [];
+            $pat = $this->patrones()[$actual] ?? [];
+            $b = $this->cuentasBancos()[$actual] ?? [];
+            $suyos = array_merge($pat['nifs'] ?? [], [$pat['cif'] ?? '', $p['cif_europeo'] ?? '', ($p['sigla'] ?? '').($p['nif'] ?? ''), $p['nif'] ?? '', $b['cif'] ?? '']);
+            $suyos = array_map(fn ($n) => preg_replace('/^ES/', '', strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $n))), $suyos);
+            if (in_array(preg_replace('/^ES/', '', $cif), array_filter($suyos), true)) {
+                $cif = '';
+                foreach (['proveedor', 'cif', 'nombre_fichero', 'cp', 'cod_provincia', 'provincia'] as $k) {
+                    $this->form[$k] = '';
+                }
+            }
+        }
         $usadas = array_filter(array_map('strval', array_keys($this->proveedores())), fn ($k) => preg_match('/^410\d{3}$/', $k));
         foreach ($this->patrones() as $k => $pat) {
             if (! empty($pat['nuevo'])) {
