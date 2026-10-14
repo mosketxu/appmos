@@ -256,7 +256,8 @@ class ClientesEntidad
         if ($fuera) {
             $c = substr($c, 1);
         }
-        if (str_contains($c, '..') || (! $fuera && ! str_contains($c, '{AAAA}'))) {
+        // Dentro de _Clientes/{AAAA}/ el año ya lo pone rutaOneDrive(): la del cliente puede no llevarlo («Sleep in Company», 14-oct-2026)
+        if (str_contains($c, '..') || $c === '') {
             return false;
         }
         foreach (explode('/', $c) as $seg) {
