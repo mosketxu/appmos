@@ -631,6 +631,25 @@ class FacturasOcr extends Component
         if ($clave === 'total') {
             $this->recalcularDesdeTotal();
         }
+        // Transacción 38 (operación sin IVA): una sola línea con IVA 0 y base = total (14-oct-2026)
+        if (in_array($clave, ['codigo_transaccion', 'total'], true)) {
+            $this->aplicarTransaccion38();
+        }
+    }
+
+    /** Con código de transacción 38: base = total (+ retención), IVA 0 %, cuota 0, y sin más líneas. */
+    protected function aplicarTransaccion38(): void
+    {
+        $total = $this->num($this->form['total'] ?? '');
+        if (trim((string) ($this->form['codigo_transaccion'] ?? '')) !== '38' || $total === null) {
+            return;
+        }
+        $base = $total + ($this->num($this->form['cuota_retencion'] ?? '') ?? 0.0);
+        $this->form['lineas'] = [
+            ['base' => number_format($base, 2, '.', ''), 'pct' => '0', 'cuota' => '0.00'],
+            ['base' => '', 'pct' => '', 'cuota' => ''],
+            ['base' => '', 'pct' => '', 'cuota' => ''],
+        ];
     }
 
     /** Chequeo contra el mayor (pestaña «Chequeo mayor»): periodo 2026-3T o 2026-09 y el resultado de la última comprobación de ese periodo. */
@@ -1554,6 +1573,9 @@ class FacturasOcr extends Component
             $d[$k] = isset($d[$k]) && $d[$k] !== null ? (string) $d[$k] : '';
         }
         $this->form = $d;
+        if (($f['estado'] ?? '') === 'pendiente' && abs((float) ($this->descuadre() ?? 0)) >= 0.01) {
+            $this->aplicarTransaccion38();   // con 38 y sin cuadrar (p.ej. bases sin leer): IVA 0 y base = total
+        }
         $this->cifAviso = $this->enLote ? '' : (string) ($this->analizarCif($d['cif'] ?? '')['mensaje'] ?? '');
         $this->avisarHistoria($id);
         if (! $this->enLote) {
