@@ -7,9 +7,14 @@
         <input type="hidden" wire:model="contactoId"/>
         @else
             @if($entidad)
-                <h1 class="text-2xl font-semibold text-gray-900">Entidad: {{ $entidad['entidad'] }}
-                    @if($entidad['nif']) <span class="text-lg text-gray-500 "> ({{  $entidad['nif'] }})</span> @endif
-                </h1>
+                <div class="flex flex-wrap items-center" style="column-gap:1.5rem; row-gap:.25rem">
+                    <h1 class="text-2xl font-semibold text-gray-900">Entidad: {{ $entidad['entidad'] }}
+                        @if($entidad['nif']) <span class="text-lg text-gray-500 "> ({{  $entidad['nif'] }})</span> @endif
+                    </h1>
+                    @if($entidadModel->id)
+                        <x-buscador-entidad :entidad="$entidadModel" :ruta="$ruta"/>
+                    @endif
+                </div>
             @else
             <h1 class="text-2xl font-semibold text-gray-900">Nueva Entidad</h1>
             @endif

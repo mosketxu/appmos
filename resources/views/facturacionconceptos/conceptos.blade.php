@@ -4,7 +4,10 @@
     <div class="p-1 mx-2">
         <div class="flex justify-between space-x-1">
             <div class="flex">
-                <h1 class="text-2xl font-semibold text-gray-900">Conceptos de facturación de {{ $entidad->entidad }} <span class="text-lg text-gray-500 "> ({{ $entidad->nif }})</span></h1>
+                <div class="flex flex-wrap items-center" style="column-gap:1.5rem; row-gap:.25rem">
+                    <h1 class="text-2xl font-semibold text-gray-900">Conceptos de facturación de {{ $entidad->entidad }} <span class="text-lg text-gray-500 "> ({{ $entidad->nif }})</span></h1>
+                    <x-buscador-entidad :entidad="$entidad" :ruta="$ruta"/>
+                </div>
             </div>
             <div class="flex flex-row-reverse">
                 @livewire('facturacion-conceptos.conceptonuevo-modal',['entidad'=>$entidad])

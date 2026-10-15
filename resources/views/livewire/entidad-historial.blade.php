@@ -2,7 +2,10 @@
     @livewire('menu',['entidad'=>$entidad,'ruta'=>$ruta],key($entidad->id))
 
     <div class="p-1 mx-2">
-        <h1 class="text-2xl font-semibold text-gray-900">Historial de {{ $entidad->entidad }} <span class="text-lg text-gray-500 "> ({{ $entidad->nif }})</span></h1>
+        <div class="flex flex-wrap items-center" style="column-gap:1.5rem; row-gap:.25rem">
+            <h1 class="text-2xl font-semibold text-gray-900">Historial de {{ $entidad->entidad }} <span class="text-lg text-gray-500 "> ({{ $entidad->nif }})</span></h1>
+            <x-buscador-entidad :entidad="$entidad" :ruta="$ruta"/>
+        </div>
     </div>
     <div class="mx-2 text-gray-500">
                 

@@ -3,7 +3,10 @@
 
     <div class="p-1 mx-2">
 
-        <h1 class="text-2xl font-semibold text-gray-900">Pus de {{ $ent->entidad }} <span class="text-lg text-gray-500 "> ({{ $ent->nif }})</span></h1>
+        <div class="flex flex-wrap items-center" style="column-gap:1.5rem; row-gap:.25rem">
+            <h1 class="text-2xl font-semibold text-gray-900">Pus de {{ $ent->entidad }} <span class="text-lg text-gray-500 "> ({{ $ent->nif }})</span></h1>
+            <x-buscador-entidad :entidad="$ent" :ruta="$ruta"/>
+        </div>
 
         <div class="py-1 space-y-4">
             @if (session()->has('message'))

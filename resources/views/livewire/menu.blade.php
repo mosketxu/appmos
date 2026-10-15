@@ -17,16 +17,16 @@
 @endphp
 <nav x-data="{ open: false }" class="relative bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
-    {{-- Pantalla mediana (640-1599 px): la barra no cabe en una línea, así que pasa a dos (enlaces arriba, campana/Claude/PCs/usuario debajo) en vez de solaparse --}}
+    {{-- La barra pasa a dos líneas solo cuando no cabe (en vez de solaparse). Orden fijo: enlaces · campana · Claude · iconos/PCs/usuario,
+         así la campana queda siempre a la izquierda de los botones (15-oct-2026; el buscador de entidad está ahora junto al nombre, en la cabecera) --}}
     <style>
         .ico-act { background:#fff; border-radius:.25rem; box-shadow:0 0 0 2px #a5b4fc; width:1.5rem !important; margin-right:.5rem !important }
-        @media (min-width:640px) and (max-width:1599px) {
-            .barra-sup { flex-wrap:wrap; height:auto !important; min-height:3.5rem; row-gap:.25rem; padding-bottom:.35rem }
-            .barra-sup > .barra-izq { min-width:0; flex-wrap:wrap }
-            .barra-sup > .barra-der { margin-left:auto; flex-wrap:wrap; row-gap:.25rem; justify-content:flex-end }
-            .barra-sup > .barra-claude { order:2; margin-left:auto !important }
-            .barra-sup > .barra-campana { order:3 }
-            .barra-sup > .barra-der { order:4 }
+        @media (min-width:640px) {
+            .barra-sup { flex-wrap:wrap; height:auto !important; min-height:3.5rem; row-gap:.25rem }
+            .barra-sup > .barra-izq { min-width:0; flex-wrap:wrap; min-height:3.5rem }
+            .barra-sup > .barra-campana { order:2; margin-left:auto !important }
+            .barra-sup > .barra-claude { order:3 }
+            .barra-sup > .barra-der { order:4; margin-left:auto; flex-wrap:wrap; row-gap:.25rem; justify-content:flex-end; min-height:3.5rem }
         }
     </style>
     <div class="max-w-full px-4 mx-auto">
@@ -95,12 +95,12 @@
                 </div>
             </div>
 
-            {{-- Campana del TO-DO: centrada en la barra --}}
+            {{-- Campana del TO-DO: siempre justo a la izquierda de Claude y los botones --}}
             <div class="hidden sm:flex sm:items-center barra-campana" style="flex-shrink:0; margin:0 .4rem">
                 @livewire('todo-campana')
             </div>
 
-            {{-- Estado de Claude (solo gestores): en pantalla mediana sube a la línea de arriba, junto a la campana --}}
+            {{-- Estado de Claude (solo gestores), a la derecha de la campana --}}
             @if (\App\Support\TodoClaude::esGestor(auth()->user()))
                 <div class="hidden sm:flex sm:items-center barra-claude" style="flex-shrink:0; margin:0 .4rem">@livewire('todo-claude-estado')</div>
             @endif
@@ -108,17 +108,6 @@
             <div class="hidden sm:flex sm:items-center sm:ml-6 barra-der">
                 @if($entmenu->id)
                     <div class="items-center hidden p-2 space-x-3 bg-gray-100 rounded-lg sm:-my-px sm:ml-4 sm:flex">
-                        {{-- Buscador: se escribe el nombre y se elige de la lista --}}
-                        <div x-data="{ q: @js($entmenu->entidad), ids: @js($entidades->pluck('id','entidad')) }">
-                            <input type="text" list="lista-entidades-menu" x-model="q" @focus="$event.target.select()"
-                                   @change="if (ids[q]) $wire.set('filtroentidad', ids[q])"
-                                   placeholder="Buscar entidad…" class="py-1 text-sm border-gray-300 rounded-md w-36 lg:w-48">
-                            <datalist id="lista-entidades-menu">
-                                @foreach ($entidades as $entidad)
-                                <option value="{{ $entidad->entidad }}"></option>
-                                @endforeach
-                            </datalist>
-                        </div>
                         <div class="flex items-center">
                             @php $act = fn ($r) => request()->routeIs($r) ? 'ico-act' : ''; @endphp
                             <x-icon.key href="{{ route('entidad.pu',$entmenu) }}" title="Pus" class="{{ $act('entidad.pu') }}"/>

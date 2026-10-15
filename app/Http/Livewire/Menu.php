@@ -12,7 +12,6 @@ class Menu extends Component
 
     public $entmenu;
     public $ruta;
-    public $filtroentidad;
 
 
     public function mount(Entidad $entidad,$ruta){
@@ -23,14 +22,7 @@ class Menu extends Component
 
     public function render()
     {
-        $entidades=Entidad::orderBy('entidad')->get();
-        return view('livewire.menu',compact('entidades'));
-    }
-
-
-    public function updatedFiltroentidad(){
-        $e=Entidad::find($this->filtroentidad);
-        return redirect()->route($this->ruta,$e);
+        return view('livewire.menu');
     }
 
 }
