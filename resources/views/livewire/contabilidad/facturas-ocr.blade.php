@@ -214,6 +214,13 @@
                     const num = q.trim();
                     const nueva = campo === 'contrapartida' && /^\d{3,}$/.test(num) && !this.lista.some((r) => r[0] === num)
                         ? [[num, '➕ cuenta nueva (no está en la lista): Intro para crearla', true]] : [];
+                    // Proveedor: un número de cuenta que no está en la lista se ofrece el primero como «proveedor nuevo con esta cuenta»
+                    // (Alex elige el número, 15-oct-2026); debajo, las existentes que coincidan
+                    if (campo === 'cuenta' && /^\d{5,}$/.test(num) && !this.lista.some((r) => r[0] === num) && q !== norm(this.etiqueta(this.valor()))) {
+                        const ps0 = q.split(/\s+/).filter(Boolean);
+                        const f0 = this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps0.every((p) => t.includes(p)); });
+                        return [[num, '➕ proveedor nuevo con esta cuenta (Intro)', true], ...f0];
+                    }
                     if (this.lista.length === 1 && !this.lista[0][0]) return nueva.length ? nueva : this.lista;   // mensaje de error
                     if (!q) return this.lista;
                     if (q === norm(this.etiqueta(this.valor()))) return nueva.length ? nueva : this.lista;   // puesta antes sin crearla
@@ -224,12 +231,29 @@
                 abrir() { this.open = true; this.i = 0; },
                 alternar() { if (this.open) return this.cerrar(); this.$refs.q.focus(); },
                 cerrar() { this.open = false; this.mostrar(); },
-                salir() { setTimeout(() => { if (this.open) this.cerrar(); }, 150); },
+                salir() {
+                    setTimeout(() => {
+                        // proveedor: un número tecleado que no está en la lista no se pierde al salir del campo
+                        const v = this.q.trim();
+                        if (campo === 'cuenta' && /^\d{5,}$/.test(v) && v !== this.valor() && !this.lista.some((x) => x[0] === v)) return this.cuentaLibre(v);
+                        if (this.open) this.cerrar();
+                    }, 150);
+                },
                 mover(d) { this.open = true; this.i = Math.max(0, Math.min(this.res.length - 1, this.i + d)); },
                 elegir(r) {
                     if (!r[0]) return;
                     if (r[2] && campo === 'contrapartida') return this.crearCuenta(r[0]);
+                    if (r[2] && campo === 'cuenta') return this.cuentaLibre(r[0]);
                     this.open = false; this.$wire.set('form.' + campo, r[0]); this.q = this.etiqueta(r[0]); this.$refs.q.classList.remove('falta'); },
+                // Cuenta de proveedor elegida a mano (no está en SAGE): si algo no encaja se avisa y se pregunta, pero decide el usuario
+                async cuentaLibre(cta) {
+                    this.open = false;
+                    const av = await this.$wire.avisoCuentaProveedor(cta);
+                    if (av && !confirm('¿Estás seguro? ' + av + '\n\n¿Usar la cuenta ' + cta + ' para este proveedor igualmente?')) { this.mostrar(); return; }
+                    await this.$wire.set('form.' + campo, cta);
+                    this.q = this.etiqueta(cta);
+                    this.$refs.q.classList.remove('falta');
+                },
                 // Cuenta de contrapartida que no existe: se pregunta si crearla y su nombre; queda guardada para este cliente
                 async crearCuenta(cta) {
                     this.open = false;
@@ -247,6 +271,7 @@
                     if (this.open && r) return this.elegir(r);
                     const v = this.q.trim().split(/[\s·]/)[0];
                     if (campo === 'contrapartida' && /^\d{3,}$/.test(v) && !this.lista.some((x) => x[0] === v)) return this.crearCuenta(v);
+                    if (campo === 'cuenta' && /^\d{3,}$/.test(v) && !this.lista.some((x) => x[0] === v)) return this.cuentaLibre(v);
                     if (/^\d{3,}$/.test(v)) { this.open = false; this.$wire.set('form.' + campo, v); this.$refs.q.classList.remove('falta'); }
                 },
             };

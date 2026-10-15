@@ -1726,6 +1726,36 @@ class FacturasOcr extends Component
     }
 
     /**
+     * Cuenta de proveedor tecleada a mano que no está en el listado de SAGE (proveedor nuevo con el número que elige Alex, 15-oct-2026):
+     * texto del aviso si algo no encaja (otro número de cifras, ya dada a otro proveedor nuevo o en Bancos) o '' si está bien. No impide nada:
+     * la pantalla pregunta «¿Estás seguro?» y, si sí, la pone.
+     */
+    public function avisoCuentaProveedor(string $cuenta): string
+    {
+        $cuenta = trim($cuenta);
+        if (! preg_match('/^\d{3,12}$/', $cuenta)) {
+            return 'La cuenta tiene que ser solo números.';
+        }
+        $largos = array_count_values(array_map('strlen', array_map('strval', array_keys($this->proveedores()))));
+        arsort($largos);
+        $largo = (int) (array_key_first($largos) ?? 0);
+        $avisos = [];
+        if ($largo && strlen($cuenta) !== $largo) {
+            $avisos[] = "Las cuentas de proveedor de este cliente tienen {$largo} cifras y {$cuenta} tiene ".strlen($cuenta).'.';
+        }
+        if (! str_starts_with($cuenta, '4')) {
+            $avisos[] = "{$cuenta} no empieza por 4 (las de proveedor son 400/410…).";
+        }
+        $pat = $this->patrones()[$cuenta] ?? [];
+        if (! empty($pat['nuevo'])) {
+            $avisos[] = "La cuenta {$cuenta} ya se dio aquí a otro proveedor nuevo: ".($pat['proveedor'] ?? '').' ('.($pat['cif'] ?? '').').';
+        } elseif ($b = $this->cuentasBancos()[$cuenta] ?? null) {
+            $avisos[] = "La cuenta {$cuenta} está dada en Bancos a ".($b['nombre'] ?? '').'.';
+        }
+        return implode(' ', $avisos);
+    }
+
+    /**
      * Proveedor nuevo: la siguiente cuenta 410xxx libre (la más alta + 1) contando el listado de SAGE,
      * los nuevos ya validados aquí y los propuestos en otras facturas pendientes (misma regla que
      * cuenta_nueva() de facturas_ocr.py). Si ese CIF ya tiene cuenta nueva, la misma.
