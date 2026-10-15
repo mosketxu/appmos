@@ -84,15 +84,29 @@ class ComunicarImpuestos
      */
     public static function contacto(object $ent, array $para): string
     {
+        $norm = fn ($t) => mb_strtolower(\Illuminate\Support\Str::ascii(trim((string) $t)));
+        // los de Suma (usuarios de Appmos) no son contacto del cliente aunque estén en su ficha
+        $deSuma = \Illuminate\Support\Facades\DB::table('users')->pluck('name')->map($norm)->filter(fn ($n) => str_contains($n, ' '))->all();
         $cs = \Illuminate\Support\Facades\DB::table('contacto_entidades as ce')->join('entidades as c', 'c.id', '=', 'ce.contacto_id')
-            ->where('ce.entidad_id', $ent->id)->whereNull('c.deleted_at')->get(['c.entidad', 'c.emailgral', 'c.emailadm', 'ce.departamento']);
+            ->where('ce.entidad_id', $ent->id)->whereNull('c.deleted_at')->get(['c.entidad', 'c.nif', 'c.emailgral', 'c.emailadm', 'ce.departamento'])
+            // solo personas: fuera sociedades (CIF o S.L., S.A., banco…)
+            ->reject(fn ($c) => preg_match('/^[A-HJNPQRSUVW]\d/i', (string) $c->nif)
+                || preg_match('/\b(S\.?\s?L\.?\s?U?\.?|S\.?\s?A\.?\s?U?\.?|A\.S\.|z\.?o\.?o\.?|banco|bank|caixa)$|\bbanco\b|\bbank\b/iu', trim((string) $c->entidad)))
+            ->reject(fn ($c) => collect($deSuma)->contains(fn ($n) => str_starts_with($norm($c->entidad), $n))
+                || collect(self::direcciones($c->emailgral.' '.$c->emailadm))->contains(fn ($d) => str_ends_with(mb_strtolower($d), '@sumaempresa.com')))
+            ->values();
         $para = array_map('mb_strtolower', $para);
-        $c = $cs->first(fn ($c) => array_intersect($para, array_map('mb_strtolower', self::direcciones($c->emailgral.' '.$c->emailadm))))
-            ?? $cs->first(fn ($c) => mb_strtolower((string) $c->departamento) === 'contabilidad')
-            ?? ($cs->count() === 1 ? $cs->first() : null);
+        $mails = fn ($c) => array_map('mb_strtolower', self::direcciones($c->emailgral.' '.$c->emailadm));
+        $c = $cs->first(fn ($c) => array_intersect($para, $mails($c)))
+            ?? $cs->first(fn ($c) => $norm($c->departamento) === 'contabilidad')
+            // el único contacto, salvo que el correo vaya a otra dirección que no es la suya
+            ?? ($cs->count() === 1 && (! $para || ! $mails($cs->first())) ? $cs->first() : null);
         $nombre = $c->entidad ?? (! $cs->count() && preg_match('/^[0-9XYZKLM]/i', (string) $ent->nif) ? $ent->entidad : '');
+        if (str_contains($nombre, ',')) {   // «APELLIDO, Nombre»
+            $nombre = trim(explode(',', $nombre, 2)[1]);
+        }
         $pila = preg_split('/\s+/', trim((string) $nombre))[0] ?? '';
-        return $pila !== '' ? mb_convert_case($pila, MB_CASE_TITLE) : '';
+        return $pila !== '' && mb_strtoupper($pila) === $pila ? mb_convert_case($pila, MB_CASE_TITLE) : $pila;
     }
 
     /** Pone el contacto en el saludo; sin contacto: «Hola:» / «Dear all,». */
