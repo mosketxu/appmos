@@ -622,9 +622,13 @@ class FacturasOcr extends Component
             }
             $this->cifAviso = (string) ($a['mensaje'] ?? '');
         }
-        // Al cambiar la base o el % de IVA de una línea, su cuota se calcula sola (ya no hace falta el botón «=»)
+        // Al cambiar la base de una línea, su cuota se calcula sola. Al poner el % de IVA de una línea, con el total puesto, su base y su cuota
+        // salen de lo que falta del total tras las líneas de arriba (15-oct-2026, Alex: una línea → con el % basta; varias → corrige la base
+        // de la 1.ª, pone el % de la 2.ª y sale el resto; igual con la 3.ª). Sin total, solo la cuota.
         if (preg_match('/^lineas\.([0-2])\.(base|pct)$/', (string) $clave, $m)) {
-            $this->cuota((int) $m[1]);
+            if ($m[2] !== 'pct' || ! $this->repartoDesdeTotal((int) $m[1])) {
+                $this->cuota((int) $m[1]);
+            }
         }
         // Al cambiar el total (p. ej. facturas en dólares, donde hay que teclearlo en euros) se recalculan la base y la cuota
         // de la única línea con % de IVA (0 % incluido); con varias líneas no se adivina el reparto.
@@ -800,6 +804,33 @@ class FacturasOcr extends Component
         } catch (\Throwable $e) {
             return [];
         }
+    }
+
+    /** Base y cuota de la línea $i = lo que falta del total (+ retención) tras las líneas de arriba, con su % de IVA. false si no se puede. */
+    protected function repartoDesdeTotal(int $i): bool
+    {
+        $total = $this->num($this->form['total'] ?? '');
+        $pct = $this->num($this->form['lineas'][$i]['pct'] ?? '');
+        if ($total === null || $pct === null) {
+            return false;
+        }
+        $isp = $this->esIsp();   // ISP: la cuota no suma al total
+        $resto = $total + ($this->num($this->form['cuota_retencion'] ?? '') ?? 0.0);
+        for ($j = 0; $j < $i; $j++) {
+            $b = $this->num($this->form['lineas'][$j]['base'] ?? '');
+            if ($b !== null) {
+                $resto -= $b + ($isp ? 0.0 : ($this->num($this->form['lineas'][$j]['cuota'] ?? '') ?? 0.0));
+            }
+        }
+        $resto = round($resto, 2);
+        if ($i > 0 && abs($resto) < 0.005) {
+            return false;   // las de arriba ya suman el total: no hay nada que repartir
+        }
+        $base = round($isp ? $resto : $resto / (1 + $pct / 100), 2);
+        $cuota = $isp ? round($base * $pct / 100, 2) : round($resto - $base, 2);
+        $this->form['lineas'][$i]['base'] = number_format($base, 2, '.', '');
+        $this->form['lineas'][$i]['cuota'] = number_format($cuota, 2, '.', '');
+        return true;
     }
 
     protected function recalcularDesdeTotal(): void
