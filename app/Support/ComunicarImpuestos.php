@@ -61,6 +61,47 @@ class ComunicarImpuestos
         return is_numeric($s) ? round((float) $s, 2) : null;
     }
 
+    /** Copia fija de los correos de impuestos (decisión de Alex, 15-oct-2026). */
+    public const CC_DEFECTO = 'marta.ruiz@sumaempresa.com';
+
+    /**
+     * Para y CC por defecto de un cliente: Para = Email Adm de la ficha (si no hay, Email Gral) sin las direcciones de Suma;
+     * CC = marta.ruiz@ y las de Suma que hubiera en la ficha. Devuelve [para, cc] como texto «a; b».
+     */
+    public static function destinatariosDefecto(object $ent): array
+    {
+        $dirs = self::direcciones((string) ($ent->emailadm ?? '')) ?: self::direcciones((string) ($ent->emailgral ?? ''));
+        $suma = fn ($d) => str_ends_with(mb_strtolower($d), '@sumaempresa.com');
+        $para = array_values(array_unique(array_filter($dirs, fn ($d) => ! $suma($d))));
+        $cc = array_values(array_unique(array_merge([self::CC_DEFECTO], array_filter($dirs, $suma))));
+        return [implode('; ', $para), implode('; ', $cc)];
+    }
+
+    /**
+     * Nombre de pila del contacto del cliente para el saludo: el contacto de la ficha (Contactos) cuyo correo está en $para; si no,
+     * el de departamento Contabilidad; si no, el único que tenga. Si no hay contactos y es persona física (NIF de persona), su
+     * propio nombre. '' si no se sabe (el saludo queda «Hola:» / «Dear all,»).
+     */
+    public static function contacto(object $ent, array $para): string
+    {
+        $cs = \Illuminate\Support\Facades\DB::table('contacto_entidades as ce')->join('entidades as c', 'c.id', '=', 'ce.contacto_id')
+            ->where('ce.entidad_id', $ent->id)->whereNull('c.deleted_at')->get(['c.entidad', 'c.emailgral', 'c.emailadm', 'ce.departamento']);
+        $para = array_map('mb_strtolower', $para);
+        $c = $cs->first(fn ($c) => array_intersect($para, array_map('mb_strtolower', self::direcciones($c->emailgral.' '.$c->emailadm))))
+            ?? $cs->first(fn ($c) => mb_strtolower((string) $c->departamento) === 'contabilidad')
+            ?? ($cs->count() === 1 ? $cs->first() : null);
+        $nombre = $c->entidad ?? (! $cs->count() && preg_match('/^[0-9XYZKLM]/i', (string) $ent->nif) ? $ent->entidad : '');
+        $pila = preg_split('/\s+/', trim((string) $nombre))[0] ?? '';
+        return $pila !== '' ? mb_convert_case($pila, MB_CASE_TITLE) : '';
+    }
+
+    /** Pone el contacto en el saludo; sin contacto: «Hola:» / «Dear all,». */
+    public static function saludo(string $texto, string $contacto, string $idioma): string
+    {
+        $t = str_replace('{contacto}', $contacto !== '' ? $contacto : ($idioma === 'EN' ? 'all' : ''), $texto);
+        return preg_replace('/\b(Hola|Hello|Hi) +([:,])/u', '$1$2', $t);
+    }
+
     /** «a@b.com; c@d.com» → [a@b.com, c@d.com]. */
     public static function direcciones(string $raw): array
     {

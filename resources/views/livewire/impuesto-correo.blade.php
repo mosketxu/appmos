@@ -40,6 +40,7 @@
                             </table>
                             <div class="mt-1 text-xs text-gray-500">Día de cargo: fin de plazo según el calendario de la AEAT (domiciliado). Si cae en festivo autonómico o local, cámbialo a mano.</div>
                             <div class="grid gap-1 mt-3" style="grid-template-columns:70px 1fr">
+                                <span class="text-gray-600" title="Nombre del saludo ({contacto}): sale de los contactos de la ficha del cliente">Contacto</span><input type="text" wire:model.live.debounce.500ms="ciContacto" class="py-0.5 text-sm border-gray-300 rounded" placeholder="vacío = «Hola:» / «Dear all,»">
                                 <span class="text-gray-600">Para</span><input type="text" wire:model.live.debounce.500ms="ciPara" class="py-0.5 text-sm border-gray-300 rounded">
                                 <span class="text-gray-600">CC</span><input type="text" wire:model.live.debounce.500ms="ciCc" class="py-0.5 text-sm border-gray-300 rounded">
                                 <span class="text-gray-600">Asunto</span><input type="text" wire:model.live.debounce.500ms="ciAsunto" class="py-0.5 text-sm border-gray-300 rounded">
@@ -65,7 +66,7 @@
                                     <div class="mt-1 text-xs text-gray-400">Sin adjuntos: no hay Excel en las casillas de este periodo. Puedes subir los que quieras.</div>
                                 @endforelse
                             </div>
-                            <div class="mt-2 text-xs text-gray-500">Texto · <code>{tabla}</code> = la tabla, <code>{periodo}</code>, <code>{mes}</code>, <code>{nombre}</code> = tu nombre, <code>{logo}</code> = logo de Suma. Lo que uses con este cliente queda para la próxima vez.</div>
+                            <div class="mt-2 text-xs text-gray-500">Texto · <code>{tabla}</code> = la tabla, <code>{periodo}</code>, <code>{mes}</code>, <code>{contacto}</code> = el contacto del cliente, <code>{nombre}</code> = tu nombre, <code>{logo}</code> = logo de Suma. Lo que uses con este cliente queda para la próxima vez.</div>
                             <textarea wire:model.live.debounce.600ms="ciTexto" rows="12" class="w-full text-sm border-gray-300 rounded"></textarea>
                             <div class="flex flex-wrap items-center gap-2 mt-2">
                                 <button type="button" wire:click="ciBorrador" wire:loading.attr="disabled" wire:target="ciBorrador,ciPrueba,ciArmar,ciEnviar" class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">✉ Crear borrador en Outlook</button>

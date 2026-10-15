@@ -36,6 +36,8 @@ class ImpuestoCorreo extends Component
     public string $ciAsunto = '';
     public string $ciTexto = '';
     public string $ciBanco = '';
+    /** Nombre para el saludo ({contacto}); sale de los contactos de la ficha, se puede cambiar. */
+    public string $ciContacto = '';
     public string $ciMsg = '';
     public bool $ciOk = false;
     /** Primer paso del envío real; guarda la huella de lo que se va a mandar (si cambia algo, hay que volver a pedirlo). */
@@ -153,8 +155,10 @@ class ImpuestoCorreo extends Component
         $base = $guardado ?? DB::table('impuesto_comunicaciones')->where('entidad_id', $this->ciEnt)->orderByDesc('updated_at')->first();
         $this->ciIdioma = CI::idioma($base->idioma ?? $ent->idioma ?? 'ES');
         $pl = DB::table('plantillas_mail')->where('proceso', 'comunicar_impuestos')->where('idioma', $this->ciIdioma)->first();
-        $this->ciPara = (string) ($base->para ?? implode(', ', \App\Http\Livewire\Contabilidad\ProcesosMensuales::destinatarios($ent->emailadm ?? '')));
-        $this->ciCc = (string) ($base->cc ?? '');
+        [$paraDef, $ccDef] = CI::destinatariosDefecto($ent);
+        $this->ciPara = (string) ($base->para ?? $paraDef);
+        $this->ciCc = (string) ($base->cc ?? $ccDef);
+        $this->ciContacto = CI::contacto($ent, CI::direcciones($this->ciPara));
         $this->ciAsunto = (string) (($base->asunto ?? '') ?: ($pl->asunto ?? ''));
         $this->ciTexto = (string) (($base->texto ?? '') ?: ($pl->texto ?? ''));
         $this->ciBanco = (string) ($base->banco ?? '');
@@ -277,7 +281,7 @@ class ImpuestoCorreo extends Component
         }
         $titulo = ctype_digit($perPpal) ? (CI::MESES[$this->ciIdioma][(int) $perPpal - 1].' '.$anio) : $periodo;
         $rep = ['{periodo}' => $periodo, '{mes}' => $mes, '{nombre}' => auth()->user()->name ?? ''];
-        $texto = strtr($this->ciTexto, $rep);
+        $texto = CI::saludo(strtr($this->ciTexto, $rep), trim($this->ciContacto), $this->ciIdioma);
 
         return [strtr($this->ciAsunto, $rep), CI::html($texto, CI::tabla($filas, $titulo, $this->ciIdioma, trim($this->ciBanco))), count($filas)];
     }
