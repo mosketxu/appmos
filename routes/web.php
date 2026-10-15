@@ -64,6 +64,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     Route::get('/impuestos/libro-iva', function () {return view('impuestos.libro-iva');})->name('impuestos.libro-iva')->middleware('can:impuestos.ver');
     // Intrastat (10-oct-2026): CSV de partidas para la Sede de la AEAT, por cliente (cada uno con su formato de ficheros)
     Route::get('/impuestos/intrastat', function () {return view('impuestos.intrastat');})->name('impuestos.intrastat')->middleware('can:impuestos.ver');
+    Route::get('/impuestos/m111', function () {return view('impuestos.m111');})->name('impuestos.m111')->middleware('can:impuestos.ver');
     Route::get('/impuestos/intrastat/descargar/{cliente}/{periodo}/{nombre}', function (string $cliente, string $periodo, string $nombre) {
         abort_unless(preg_match('/^[a-z0-9_]+$/', $cliente) && preg_match('/^\d{4}-\d{2}$/', $periodo), 404);
         $ruta = rtrim(config('contabilidad.intrastat_datos') ?: storage_path('app/intrastat'), '/').'/'.$cliente.'/'.$periodo.'/salida/'.basename($nombre);

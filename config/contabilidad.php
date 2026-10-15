@@ -141,6 +141,10 @@ return [
         ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/Intrastat")
         ->first(fn ($d) => is_dir($d)) ?? '/var/www/intrastat'),
     'intrastat_datos' => env('INTRASTAT_DATOS'),
+    // Modelo 111 (15-oct-2026): motor prepara111.py en el servidor (M111_DIR=/var/www/m111); en un PC, la carpeta del repo.
+    'm111_dir' => env('M111_DIR') ?: (collect(['e', 'f', 'd'])
+        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/M111/motor")
+        ->first(fn ($d) => is_dir($d)) ?? '/var/www/m111'),
     'leoybra_entidad' => (int) env('LEOYBRA_ENTIDAD', 2484),   // entidad «GRUPO LEOYBRA, S.L.»: sus ficheros base centrales (FicherosBase)
 
     'neteges_entidad' => (int) env('NETEGES_ENTIDAD', 2552),   // entidad «Neteges Sicilia SL»: sus ficheros base centrales (FicherosBase)
