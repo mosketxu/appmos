@@ -328,8 +328,8 @@ class ImpuestoCorreo extends Component
         $this->ciOk = false;
         $l = $this->ciListo();
         if (! $l || $this->ciArmado === '' || $this->ciArmado !== md5(serialize($l))) {
+            $this->ciMsg = ! $l ? $this->ciMsg : ($this->ciArmado === '' ? 'Pulsa primero «Enviar al cliente…».' : 'Ha cambiado algo desde que pulsaste «Enviar al cliente…»: vuelve a pulsarlo.');
             $this->ciArmado = '';
-            $this->ciMsg = $l ? 'Ha cambiado algo desde que pulsaste «Enviar al cliente…»: vuelve a pulsarlo.' : $this->ciMsg;
             return;
         }
         $this->ciArmado = '';
