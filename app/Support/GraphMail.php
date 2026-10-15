@@ -220,4 +220,32 @@ class GraphMail
 
         return (string) $m['id'];
     }
+
+    /** Envía desde $de un correo con cuerpo HTML ya montado (logo de Suma si lleva cid:logo_suma). Comunicar impuestos al cliente, 15-oct-2026. */
+    public static function enviarHtml(string $de, array $para, array $cc, string $asunto, string $html): void
+    {
+        if (! self::configurado()) {
+            throw new RuntimeException('Faltan las credenciales de Microsoft Graph en el .env de este servidor.');
+        }
+        if ($redirigir = config('contabilidad.graph.redirect')) {
+            $html = '<p>[PRUEBA: iba para '.e(implode(', ', $para)).($cc ? ' / CC '.e(implode(', ', $cc)) : '').']</p>'.$html;
+            [$para, $cc] = [[$redirigir], []];
+        }
+        $dir = fn ($l) => array_map(fn ($a) => ['emailAddress' => ['address' => $a]], array_values($l));
+        $adj = str_contains($html, 'cid:logo_suma') ? [[
+            '@odata.type' => '#microsoft.graph.fileAttachment', 'name' => 'logo_suma.gif', 'contentType' => 'image/gif',
+            'contentBytes' => base64_encode(file_get_contents(resource_path('mail/logo_suma.gif'))), 'isInline' => true, 'contentId' => 'logo_suma',
+        ]] : [];
+        $r = Http::withToken(self::token())->timeout(60)->post('https://graph.microsoft.com/v1.0/users/'.rawurlencode($de).'/sendMail', [
+            'message' => ['subject' => $asunto, 'body' => ['contentType' => 'HTML', 'content' => $html],
+                'toRecipients' => $dir($para), 'ccRecipients' => $dir($cc), 'attachments' => $adj],
+            'saveToSentItems' => true,
+        ]);
+        if ($r->status() === 403) {
+            throw GraphSinPermiso::para($de, 'enviar un correo');
+        }
+        if (! in_array($r->status(), [200, 202], true)) {
+            throw new RuntimeException('Microsoft no ha aceptado el correo (HTTP '.$r->status().'): '.mb_substr($r->body(), 0, 200));
+        }
+    }
 }

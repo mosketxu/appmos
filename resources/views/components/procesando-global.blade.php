@@ -12,16 +12,24 @@
         <style>@keyframes procesando-giro{to{transform:rotate(360deg)}}</style>
     </div>
 </div>
+{{-- Versión discreta (15-oct-2026): si en pantalla hay una ventana marcada con data-pensando-discreto (p. ej. el correo al cliente de Impuestos,
+     que repinta la vista previa a menudo), en vez de oscurecer todo sale solo un circulito en la esquina inferior derecha. --}}
+<div id="procesando-mini" style="display:none;position:fixed;right:14px;bottom:14px;z-index:9998;align-items:center;gap:6px;padding:4px 10px;background:#fff;border:1px solid #c7d2fe;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:11px;color:#4f46e5;pointer-events:none">
+    <svg style="width:14px;height:14px;animation:procesando-giro 1s linear infinite" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity=".25"/><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+    Actualizando…
+</div>
 <script>
     document.addEventListener('livewire:init', () => {
         const caja = document.getElementById('procesando-global');
         if (! caja || ! window.Livewire) return;
         const SILENCIOSAS = ['$refresh', '$set', '$commit', '$dispatch'];
         let activas = 0, temporizador = null;
+        const mini = document.getElementById('procesando-mini');
+        const discreto = () => [...document.querySelectorAll('[data-pensando-discreto]')].some(e => e.offsetParent !== null || getComputedStyle(e).position === 'fixed');
         const propio = () => [...document.querySelectorAll('[data-procesando]')].some(e => getComputedStyle(e).display !== 'none');
         const terminar = () => {
             activas = Math.max(0, activas - 1);
-            if (activas === 0) { clearTimeout(temporizador); temporizador = null; caja.style.display = 'none'; }
+            if (activas === 0) { clearTimeout(temporizador); temporizador = null; caja.style.display = 'none'; mini.style.display = 'none'; }
         };
         Livewire.hook('commit', ({ commit, succeed, fail }) => {
             const llamadas = (commit && commit.calls) || [];
@@ -30,7 +38,7 @@
             if (! accion && ! cambios) return;
             activas++;
             if (! temporizador) {
-                temporizador = setTimeout(() => { if (activas > 0 && ! propio()) { document.getElementById('procesando-global-titulo').textContent = 'Pensando… procesando'; document.getElementById('procesando-global-nota').textContent = 'Puede tardar un momento. No cierres la página.'; caja.style.display = 'flex'; } }, 800);
+                temporizador = setTimeout(() => { if (activas > 0 && ! propio() && discreto()) { mini.style.display = 'flex'; } else if (activas > 0 && ! propio()) { document.getElementById('procesando-global-titulo').textContent = 'Pensando… procesando'; document.getElementById('procesando-global-nota').textContent = 'Puede tardar un momento. No cierres la página.'; caja.style.display = 'flex'; } }, 800);
             }
             succeed(terminar);
             fail(terminar);

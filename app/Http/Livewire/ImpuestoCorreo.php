@@ -1,20 +1,26 @@
 <?php
 
-namespace App\Http\Livewire\Concerns;
+namespace App\Http\Livewire;
 
 use App\Support\ComunicarImpuestos as CI;
 use App\Support\GraphMail;
 use App\Support\Impuestos as Imp;
 use App\Support\PlazosAeat;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 /**
- * Impuestos → Seguimiento: «Preparar correo al cliente» desde el sobre ✉ (15-oct-2026). Propone el correo con el resultado de los impuestos
- * del periodo y el día de cargo, en el idioma del cliente, y lo deja como BORRADOR en Outlook (buzón del usuario): no se envía nunca desde aquí.
- * Lo usado con cada cliente (destinatarios, texto, idioma…) queda en impuesto_comunicaciones y es la base de la próxima vez.
+ * Impuestos → Seguimiento: ventana «Preparar correo al cliente» del sobre ✉ (15-oct-2026). Componente aparte para que escribir aquí no
+ * vuelva a pintar la tabla entera de Impuestos. Propone el correo con el resultado de los impuestos del periodo y el día de cargo, en el
+ * idioma del cliente; lo deja como BORRADOR en Outlook (buzón del usuario) o, en dos pasos, lo ENVÍA. Lo usado con cada cliente
+ * (destinatarios, texto, idioma…) queda en impuesto_comunicaciones y es la base de la próxima vez. Al terminar avisa al padre
+ * (eventos ci-cerrar / ci-hecho).
  */
-trait ComunicaImpuestos
+class ImpuestoCorreo extends Component
 {
+
+    public int $ejercicio;
+    public bool $verTodos = false;
     public ?int $ciEnt = null;
     public string $ciBloque = '';
     public string $ciClave = '';
@@ -28,6 +34,8 @@ trait ComunicaImpuestos
     public string $ciBanco = '';
     public string $ciMsg = '';
     public bool $ciOk = false;
+    /** Primer paso del envío real; guarda la huella de lo que se va a mandar (si cambia algo, hay que volver a pedirlo). */
+    public string $ciArmado = '';
 
     /** Obligaciones con pago del cliente en ese bloque: [clave => [[ob, per]]] (clave = mes de cierre o 'A'). */
     protected function ciOpciones(int $entId, string $bloque): array
@@ -70,8 +78,10 @@ trait ComunicaImpuestos
         return $this->ciEnt ? array_map(fn ($l) => array_column($l, 1), $this->ciOpciones($this->ciEnt, $this->ciBloque)) : [];
     }
 
-    public function ciAbrir(int $entId, string $bloque): void
+    public function mount(int $entId, string $bloque, int $ejercicio, bool $verTodos = false): void
     {
+        $this->ejercicio = $ejercicio;
+        $this->verTodos = $verTodos;
         $this->autorizarAviso($entId);
         $ops = $this->ciOpciones($entId, $bloque);
         $this->ciEnt = $entId;
@@ -90,6 +100,12 @@ trait ComunicaImpuestos
         $pasados = array_filter($claves, fn ($c) => $c === 'A' || (int) $c < $hoy);
         $this->ciClave = (string) (end($pasados) ?: end($claves));
         $this->ciCargar();
+    }
+
+    /** Cualquier cambio en la ventana desarma el envío real. */
+    public function updated(): void
+    {
+        $this->ciArmado = '';
     }
 
     public function updatedCiClave(): void
@@ -136,7 +152,9 @@ trait ComunicaImpuestos
                 'fecha' => (string) (($prev['fecha'] ?? '') ?: (PlazosAeat::finPeriodo($ob->codigo, $anio, $per)?->format('d/m/Y') ?? '')),
             ];
         }
-        $this->ciMsg = $guardado?->borrador_at ? 'Ya se preparó un borrador el '.\Illuminate\Support\Carbon::parse($guardado->borrador_at)->format('d/m/Y H:i').'.' : '';
+        $this->ciMsg = trim(($guardado?->enviado_at ? 'Ya se ENVIÓ el '.\Illuminate\Support\Carbon::parse($guardado->enviado_at)->format('d/m/Y H:i').'. ' : '')
+            .($guardado?->borrador_at ? 'Borrador preparado el '.\Illuminate\Support\Carbon::parse($guardado->borrador_at)->format('d/m/Y H:i').'.' : ''));
+        $this->ciArmado = '';
         $this->ciOk = false;
         // 303 vacío: se busca en sus documentos (PDF o libro de IVA)
         foreach ($this->ciFilas as $i => $f) {
@@ -192,19 +210,20 @@ trait ComunicaImpuestos
         return '<div style="font-size:12px;color:#6b7280;margin-bottom:6px"><b>Asunto:</b> '.e($asunto).'</div>'.str_replace('cid:logo_suma', asset('img/logo_suma.gif'), $html);
     }
 
-    protected function ciGuardar(bool $borrador): void
+    protected function ciGuardar(bool $borrador, bool $enviado = false): void
     {
         DB::table('impuesto_comunicaciones')->updateOrInsert(
             ['entidad_id' => $this->ciEnt, 'ejercicio' => $this->ejercicio, 'clave' => $this->ciClave],
             ['filas' => json_encode(array_map(fn ($f) => array_intersect_key($f, array_flip(['id', 'cod', 'per', 'imp', 'fecha'])), $this->ciFilas)),
                 'para' => mb_substr($this->ciPara, 0, 500), 'cc' => mb_substr($this->ciCc, 0, 500), 'idioma' => $this->ciIdioma, 'asunto' => mb_substr($this->ciAsunto, 0, 255),
                 'texto' => $this->ciTexto, 'banco' => mb_substr($this->ciBanco, 0, 60), 'user_id' => auth()->id(), 'updated_at' => now(), 'created_at' => now()]
-            + ($borrador ? ['borrador_at' => now()] : []));
+            + ($borrador ? ['borrador_at' => now()] : []) + ($enviado ? ['enviado_at' => now()] : []));
     }
 
     public function ciGuardarSinBorrador(): void
     {
         $this->autorizarAviso((int) $this->ciEnt);
+        $this->ciArmado = '';
         $this->ciGuardar(false);
         $this->ciMsg = 'Guardado (sin crear borrador).';
     }
@@ -213,22 +232,12 @@ trait ComunicaImpuestos
     public function ciBorrador(): void
     {
         $this->autorizarAviso((int) $this->ciEnt);
+        $this->ciArmado = '';
         $this->ciOk = false;
-        $para = CI::direcciones($this->ciPara);
-        $cc = CI::direcciones($this->ciCc);
-        [$asunto, $html, $n] = $this->ciMontar();
-        if (! $n) {
-            $this->ciMsg = 'Pon al menos un importe: las filas sin importe no salen en el correo.';
+        if (! $l = $this->ciListo()) {
             return;
         }
-        if (! $para) {
-            $this->ciMsg = 'Falta el destinatario (Para).';
-            return;
-        }
-        if ($malas = array_filter(array_merge($para, $cc), fn ($a) => ! filter_var($a, FILTER_VALIDATE_EMAIL))) {
-            $this->ciMsg = 'Dirección no válida: '.implode(', ', $malas);
-            return;
-        }
+        [$para, $cc, $asunto, $html, $n] = $l;
         try {
             GraphMail::crearBorradorHtml((string) auth()->user()->email, $para, $cc, $asunto, $html);
         } catch (\Throwable $e) {
@@ -236,18 +245,117 @@ trait ComunicaImpuestos
             return;
         }
         $this->ciGuardar(true);
-        DB::table('impuesto_aviso_comentarios')->insert(['entidad_id' => $this->ciEnt, 'ejercicio' => $this->ejercicio, 'bloque' => $this->ciBloque,
-            'texto' => '📝 Borrador «'.$asunto.'» preparado en Outlook ('.$n.' impuesto'.($n > 1 ? 's' : '').'), pendiente de enviar.', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+        $this->ciComentario('📝 Borrador «'.$asunto.'» preparado en Outlook ('.$n.' impuesto'.($n > 1 ? 's' : '').'), pendiente de enviar.');
         $this->ciOk = true;
         $this->ciMsg = 'Borrador listo en Outlook (carpeta Borradores de '.auth()->user()->email.'). Revísalo y envíalo desde allí; luego marca el sobre como «Comunicado».';
         $this->dispatch('notify', '✉ Borrador listo en Outlook');
+        $this->dispatch('ci-hecho');
     }
 
-    public function ciCerrar(): void
+    protected function autorizarAviso(int $entidadId): void
     {
-        $this->ciEnt = null;
-        $this->ciFilas = [];
-        $this->ciMsg = '';
+        abort_unless(auth()->user()?->can('impuestos.ver'), 403);
+        $ver = DB::table('entidad_impuestos')->where('entidad_id', $entidadId)->pluck('id')->first(fn ($id) => Imp::puedeVer($id, $this->verTodos));
+        abort_unless($ver, 403);
+    }
+
+    protected function ciComentario(string $texto): void
+    {
+        DB::table('impuesto_aviso_comentarios')->insert(['entidad_id' => $this->ciEnt, 'ejercicio' => $this->ejercicio, 'bloque' => $this->ciBloque,
+            'texto' => $texto, 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    /** Comprueba lo que hay en pantalla; devuelve [para, cc, asunto, html, n] o null (con el motivo en ciMsg). */
+    protected function ciListo(): ?array
+    {
+        $para = CI::direcciones($this->ciPara);
+        $cc = CI::direcciones($this->ciCc);
+        [$asunto, $html, $n] = $this->ciMontar();
+        if (! $n) {
+            $this->ciMsg = 'Pon al menos un importe: las filas sin importe no salen en el correo.';
+            return null;
+        }
+        if (! $para) {
+            $this->ciMsg = 'Falta el destinatario (Para).';
+            return null;
+        }
+        if ($malas = array_filter(array_merge($para, $cc), fn ($a) => ! filter_var($a, FILTER_VALIDATE_EMAIL))) {
+            $this->ciMsg = 'Dirección no válida: '.implode(', ', $malas);
+            return null;
+        }
+        return [$para, $cc, $asunto, $html, $n];
+    }
+
+    /** Prueba: el mismo correo solo a quien lo prepara, con [PRUEBA] en el asunto. No cambia nada. */
+    public function ciPrueba(): void
+    {
+        $this->autorizarAviso((int) $this->ciEnt);
+        $this->ciArmado = '';
         $this->ciOk = false;
+        if (! $l = $this->ciListo()) {
+            return;
+        }
+        [$para, $cc, $asunto, $html] = $l;
+        $yo = (string) auth()->user()->email;
+        try {
+            GraphMail::enviarHtml($yo, [$yo], [], '[PRUEBA] '.$asunto, '<p style="font-family:Calibri,Arial;font-size:9pt;color:#6b7280">Prueba. Iría a: '.e(implode(', ', $para)).($cc ? ' · CC: '.e(implode(', ', $cc)) : '').'</p>'.$html);
+        } catch (\Throwable $e) {
+            $this->ciMsg = 'No se ha podido enviar la prueba: '.$e->getMessage();
+            return;
+        }
+        $this->ciOk = true;
+        $this->ciMsg = 'Prueba enviada a '.$yo.'.';
+        $this->dispatch('notify', '✉ Prueba enviada a '.$yo);
+    }
+
+    /** Envío REAL, paso 1: solo «arma» (guarda la huella de lo que se enviará). */
+    public function ciArmar(): void
+    {
+        $this->autorizarAviso((int) $this->ciEnt);
+        $this->ciOk = false;
+        if (! $l = $this->ciListo()) {
+            $this->ciArmado = '';
+            return;
+        }
+        $this->ciArmado = md5(serialize($l));
+        $this->ciMsg = '';
+    }
+
+    /** Envío REAL, paso 2: envía solo si se armó antes y no ha cambiado nada desde entonces. */
+    public function ciEnviar(): void
+    {
+        $this->autorizarAviso((int) $this->ciEnt);
+        $this->ciOk = false;
+        $l = $this->ciListo();
+        if (! $l || $this->ciArmado === '' || $this->ciArmado !== md5(serialize($l))) {
+            $this->ciArmado = '';
+            $this->ciMsg = $l ? 'Ha cambiado algo desde que pulsaste «Enviar al cliente…»: vuelve a pulsarlo.' : $this->ciMsg;
+            return;
+        }
+        $this->ciArmado = '';
+        [$para, $cc, $asunto, $html, $n] = $l;
+        $yo = (string) auth()->user()->email;
+        try {
+            GraphMail::enviarHtml($yo, $para, $cc, $asunto, $html);
+        } catch (\Throwable $e) {
+            $this->ciMsg = 'No se ha podido enviar: '.$e->getMessage();
+            return;
+        }
+        $this->ciGuardar(false, true);
+        // El sobre pasa a «Comunicado» (con la fecha de hoy si aún no la tenía)
+        $clave = ['entidad_id' => $this->ciEnt, 'ejercicio' => $this->ejercicio, 'bloque' => $this->ciBloque];
+        $fila = DB::table('impuesto_avisos')->where($clave)->first();
+        $datos = ['estado' => 'comunicado', 'avisado_at' => $fila->avisado_at ?? now(), 'user_id' => auth()->id(), 'updated_at' => now()];
+        $fila ? DB::table('impuesto_avisos')->where('id', $fila->id)->update($datos) : DB::table('impuesto_avisos')->insert($clave + $datos + ['created_at' => now()]);
+        $this->ciComentario('✉ Enviado «'.$asunto.'» a '.implode(', ', $para).($cc ? ' (CC '.implode(', ', $cc).')' : '').' · '.$n.' impuesto'.($n > 1 ? 's' : '').'.');
+        $this->ciOk = true;
+        $this->ciMsg = 'Correo ENVIADO a '.implode(', ', $para).'. El sobre queda como «Comunicado».';
+        $this->dispatch('notify', '✉ Correo enviado al cliente');
+        $this->dispatch('ci-hecho');
+    }
+
+    public function render()
+    {
+        return view('livewire.impuesto-correo', ['nombreEnt' => DB::table('entidades')->where('id', $this->ciEnt)->value('entidad')]);
     }
 }

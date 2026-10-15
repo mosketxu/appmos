@@ -23,7 +23,6 @@ use Livewire\WithFileUploads;
 class Impuestos extends Component
 {
     use WithFileUploads;
-    use \App\Http\Livewire\Concerns\ComunicaImpuestos;
 
     public int $ejercicio;
 
@@ -265,6 +264,29 @@ class Impuestos extends Component
             DB::table('impuesto_estados')->insert(['entidad_impuesto_id' => $obId, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo, 'estado' => $nuevo,
                 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
         }
+    }
+
+    /** Ventana «Preparar correo al cliente» (componente ImpuestoCorreo): cliente y bloque abiertos. */
+    public ?int $ciEnt = null;
+    public string $ciBloque = '';
+
+    public function ciAbrir(int $entId, string $bloque): void
+    {
+        $this->autorizarAviso($entId);
+        $this->ciEnt = $entId;
+        $this->ciBloque = $bloque;
+    }
+
+    #[On('ci-cerrar')]
+    public function ciCerrar(): void
+    {
+        $this->ciEnt = null;
+    }
+
+    /** El correo ha dejado borrador o se ha enviado: se vuelve a pintar (comentario 📝/✉ y estado del sobre). */
+    #[On('ci-hecho')]
+    public function ciHecho(): void
+    {
     }
 
     /** Panel de aviso que se mantiene abierto tras un comentario (clave «entidad|bloque»). */
