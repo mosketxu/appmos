@@ -351,6 +351,9 @@
                             @else
                                 <span class="text-xs text-gray-400">Nada nuevo para SAGE</span>
                             @endif
+                            @if ($ue = $this->ultimoEntregado())
+                                <a href="{{ $ue[2] }}" download="{{ $ue[0] }}" class="text-xs text-indigo-700 hover:underline" title="{{ $ue[0] }} · también en tu OneDrive: _ClaudeDesarrollo\FacturasOCR\{{ $cliente }}\Output\Entregados">⬇ Último Excel guardado ({{ $ue[1] }})</a>
+                            @endif
                             @if (count($marcadasValidadas))
                                 <button type="button" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.3rem .8rem; font-size:.85rem; border-color:#b45309; color:#92400e"
                                         x-data

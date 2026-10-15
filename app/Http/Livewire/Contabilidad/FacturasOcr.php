@@ -550,7 +550,8 @@ class FacturasOcr extends Component
             @mkdir($dir, 0775, true);
             if ($this->ejecutar(['guardar_excel', '--destino', $dir.'/'.$nombre], 60, 'Guardar el Excel', false)) {
                 $url = \Illuminate\Support\Facades\URL::temporarySignedRoute('contabilidad.facturas-ocr.excel', now()->addMinutes(10), ['cliente' => $this->cliente, 'archivo' => $nombre]);
-                $this->js('window.location.href = '.json_encode($url));
+                // descarga con un enlace «download» (con window.location.href el navegador a veces la cortaba: RUR 15-oct-2026, 154 bytes)
+                $this->js('(() => { const a = document.createElement("a"); a.href = '.json_encode($url).'; a.download = '.json_encode($nombre).'; document.body.appendChild(a); a.click(); a.remove(); })()');
                 $this->dispatch('proceso-terminado', mensaje: "✅ Excel listo: se descarga ahora.\n{$nombre}");
                 $this->enviarAlPc();   // y se deja también en el OneDrive del PC, con todo lo contabilizado
             }
@@ -569,6 +570,21 @@ class FacturasOcr extends Component
             $this->modificarEstado(fn (array $e) => array_merge($e, ['ultimo_guardado' => dirname($destino)]));
             $this->dispatch('proceso-terminado', mensaje: "✅ Excel guardado en\n{$win}\n".trim($this->salida));
         }
+    }
+
+    /** Último Excel para SAGE entregado (web): [nombre, fecha, url firmada] para volver a descargarlo, o null. */
+    public function ultimoEntregado(): ?array
+    {
+        if (! $this->web() || ! $this->clienteValido()) {
+            return null;
+        }
+        $fs = glob($this->dirDatos().'/Output/Entregados/PluginFacturas_Recibidas_*.xlsx') ?: [];
+        usort($fs, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+        if (! $fs) {
+            return null;
+        }
+        $n = basename($fs[0]);
+        return [$n, date('d/m/Y H:i', filemtime($fs[0])), \Illuminate\Support\Facades\URL::temporarySignedRoute('contabilidad.facturas-ocr.excel', now()->addHours(2), ['cliente' => $this->cliente, 'archivo' => $n])];
     }
 
     /** Fuera de la lista: una factura (pendiente, rechazada, no legible o duplicada) o, sin id, todas las descartadas. No se borra nada. */
