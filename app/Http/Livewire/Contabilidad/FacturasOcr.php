@@ -2266,7 +2266,8 @@ class FacturasOcr extends Component
         $cif = $limpio($this->form['cif'] ?? '');
         $pat = $this->patrones()[$cta] ?? [];
         $suyos = array_filter(array_map($limpio, array_merge($pat['nifs'] ?? [], [$pat['cif'] ?? ''])));
-        if (! empty($pat['nuevo']) && $suyos && ! in_array($cif, $suyos, true)) {
+        // el mismo proveedor con otro NIF (Anthropic «ANT» y luego su IE) no es choque: al validar se aprende el NIF nuevo (15-oct-2026)
+        if (! empty($pat['nuevo']) && $suyos && ! in_array($cif, $suyos, true) && ! self::mismoProveedor($pat['proveedor'] ?? '', $this->form['proveedor'] ?? '')) {
             return "La cuenta {$cta} ya se dio a otro proveedor nuevo: ".($pat['proveedor'] ?? '').' ('.($pat['cif'] ?? '').').';
         }
         $b = $this->cuentasBancos()[$cta] ?? [];
@@ -2274,6 +2275,18 @@ class FacturasOcr extends Component
             return "La cuenta {$cta} está dada en Bancos a otro proveedor: ".($b['nombre'] ?? '').' ('.$b['cif'].').';
         }
         return null;
+    }
+
+    /** Misma regla que mismo_proveedor() de facturas_ocr.py: primera palabra significativa igual (sin forma social ni país). */
+    public static function mismoProveedor(string $a, string $b): bool
+    {
+        $formas = ['sl', 'slu', 'sa', 'sau', 'sll', 'scp', 'cb', 'pbc', 'inc', 'llc', 'ltd', 'limited', 'gmbh', 'bv', 'srl', 'spa', 'sas',
+            'sarl', 'ag', 'plc', 'corp', 'co', 'company', 'ireland', 'europe', 'spain', 'espana', 'the'];
+        $pal = fn ($t) => array_values(array_filter(preg_split('/\s+/', trim(preg_replace('/[^a-z0-9 ]+/', ' ',
+            str_replace('.', '', mb_strtolower(\Illuminate\Support\Str::ascii($t)))))), fn ($w) => $w !== '' && ! in_array($w, $formas, true)));
+        $pa = $pal($a);
+        $pb = $pal($b);
+        return $pa && $pb && $pa[0] === $pb[0] && strlen($pa[0]) >= 4;
     }
 
     public function validar(bool $forzar = false, bool $confirmado = false, bool $forzarCuenta = false): void
