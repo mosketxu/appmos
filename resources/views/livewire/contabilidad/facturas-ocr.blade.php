@@ -216,7 +216,7 @@
                         ? [[num, '➕ cuenta nueva (no está en la lista): Intro para crearla', true]] : [];
                     // Proveedor: un número de cuenta que no está en la lista se ofrece el primero como «proveedor nuevo con esta cuenta»
                     // (Alex elige el número, 15-oct-2026); debajo, las existentes que coincidan
-                    if (campo === 'cuenta' && /^\d{5,}$/.test(num) && !this.lista.some((r) => r[0] === num) && q !== norm(this.etiqueta(this.valor()))) {
+                    if (campo === 'cuenta' && /^\d{5,}$/.test(num) && !this.lista.some((r) => r[0] === num)) {
                         const ps0 = q.split(/\s+/).filter(Boolean);
                         const f0 = this.lista.filter((r) => { const t = norm(r[0] + ' ' + r[1]); return ps0.every((p) => t.includes(p)); });
                         return [[num, '➕ proveedor nuevo con esta cuenta (Intro)', true], ...f0];

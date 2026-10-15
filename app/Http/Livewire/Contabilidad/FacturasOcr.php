@@ -630,6 +630,10 @@ class FacturasOcr extends Component
                 $this->cuota((int) $m[1]);
             }
         }
+        // Proveedor nuevo: se da de alta en cuanto tiene cuenta y nombre (y se actualiza al cambiar nombre o CIF), no al validar
+        if (in_array($clave, ['proveedor', 'cif'], true)) {
+            $this->altaProveedorNuevo();
+        }
         // Al cambiar el total (p. ej. facturas en dólares, donde hay que teclearlo en euros) se recalculan la base y la cuota
         // de la única línea con % de IVA (0 % incluido); con varias líneas no se adivina el reparto.
         if ($clave === 'total') {
@@ -1741,6 +1745,7 @@ class FacturasOcr extends Component
                 $this->form['cif'] = $b['cif'] ?? '';
                 $this->ponerCp($b['cp'] ?? '');
             }
+            $this->altaProveedorNuevo();
             return;
         }
         $this->form['proveedor'] = $p['razon'] ?? '';
@@ -1841,6 +1846,35 @@ class FacturasOcr extends Component
         }
         $nums = array_map('intval', array_filter($usadas, fn ($k) => preg_match('/^410\d{3}$/', $k)));
         $this->form['cuenta'] = (string) ($nums ? max($nums) + 1 : 410001);
+        $this->sucio = true;
+        $this->altaProveedorNuevo();
+    }
+
+    /**
+     * Da de alta (o actualiza) en patrones.json el proveedor nuevo de la factura abierta en cuanto tiene cuenta (que no está en SAGE) y
+     * nombre, para que no se pierda si se refresca la página y salga en el combo y en Proveedores (15-oct-2026, Alex). Python `alta`:
+     * mientras no tenga facturas validadas se le puede cambiar nombre y CIF.
+     */
+    protected function altaProveedorNuevo(): void
+    {
+        $cta = trim((string) ($this->form['cuenta'] ?? ''));
+        $nombre = trim((string) ($this->form['proveedor'] ?? ''));
+        $cif = trim((string) ($this->form['cif'] ?? ''));
+        if (! preg_match('/^\d{3,12}$/', $cta) || $nombre === '' || isset($this->proveedores()[$cta]) || ! $this->ejecutaAqui()) {
+            return;
+        }
+        $pat = $this->patrones()[$cta] ?? [];
+        if (! empty($pat['nuevo']) && ($pat['proveedor'] ?? '') === $nombre && ($cif === '' || ($pat['cif'] ?? '') === $cif)) {
+            return;   // ya está tal cual
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'focr-alta-');
+        file_put_contents($tmp, json_encode(['proveedor' => $nombre, 'cif' => $cif, 'cp' => (string) ($this->form['cp'] ?? '')], JSON_UNESCAPED_UNICODE));
+        $antes = $this->salida;
+        if ($this->ejecutar(['alta', $cta, '--datos', $tmp], 120, 'Alta de proveedor nuevo', false)) {
+            $this->salida = $antes;
+            $this->dispatch('focr-listas');   // el combo y Proveedores lo muestran ya
+        }
+        @unlink($tmp);
     }
 
     /** CP y, si es español, código y nombre de provincia (las dos primeras cifras). */
