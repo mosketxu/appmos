@@ -180,9 +180,10 @@ class ImpuestoCorreo extends Component
         $this->ciArmado = '';
         $this->ciOk = false;
         $this->ciProponerAdjuntos();
-        // 303 vacío: se busca en sus documentos (PDF o libro de IVA)
+        // Importes vacíos: se buscan en los documentos de su casilla (303: PDF o libro de IVA; 111/115/202…: PDF presentado o borrador, o
+        // el Excel de retenciones). 15-oct-2026: antes solo el 303.
         foreach ($this->ciFilas as $i => $f) {
-            if ($f['cod'] === '303' && $f['imp'] === '') {
+            if ($f['imp'] === '') {
                 $this->ciBuscar303($i, true);
             }
         }
@@ -251,16 +252,16 @@ class ImpuestoCorreo extends Component
     public function ciBuscar303(int $i, bool $callado = false): void
     {
         $f = $this->ciFilas[$i] ?? null;
-        if (! $f || $f['cod'] !== '303') {
+        if (! $f) {
             return;
         }
-        $r = CI::buscar303($this->ciEnt, $this->ejercicio, $f['per']);
+        $r = CI::buscarImporte($this->ciEnt, $this->ejercicio, $f['cod'], $f['per'], (string) ($f['etq'] ?? ''));
         if ($r) {
             $this->ciFilas[$i]['imp'] = CI::eur($r[0]);
             $this->ciFilas[$i]['tipo'] = $r[2];
-            $this->ciMsg = '303 sacado de '.$r[1].'.';
+            $this->ciMsg = trim(($callado ? $this->ciMsg.' ' : '').'M'.$f['cod'].' sacado de '.$r[1].'.');
         } elseif (! $callado) {
-            $this->ciMsg = 'No encuentro el 303 de este periodo: no hay libro de IVA en la casilla (genéralo en Libros IVA) ni PDF presentado; escribe el importe.';
+            $this->ciMsg = 'No encuentro el M'.$f['cod'].' de este periodo en su casilla (ni PDF presentado o borrador, ni Excel que sepa leer); escribe el importe.';
         }
     }
 

@@ -200,6 +200,85 @@ class ComunicarImpuestos
         return null;
     }
 
+    /**
+     * Importe de cualquier impuesto de la casilla (15-oct-2026): el 303 como buscar303; el resto, del PDF presentado, del Excel de la
+     * casilla (listado de retenciones de SAGE: suma de «ImporteRetencion»; Excel resumen del M111: «Resultado a ingresar») o del PDF
+     * borrador (leer_resultado_aeat.py: el importe que se repite). Devuelve [importe ≥ 0, de dónde, tipo] o null.
+     */
+    public static function buscarImporte(int $entidadId, int $ejercicio, string $codigo, string $periodo, string $etiqueta = ''): ?array
+    {
+        if ($codigo === '303') {
+            return self::buscar303($entidadId, $ejercicio, $periodo);
+        }
+        $docs = \App\Models\ImpuestoDocumento::where(['entidad_id' => $entidadId, 'modelo' => $codigo, 'ejercicio' => $ejercicio, 'periodo' => $periodo])
+            ->where('etiqueta', $etiqueta)->whereNull('quitado_at')->orderByDesc('id')->get();
+        $esPdf = fn ($d) => (bool) preg_match('/\.pdf$/i', $d->nombre);
+        $orden = fn ($d) => $esPdf($d) ? ($d->tipo === 'presentado' ? 0 : 2) : 1;
+        foreach ($docs->sortBy($orden) as $d) {
+            $ruta = storage_path('app/'.$d->almacen);
+            if (! is_file($ruta)) {
+                continue;
+            }
+            $r = $esPdf($d) ? self::leerPdfAeat($ruta) : self::leerExcelImporte($ruta);
+            if ($r !== null) {
+                [$v, $donde] = $r;
+                return [round(abs($v), 2), ($esPdf($d) ? 'PDF' : 'Excel').' «'.$d->nombre.'» ('.$donde.')', $v < 0 ? 'compensar' : 'pagar'];
+            }
+        }
+        return null;
+    }
+
+    protected static function leerPdfAeat(string $ruta): ?array
+    {
+        $py = storage_path('app/venv-facturasocr/bin/python');
+        $r = \Illuminate\Support\Facades\Process::timeout(60)->run([is_executable($py) ? $py : 'python3', resource_path('python/leer_resultado_aeat.py'), $ruta]);
+        $j = json_decode(trim($r->output()), true);
+        return is_array($j) && isset($j['resultado']) ? [(float) $j['resultado'], 'resultado del formulario'] : null;
+    }
+
+    /** Excel de la casilla: listado de retenciones (columna ImporteRetencion, se suma) o una fila «Resultado a ingresar» / «A ingresar» / «Total». */
+    protected static function leerExcelImporte(string $ruta): ?array
+    {
+        try {
+            $libro = \PhpOffice\PhpSpreadsheet\IOFactory::load($ruta);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        foreach ($libro->getAllSheets() as $hoja) {
+            $filas = array_map('array_values', $hoja->toArray(null, true, false, false));
+            foreach ($filas as $i => $fila) {
+                $col = array_search('importeretencion', array_map(fn ($c) => mb_strtolower(preg_replace('/\s+/', '', (string) $c)), $fila), true);
+                if ($col !== false) {
+                    $suma = 0.0;
+                    $n = 0;
+                    foreach (array_slice($filas, $i + 1) as $f) {
+                        if (is_numeric($f[$col] ?? null)) {
+                            $suma += (float) $f[$col];
+                            $n++;
+                        }
+                    }
+                    if ($n) {
+                        return [round($suma, 2), "suma de ImporteRetencion, {$n} líneas"];
+                    }
+                }
+            }
+            foreach ($filas as $fila) {
+                foreach ($fila as $k => $c) {
+                    $etq = trim(str_replace("\u{a0}", ' ', (string) $c));
+                    if (! preg_match('/^(resultado a ingresar|a ingresar|importe a ingresar|resultado final)\b/i', $etq)) {
+                        continue;
+                    }
+                    for ($j = $k + 1; $j < count($fila); $j++) {
+                        if (is_numeric($fila[$j])) {
+                            return [(float) $fila[$j], '«'.$etq.'»'];
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     protected static function tipoDe(float $v, string $texto = ''): string
     {
         $t = mb_strtolower($texto);
