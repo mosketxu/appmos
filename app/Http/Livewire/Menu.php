@@ -12,10 +12,12 @@ class Menu extends Component
 
     public $entmenu;
     public $ruta;
+    public $iconos = true;   // false en las pantallas de la entidad: los iconos van en su cabecera (x-buscador-entidad)
 
 
-    public function mount(Entidad $entidad,$ruta){
+    public function mount(Entidad $entidad,$ruta,$iconos=true){
         $this->entmenu=$entidad;
+        $this->iconos=$iconos;
         if($ruta!='') $this->ruta=$ruta;
     }
 

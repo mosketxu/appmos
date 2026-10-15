@@ -1,5 +1,5 @@
 <div class="">
-    @livewire('menu',['entidad'=>$entidadModel,'ruta'=>$ruta],key($entidadModel->id))
+    @livewire('menu',['entidad'=>$entidadModel,'ruta'=>$ruta,'iconos'=>false],key($entidadModel->id))
 
     <div class="p-1 mx-2">
         @if($contactoId)
