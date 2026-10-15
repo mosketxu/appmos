@@ -194,8 +194,9 @@ class GraphMail
     /**
      * Borrador (no se envía) en Borradores de $buzon con cuerpo HTML ya montado, CC y el logo de Suma incrustado (cid:logo_suma).
      * Comunicar impuestos al cliente (15-oct-2026). Con GRAPH_REDIRECT puesto, el destinatario es esa dirección (pruebas).
+     * $adjuntos = [['nombre' =>, 'ruta' =>]] (ficheros del disco; los de más de 3 MB van por sesión de subida).
      */
-    public static function crearBorradorHtml(string $buzon, array $para, array $cc, string $asunto, string $html): string
+    public static function crearBorradorHtml(string $buzon, array $para, array $cc, string $asunto, string $html, array $adjuntos = []): string
     {
         if (! self::configurado()) {
             throw new RuntimeException('Faltan las credenciales de Microsoft Graph en el .env de este servidor.');
@@ -217,15 +218,54 @@ class GraphMail
                 'contentBytes' => base64_encode(file_get_contents(resource_path('mail/logo_suma.gif'))), 'isInline' => true, 'contentId' => 'logo_suma',
             ]);
         }
+        foreach ($adjuntos as $a) {
+            self::adjuntar($buzon, (string) $m['id'], (string) $a['nombre'], (string) $a['ruta']);
+        }
 
         return (string) $m['id'];
     }
 
-    /** Envía desde $de un correo con cuerpo HTML ya montado (logo de Suma si lleva cid:logo_suma). Comunicar impuestos al cliente, 15-oct-2026. */
-    public static function enviarHtml(string $de, array $para, array $cc, string $asunto, string $html): void
+    /** Adjunta un fichero del disco a un mensaje ya creado. Hasta 3 MB en una llamada; si pesa más, por sesión de subida (trozos). */
+    protected static function adjuntar(string $buzon, string $id, string $nombre, string $ruta): void
+    {
+        if (! is_file($ruta)) {
+            throw new RuntimeException("no encuentro el adjunto «{$nombre}»");
+        }
+        $base = 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments';
+        $tam = filesize($ruta);
+        $tipo = mime_content_type($ruta) ?: 'application/octet-stream';
+        if ($tam < 3_000_000) {
+            self::api('post', $base, ['@odata.type' => '#microsoft.graph.fileAttachment', 'name' => $nombre, 'contentType' => $tipo,
+                'contentBytes' => base64_encode(file_get_contents($ruta))]);
+            return;
+        }
+        $url = self::api('post', $base.'/createUploadSession', ['AttachmentItem' => ['attachmentType' => 'file', 'name' => $nombre, 'size' => $tam, 'contentType' => $tipo]])['uploadUrl'];
+        $fh = fopen($ruta, 'rb');
+        $pos = 0;
+        while ($pos < $tam) {
+            $trozo = fread($fh, 320 * 1024 * 10);   // múltiplo de 320 KiB, como pide Graph
+            $fin = $pos + strlen($trozo) - 1;
+            $r = Http::withHeaders(['Content-Range' => "bytes {$pos}-{$fin}/{$tam}"])->withBody($trozo, 'application/octet-stream')->timeout(120)->put($url);
+            if (! $r->successful()) {
+                fclose($fh);
+                throw new RuntimeException("Microsoft no ha aceptado el adjunto «{$nombre}» (HTTP ".$r->status().')');
+            }
+            $pos = $fin + 1;
+        }
+        fclose($fh);
+    }
+
+    /** Envía desde $de un correo con cuerpo HTML ya montado (logo de Suma si lleva cid:logo_suma) y adjuntos ([['nombre', 'ruta']]). Comunicar impuestos al cliente, 15-oct-2026. */
+    public static function enviarHtml(string $de, array $para, array $cc, string $asunto, string $html, array $adjuntos = []): void
     {
         if (! self::configurado()) {
             throw new RuntimeException('Faltan las credenciales de Microsoft Graph en el .env de este servidor.');
+        }
+        if ($adjuntos) {
+            // con adjuntos: se monta como borrador (admite ficheros grandes) y se envía (queda en Enviados)
+            $id = self::crearBorradorHtml($de, $para, $cc, $asunto, $html, $adjuntos);
+            self::api('post', 'users/'.rawurlencode($de).'/messages/'.rawurlencode($id).'/send');
+            return;
         }
         if ($redirigir = config('contabilidad.graph.redirect')) {
             $html = '<p>[PRUEBA: iba para '.e(implode(', ', $para)).($cc ? ' / CC '.e(implode(', ', $cc)) : '').']</p>'.$html;

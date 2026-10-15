@@ -45,6 +45,26 @@
                                 <span class="text-gray-600">Asunto</span><input type="text" wire:model.live.debounce.500ms="ciAsunto" class="py-0.5 text-sm border-gray-300 rounded">
                                 <span class="text-gray-600" title="Encabezado sobre la columna del día, p. ej. «BBVA DD» (vacío = no sale)">Banco</span><input type="text" wire:model.live.debounce.500ms="ciBanco" class="py-0.5 text-sm border-gray-300 rounded" placeholder="opcional, p. ej. BBVA DD">
                             </div>
+                            <div class="p-2 mt-3 border border-gray-200 rounded" style="background:#fafafa">
+                                <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                                    <span class="font-semibold">📎 Adjuntos</span>
+                                    <span class="text-gray-400">Excel de las casillas del correo (303, retenciones…) y lo que subas; desmarca lo que no quieras.</span>
+                                    <label class="ml-auto imp-btn" style="border-radius:6px; cursor:pointer">⬆ Subir ficheros…
+                                        <input type="file" wire:model="ciSubidas" multiple class="hidden"></label>
+                                    <span wire:loading wire:target="ciSubidas" class="text-indigo-700">Subiendo…</span>
+                                </div>
+                                @error('ciSubidas.*') <div class="text-xs text-red-700">{{ $message }}</div> @enderror
+                                @forelse ($ciAdjuntos as $j => $a)
+                                    <div class="flex items-center gap-2 mt-1 text-sm" wire:key="ciadj-{{ md5($a['almacen']) }}">
+                                        <input type="checkbox" wire:model.live="ciAdjuntos.{{ $j }}.on" class="rounded">
+                                        <span class="{{ empty($a['on']) ? 'text-gray-400 line-through' : '' }}">{{ $a['nombre'] }}</span>
+                                        <span class="text-xs text-gray-400">{{ $a['de'] }} · {{ number_format($a['tam'] / 1024, 0, ',', '.') }} KB</span>
+                                        @if ($a['de'] === 'subido') <button type="button" wire:click="ciQuitarAdjunto({{ $j }})" class="text-xs text-red-600 hover:underline" title="Quitar">✕</button> @endif
+                                    </div>
+                                @empty
+                                    <div class="mt-1 text-xs text-gray-400">Sin adjuntos: no hay Excel en las casillas de este periodo. Puedes subir los que quieras.</div>
+                                @endforelse
+                            </div>
                             <div class="mt-2 text-xs text-gray-500">Texto · <code>{tabla}</code> = la tabla, <code>{periodo}</code>, <code>{mes}</code>, <code>{nombre}</code> = tu nombre, <code>{logo}</code> = logo de Suma. Lo que uses con este cliente queda para la próxima vez.</div>
                             <textarea wire:model.live.debounce.600ms="ciTexto" rows="12" class="w-full text-sm border-gray-300 rounded"></textarea>
                             <div class="flex flex-wrap items-center gap-2 mt-2">

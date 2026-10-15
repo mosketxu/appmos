@@ -7,7 +7,9 @@ use App\Support\GraphMail;
 use App\Support\Impuestos as Imp;
 use App\Support\PlazosAeat;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Impuestos → Seguimiento: ventana «Preparar correo al cliente» del sobre ✉ (15-oct-2026). Componente aparte para que escribir aquí no
@@ -15,9 +17,11 @@ use Livewire\Component;
  * idioma del cliente; lo deja como BORRADOR en Outlook (buzón del usuario) o, en dos pasos, lo ENVÍA. Lo usado con cada cliente
  * (destinatarios, texto, idioma…) queda en impuesto_comunicaciones y es la base de la próxima vez. Al terminar avisa al padre
  * (eventos ci-cerrar / ci-hecho).
+ * Adjuntos (15-oct-2026): propone los Excel de las casillas del correo (libro de IVA del 303, retenciones del 111/115…) y deja subir más.
  */
 class ImpuestoCorreo extends Component
 {
+    use WithFileUploads;
 
     public int $ejercicio;
     public bool $verTodos = false;
@@ -36,6 +40,13 @@ class ImpuestoCorreo extends Component
     public bool $ciOk = false;
     /** Primer paso del envío real; guarda la huella de lo que se va a mandar (si cambia algo, hay que volver a pedirlo). */
     public string $ciArmado = '';
+    /** Adjuntos: [['nombre', 'almacen' (storage/app), 'tam', 'on', 'de' (M303… o «subido»)]] */
+    public array $ciAdjuntos = [];
+    /** Ficheros que sube el usuario (se pasan a ciAdjuntos al momento). */
+    public $ciSubidas = [];
+
+    /** Excel de los impuestos que se marcan solos para adjuntar (el resto de Excel de las casillas salen sin marcar). */
+    const ADJ_MARCADOS = ['303', '111', '115', '216', '123'];
 
     /** Obligaciones con pago del cliente en ese bloque: [clave => [[ob, per]]] (clave = mes de cierre o 'A'). */
     protected function ciOpciones(int $entId, string $bloque): array
@@ -164,12 +175,73 @@ class ImpuestoCorreo extends Component
             .($guardado?->borrador_at ? 'Borrador preparado el '.\Illuminate\Support\Carbon::parse($guardado->borrador_at)->format('d/m/Y H:i').'.' : ''));
         $this->ciArmado = '';
         $this->ciOk = false;
+        $this->ciProponerAdjuntos();
         // 303 vacío: se busca en sus documentos (PDF o libro de IVA)
         foreach ($this->ciFilas as $i => $f) {
             if ($f['cod'] === '303' && $f['imp'] === '') {
                 $this->ciBuscar303($i, true);
             }
         }
+    }
+
+    /** Excel guardados en las casillas de las filas del correo (Seguimiento); conserva los que haya subido el usuario. */
+    protected function ciProponerAdjuntos(): void
+    {
+        $adj = array_values(array_filter($this->ciAdjuntos, fn ($a) => $a['de'] === 'subido'));
+        foreach ($this->ciFilas as $f) {
+            $docs = \App\Models\ImpuestoDocumento::where(['entidad_id' => $this->ciEnt, 'modelo' => $f['cod'], 'etiqueta' => $f['etq'], 'ejercicio' => $this->ejercicio, 'periodo' => $f['per']])
+                ->whereNull('quitado_at')->orderByDesc('id')->get();
+            foreach ($docs as $d) {
+                if (! preg_match('/\.(xlsx|xlsm|xls|csv)$/i', $d->nombre) || ! Storage::disk('local')->exists($d->almacen)
+                    || in_array($d->almacen, array_column($adj, 'almacen'), true)) {
+                    continue;
+                }
+                $adj[] = ['nombre' => $d->nombre, 'almacen' => $d->almacen, 'tam' => (int) Storage::disk('local')->size($d->almacen),
+                    'on' => in_array($f['cod'], self::ADJ_MARCADOS, true), 'de' => 'M'.$f['cod'].' '.$f['per']];
+            }
+        }
+        $this->ciAdjuntos = $adj;
+    }
+
+    public function updatedCiSubidas(): void
+    {
+        $this->autorizarAviso((int) $this->ciEnt);
+        $this->validate(['ciSubidas.*' => 'file|max:20480'], ['ciSubidas.*.max' => 'Algún fichero pesa más de 20 MB.', 'ciSubidas.*.file' => 'No se ha podido subir el fichero.']);
+        foreach ((array) $this->ciSubidas as $f) {
+            $nombre = preg_replace('/[\\\\\/:*?"<>|]+/', '_', $f->getClientOriginalName());
+            $almacen = 'impuestos_correo/'.$this->ciEnt.'/'.uniqid().'/'.$nombre;
+            Storage::disk('local')->put($almacen, fopen($f->getRealPath(), 'rb'));
+            $this->ciAdjuntos[] = ['nombre' => $nombre, 'almacen' => $almacen, 'tam' => (int) $f->getSize(), 'on' => true, 'de' => 'subido'];
+        }
+        $this->ciSubidas = [];
+        $this->ciArmado = '';
+    }
+
+    /** Quita un adjunto de la lista; si lo había subido el usuario, borra también el fichero. */
+    public function ciQuitarAdjunto(int $i): void
+    {
+        $a = $this->ciAdjuntos[$i] ?? null;
+        if (! $a) {
+            return;
+        }
+        if ($a['de'] === 'subido' && str_starts_with($a['almacen'], 'impuestos_correo/')) {
+            Storage::disk('local')->delete($a['almacen']);
+        }
+        unset($this->ciAdjuntos[$i]);
+        $this->ciAdjuntos = array_values($this->ciAdjuntos);
+        $this->ciArmado = '';
+    }
+
+    /** Adjuntos marcados, para GraphMail: [['nombre', 'ruta']]. */
+    protected function ciAdjuntosEnvio(): array
+    {
+        return array_values(array_map(fn ($a) => ['nombre' => $a['nombre'], 'ruta' => Storage::disk('local')->path($a['almacen'])],
+            array_filter($this->ciAdjuntos, fn ($a) => ! empty($a['on']))));
+    }
+
+    protected function ciTextoAdjuntos(array $adj): string
+    {
+        return $adj ? ' con '.count($adj).' adjunto'.(count($adj) > 1 ? 's' : '').' ('.implode(', ', array_column($adj, 'nombre')).')' : '';
     }
 
     public function ciBuscar303(int $i, bool $callado = false): void
@@ -216,7 +288,9 @@ class ImpuestoCorreo extends Component
             return '';
         }
         [$asunto, $html] = $this->ciMontar();
-        return '<div style="font-size:12px;color:#6b7280;margin-bottom:6px"><b>Asunto:</b> '.e($asunto).'</div>'.str_replace('cid:logo_suma', asset('img/logo_suma.gif'), $html);
+        $adj = array_column(array_filter($this->ciAdjuntos, fn ($a) => ! empty($a['on'])), 'nombre');
+        return '<div style="font-size:12px;color:#6b7280;margin-bottom:6px"><b>Asunto:</b> '.e($asunto)
+            .($adj ? '<br><b>📎</b> '.e(implode(' · ', $adj)) : '').'</div>'.str_replace('cid:logo_suma', asset('img/logo_suma.gif'), $html);
     }
 
     protected function ciGuardar(bool $borrador, bool $enviado = false): void
@@ -246,15 +320,15 @@ class ImpuestoCorreo extends Component
         if (! $l = $this->ciListo()) {
             return;
         }
-        [$para, $cc, $asunto, $html, $n] = $l;
+        [$para, $cc, $asunto, $html, $n, $adj] = $l;
         try {
-            GraphMail::crearBorradorHtml((string) auth()->user()->email, $para, $cc, $asunto, $html);
+            GraphMail::crearBorradorHtml((string) auth()->user()->email, $para, $cc, $asunto, $html, $adj);
         } catch (\Throwable $e) {
             $this->ciMsg = 'No se ha podido crear el borrador: '.$e->getMessage();
             return;
         }
         $this->ciGuardar(true);
-        $this->ciComentario('📝 Borrador «'.$asunto.'» preparado en Outlook ('.$n.' impuesto'.($n > 1 ? 's' : '').'), pendiente de enviar.');
+        $this->ciComentario('📝 Borrador «'.$asunto.'» preparado en Outlook ('.$n.' impuesto'.($n > 1 ? 's' : '').')'.$this->ciTextoAdjuntos($adj).', pendiente de enviar.');
         $this->ciOk = true;
         $this->ciMsg = 'Borrador listo en Outlook (carpeta Borradores de '.auth()->user()->email.'). Revísalo y envíalo desde allí; luego marca el sobre como «Comunicado».';
         $this->dispatch('notify', '✉ Borrador listo en Outlook');
@@ -292,7 +366,16 @@ class ImpuestoCorreo extends Component
             $this->ciMsg = 'Dirección no válida: '.implode(', ', $malas);
             return null;
         }
-        return [$para, $cc, $asunto, $html, $n];
+        $adj = $this->ciAdjuntosEnvio();
+        if ($falta = array_filter($adj, fn ($a) => ! is_file($a['ruta']))) {
+            $this->ciMsg = 'No encuentro el adjunto: '.implode(', ', array_column($falta, 'nombre')).'. Quítalo o vuelve a subirlo.';
+            return null;
+        }
+        // tamaño en la huella: si cambia un fichero entre «Enviar al cliente…» y confirmar, hay que volver a pedirlo
+        foreach ($adj as $k => $a) {
+            $adj[$k]['tam'] = filesize($a['ruta']);
+        }
+        return [$para, $cc, $asunto, $html, $n, $adj];
     }
 
     /** Prueba: el mismo correo solo a quien lo prepara, con [PRUEBA] en el asunto. No cambia nada. */
@@ -304,16 +387,16 @@ class ImpuestoCorreo extends Component
         if (! $l = $this->ciListo()) {
             return;
         }
-        [$para, $cc, $asunto, $html] = $l;
+        [$para, $cc, $asunto, $html, , $adj] = $l;
         $yo = (string) auth()->user()->email;
         try {
-            GraphMail::enviarHtml($yo, [$yo], [], '[PRUEBA] '.$asunto, '<p style="font-family:Calibri,Arial;font-size:9pt;color:#6b7280">Prueba. Iría a: '.e(implode(', ', $para)).($cc ? ' · CC: '.e(implode(', ', $cc)) : '').'</p>'.$html);
+            GraphMail::enviarHtml($yo, [$yo], [], '[PRUEBA] '.$asunto, '<p style="font-family:Calibri,Arial;font-size:9pt;color:#6b7280">Prueba. Iría a: '.e(implode(', ', $para)).($cc ? ' · CC: '.e(implode(', ', $cc)) : '').'</p>'.$html, $adj);
         } catch (\Throwable $e) {
             $this->ciMsg = 'No se ha podido enviar la prueba: '.$e->getMessage();
             return;
         }
         $this->ciOk = true;
-        $this->ciMsg = 'Prueba enviada a '.$yo.'.';
+        $this->ciMsg = 'Prueba enviada a '.$yo.$this->ciTextoAdjuntos($adj).'.';
         $this->dispatch('notify', '✉ Prueba enviada a '.$yo);
     }
 
@@ -342,10 +425,10 @@ class ImpuestoCorreo extends Component
             return;
         }
         $this->ciArmado = '';
-        [$para, $cc, $asunto, $html, $n] = $l;
+        [$para, $cc, $asunto, $html, $n, $adj] = $l;
         $yo = (string) auth()->user()->email;
         try {
-            GraphMail::enviarHtml($yo, $para, $cc, $asunto, $html);
+            GraphMail::enviarHtml($yo, $para, $cc, $asunto, $html, $adj);
         } catch (\Throwable $e) {
             $this->ciMsg = 'No se ha podido enviar: '.$e->getMessage();
             return;
@@ -356,7 +439,7 @@ class ImpuestoCorreo extends Component
         $fila = DB::table('impuesto_avisos')->where($clave)->first();
         $datos = ['estado' => 'comunicado', 'avisado_at' => $fila->avisado_at ?? now(), 'user_id' => auth()->id(), 'updated_at' => now()];
         $fila ? DB::table('impuesto_avisos')->where('id', $fila->id)->update($datos) : DB::table('impuesto_avisos')->insert($clave + $datos + ['created_at' => now()]);
-        $this->ciComentario('✉ Enviado «'.$asunto.'» a '.implode(', ', $para).($cc ? ' (CC '.implode(', ', $cc).')' : '').' · '.$n.' impuesto'.($n > 1 ? 's' : '').'.');
+        $this->ciComentario('✉ Enviado «'.$asunto.'» a '.implode(', ', $para).($cc ? ' (CC '.implode(', ', $cc).')' : '').' · '.$n.' impuesto'.($n > 1 ? 's' : '').$this->ciTextoAdjuntos($adj).'.');
         $this->ciOk = true;
         $this->ciMsg = 'Correo ENVIADO a '.implode(', ', $para).'. El sobre queda como «Comunicado».';
         $this->dispatch('notify', '✉ Correo enviado al cliente');
