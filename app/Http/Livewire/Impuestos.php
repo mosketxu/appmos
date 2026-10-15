@@ -36,6 +36,8 @@ class Impuestos extends Component
     /** '' = todos · sin_comunicar | comunicado | respondido | falta (❗ falta comunicar algún impuesto): según el aviso al cliente de algún periodo visible. */
     public string $filtroAviso = '';
     public bool $soloPendientes = false;
+    /** Estados de casilla que se ven (15-oct-2026); vacío = todos. Las casillas de otros estados no se pintan y el cliente sin ninguna no sale. */
+    public array $filtroEstados = [];
     public bool $incluirBajas = false;
     public bool $verTodos = false;
 
@@ -76,6 +78,7 @@ class Impuestos extends Component
         $this->filtroGrupo = (string) ($g['filtroGrupo'] ?? '');
         $this->filtroAviso = in_array($g['filtroAviso'] ?? '', ['sin_comunicar', 'comunicado', 'respondido', 'falta'], true) ? $g['filtroAviso'] : '';
         $this->soloPendientes = (bool) ($g['soloPendientes'] ?? false);
+        $this->filtroEstados = array_values(array_intersect(array_keys(Imp::COLOR), (array) ($g['filtroEstados'] ?? [])));
         $this->incluirBajas = (bool) ($g['incluirBajas'] ?? false);
         $this->verTodos = $this->puedeTodos() && (bool) ($g['verTodos'] ?? false);
         Imp::asegurarEjercicio($this->ejercicio);
@@ -83,6 +86,10 @@ class Impuestos extends Component
 
     public function updated($propiedad): void
     {
+        if (str_starts_with($propiedad, 'filtroEstados')) {
+            $this->filtroEstados = array_values(array_intersect(array_keys(Imp::COLOR), $this->filtroEstados));
+            $this->recordarFiltros();
+        }
         if (in_array($propiedad, ['vista', 'buscar', 'filtroModelo', 'filtroGrupo', 'filtroAviso', 'soloPendientes', 'incluirBajas', 'verTodos'], true)) {
             $this->recordarFiltros();
         }
@@ -91,7 +98,7 @@ class Impuestos extends Component
     protected function recordarFiltros(): void
     {
         \App\Models\User::whereKey(auth()->id())->update(['impuestos_filtros' => json_encode(['ejercicio' => $this->ejercicio, 'vista' => $this->vista, 'buscar' => $this->buscar, 'filtroModelo' => $this->filtroModelo, 'filtroGrupo' => $this->filtroGrupo, 'filtroAviso' => $this->filtroAviso,
-            'soloPendientes' => $this->soloPendientes, 'incluirBajas' => $this->incluirBajas, 'verTodos' => $this->verTodos])]);
+            'soloPendientes' => $this->soloPendientes, 'incluirBajas' => $this->incluirBajas, 'verTodos' => $this->verTodos, 'filtroEstados' => $this->filtroEstados])]);
     }
 
     public function cambiarEjercicio(int $d): void
@@ -775,7 +782,7 @@ class Impuestos extends Component
                     foreach ($porEnt[$entId][$col['cod']] ?? [] as $ob) {
                         $per = $col['ps'][$ob->periodicidad] ?? null;
                         $e = $per ? ($estados[$ob->id][$per] ?? null) : null;
-                        if ($e === null) {
+                        if ($e === null || ($this->filtroEstados && ! in_array($e, $this->filtroEstados, true))) {
                             continue;
                         }
                         $matriz[$bl['k']][$ci][] = [$ob, $per, $e];

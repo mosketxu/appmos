@@ -95,7 +95,7 @@
     <div class="p-3 space-y-2" id="imp-pagina">
         <div class="imp-solo-print" style="display:none; font-size:12px">
             <b style="font-size:16px">Impuestos {{ $ejercicio }}</b> · vista: {{ $vista === 'anio' ? 'año completo' : (ctype_digit($vista) ? 'mes '.$vista : $vista) }}
-            @if ($filtroModelo !== '') · impuesto {{ $filtroModelo }} @endif @if ($filtroGrupo !== '') · grupo {{ $filtroGrupo === 'ninguno' ? 'ninguno' : ($grupos->firstWhere('id', (int) $filtroGrupo)->nombre ?? '') }} @endif @if (trim($buscar) !== '') · «{{ $buscar }}» @endif @if ($filtroAviso !== '') · aviso: {{ ['sin_comunicar' => 'sin comunicar', 'comunicado' => 'comunicado', 'respondido' => 'respondido', 'falta' => 'falta comunicar'][$filtroAviso] }} @endif @if ($soloPendientes) · solo con pendientes @endif
+            @if ($filtroModelo !== '') · impuesto {{ $filtroModelo }} @endif @if ($filtroGrupo !== '') · grupo {{ $filtroGrupo === 'ninguno' ? 'ninguno' : ($grupos->firstWhere('id', (int) $filtroGrupo)->nombre ?? '') }} @endif @if (trim($buscar) !== '') · «{{ $buscar }}» @endif @if ($filtroAviso !== '') · aviso: {{ ['sin_comunicar' => 'sin comunicar', 'comunicado' => 'comunicado', 'respondido' => 'respondido', 'falta' => 'falta comunicar'][$filtroAviso] }} @endif @if ($soloPendientes) · solo con pendientes @endif @if ($filtroEstados) · estados: {{ collect($filtroEstados)->map(fn ($k) => \App\Support\Impuestos::ESTADOS[$k])->implode(', ') }} @endif
             · {{ $verTodos ? 'todos los clientes' : 'mis clientes' }} · impreso el {{ now()->format('d/m/Y H:i') }}
             <div style="display:flex; flex-wrap:wrap; gap:2px 12px; margin-top:3px; font-size:10px">
                 @foreach (['pendiente', 'revision', 'revisado', 'presentado', 'visto', 'nopresenta'] as $e)
@@ -156,7 +156,20 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3 text-sm imp-noprint" style="position:sticky; top:0; z-index:25; background:#f9fafb; padding:.4rem 0">   {{-- fila de filtros y botones: fija al desplazarse por los clientes --}}
-            <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar cliente…" class="py-1 text-sm border-gray-300 rounded-md">
+            {{-- Buscar cliente con la ✕ de borrar dentro (sale si hay algo escrito) y, justo después, Míos / Todos (15-oct-2026) --}}
+            <div style="position:relative; display:inline-block">
+                <input type="text" wire:model.live.debounce.300ms="buscar" placeholder="Buscar cliente…" class="py-1 text-sm border-gray-300 rounded-md" style="padding-right:1.6rem">
+                @if ($buscar !== '')
+                    <button type="button" wire:click="$set('buscar', '')" title="Borrar la búsqueda" aria-label="Borrar la búsqueda"
+                        style="position:absolute; right:.35rem; top:50%; transform:translateY(-50%); background:none; border:0; padding:0 2px; color:#6b7280; font-size:15px; line-height:1; cursor:pointer">✕</button>
+                @endif
+            </div>
+            @if ($this->puedeTodos())
+                <div style="display:inline-flex" title="Míos: solo tus impuestos (los de tus clientes o asignados a ti). Todos: los de todos los clientes">
+                    <button type="button" wire:click="$set('verTodos', false)" class="imp-btn {{ $verTodos ? '' : 'on' }}">👤 Míos</button>
+                    <button type="button" wire:click="$set('verTodos', true)" class="imp-btn {{ $verTodos ? 'on' : '' }}">👥 Todos</button>
+                </div>
+            @endif
             <select wire:model.live="filtroModelo" class="py-1 text-sm border-gray-300 rounded-md">
                 <option value="">Todos los impuestos</option>
                 @foreach ($modelos as $m)
@@ -177,14 +190,29 @@
                 <option value="respondido">✉✔ Respondido</option>
                 <option value="falta">❗ Falta comunicar algún impuesto</option>
             </select>
+            {{-- Filtro por estado de la casilla, varios a la vez (15-oct-2026): p. ej. todo menos «Presentado». Ninguno marcado = todos. --}}
+            @php $nEst = count($filtroEstados); $todosEst = array_keys(\App\Support\Impuestos::COLOR); @endphp
+            <div class="imp-pdfw" style="position:relative" x-data="{ o: false }" x-on:click.outside="o = false">
+                <button type="button" x-on:click="o = !o" class="py-1 text-sm bg-white border border-gray-300 rounded-md" style="padding-left:.6rem; padding-right:.6rem; {{ $nEst ? 'border-color:#4f46e5; color:#4338ca; font-weight:600' : '' }}"
+                    title="Ver solo las casillas de los estados marcados">Estados: {{ $nEst ? collect($filtroEstados)->map(fn ($k) => $letra[$k])->implode(' ') : 'todos' }} ▾</button>
+                <div class="imp-pop imp-avp" x-show="o" x-cloak style="width:260px">
+                    @foreach ($todosEst as $k)
+                        <label style="display:flex; align-items:center; gap:6px; padding:2px 4px; cursor:pointer">
+                            <input type="checkbox" value="{{ $k }}" wire:model.live="filtroEstados" class="border-gray-300 rounded">
+                            <span class="imp-m" style="background:{{ $color[$k] }}; cursor:pointer">{{ $letra[$k] }}</span> {{ $etq[$k] }}
+                        </label>
+                    @endforeach
+                    <div style="display:flex; gap:4px; border-top:1px solid #e5e7eb; margin-top:4px; padding-top:4px">
+                        <button type="button" class="e" style="text-align:center" wire:click="$set('filtroEstados', [])">Todos</button>
+                        <button type="button" class="e" style="text-align:center" wire:click="$set('filtroEstados', {{ json_encode(array_values(array_diff($todosEst, ['presentado', 'visto', 'nopresenta']))) }})" title="Pendiente, revisión y revisado">Sin presentar</button>
+                    </div>
+                </div>
+            </div>
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="soloPendientes" class="border-gray-300 rounded"> Solo con pendientes</label>
             <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model.live="incluirBajas" class="border-gray-300 rounded"> Incluir bajas e inactivos</label>
             <button type="button" onclick="window.print()" class="imp-btn" style="border-radius:6px" title="Imprimir la lista tal como está en pantalla (A4 apaisado)" aria-label="Imprimir">🖨</button>
             <button type="button" wire:click="exportarExcel" wire:loading.attr="disabled" wire:target="exportarExcel" class="imp-btn" style="border-radius:6px" title="Descargar en Excel la lista tal como está filtrada, con colores y comentarios" aria-label="Excel"><svg width="22" height="22" viewBox="0 0 24 24" style="display:block"><rect x="8" y="2" width="14" height="20" rx="2" fill="#fff" stroke="#21a366" stroke-width="1.4"/><path d="M12 7h8M12 11h8M12 15h8M12 19h8M16 2v20" stroke="#21a366" stroke-width="1" opacity=".55"/><rect x="1" y="5" width="13" height="14" rx="2" fill="#107c41"/><path d="M4.6 9l6 6M10.6 9l-6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></button>
             @if ($this->puedeTodos())
-                <button type="button" wire:click="$toggle('verTodos')" class="imp-btn {{ $verTodos ? 'on' : '' }}" style="border-radius:6px"
-                    title="Por defecto solo ves tus impuestos (los de tus clientes o asignados a ti)">{{ $verTodos ? '👥 Viendo los de todos' : '👤 Solo los míos · ver todos' }}</button>
-                
                 <button type="button" wire:click="actualizarPdfs" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
                 <button type="button" wire:click="actualizarLibros" class="imp-btn" style="border-radius:6px"
@@ -381,7 +409,7 @@
                         </tr>
                     @empty
                         <tr><td colspan="2" class="p-4 text-gray-500">
-                            Nada que mostrar. @if (! $verTodos && $this->puedeTodos()) Pulsa «Solo los míos · ver todos» para ver los de todos. @endif
+                            Nada que mostrar. @if (! $verTodos && $this->puedeTodos()) Pulsa «Todos» para ver los de todos. @endif
                             Los impuestos de cada cliente se definen en Entidades → zona «Impuestos».
                         </td></tr>
                     @endforelse
@@ -427,7 +455,7 @@
     if (!window.impPopIni) {
         window.impPopIni = true;
         const colocar = (p) => {
-            const w = p.parentElement; if (!w || p.offsetParent === null) return;
+            const w = p.parentElement; if (!w || !p.getClientRects().length) return;   // offsetParent es null siempre en position:fixed: no sirve para saber si está visible
             const r = w.getBoundingClientRect(), pw = p.offsetWidth, ph = p.offsetHeight;
             let x = p.classList.contains('imp-avp') ? r.left : r.right - pw, y = r.bottom + 2;
             if (y + ph > window.innerHeight - 8) y = Math.max(8, r.top - ph - 2);
