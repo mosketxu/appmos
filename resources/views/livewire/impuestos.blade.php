@@ -42,7 +42,7 @@
         .imp-pdf.gris:hover { color: #94a3b8 !important; }
         .imp-xl.gris:hover svg { opacity: .8; }
         .imp-pdfw { position: relative; display: inline-flex; }
-        .imp-pop { position: absolute; top: 25px; right: -6px; z-index: 20; background: #fff; border: 1px solid #9ca3af; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.2);
+        .imp-pop { position: fixed; top: 0; left: 0; right: auto; z-index: 40; background: #fff; border: 1px solid #9ca3af; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.2);
                    padding: 4px; min-width: 220px; max-width: 340px; text-align: left; white-space: normal; }
         .imp-pop a, .imp-pop button { display: block; width: 100%; text-align: left; padding: 3px 6px; font-size: 12px; color: #1f2937; border-radius: 4px; background: none; border: 0; cursor: pointer; }
         .imp-pop a:hover, .imp-pop button:hover { background: #f3f4f6; }
@@ -480,6 +480,26 @@
         }
         document.getElementById('imp-fichero').click();
     };
+
+    // Menús de las casillas y del sobre (.imp-pop): van en posición fija junto a su botón, para que la tabla (con scroll) no los corte
+    // cuando hay pocas filas (15-oct-2026: con un solo cliente filtrado el menú del sobre no se veía).
+    if (!window.impPopIni) {
+        window.impPopIni = true;
+        const colocar = (p) => {
+            const w = p.parentElement; if (!w || p.offsetParent === null) return;
+            const r = w.getBoundingClientRect(), pw = p.offsetWidth, ph = p.offsetHeight;
+            let x = p.classList.contains('imp-avp') ? r.left : r.right - pw, y = r.bottom + 2;
+            if (y + ph > window.innerHeight - 8) y = Math.max(8, r.top - ph - 2);
+            x = Math.min(Math.max(8, x), window.innerWidth - pw - 8);
+            p.style.left = x + 'px'; p.style.top = y + 'px';
+            if (ph > window.innerHeight - 16) { p.style.maxHeight = (window.innerHeight - 16) + 'px'; p.style.overflow = 'auto'; p.style.top = '8px'; }
+        };
+        const todas = () => document.querySelectorAll('.imp-pop').forEach(colocar);
+        document.addEventListener('click', (ev) => { if (ev.target.closest && ev.target.closest('.imp-pdfw')) setTimeout(todas, 0); }, true);
+        window.addEventListener('scroll', todas, true);
+        window.addEventListener('resize', todas);
+        Livewire.hook('commit', ({ succeed }) => succeed(() => setTimeout(todas, 0)));
+    }
 
     // Ficha de la marca (#imp-tip): sigue al ratón por las marcas de estado; se monta una sola vez
     if (!window.impTipIni) {
