@@ -290,6 +290,36 @@ class Impuestos extends Component
         $this->ciEnt = null;
     }
 
+    /** Ventana «Petición de documentación» (componente ImpuestoPeticion): cliente y periodo AAAA-MM abiertos. */
+    public ?int $pdEnt = null;
+    public string $pdPer = '';
+
+    public function pdAbrir(int $entId, string $periodo): void
+    {
+        $this->autorizarAviso($entId);
+        abort_unless(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodo), 422);
+        $this->pdEnt = $entId;
+        $this->pdPer = $periodo;
+    }
+
+    #[On('pd-cerrar')]
+    public function pdCerrar(): void
+    {
+        $this->pdEnt = null;
+    }
+
+    #[On('pd-hecho')]
+    public function pdHecho(): void
+    {
+    }
+
+    /** Pedir o no la documentación a este cliente (entidades.mail_peticion_check; antes se marcaba en Proc.Mensuales). */
+    public function alternarPedirDoc(int $entidadId): void
+    {
+        $this->autorizarAviso($entidadId);
+        DB::table('entidades')->where('id', $entidadId)->update(['mail_peticion_check' => DB::raw('NOT mail_peticion_check'), 'updated_at' => now()]);
+    }
+
     /** El correo ha dejado borrador o se ha enviado: se vuelve a pintar (comentario 📝/✉ y estado del sobre). */
     #[On('ci-hecho')]
     public function ciHecho(): void
@@ -399,7 +429,7 @@ class Impuestos extends Component
         }
         $out = [];
         foreach ($lista as [$p, $etq]) {
-            if (($p > $hoy && ! $hayDatos($p)) || (empty($pet['check'][$entId]) && ! $hayDatos($p))) {
+            if ($p > $hoy && ! $hayDatos($p)) {
                 continue;
             }
             $fila = $pet['estado'][$entId.'|'.$p] ?? null;
@@ -501,7 +531,7 @@ class Impuestos extends Component
     /** Esc: cierra la ventana abierta (comentarios o impuestos del cliente). */
     public function cerrarModales(): void
     {
-        $this->ciEnt ? $this->ciCerrar() : ($this->comOb ? $this->cerrarComentarios() : $this->cerrarEntidad());
+        $this->pdEnt ? $this->pdCerrar() : ($this->ciEnt ? $this->ciCerrar() : ($this->comOb ? $this->cerrarComentarios() : $this->cerrarEntidad()));
     }
 
     public function cerrarComentarios(): void

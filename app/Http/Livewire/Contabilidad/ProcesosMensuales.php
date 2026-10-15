@@ -38,8 +38,8 @@ class ProcesosMensuales extends Component
 
     /** [clave => ['icono', 'titulo', 'descripcion']]: una pestaña por proceso. */
     public const PROCESOS = [
-        'petdocimpuestos' => ['icono' => '📨', 'titulo' => 'Pet. Documentación Impuestos',
-            'descripcion' => 'Petición mensual de la documentación para los impuestos.'],
+        // 'petdocimpuestos' (Pet. Documentación Impuestos) se pasó el 15-oct-2026 a Impuestos → Seguimiento (icono de documento de cada
+        // periodo, componente ImpuestoPeticion). El código de envío de aquí queda sin pestaña.
         'revisionmayor' => ['icono' => '🔎', 'titulo' => 'Revisión del mayor',
             'descripcion' => 'Revisa el mayor de cada empresa: provisiones por aplicar, pagos sin cruzar, pagos en 410000... Solo informa.'],
         'certificados' => ['icono' => '🔐', 'titulo' => 'Certificados por caducar', 'local' => true,
@@ -48,7 +48,7 @@ class ProcesosMensuales extends Component
 
     public const IDIOMAS = ['ES' => 'Español', 'EN' => 'Inglés'];
 
-    public string $proceso = 'petdocimpuestos';
+    public string $proceso = 'revisionmayor';
 
     public string $buscar = '';
 

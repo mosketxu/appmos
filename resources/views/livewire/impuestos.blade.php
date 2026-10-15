@@ -1,4 +1,4 @@
-<div x-data x-on:keydown.escape.window="if ($wire.comOb || $wire.editEnt || $wire.ciEnt) $wire.cerrarModales()">
+<div x-data x-on:keydown.escape.window="if ($wire.comOb || $wire.editEnt || $wire.ciEnt || $wire.pdEnt) $wire.cerrarModales()">
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_impuestos', ['activa' => 'seguimiento'])
 
@@ -274,6 +274,9 @@
             </div>
         @endif
 
+        @if ($pdEnt)
+            @livewire('impuesto-peticion', ['entId' => $pdEnt, 'periodo' => $pdPer, 'ejercicio' => $ejercicio, 'verTodos' => $verTodos], key('pd-'.$pdEnt.'-'.$pdPer))
+        @endif
         @if ($ciEnt)
             @livewire('impuesto-correo', ['entId' => $ciEnt, 'bloque' => $ciBloque, 'ejercicio' => $ejercicio, 'verTodos' => $verTodos], key('ci-'.$ciEnt.'-'.$ciBloque.'-'.$ejercicio))
         @endif
@@ -386,7 +389,7 @@
                                         $tit = collect($res)->map(fn ($n, $e) => $n.' '.strtolower($etq[$e]))->implode(' · ');
                                     @endphp
                                     <td class="imp-qb" style="text-align:center" title="{{ $tit }}">
-                                        @if (isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @endif
+                                        @if (isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
                                         @if ($peor)
                                             <span class="imp-m" style="background:{{ $color[$peor] }}; cursor:default">{{ $peor === 'pendiente' ? $res['pendiente'] : $letra[$peor] }}</span>
                                         @endif
@@ -396,7 +399,7 @@
                                     @foreach ($bl['cols'] as $ci => $col)
                                         @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
                                         <td class="{{ $loop->first ? 'imp-qb' : ($barra ? '' : 'imp-mod') }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
-                                            @if ($loop->first && isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @endif
+                                            @if ($loop->first && isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
                                             @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
                                                 @if ($ob->etiqueta !== '')
                                                     <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
