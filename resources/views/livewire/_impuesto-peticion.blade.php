@@ -41,10 +41,7 @@
             @endforeach
             <div style="border-top:1px solid #e5e7eb; padding-top:4px; color:#6b7280">
                 @can('contabilidad.procesosmensuales')
-                    <a href="{{ route('contabilidad.procesos-mensuales') }}" style="color:#4f46e5">📨 Enviar o preparar el correo (Proc.Mensuales)</a>
-                @endcan
-                @can('entidades.ver')
-                    <a href="{{ route('entidad.edit', $entId) }}" style="color:#4f46e5">⚙ Texto, CC y «Mail petición» en la ficha de la entidad</a>
+                    <a href="{{ route('contabilidad.procesos-mensuales') }}" style="color:#4f46e5">📨 Enviar o preparar el correo; texto, asunto, CC y «Mail petición» (Proc.Mensuales)</a>
                 @endcan
             </div>
         </div>

@@ -1,7 +1,7 @@
 @props(['entidad', 'ruta' => null])
 {{-- Iconos de las pantallas de una entidad (Pus, Contactos, Historial, Impuestos, Ficha, Facturas, Conceptos). Se marca el de la pantalla
      actual comparando con $ruta (no con request(): dentro de un componente Livewire, al refrescar, la petición es la de Livewire). --}}
-<div class="flex items-center">
+<div class="flex items-center" style="column-gap:14px">
     @php $act = fn ($r) => $ruta === $r ? 'ico-act' : ''; @endphp
     <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus" class="{{ $act('entidad.pu') }}"/>
     <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}" title="Contactos" class="{{ $act('entidad.contacto') }}"/>

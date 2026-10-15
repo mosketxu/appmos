@@ -73,9 +73,6 @@ class Ent extends Component
             'entidad.porcentajesusana'=>'numeric|nullable',
             'entidad.favorito'=>'nullable',
             'entidad.observaciones'=>'nullable',
-            'entidad.mail_peticion_check'=>'nullable',
-            'entidad.mail_peticion'=>'nullable',
-            'entidad.mail_peticion_cc'=>'nullable|max:500',
             'entidad.cuentacontable'=>'numeric|nullable',
             'entidad.digitos_cuenta'=>'nullable|integer|between:6,12',
             'entidad.codigo_cliente'=>'nullable|max:20',
@@ -134,7 +131,6 @@ class Ent extends Component
     {
         if(!($this->entidad['facturar'] ?? null)) $this->entidad['facturar']=false;
         if(!($this->entidad['enviar'] ?? null)) $this->entidad['enviar']=false;
-        if(!($this->entidad['mail_peticion_check'] ?? null)) $this->entidad['mail_peticion_check']=false;
         if(!($this->entidad['iva'] ?? null)) $this->entidad['iva']='0.21';
         if($this->entidad['id'] ?? null){
             $i=$this->entidad['id'];
@@ -198,9 +194,6 @@ class Ent extends Component
             'porcentajesusana'=>$this->entidad['porcentajesusana'],
             'favorito'=>$this->entidad['favorito'],
             'observaciones'=>$this->entidad['observaciones'],
-            'mail_peticion_check'=>$this->entidad['mail_peticion_check'],
-            'mail_peticion'=>$this->entidad['mail_peticion'],
-            'mail_peticion_cc'=>$this->entidad['mail_peticion_cc'],
             'cuentacontable'=>$this->entidad['cuentacontable'],
             'digitos_cuenta'=>($this->entidad['digitos_cuenta'] ?? null) !== '' ? ($this->entidad['digitos_cuenta'] ?? null) : null,
             'codigo_cliente'=>$this->entidad['codigo_cliente'] ?? null,

@@ -314,22 +314,6 @@
                 @endif
             </div>
 
-            {{-- Proc.Mensuales · Pet. Documentación Impuestos: si se le pide por correo y el mensaje (personalizable) --}}
-            <div class="flex flex-col mx-2 mt-4 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
-                <div class="form-item md:w-3/12">
-                    <label class="inline-flex items-center mt-6">
-                        <x-input.checkbox wire:model.defer="entidad.mail_peticion_check" class="w-4 h-4 text-indigo-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Mail petición documentación') }}</span>
-                    </label>
-                </div>
-                <div class="w-full form-item">
-                    <x-jet-label for="mail_peticion">{{ __('Mensaje de petición de documentación') }}</x-jet-label>
-                    <textarea wire:model.defer="entidad.mail_peticion" id="mail_peticion" class="w-full text-xs border-gray-300 rounded-md" rows="5" placeholder="Texto del correo para pedir la documentación de impuestos a esta entidad"></textarea>
-                    <x-jet-input-error for="mail_peticion" class="mt-2" />
-                    <x-jet-label for="mail_peticion_cc" class="mt-2">{{ __('CC de la petición (varios separados por ;)') }}</x-jet-label>
-                    <x-jet-input wire:model.defer="entidad.mail_peticion_cc" type="text" id="mail_peticion_cc" maxlength="500" class="w-full"/>
-                </div>
-            </div>
-
             <div class="flex mt-2 mb-2 ml-2 space-x-4">
                 <div class="space-x-3">
                     <x-jet-button class="bg-blue-600">

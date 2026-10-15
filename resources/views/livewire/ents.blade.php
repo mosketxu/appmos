@@ -88,7 +88,7 @@
                 <div class="w-5/12 md:w-4/12 lg:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
-            <div class="w-full py-0 text-sm font-thin text-gray-500 border-b border-gray-100 lg:border-0" x-data="{ abierta: false }" :class="abierta ? 'ent-abierta' : ''" wire:key="ent-{{ $entidad->id }}" wire:loading.class.delay="opacity-50">
+            <div class="w-full py-0 text-sm font-thin text-gray-500 border-b border-gray-100 lg:border-0 hover:bg-blue-50" x-data="{ abierta: false }" :class="abierta ? 'ent-abierta' : ''" wire:key="ent-{{ $entidad->id }}" wire:loading.class.delay="opacity-50">
             <div class="flex items-center w-full space-x-1 ent-fila">
                 <div class="items-center hidden ml-2 text-xs text-gray-200 lg:w-10 lg:flex">
                     @if ($entidad->favorito)
@@ -97,12 +97,9 @@
                         <x-icon.star class="text-gray-500 "></x-icon.star>
                     @endif
                 </div>
-                <div class="w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12 ent-nombre">
-                    <input type="text" value="{{ $entidad->entidad }}" class="w-full text-sm font-thin border-0 rounded-md"  readonly/>
-                </div>
-                <div class="hidden p-1 m-1 xl:block xl:w-1/12">
-                    <input type="text" value="{{ $entidad->nif }}" class="w-full p-1 m-1 text-sm font-thin border-0 rounded-md"  readonly/>
-                </div>
+                {{-- Nombre y NIF (y el hueco entre ellos): clic = editar la ficha --}}
+                <a href="{{ route('entidad.edit',$entidad) }}" title="Editar la ficha" class="block py-2 pl-3 pr-2 truncate w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12 ent-nombre hover:text-indigo-700">{{ $entidad->entidad }}</a>
+                <a href="{{ route('entidad.edit',$entidad) }}" title="Editar la ficha" class="hidden py-2 pr-2 truncate xl:block xl:w-1/12 hover:text-indigo-700" style="margin-left:0">{{ $entidad->nif }}</a>
                 {{-- Responsable: solo en pantalla media o grande --}}
                 <div class="items-center hidden gap-1 md:flex md:w-2/12 lg:w-1/12">
                     @include('livewire.ents._control', ['e' => $entidad, 'c' => 'responsable'])
