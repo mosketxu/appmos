@@ -630,6 +630,10 @@ class FacturasOcr extends Component
                 $this->cuota((int) $m[1]);
             }
         }
+        // Retención: con la base y el % (o el código, que da el %) se calcula la cuota (15-oct-2026, Alex)
+        if (in_array($clave, ['base_retencion', 'pct_retencion', 'codigo_retencion'], true)) {
+            $this->calcularRetencion($clave);
+        }
         // Proveedor nuevo: se da de alta en cuanto tiene cuenta y nombre (y se actualiza al cambiar nombre o CIF), no al validar
         if (in_array($clave, ['proveedor', 'cif'], true)) {
             $this->altaProveedorNuevo();
@@ -642,6 +646,49 @@ class FacturasOcr extends Component
         // Transacción 38 (operación sin IVA): una sola línea con IVA 0 y base = total (14-oct-2026)
         if (in_array($clave, ['codigo_transaccion', 'total'], true)) {
             $this->aplicarTransaccion38();
+        }
+    }
+
+    /** Código de retención de SAGE → % (lo validado en todos los clientes; si no hay, 18 = 15 % profesionales, 19 = 19 % alquileres). */
+    protected function porcentajesRetencion(): array
+    {
+        $cuenta = [];
+        foreach (glob(dirname($this->dirDatos()).'/*/facturas.json') ?: [] as $f) {
+            foreach ((json_decode((string) @file_get_contents($f), true) ?: [])['facturas'] ?? [] as $x) {
+                $d = $x['datos'] ?? [];
+                $cod = trim((string) ($d['codigo_retencion'] ?? ''));
+                $pct = $this->num($d['pct_retencion'] ?? '');
+                if (($x['estado'] ?? '') === 'validada' && $cod !== '' && $pct) {
+                    $cuenta[$cod][(string) $pct] = ($cuenta[$cod][(string) $pct] ?? 0) + 1;
+                }
+            }
+        }
+        $map = ['18' => 15.0, '19' => 19.0];
+        foreach ($cuenta as $cod => $pcts) {
+            arsort($pcts);
+            $map[(string) $cod] = (float) array_key_first($pcts);
+        }
+        return $map;
+    }
+
+    /** Retención: el código da el % (y el % el código, si solo hay uno con ese %); con base y % se calcula la cuota. */
+    protected function calcularRetencion(string $clave): void
+    {
+        $map = $this->porcentajesRetencion();
+        $cod = trim((string) ($this->form['codigo_retencion'] ?? ''));
+        $pct = $this->num($this->form['pct_retencion'] ?? '');
+        if ($clave === 'codigo_retencion' && $cod !== '' && isset($map[$cod])) {
+            $pct = $map[$cod];
+            $this->form['pct_retencion'] = rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.');
+        } elseif ($pct !== null && $cod === '') {
+            $cods = array_keys(array_filter($map, fn ($v) => abs($v - $pct) < 0.001));
+            if (count($cods) === 1) {
+                $this->form['codigo_retencion'] = (string) $cods[0];
+            }
+        }
+        $base = $this->num($this->form['base_retencion'] ?? '');
+        if ($base !== null && $pct !== null) {
+            $this->form['cuota_retencion'] = number_format(round($base * $pct / 100, 2), 2, '.', '');
         }
     }
 
