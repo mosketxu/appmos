@@ -1747,9 +1747,13 @@ class FacturasOcr extends Component
             $avisos[] = "{$cuenta} no empieza por 4 (las de proveedor son 400/410…).";
         }
         $pat = $this->patrones()[$cuenta] ?? [];
+        // si es el mismo proveedor (mismo nombre, aunque el NIF sea otro) no se avisa
+        $nombre = (string) ($this->form['proveedor'] ?? '');
         if (! empty($pat['nuevo'])) {
-            $avisos[] = "La cuenta {$cuenta} ya se dio aquí a otro proveedor nuevo: ".($pat['proveedor'] ?? '').' ('.($pat['cif'] ?? '').').';
-        } elseif ($b = $this->cuentasBancos()[$cuenta] ?? null) {
+            if (! self::mismoProveedor($pat['proveedor'] ?? '', $nombre)) {
+                $avisos[] = "La cuenta {$cuenta} ya se dio aquí a otro proveedor nuevo: ".($pat['proveedor'] ?? '').' ('.($pat['cif'] ?? '').').';
+            }
+        } elseif (($b = $this->cuentasBancos()[$cuenta] ?? null) && ! self::mismoProveedor($b['nombre'] ?? '', $nombre)) {
             $avisos[] = "La cuenta {$cuenta} está dada en Bancos a ".($b['nombre'] ?? '').'.';
         }
         return implode(' ', $avisos);
@@ -2271,7 +2275,7 @@ class FacturasOcr extends Component
             return "La cuenta {$cta} ya se dio a otro proveedor nuevo: ".($pat['proveedor'] ?? '').' ('.($pat['cif'] ?? '').').';
         }
         $b = $this->cuentasBancos()[$cta] ?? [];
-        if (($b['cif'] ?? '') !== '' && $limpio($b['cif']) !== $cif) {
+        if (($b['cif'] ?? '') !== '' && $limpio($b['cif']) !== $cif && ! self::mismoProveedor($b['nombre'] ?? '', $this->form['proveedor'] ?? '')) {
             return "La cuenta {$cta} está dada en Bancos a otro proveedor: ".($b['nombre'] ?? '').' ('.$b['cif'].').';
         }
         return null;
