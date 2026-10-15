@@ -28,6 +28,7 @@
         .imp-sticky { position: sticky; left: 0; z-index: 2; background: #fff; min-width: 190px; max-width: 260px; border-right: 1px solid #e5e7eb; }
         th.imp-sticky { background: #f9fafb; z-index: 3; text-align: left; }
         .imp-qb { border-left: 2px solid #9ca3af; }
+        .imp-tabla .imp-mod { border-left: 1px solid #e3e6ea; }
         .imp-tabla th[wire\:click]:hover { background: #eef2ff; }
         .imp-cel { display: inline-flex; align-items: center; gap: 1px; justify-content: center; min-width: 38px; }
         .imp-m { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; border: 1px solid transparent;
@@ -361,7 +362,7 @@
                                 @php $gAnt = null; @endphp
                                 @foreach ($bl['cols'] as $col)
                                     @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
-                                    <th style="font-weight:500{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}" title="{{ $col['cod'] }}">{{ $col['cod'] }}</th>
+                                    <th class="{{ ! $barra && ! $loop->first ? 'imp-mod' : '' }}" style="font-weight:500{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}" title="{{ $col['cod'] }}">{{ $col['cod'] }}</th>
                                 @endforeach
                             @endif
                         @endforeach
@@ -394,7 +395,7 @@
                                     @php $gAnt = null; @endphp
                                     @foreach ($bl['cols'] as $ci => $col)
                                         @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
-                                        <td class="{{ $loop->first ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
+                                        <td class="{{ $loop->first ? 'imp-qb' : ($barra ? '' : 'imp-mod') }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
                                             @if ($loop->first && isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @endif
                                             @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
                                                 @if ($ob->etiqueta !== '')
