@@ -5,7 +5,7 @@
      Variables: $entId, $bl, $pet. --}}
 @php
     $peticiones = $this->peticionesBloque($entId, $bl['k'], $pet);
-    $nomPet = [null => ['No solicitado', '#9ca3af'], 'solicitado' => ['Solicitado', '#2563eb'], 'recibido' => ['Recibido', '#16a34a']];
+    $nomPet = ['' => ['No solicitado', '#9ca3af'], 'solicitado' => ['Solicitado', '#2563eb'], 'recibido' => ['Recibido', '#16a34a']];
     $pide = ! empty($pet['check'][$entId]);
 @endphp
 @if ($peticiones)
@@ -13,9 +13,9 @@
         $est = collect($peticiones)->pluck(2);
         $hechas = $est->filter()->count();
         $peor = $est->contains(null) ? null : ($est->contains('solicitado') ? 'solicitado' : 'recibido');
-        $color = $nomPet[$peor === null && $hechas ? 'solicitado' : $peor][1];
+        $color = $nomPet[$peor === null && $hechas ? 'solicitado' : ($peor ?? '')][1];
         $tit = $pide || $hechas
-            ? 'Petición de documentación: '.collect($peticiones)->map(fn ($p) => $p[1].' '.mb_strtolower($nomPet[$p[2]][0]).($p[4] ? ' (enviado el '.\Illuminate\Support\Carbon::parse($p[4]->enviado_at)->format('d/m').')' : ''))->implode(' · ').' (clic: preparar el correo / cambiar)'
+            ? 'Petición de documentación: '.collect($peticiones)->map(fn ($p) => $p[1].' '.mb_strtolower($nomPet[$p[2] ?? ''][0]).($p[4] ? ' (enviado el '.\Illuminate\Support\Carbon::parse($p[4]->enviado_at)->format('d/m').')' : ''))->implode(' · ').' (clic: preparar el correo / cambiar)'
             : 'A este cliente no se le pide la documentación (clic para activarlo)';
     @endphp
     <span class="imp-pdfw" wire:key="pet-{{ $entId }}-{{ $bl['k'] }}-{{ $est->implode(',') }}-{{ (int) $pide }}" x-data="{ o: false, ver: '' }" x-on:click.outside="o = false">
@@ -28,7 +28,7 @@
             @foreach ($peticiones as [$per, $etq, $e, $fila, $mail])
                 <div style="border-top:1px solid #e5e7eb; padding:4px 0">
                     <div style="font-weight:600">{{ $etq }}
-                        <span style="font-weight:400; color:{{ $nomPet[$e][1] }}">· {{ $nomPet[$e][0] }}{{ $e === 'recibido' && $fila?->recibido_at ? ' el '.\Illuminate\Support\Carbon::parse($fila->recibido_at)->format('d/m/Y') : '' }}</span>
+                        <span style="font-weight:400; color:{{ $nomPet[$e ?? ''][1] }}">· {{ $nomPet[$e ?? ''][0] }}{{ $e === 'recibido' && $fila?->recibido_at ? ' el '.\Illuminate\Support\Carbon::parse($fila->recibido_at)->format('d/m/Y') : '' }}</span>
                     </div>
                     <button type="button" class="e" style="color:#4f46e5; font-weight:600" x-on:click="o = false" wire:click="pdAbrir({{ $entId }}, '{{ $per }}')"
                             title="Propone el correo de petición en el idioma del cliente: borrador en tu Outlook, prueba o envío">📝 {{ $mail ? 'Preparar otra petición…' : 'Preparar el correo de petición…' }}</button>
