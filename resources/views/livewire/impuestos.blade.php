@@ -71,6 +71,8 @@
         .imp-cel { position: relative; }
         .imp-av { background: none; border: 0; padding: 0 1px; margin: 0; position: relative; display: inline-flex; align-items: center; vertical-align: middle; font-size: 13px; line-height: 1; white-space: nowrap; cursor: pointer; color: #9ca3af; opacity: .7; }
         .imp-av .ok { position: absolute; right: -3px; bottom: -3px; font-size: 9px; line-height: 1; background: #fff; border-radius: 50%; padding: 0 1px; }
+        .imp-pet { background: none; border: 0; padding: 0 1px; margin: 0; position: relative; display: inline-flex; align-items: center; vertical-align: middle; font-size: 13px; line-height: 1; cursor: pointer; }
+        .imp-pet .ok { position: absolute; right: -3px; bottom: -3px; font-size: 9px; line-height: 1; background: #fff; border-radius: 50%; padding: 0 1px; color: #16a34a; }
         .imp-av.comunicado { color: #2563eb; opacity: 1; }
         .imp-av.respondido { color: #16a34a; opacity: 1; }
         .imp-falta { font-size: 12px; margin-left: 1px; }
@@ -355,7 +357,7 @@
                                         $tit = collect($res)->map(fn ($n, $e) => $n.' '.strtolower($etq[$e]))->implode(' · ');
                                     @endphp
                                     <td class="imp-qb" style="text-align:center" title="{{ $tit }}">
-                                        @if (isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
+                                        @if (isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @endif
                                         @if ($peor)
                                             <span class="imp-m" style="background:{{ $color[$peor] }}; cursor:default">{{ $peor === 'pendiente' ? $res['pendiente'] : $letra[$peor] }}</span>
                                         @endif
@@ -365,7 +367,7 @@
                                     @foreach ($bl['cols'] as $ci => $col)
                                         @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
                                         <td class="{{ $loop->first ? 'imp-qb' : '' }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
-                                            @if ($loop->first && isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
+                                            @if ($loop->first && isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @endif
                                             @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
                                                 @if ($ob->etiqueta !== '')
                                                     <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>

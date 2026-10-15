@@ -1,6 +1,6 @@
 @props(['entidad', 'ruta'])
 {{-- Buscador e iconos de la entidad (15-oct-2026): van en la cabecera, a la derecha del nombre (antes estaban en el menú).
-     Se escribe el nombre, se elige de la lista y abre la misma pantalla de esa entidad. Los iconos, a la derecha del todo. --}}
+     Se escribe el nombre, se elige de la lista y abre la misma pantalla de esa entidad. Los iconos, justo después del buscador (en pantalla grande a la derecha del todo quedaban muy lejos). --}}
 @php
     $rutaBuscador = \Illuminate\Support\Facades\Route::has($ruta) ? $ruta : 'entidad.edit';
     $urlsEntidades = \App\Models\Entidad::orderBy('entidad')->get(['id', 'entidad'])
@@ -23,7 +23,7 @@
             @endforeach
         </datalist>
     </div>
-    <div class="flex items-center px-2 py-1 bg-gray-100 rounded-lg" style="margin-left:auto">
+    <div class="flex items-center px-2 py-1 bg-gray-100 rounded-lg" style="margin-left:1rem">
         <x-iconos-entidad :entidad="$entidad" :ruta="$ruta"/>
     </div>
 </div>

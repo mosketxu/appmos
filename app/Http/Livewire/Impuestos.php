@@ -341,6 +341,90 @@ class Impuestos extends Component
         $this->avisoAbierto = $entidadId.'|'.$bloque;
     }
 
+    // ------------------------------------------------------------------ petición de documentación (correo de Proc.Mensuales)
+
+    /**
+     * Estado de la petición de documentación de un cliente y mes (15-oct-2026, mismo dato que Proc.Mensuales → Pet. Documentación
+     * Impuestos, tabla procesos_estado): null = no solicitado · solicitado · recibido. Se pone «solicitado» solo al enviar el correo.
+     */
+    public function fijarPeticion(int $entidadId, string $periodo, ?string $estado): void
+    {
+        $this->autorizarAviso($entidadId);
+        abort_unless(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodo) && in_array($estado, [null, 'solicitado', 'recibido'], true), 422);
+        $q = \App\Models\ProcesoEstado::where(['proceso' => 'petdocimpuestos', 'entidad_id' => $entidadId, 'periodo' => $periodo]);
+        if ($estado === null) {
+            $q->delete();
+
+            return;
+        }
+        $fila = $q->first() ?? new \App\Models\ProcesoEstado(['proceso' => 'petdocimpuestos', 'entidad_id' => $entidadId, 'periodo' => $periodo]);
+        $fila->estado = $estado;
+        $fila->user_id = auth()->id();
+        $fila->solicitado_at ??= now();
+        $fila->recibido_at = $estado === 'recibido' ? ($fila->recibido_at ?? now()) : null;
+        $fila->save();
+    }
+
+    /**
+     * Peticiones de documentación del bloque (T1..T4) de un cliente: [[periodo AAAA-MM, etiqueta, estado|null, fila de procesos_estado|null, correo enviado|null]].
+     * Ciclo mensual: un mes cada uno; trimestral (u otro): una por trimestre, en el mes que tenga datos o, si no, el que cierra el trimestre.
+     * No salen los meses futuros ni, si la entidad no tiene marcado «Mail petición documentación», los que no tienen nada.
+     */
+    public function peticionesBloque(int $entId, string $bloque, array $pet): array
+    {
+        if (! preg_match('/^T([1-4])$/', $bloque, $m)) {
+            return [];
+        }
+        $q = (int) $m[1];
+        $meses = $this->esMes() ? [(int) $this->vista] : range(3 * $q - 2, 3 * $q);
+        $per = fn ($mes) => sprintf('%d-%02d', $this->ejercicio, $mes);
+        $hoy = now()->format('Y-m');
+        $hayDatos = fn ($p) => isset($pet['estado'][$entId.'|'.$p]) || isset($pet['mail'][$entId.'|'.$p]);
+        $mensual = (int) ($pet['ciclo'][$entId] ?? 0) === 1;
+        $lista = [];
+        if ($mensual) {
+            foreach ($meses as $mes) {
+                $lista[] = [$per($mes), ucfirst(\App\Http\Livewire\Contabilidad\ProcesosMensuales::MESES['ES'][$mes - 1])];
+            }
+        } else {
+            $p = collect(range(3 * $q, 3 * $q - 2))->map($per)->first($hayDatos) ?? $per(3 * $q);
+            $lista[] = [$p, 'T'.$q];
+        }
+        $out = [];
+        foreach ($lista as [$p, $etq]) {
+            if (($p > $hoy && ! $hayDatos($p)) || (empty($pet['check'][$entId]) && ! $hayDatos($p))) {
+                continue;
+            }
+            $fila = $pet['estado'][$entId.'|'.$p] ?? null;
+            $out[] = [$p, $etq, $fila->estado ?? null, $fila, $pet['mail'][$entId.'|'.$p] ?? null];
+        }
+
+        return $out;
+    }
+
+    /** Datos de la petición de documentación de los clientes que se ven, para todo el ejercicio. */
+    protected function peticiones(array $entIds): array
+    {
+        $pet = ['check' => [], 'ciclo' => [], 'estado' => [], 'mail' => []];
+        foreach (array_chunk($entIds ?: [0], 1000) as $trozo) {
+            DB::table('entidades')->whereIn('id', $trozo)->get(['id', 'mail_peticion_check', 'cicloimpuesto_id'])->each(function ($e) use (&$pet) {
+                $pet['check'][$e->id] = (bool) $e->mail_peticion_check;
+                $pet['ciclo'][$e->id] = $e->cicloimpuesto_id;
+            });
+            DB::table('procesos_estado')->where('proceso', 'petdocimpuestos')->whereIn('entidad_id', $trozo)->where('periodo', 'like', $this->ejercicio.'-%')
+                ->get(['entidad_id', 'periodo', 'estado', 'solicitado_at', 'recibido_at'])->each(function ($r) use (&$pet) {
+                    $pet['estado'][$r->entidad_id.'|'.$r->periodo] = $r;
+                });
+            DB::table('mails_enviados')->where('proceso', 'petdocimpuestos')->whereIn('entidad_id', $trozo)->where('periodo', 'like', $this->ejercicio.'-%')
+                ->whereNotNull('enviado_at')->orderBy('enviado_at')
+                ->get(['entidad_id', 'periodo', 'enviado_at', 'destinatarios', 'cc', 'asunto', 'texto', 'error'])->each(function ($r) use (&$pet) {
+                    $pet['mail'][$r->entidad_id.'|'.$r->periodo] = $r;   // el último enviado del mes
+                });
+        }
+
+        return $pet;
+    }
+
     public function borrarComentarioAviso(int $id): void
     {
         $c = DB::table('impuesto_aviso_comentarios')->find($id);
@@ -739,7 +823,7 @@ class Impuestos extends Component
         }
         $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
 
-        return ['filas' => $filas, 'bloques' => $bloques, 'coment' => $coment, 'avisos' => $avisos, 'avisoCom' => $avisoCom, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
+        return ['filas' => $filas, 'bloques' => $bloques, 'pet' => $this->peticiones(array_keys($filas)), 'coment' => $coment, 'avisos' => $avisos, 'avisoCom' => $avisoCom, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
             'grupos' => DB::table('entidad_grupos')->orderBy('nombre')->get(['id', 'nombre'])];
     }
 
