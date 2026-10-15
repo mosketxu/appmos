@@ -38,9 +38,9 @@ return new class extends Migration
         $ahora = now();
         DB::table('plantillas_mail')->insertOrIgnore([
             ['proceso' => 'comunicar_impuestos', 'idioma' => 'ES', 'asunto' => 'Impuestos {periodo}', 'created_at' => $ahora, 'updated_at' => $ahora, 'texto' =>
-                "Hola:\n\nOs indicamos el resultado de los impuestos de {periodo}.\nSi estáis de acuerdo, los presentaremos y se cargarán en vuestra cuenta en las fechas siguientes:\n\n{tabla}\n\nPor favor, aseguraos de que haya saldo suficiente esos días.\n\nAtentamente\n\n".$firma],
+                "Hola:\n\nOs indicamos el resultado de los impuestos de {periodo}.\nSi estáis de acuerdo, los presentaremos y se cargarán en vuestra cuenta en las fechas siguientes:\n\n{tabla}\n\nAtentamente\n\n".$firma],
             ['proceso' => 'comunicar_impuestos', 'idioma' => 'EN', 'asunto' => '{periodo} taxes', 'created_at' => $ahora, 'updated_at' => $ahora, 'texto' =>
-                "Dear all,\n\nPlease find below the result of {periodo} taxes.\nIf you agree we will submit them and they will be charged to your account as follows:\n\n{tabla}\n\nPlease ensure there are sufficient funds on these days.\n\nKind regards\n\n".$firma],
+                "Dear all,\n\nPlease find below the result of {periodo} taxes.\nIf you agree we will submit them and they will be charged to your account as follows:\n\n{tabla}\n\nKind regards\n\n".$firma],
         ]);
 
         // Fashion IQ: lo de «August Taxes» (Procesos FIQ → Comunicar impuestos a Plein), como base de su primer borrador desde aquí
