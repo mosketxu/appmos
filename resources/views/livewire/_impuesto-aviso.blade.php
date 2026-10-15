@@ -11,6 +11,7 @@
     <button type="button" class="imp-av {{ $av }}" x-on:click="o = !o" title="{{ $tit }}"><svg viewBox="0 0 24 24" aria-hidden="true" width="19" height="19" style="vertical-align:middle"><path fill="currentColor" d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1.6 2 7.4 5.6L19.4 7H4.6zM4 17h16V9.4l-8 6-8-6V17z"/></svg>@if ($av === 'respondido')<b class="ok">✔</b>@endif @if ($coms)<sup>{{ count($coms) }}</sup>@endif</button>@if ($falta)<span class="imp-falta" style="color:#dc2626; font-weight:700" title="Falta comunicar algún impuesto (clic en el sobre para quitarlo)">❗</span>@endif
     <div class="imp-pop imp-avp" x-show="o" x-cloak>
         <div style="font-weight:600; margin-bottom:4px">Aviso al cliente · {{ $bl['titulo'] }}</div>
+        <button type="button" class="e" style="color:#4f46e5; font-weight:600" x-on:click="o = false" wire:click="ciAbrir({{ $entId }}, '{{ $bl['k'] }}')" title="Propone el correo con los importes y días de cargo, en el idioma del cliente, y lo deja como borrador en tu Outlook">📝 Preparar correo (borrador)…</button>
         @foreach ($estados as $k => [$nom, $col])
             <button type="button" class="e {{ $av === $k ? 'on' : '' }}" style="color:{{ $col }}" x-on:click="o = false" wire:click="fijarAviso({{ $entId }}, '{{ $bl['k'] }}', '{{ $k }}')">{{ $estados[$k][2] }} {{ $nom }}</button>
         @endforeach

@@ -9,7 +9,13 @@
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
     $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true);
-    $titulo = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase).' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
+    $cab = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase);
+    $titulo = $cab.' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
+    // Al pasar el ratón sale una ficha con la leyenda de colores y a qué estado pasa con el clic (15-oct-2026; ver #imp-tip)
+    $sig = \App\Support\Impuestos::siguiente($e);
+    if ($sig === 'visto' && ! $this->puedeVisto()) {
+        $sig = \App\Support\Impuestos::siguiente('visto');
+    }
     $cm = ($coment ?? [])[$ob->id.'|'.$per] ?? [];
     $cmTitulo = collect($cm)->map(fn ($c) => ($c[1] ?: '—').' · '.\Illuminate\Support\Carbon::parse($c[2])->format('d/m/Y H:i').': '.$c[0].($c[3] ? ' 📎'.$c[3] : ''))->implode("\n");
     $carpWin = $ob->codigo === '303' && ($c = ($this->carpetasLibro[$ob->entidad_id] ?? '')) ? 'E:\\OneDrive\\'.str_replace('/', '\\', $c) : '';
@@ -18,9 +24,9 @@
 <span class="imp-cel">
     @php $bloqueada = $e === 'visto' && ! $this->puedeVisto(); @endphp
     @if ($bloqueada)
-        <span class="imp-m" title="{{ $titulo }} · lo ha validado Marta: solo ella lo cambia" style="background:{{ $color[$e] }}; cursor:default">{{ $letra[$e] }}</span>
+        <span class="imp-m" data-e="{{ $e }}" data-sig="" data-t="{{ $cab }}" style="background:{{ $color[$e] }}; cursor:default">{{ $letra[$e] }}</span>
     @else
-        <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}', $event.shiftKey)" title="{{ $titulo }}"
+        <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}', $event.shiftKey)" data-e="{{ $e }}" data-sig="{{ $sig }}" data-t="{{ $cab }}" aria-label="{{ $titulo }}"
             class="imp-m {{ $e === 'no' ? 'no' : '' }}" @if ($e !== 'no') style="background:{{ $color[$e] }}" @endif>{{ $e === 'no' ? '' : $letra[$e] }}</button>
     @endif
     @if ($conPdf)

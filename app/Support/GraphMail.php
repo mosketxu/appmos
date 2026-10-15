@@ -190,4 +190,34 @@ class GraphMail
 
         return (string) $m['id'];
     }
+
+    /**
+     * Borrador (no se envía) en Borradores de $buzon con cuerpo HTML ya montado, CC y el logo de Suma incrustado (cid:logo_suma).
+     * Comunicar impuestos al cliente (15-oct-2026). Con GRAPH_REDIRECT puesto, el destinatario es esa dirección (pruebas).
+     */
+    public static function crearBorradorHtml(string $buzon, array $para, array $cc, string $asunto, string $html): string
+    {
+        if (! self::configurado()) {
+            throw new RuntimeException('Faltan las credenciales de Microsoft Graph en el .env de este servidor.');
+        }
+        if ($redirigir = config('contabilidad.graph.redirect')) {
+            $html = '<p>[PRUEBA: iba para '.e(implode(', ', $para)).($cc ? ' / CC '.e(implode(', ', $cc)) : '').']</p>'.$html;
+            [$para, $cc] = [[$redirigir], []];
+        }
+        $dir = fn ($l) => array_map(fn ($a) => ['emailAddress' => ['address' => $a]], array_values($l));
+        $m = self::api('post', 'users/'.rawurlencode($buzon).'/messages', [
+            'subject' => $asunto,
+            'body' => ['contentType' => 'HTML', 'content' => $html],
+            'toRecipients' => $dir($para),
+            'ccRecipients' => $dir($cc),
+        ]);
+        if (str_contains($html, 'cid:logo_suma')) {
+            self::api('post', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($m['id']).'/attachments', [
+                '@odata.type' => '#microsoft.graph.fileAttachment', 'name' => 'logo_suma.gif', 'contentType' => 'image/gif',
+                'contentBytes' => base64_encode(file_get_contents(resource_path('mail/logo_suma.gif'))), 'isInline' => true, 'contentId' => 'logo_suma',
+            ]);
+        }
+
+        return (string) $m['id'];
+    }
 }

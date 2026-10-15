@@ -23,6 +23,7 @@ use Livewire\WithFileUploads;
 class Impuestos extends Component
 {
     use WithFileUploads;
+    use \App\Http\Livewire\Concerns\ComunicaImpuestos;
 
     public int $ejercicio;
 
@@ -387,7 +388,7 @@ class Impuestos extends Component
     /** Esc: cierra la ventana abierta (comentarios o impuestos del cliente). */
     public function cerrarModales(): void
     {
-        $this->comOb ? $this->cerrarComentarios() : $this->cerrarEntidad();
+        $this->ciEnt ? $this->ciCerrar() : ($this->comOb ? $this->cerrarComentarios() : $this->cerrarEntidad());
     }
 
     public function cerrarComentarios(): void

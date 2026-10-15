@@ -9,6 +9,7 @@ use Carbon\Carbon;
  * Contabilidad/_comun/plazos_aeat.py, validado con el Calendario del contribuyente 2026 (14-oct-2026):
  * 111/115/216 mensual y trimestral el 20 del mes siguiente; 303 mensual el 30 (enero → fin de febrero, julio → 31 de
  * agosto); 303 trimestral el 20 (4T → 30 de enero). Sábado, domingo o festivo nacional → siguiente hábil.
+ * finPeriodo() añade el resto de modelos con pago (130, 202, 200…) para «Comunicar impuestos al cliente» (15-oct-2026).
  */
 class PlazosAeat
 {
@@ -52,5 +53,32 @@ class PlazosAeat
             $dia = in_array($mes, [1, 7], true) ? $d->daysInMonth : 30;
         }
         return self::habil($d->day($dia), $extra);
+    }
+
+    /**
+     * Fin de plazo de un periodo tal como lo guarda Impuestos ('01'..'12', 'T1'..'T4', 'P1'..'P3', 'A'); $anio = año del impuesto.
+     * 130 y 303 trimestrales: 4T el 30 de enero. 202: 1P 20 de abril, 2P 20 de octubre, 3P 20 de diciembre. 200: 25 de julio del año siguiente.
+     */
+    public static function finPeriodo(string $modelo, int $anio, string $periodo, array $extra = []): ?Carbon
+    {
+        $cod = ltrim(strtoupper($modelo), 'M');
+        if (ctype_digit($periodo)) {
+            return self::finPlazo($cod, $anio, (int) $periodo, false, $extra);
+        }
+        if ($periodo[0] === 'T') {
+            $mes = 3 * (int) substr($periodo, 1);
+            if ($cod === '130' && $mes === 12) {
+                return self::habil(Carbon::create($anio + 1, 1, 30), $extra);
+            }
+            return self::finPlazo($cod, $anio, $mes, true, $extra);
+        }
+        if ($periodo[0] === 'P') {
+            $mes = [1 => 4, 2 => 10, 3 => 12][(int) substr($periodo, 1)] ?? null;
+            return $mes ? self::habil(Carbon::create($anio, $mes, 20), $extra) : null;
+        }
+        if ($cod === '200') {
+            return self::habil(Carbon::create($anio + 1, 7, 25), $extra);
+        }
+        return null;
     }
 }
