@@ -102,10 +102,17 @@ class ImpuestoCorreo extends Component
         $this->ciCargar();
     }
 
-    /** Cualquier cambio en la ventana desarma el envío real. */
-    public function updated(): void
+    /** Cualquier cambio en la ventana desarma el envío real. Un importe negativo pasa a «A compensar» (sin signo). */
+    public function updated($prop = null): void
     {
         $this->ciArmado = '';
+        if (is_string($prop) && preg_match('/^ciFilas\.(\d+)\.imp$/', $prop, $m)) {
+            $v = CI::importe((string) ($this->ciFilas[$m[1]]['imp'] ?? ''));
+            if ($v !== null && $v < 0) {
+                $this->ciFilas[$m[1]]['imp'] = CI::eur(-$v);
+                $this->ciFilas[$m[1]]['tipo'] = 'compensar';
+            }
+        }
     }
 
     public function updatedCiClave(): void
@@ -149,6 +156,7 @@ class ImpuestoCorreo extends Component
                 'id' => $ob->id, 'cod' => $ob->codigo, 'etq' => (string) $ob->etiqueta, 'per' => $per,
                 'texto' => (CI::DESCR[$this->ciIdioma][$ob->codigo] ?? $ob->codigo).($ob->etiqueta !== '' ? ' ('.$ob->etiqueta.')' : ''),
                 'imp' => (string) ($prev['imp'] ?? ''),
+                'tipo' => (string) ($prev['tipo'] ?? 'pagar'),
                 'fecha' => (string) (($prev['fecha'] ?? '') ?: (PlazosAeat::finPeriodo($ob->codigo, $anio, $per)?->format('d/m/Y') ?? '')),
             ];
         }
@@ -173,9 +181,10 @@ class ImpuestoCorreo extends Component
         $r = CI::buscar303($this->ciEnt, $this->ejercicio, $f['per']);
         if ($r) {
             $this->ciFilas[$i]['imp'] = CI::eur($r[0]);
+            $this->ciFilas[$i]['tipo'] = $r[2];
             $this->ciMsg = '303 sacado de '.$r[1].'.';
         } elseif (! $callado) {
-            $this->ciMsg = 'No encuentro el 303 de este periodo: sube a la casilla el PDF (borrador o presentado) o el libro de IVA, o escribe el importe.';
+            $this->ciMsg = 'No encuentro el 303 de este periodo: no hay libro de IVA en la casilla (genéralo en Libros IVA) ni PDF presentado; escribe el importe.';
         }
     }
 
@@ -191,7 +200,7 @@ class ImpuestoCorreo extends Component
         foreach ($this->ciFilas as $f) {
             $v = CI::importe((string) $f['imp']);
             if ($v !== null) {
-                $filas[] = [$f['texto'], $v, trim($f['fecha'])];
+                $filas[] = [$f['texto'], $v, trim($f['fecha']), $f['tipo'] ?? 'pagar'];
             }
         }
         $titulo = ctype_digit($perPpal) ? (CI::MESES[$this->ciIdioma][(int) $perPpal - 1].' '.$anio) : $periodo;
@@ -214,7 +223,7 @@ class ImpuestoCorreo extends Component
     {
         DB::table('impuesto_comunicaciones')->updateOrInsert(
             ['entidad_id' => $this->ciEnt, 'ejercicio' => $this->ejercicio, 'clave' => $this->ciClave],
-            ['filas' => json_encode(array_map(fn ($f) => array_intersect_key($f, array_flip(['id', 'cod', 'per', 'imp', 'fecha'])), $this->ciFilas)),
+            ['filas' => json_encode(array_map(fn ($f) => array_intersect_key($f, array_flip(['id', 'cod', 'per', 'imp', 'tipo', 'fecha'])), $this->ciFilas)),
                 'para' => mb_substr($this->ciPara, 0, 500), 'cc' => mb_substr($this->ciCc, 0, 500), 'idioma' => $this->ciIdioma, 'asunto' => mb_substr($this->ciAsunto, 0, 255),
                 'texto' => $this->ciTexto, 'banco' => mb_substr($this->ciBanco, 0, 60), 'user_id' => auth()->id(), 'updated_at' => now(), 'created_at' => now()]
             + ($borrador ? ['borrador_at' => now()] : []) + ($enviado ? ['enviado_at' => now()] : []));

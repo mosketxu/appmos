@@ -72,7 +72,13 @@ class ComunicarImpuestos
         return number_format($v, 2, ',', '.');
     }
 
-    /** Tabla del correo (como la de «August Taxes»). $filas = [[texto, importe, 'dd/mm/aaaa']]. */
+    public const TIPOS = ['pagar' => 'A pagar', 'compensar' => 'A compensar', 'devolver' => 'A devolver'];
+    public const TIPOS_EN = ['pagar' => 'To pay', 'compensar' => 'To be offset', 'devolver' => 'To be refunded'];
+
+    /**
+     * Tabla del correo (como la de «August Taxes»). $filas = [[texto, importe, 'dd/mm/aaaa', tipo]]; tipo pagar | compensar | devolver.
+     * Columna «A pagar / A compensar…» (15-oct-2026); solo las de pagar llevan día de cargo.
+     */
     public static function tabla(array $filas, string $titulo, string $idioma, string $banco = ''): string
     {
         $td = 'padding:0 4.7px;';
@@ -80,14 +86,16 @@ class ComunicarImpuestos
         $en = $idioma === 'EN';
         $h = '<table style="border-collapse:collapse;font-family:Aptos Narrow,Calibri,Arial;font-size:11pt">';
         if ($banco !== '') {
-            $h .= '<tr><td style="'.$td.'"></td><td style="'.$td.'"></td><td style="'.$tdb.'"><b>'.e($banco).'</b></td></tr>';
+            $h .= '<tr><td style="'.$td.'"></td><td style="'.$td.'"></td><td style="'.$td.'"></td><td style="'.$tdb.'"><b>'.e($banco).'</b></td></tr>';
         }
         $h .= '<tr><td style="'.$tdb.'"><b>'.e($titulo).'</b></td><td style="'.$tdb.'"><b>'.($en ? 'Amount' : 'Importe').'</b></td>'
+            .'<td style="'.$tdb.'"><b>'.($en ? 'Result' : 'Resultado').'</b></td>'
             .'<td style="'.$tdb.'"><b>'.($en ? 'Payment day' : 'Día de cargo').'</b></td></tr>';
-        foreach ($filas as [$texto, $imp, $fecha]) {
-            $dia = $imp > 0 ? $fecha : ($en ? 'No charge' : 'Sin cargo');
-            $h .= '<tr><td style="'.$tdb.'">'.e($texto).'</td><td style="'.$tdb.'text-align:right">'.self::eur($imp).'</td>'
-                .'<td style="'.$tdb.'text-align:right">'.e($dia).'</td></tr>';
+        foreach ($filas as [$texto, $imp, $fecha, $tipo]) {
+            $tipo = isset(self::TIPOS[$tipo]) ? $tipo : 'pagar';
+            $h .= '<tr><td style="'.$tdb.'">'.e($texto).'</td><td style="'.$tdb.'text-align:right">'.self::eur(abs($imp)).'</td>'
+                .'<td style="'.$tdb.'">'.e(($en ? self::TIPOS_EN : self::TIPOS)[$tipo]).'</td>'
+                .'<td style="'.$tdb.'text-align:right">'.($tipo === 'pagar' ? e($fecha) : '').'</td></tr>';
         }
         return $h.'</table>';
     }
@@ -113,48 +121,88 @@ class ComunicarImpuestos
     }
 
     /**
-     * Importe del 303 de una casilla: del PDF (borrador o presentado, casilla 71, con leer_303.py) o del libro de IVA (Excel 📒:
-     * celda a la derecha de «RESULTADO FINAL» / «IVA Pagar»). Devuelve [importe, de dónde] o null.
+     * Importe del 303 de una casilla: del PDF presentado (casilla 71, leer_303.py) o, si aún no está, del Excel de la casilla (libro de IVA 📒:
+     * fila «RESULTADO FINAL», o «IVA Pagar» del Excel de SAGE), y después del PDF borrador. Devuelve [importe ≥ 0, de dónde, tipo] o null;
+     * tipo = pagar | compensar | devolver (por el texto que acompaña al resultado o por el signo).
      */
     public static function buscar303(int $entidadId, int $ejercicio, string $periodo): ?array
     {
         $docs = \App\Models\ImpuestoDocumento::where('entidad_id', $entidadId)->where('modelo', '303')->where('ejercicio', $ejercicio)
             ->where('periodo', $periodo)->whereNull('quitado_at')->orderByDesc('id')->get();
-        $script = rtrim((string) config('contabilidad.facturasocr_dir'), '/').'/leer_303.py';
-        $py = storage_path('app/venv-facturasocr/bin/python');
-        foreach ($docs->sortBy(fn ($d) => $d->tipo === 'presentado' ? 0 : 1) as $d) {
+        $esPdf = fn ($d) => (bool) preg_match('/\.pdf$/i', $d->nombre);
+        $orden = fn ($d) => $esPdf($d) ? ($d->tipo === 'presentado' ? 0 : 2) : 1;
+        foreach ($docs->sortBy($orden) as $d) {
             $ruta = storage_path('app/'.$d->almacen);
             if (! is_file($ruta)) {
                 continue;
             }
-            if (preg_match('/\.pdf$/i', $d->nombre) && is_file($script)) {
-                $r = \Illuminate\Support\Facades\Process::timeout(60)->run([is_executable($py) ? $py : 'python3', $script, $ruta]);
-                $j = json_decode(trim($r->output()), true);
-                if (is_array($j) && isset($j['resultado'])) {
-                    return [round((float) $j['resultado'], 2), 'PDF «'.$d->nombre.'» (casilla 71)'];
-                }
-            } elseif (preg_match('/\.xlsx?$/i', $d->nombre)) {
-                try {
-                    $libro = \PhpOffice\PhpSpreadsheet\IOFactory::load($ruta);
-                    foreach ($libro->getAllSheets() as $hoja) {
-                        foreach ($hoja->getRowIterator() as $fila) {
-                            $cels = iterator_to_array($fila->getCellIterator());
-                            $vals = array_values($cels);
-                            foreach ($vals as $i => $c) {
-                                $v = trim((string) $c->getValue());
-                                if (preg_match('/^(RESULTADO FINAL|IVA Pagar)$/i', $v)) {
-                                    for ($k = $i + 1; $k < count($vals); $k++) {
-                                        $n = $vals[$k]->getCalculatedValue();
-                                        if (is_numeric($n)) {
-                                            return [round((float) $n, 2), 'Excel «'.$d->nombre.'» («'.$v.'»)'];
-                                        }
-                                    }
+            $r = $esPdf($d) ? self::leerPdf303($ruta) : self::leerExcel303($ruta);
+            if ($r) {
+                [$v, $tipo, $donde] = $r;
+                return [round(abs($v), 2), ($esPdf($d) ? 'PDF' : 'Excel').' «'.$d->nombre.'» ('.$donde.')', $tipo];
+            }
+        }
+        return null;
+    }
+
+    protected static function tipoDe(float $v, string $texto = ''): string
+    {
+        $t = mb_strtolower($texto);
+        return match (true) {
+            str_contains($t, 'devol') => 'devolver',
+            str_contains($t, 'compens') => 'compensar',
+            str_contains($t, 'pagar') || str_contains($t, 'ingresar') => 'pagar',
+            default => $v < 0 ? 'compensar' : 'pagar',
+        };
+    }
+
+    protected static function leerPdf303(string $ruta): ?array
+    {
+        $script = rtrim((string) config('contabilidad.facturasocr_dir'), '/').'/leer_303.py';
+        if (! is_file($script)) {
+            return null;
+        }
+        $py = storage_path('app/venv-facturasocr/bin/python');
+        $r = \Illuminate\Support\Facades\Process::timeout(60)->run([is_executable($py) ? $py : 'python3', $script, $ruta]);
+        $j = json_decode(trim($r->output()), true);
+        if (! is_array($j) || ! isset($j['resultado'])) {
+            return null;
+        }
+        $v = (float) $j['resultado'];
+        $tipo = $v >= 0 ? 'pagar' : ((float) ($j['casillas']['73'] ?? 0) > 0 ? 'devolver' : 'compensar');
+        return [$v, $tipo, 'casilla 71'];
+    }
+
+    /** Fila «RESULTADO FINAL» / «IVA Pagar»: primer número a su derecha y, si lo hay, el texto que lo acompaña («A PAGAR», «A COMPENSAR»…). */
+    protected static function leerExcel303(string $ruta): ?array
+    {
+        try {
+            $libro = \PhpOffice\PhpSpreadsheet\IOFactory::load($ruta);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        foreach ($libro->getAllSheets() as $hoja) {
+            // toArray (no el iterador de celdas: sus objetos Cell se desconectan al guardarlos y dan NULL)
+            foreach ($hoja->toArray(null, true, false, false) as $fila) {
+                $fila = array_values($fila);
+                foreach ($fila as $i => $c) {
+                    $etq = trim(str_replace("\u{a0}", ' ', (string) $c));
+                    if (! preg_match('/^(RESULTADO FINAL|IVA Pagar)$/i', $etq)) {
+                        continue;
+                    }
+                    for ($k = $i + 1; $k < count($fila); $k++) {
+                        $n = $fila[$k];
+                        if (is_numeric($n)) {
+                            $texto = '';
+                            for ($j = $k + 1; $j < count($fila); $j++) {
+                                if (is_string($fila[$j]) && trim($fila[$j]) !== '') {
+                                    $texto = trim($fila[$j]);
+                                    break;
                                 }
                             }
+                            return [(float) $n, self::tipoDe((float) $n, $texto), '«'.$etq.'»'.($texto !== '' ? ' '.$texto : '')];
                         }
                     }
-                } catch (\Throwable $e) {
-                    continue;
                 }
             }
         }

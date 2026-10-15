@@ -23,15 +23,17 @@
                                 <select wire:model.live="ciIdioma" class="py-0.5 text-sm border-gray-300 rounded-md"><option value="ES">Español</option><option value="EN">Inglés</option></select>
                             </div>
                             <table class="w-full text-sm" style="border-collapse:collapse">
-                                <thead><tr class="text-xs text-gray-500"><th class="text-left">Modelo</th><th class="text-left">Texto en el correo</th><th class="text-right">Importe €</th><th class="text-left">Día de cargo</th></tr></thead>
+                                <thead><tr class="text-xs text-gray-500"><th class="text-left">Modelo</th><th class="text-left">Texto en el correo</th><th class="text-right">Importe €</th><th class="text-left">Resultado</th><th class="text-left">Día de cargo</th></tr></thead>
                                 <tbody>
                                 @foreach ($ciFilas as $i => $f)
                                     <tr wire:key="ci-{{ $ciClave }}-{{ $i }}">
                                         <td class="pr-2 font-semibold whitespace-nowrap">M{{ $f['cod'] }} <span class="text-xs font-normal text-gray-500">{{ $f['per'] }}</span></td>
                                         <td class="pr-2"><input type="text" wire:model.live.debounce.400ms="ciFilas.{{ $i }}.texto" class="w-full py-0.5 text-sm border-gray-300 rounded"></td>
                                         <td class="pr-2 whitespace-nowrap"><input type="text" wire:model.live.debounce.400ms="ciFilas.{{ $i }}.imp" class="py-0.5 text-sm text-right border-gray-300 rounded" style="width:120px" placeholder="vacío = no sale">
-                                            @if ($f['cod'] === '303') <button type="button" wire:click="ciBuscar303({{ $i }})" class="text-xs text-indigo-700 hover:underline" title="Del PDF de la casilla (borrador o presentado, casilla 71) o del libro de IVA">🔎</button> @endif</td>
-                                        <td><input type="text" wire:model.live.debounce.400ms="ciFilas.{{ $i }}.fecha" class="py-0.5 text-sm border-gray-300 rounded" style="width:105px" title="Fin de plazo de la AEAT (= cargo si está domiciliado); sábado, domingo o festivo nacional → siguiente hábil"></td>
+                                            @if ($f['cod'] === '303') <button type="button" wire:click="ciBuscar303({{ $i }})" class="text-xs text-indigo-700 hover:underline" title="Del libro de IVA (Excel de la casilla) o del PDF presentado">🔎</button> @endif</td>
+                                        <td class="pr-2"><select wire:model.live="ciFilas.{{ $i }}.tipo" class="py-0.5 text-sm border-gray-300 rounded">
+                                            @foreach (\App\Support\ComunicarImpuestos::TIPOS as $tk => $tn) <option value="{{ $tk }}">{{ $tn }}</option> @endforeach</select></td>
+                                        <td>@if (($f['tipo'] ?? 'pagar') === 'pagar')<input type="text" wire:model.live.debounce.400ms="ciFilas.{{ $i }}.fecha" class="py-0.5 text-sm border-gray-300 rounded" style="width:105px" title="Fin de plazo de la AEAT (= cargo si está domiciliado); sábado, domingo o festivo nacional → siguiente hábil">@else<span class="text-xs text-gray-400">sin cargo</span>@endif</td>
                                     </tr>
                                 @endforeach
                                 </tbody>
