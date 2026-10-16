@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  *   python3 Contabilidad/Impuestos/herramientas/exportar_todo_impuestos.py -o todo.json
  * y luego `php artisan impuestos:importar-todo todo.json` (solo informa) o con `--aplicar`.
  * Es idempotente: no pisa una obligación ni una casilla que ya existan (lo que se haya cambiado en la web se respeta).
- * Los periodos del ejercicio que el Excel no menciona se guardan como «no» (vacío).
+ * Los periodos del ejercicio que el Excel no menciona se guardan como «pendiente» (16-oct-2026; antes «no» = vacío, y escondía obligaciones: NAE M349 oct-dic).
  */
 class ImpuestosImportarTodo extends Command
 {
@@ -86,7 +86,7 @@ class ImpuestosImportarTodo extends Command
                 }
                 $nuevas = [];
                 foreach (Impuestos::periodos($o['periodicidad']) as $p) {
-                    $nuevas[] = ['entidad_impuesto_id' => $obId, 'ejercicio' => $ejercicio, 'periodo' => $p, 'estado' => $o['estados'][$p] ?? 'no', 'created_at' => $ahora, 'updated_at' => $ahora];
+                    $nuevas[] = ['entidad_impuesto_id' => $obId, 'ejercicio' => $ejercicio, 'periodo' => $p, 'estado' => $o['estados'][$p] ?? 'pendiente', 'created_at' => $ahora, 'updated_at' => $ahora];
                 }
                 $filas += DB::table('impuesto_estados')->insertOrIgnore($nuevas);
             }
