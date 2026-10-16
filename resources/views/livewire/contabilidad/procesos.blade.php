@@ -105,6 +105,15 @@
                                         <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">▶ Ejecutar</span>
                                         <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
                                     </button>
+                                    @if ($id === 'anaplan_web')
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                            title="Si la subida se ha quedado colgada o has tocado la ventana de Chrome de Anaplan: para la subida, cierra ese Chrome (solo el de Anaplan) y lo abre limpio. Luego entra si pide sesión y vuelve a pulsar ▶ Ejecutar."
+                                            wire:click="reiniciarAnaplan" wire:loading.attr="disabled" wire:target="reiniciarAnaplan"
+                                            wire:confirm="¿Parar la subida a Anaplan (si hay una en marcha) y reiniciar su ventana de Chrome?">
+                                            <span wire:loading.remove wire:target="reiniciarAnaplan">🔄 Reiniciar</span>
+                                            <span wire:loading wire:target="reiniciarAnaplan">⏳…</span>
+                                        </button>
+                                    @endif
                                     @if ($id === 'adyen')
                                         <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes.">
                                             <span>Settlement (.xlsx, opcional)</span>

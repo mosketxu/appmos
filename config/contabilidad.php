@@ -243,7 +243,7 @@ return [
     // también en Contabilidad/TrabajadorWeb/trabajador.py (GRUPOS).
     'pc_grupos' => [
         'fiq' => ['scripts' => [
-            'monthlyFIQ.js', 'sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js', 'anaplanWeb/subirAnaplan.js',
+            'monthlyFIQ.js', 'sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js', 'anaplanWeb/subirAnaplan.js', 'anaplanWeb/resetAnaplan.js',
             'imputacionCostes.js', 'adyenReparto.js', 'ponerSyS.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
             'enviarRentasVariables.py', 'pagosFinMes.py', 'FacturasEmitidas/facturasEmitidas.py', 'CashFlow/cashflow.py',
             'CashInStore/cashInStore.py',

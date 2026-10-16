@@ -12,6 +12,9 @@
             <div>
                 <div style="font-size:.875rem;font-weight:600;color:#1f2937">Pensando… un PC está trabajando</div>
                 <div style="font-size:.75rem;color:#6b7280">{{ \Illuminate\Support\Str::limit(collect($pendientes)->pluck('etiquetas')->flatten()->implode(' · '), 90) }}</div>
+                @foreach ($progresoEnCurso ?? [] as $prog)
+                    <div style="margin-top:.35rem;font-size:.8rem;color:#3730a3">{{ $prog }}</div>
+                @endforeach
                 @foreach ($avisosEnCurso ?? [] as $aviso)
                     <div style="margin-top:.35rem;font-size:.8rem;font-weight:600;color:#b45309">{{ $aviso }}</div>
                 @endforeach

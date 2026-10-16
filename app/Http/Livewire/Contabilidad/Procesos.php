@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Contabilidad;
 use App\Http\Livewire\Concerns\EjecutaEnPcs;
 use App\Support\ColaTareas;
 use App\Support\IntrastatMotor;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
@@ -420,6 +421,31 @@ class Procesos extends Component
     public function ejecutar(string $id): void
     {
         $this->ejecutarUno($id);
+    }
+
+    /**
+     * «🔄 Reiniciar» de «Anaplan · subir a la web» (16-oct-2026, Alex: «he abierto otra ventana mientras trabajaba y ahora
+     * no abre Anaplan; ¿cómo lo reseteo?»). Cancela las subidas pedidas o en marcha (el PC corta la que esté haciendo en
+     * unos segundos) y pide al PC anaplanWeb/resetAnaplan.js: para el node que quede, cierra SOLO el Chrome de Anaplan
+     * y lo vuelve a abrir limpio en el modelo. No toca Anaplan ni ficheros.
+     */
+    public function reiniciarAnaplan(): void
+    {
+        if (! $this->autorizar('anaplan_web')) {
+            return;
+        }
+        if ($this->remoto()) {
+            $ids = DB::table('tareas')->where('proceso', 'pc.script')->whereIn('estado', ['preparando', 'pendiente', 'en_curso'])
+                ->where('parametros', 'like', '%subirAnaplan%')->pluck('id')->all();
+            if ($ids) {
+                DB::table('tareas')->whereIn('id', $ids)->update(['estado' => 'cancelada', 'terminada_at' => now(), 'updated_at' => now()]);
+                $this->salida .= "\n\n🚫 Subida a Anaplan cancelada (tarea #".implode(', #', $ids).'): el PC la corta en unos segundos.';
+            }
+        }
+        $this->lanzar([[
+            'script' => 'anaplanWeb/resetAnaplan.js', 'args' => [], 'timeout' => 120,
+            'etiqueta' => 'Reiniciar Chrome de Anaplan', 'windows' => true,
+        ]], ['resultados' => 'anaplan_web']);
     }
 
     public function limpiarSalida(): void

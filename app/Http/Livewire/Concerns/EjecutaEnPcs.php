@@ -27,6 +27,9 @@ trait EjecutaEnPcs
     /** Último «AVISO_WEB: …» de cada tarea en curso (p. ej. Anaplan esperando a que inicies sesión), para el panel «Pensando». */
     public array $avisosEnCurso = [];
 
+    /** Último «PROGRESO_WEB: …» de cada tarea en curso («subiendo 3/10 · …»), para el panel «Pensando» (sin aviso emergente). */
+    public array $progresoEnCurso = [];
+
     /** En el VPS (sin ejecucion_local) los scripts los hacen los PCs trabajadores vía cola de tareas. */
     protected function remoto(): bool
     {
@@ -172,9 +175,12 @@ trait EjecutaEnPcs
                     $this->avisosEnCurso[$tid] = $ultimo;
                     $this->dispatch('proceso-terminado', mensaje: $ultimo);
                 }
+                if (preg_match_all('/^PROGRESO_WEB:\s*(.+)$/mu', (string) $t->log, $m)) {
+                    $this->progresoEnCurso[$tid] = trim(end($m[1]));
+                }
                 continue;
             }
-            unset($this->pendientes[$tid], $this->avisosEnCurso[$tid]);
+            unset($this->pendientes[$tid], $this->avisosEnCurso[$tid], $this->progresoEnCurso[$tid]);
             // Quien la cierra es quien consigue marcarla: con dos pestañas abiertas no se hace dos veces
             if ($t && ! DB::table('tareas')->where('id', $tid)->whereNull('cerrada_at')->update(['cerrada_at' => now()])) {
                 continue;
@@ -224,10 +230,18 @@ trait EjecutaEnPcs
             $etiqueta = $etiquetas[$i] ?? ($paso['script'] ?? 'Proceso');
             $this->salida .= "\n\n===== ".date('H:i:s')." {$etiqueta}".($pc ? " · en {$pc}" : '')." =====\n";
             $desde = strlen($this->salida);
-            $this->salida .= (string) ($paso['salida'] ?? '');
+            // «RESUMEN_WEB: …» = el resumen de una línea del script (p. ej. Anaplan: subida bien + avisos aparte); va al aviso emergente
+            $resumen = preg_match_all('/^RESUMEN_WEB:\s*(.+)$/mu', (string) ($paso['salida'] ?? ''), $mr) ? trim(end($mr[1])) : '';
+            $this->salida .= preg_replace('/^RESUMEN_WEB:\s*/mu', '', (string) ($paso['salida'] ?? ''));
             $ok = ! empty($paso['ok']);
             $oks[] = $ok;
-            if ($ok) {
+            if ($resumen !== '') {
+                $this->dispatch('proceso-terminado', mensaje: "{$etiqueta}\n{$resumen}");
+                if (! $ok) {
+                    $this->salida .= "\n\n⚠️ El proceso terminó con código de salida ".($paso['codigo'] ?? '?').'.';
+                    $fallos[] = "❌ {$etiqueta}\n     {$resumen}";
+                }
+            } elseif ($ok) {
                 // Líneas «⚠️ ALARMA …» del script (p. ej. Monthly sales: Base vs Fiscal por tienda, 16-oct-2026):
                 // terminó bien, pero el aviso las enseña para que no se pierdan en la caja de Salida.
                 preg_match_all('/^\s*⚠️ ALARMA\b.*$/mu', (string) ($paso['salida'] ?? ''), $alarmas);
