@@ -292,7 +292,7 @@
                         <table class="focr-tabla">
                             <thead><tr>
                                 <th></th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>F. registro</th>
-                                <th>Contrap.</th><th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th>
+                                <th>Contrap.</th><th title="Código de transacción">C. trans.</th><th title="Clave de operación">Clave</th><th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th>
                                 <th style="text-align:right">Total</th><th>Lectura</th><th>Avisos</th>
                             </tr></thead>
                             <tbody>
@@ -315,6 +315,8 @@
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
                                     @php $im = $importes($d); @endphp
                                     <td>{{ $d['contrapartida'] ?? '' }}</td>
+                                    <td style="text-align:center">{{ $d['codigo_transaccion'] ?? '' }}</td>
+                                    <td style="text-align:center">{{ $d['clave_operacion'] ?? '' }}</td>
                                     <td style="text-align:right">{{ $eur($im['base']) }}</td>
                                     <td style="text-align:right" title="{{ $im['detalle'] }}">{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']) !!}</td>
                                     <td style="text-align:right">{{ $eur($im['iva']) }}</td>
@@ -335,7 +337,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="13" class="p-4 text-center text-gray-500">No hay facturas por revisar. Elige la carpeta y pulsa «Leer las facturas».</td></tr>
+                                <tr><td colspan="15" class="p-4 text-center text-gray-500">No hay facturas por revisar. Elige la carpeta y pulsa «Leer las facturas».</td></tr>
                             @endforelse
                             </tbody>
                         </table>
@@ -397,7 +399,7 @@
                                 <th style="width:1.4rem"><input type="checkbox" title="Marcar / desmarcar todas las validadas de la lista"
                                     x-data x-on:click.stop x-on:change="$wire.set('marcadasValidadas', $event.target.checked ? @js($idsValidadas) : [])"
                                     @checked(count($idsValidadas) > 0 && count(array_intersect($idsValidadas, $marcadasValidadas)) === count($idsValidadas))></th>
-                                <th>F. registro</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>Contrap.</th>
+                                <th>F. registro</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>Contrap.</th><th title="Código de transacción">C. trans.</th><th title="Clave de operación">Clave</th>
                                 <th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th><th style="text-align:right">Total</th>
                                 <th>Excel</th><th>Fichero</th><th>Validada</th>
                             </tr></thead>
@@ -405,13 +407,16 @@
                             @forelse ($validadas as $f)
                                 @php $d = $f['datos']; @endphp
                                 <tr wire:key="v-{{ $f['id'] }}" @if ($f['estado'] === 'validada') class="clic" wire:click="verValidada('{{ $f['id'] }}')" title="Ver lo validado (en una ventana; desde ahí se puede volver a pendiente para corregirla)" @endif>
-                                    <td x-data x-on:click.stop>@if ($f['estado'] === 'validada')<input type="checkbox" wire:model.live="marcadasValidadas" value="{{ $f['id'] }}" title="Marcar para retroceder">@endif</td>
+                                    <td x-data x-on:click.stop style="white-space:nowrap">@if ($f['estado'] === 'validada')<input type="checkbox" wire:model.live="marcadasValidadas" value="{{ $f['id'] }}" title="Marcar para retroceder">
+                                        <button type="button" wire:click="verValidada('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.72rem" title="Ver cómo se ha contabilizado (asiento, códigos, PDF)">👁 Ver</button>@endif</td>
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
                                     <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
                                     @php $im = $importes($d); @endphp
                                     <td>{{ $d['contrapartida'] ?? '' }}</td>
+                                    <td style="text-align:center">{{ $d['codigo_transaccion'] ?? '' }}</td>
+                                    <td style="text-align:center">{{ $d['clave_operacion'] ?? '' }}</td>
                                     <td style="text-align:right">{{ $eur($im['base']) }}</td>
                                     <td style="text-align:right" title="{{ $im['detalle'] }}">{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']) !!}</td>
                                     <td style="text-align:right">{{ $eur($im['iva']) }}</td>
@@ -430,7 +435,7 @@
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="13" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso || $filtroDesde || $filtroHasta ? ' con ese filtro' : '').'.' }}</td></tr>
+                                <tr><td colspan="15" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso || $filtroDesde || $filtroHasta ? ' con ese filtro' : '').'.' }}</td></tr>
                             @endforelse
                             </tbody>
                         </table>
