@@ -123,7 +123,7 @@ class ImpuestoM349 extends Component
     public function updatedVerTodos(): void
     {
         $this->verTodos = Imp::esGestor() && $this->verTodos;
-        if (! isset($this->empresas()[$this->entidadId])) {
+        if (! isset($this->empresas()[(int) $this->entidadId])) {
             $this->entidadId = null;
             $this->alCambiarEmpresa();
         }
@@ -134,7 +134,7 @@ class ImpuestoM349 extends Component
 
     protected function autorizar(): void
     {
-        abort_unless($this->entidadId && isset($this->empresas()[$this->entidadId]) && $this->operativo(), 403);
+        abort_unless($this->entidadId && isset($this->empresas()[(int) $this->entidadId]) && $this->operativo(), 403);
     }
 
     protected function dirEmpresa(): string
