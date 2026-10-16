@@ -257,8 +257,11 @@ class ColaTareas
             return false;
         }
         $nuevo = mb_substr(($tarea->log ?? '').$texto, -60000);
+        DB::table('tareas')->where('id', $id)->update(['log' => $nuevo, 'updated_at' => now()]);
 
-        return (bool) DB::table('tareas')->where('id', $id)->update(['log' => $nuevo, 'updated_at' => now()]);
+        // true = la tarea sigue en curso. No se usa el nº de filas cambiadas: con texto vacío en el mismo segundo MySQL
+        // da 0 y el PC creía que la habían cancelado (16-oct-2026: dos subidas a Anaplan cortadas en la 6/10 y la 8/10).
+        return true;
     }
 
     /** Cierra la tarea y ejecuta, si lo hay, el efecto del lado servidor (p. ej. guardar el escaneo de certificados). */
