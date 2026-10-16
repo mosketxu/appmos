@@ -126,6 +126,7 @@ class Is extends Component
         if (! $this->listo()) {
             return;
         }
+        $this->traerFicherosBase();
         $crit = $this->leerJson($this->dirCliente().'/criterios.json');
         foreach ($crit['cuentas'] ?? [] as $pref => $cas) {
             $this->criterios[] = ['prefijo' => (string) $pref, 'casilla' => (string) $cas];
@@ -188,7 +189,47 @@ class Is extends Component
             return;
         }
         file_put_contents("{$dir}/{$clave}.origen.txt", $f->getClientOriginalName()."\n".date('d/m/Y H:i')."\n");
+        $this->publicarFicheroBase($clave, "{$dir}/{$clave}.{$ext}", $f->getClientOriginalName());
         $this->dispatch('proceso-terminado', mensaje: '✅ '.self::FUENTES[$clave][0]."\n".$f->getClientOriginalName());
+    }
+
+    /**
+     * Ficheros base de la empresa (App\Support\FicherosBase, 16-oct-2026: "si subo el SyS para un proceso, cualquier otro que lo necesite
+     * tire siempre del último que he subido"): el sumas y saldos a 31/12 (periodo <ejercicio>-12) y el mayor de ese ejercicio subidos en
+     * otra pantalla se traen solos a las fuentes del IS; y lo que se sube aquí, se guarda allí.
+     */
+    protected function traerFicherosBase(): void
+    {
+        if (! $this->listo()) {
+            return;
+        }
+        $dir = $this->dirEjercicio().'/fuentes';
+        $ej = (int) $this->ejercicio;
+        $avisos = [];
+        if ($c = \App\Support\FicherosBase::traer((int) $this->entidadId, 'sys', $ej.'-12', null, $dir, 'sumas_saldos')) {
+            $avisos[] = 'Sumas y saldos a 31/12/'.$ej.': «'.$c['nombre'].'»'.($c['origen'] ? ' (de '.$c['origen'].')' : '');
+        }
+        if ($c = \App\Support\FicherosBase::traer((int) $this->entidadId, 'mayor', null, $ej, $dir, 'mayor')) {
+            $avisos[] = 'Mayor '.$ej.': «'.$c['nombre'].'»'.($c['origen'] ? ' (de '.$c['origen'].')' : '');
+        }
+        if ($avisos) {
+            $this->dispatch('proceso-terminado', mensaje: "📥 Traído de los ficheros base de la empresa (lo último subido):\n".implode("\n", $avisos));
+        }
+    }
+
+    protected function publicarFicheroBase(string $clave, string $ruta, string $nombre): void
+    {
+        $eid = (int) $this->entidadId;
+        $origen = 'IS'.(auth()->user() ? ' · '.auth()->user()->name : '');
+        if ($clave === 'sumas_saldos' && \App\Support\FicherosBase::esSumasSaldos($ruta) && ! \App\Support\FicherosBase::existeContenido($eid, 'sys', $ruta)) {
+            \App\Support\FicherosBase::guardar($eid, 'sys', $ruta, $nombre, $origen, ((int) $this->ejercicio).'-12');
+        }
+        if ($clave === 'mayor' && \App\Support\FicherosBase::esMayorLineal($ruta) && ! \App\Support\FicherosBase::existeContenido($eid, 'mayor', $ruta)) {
+            \App\Support\FicherosBase::guardar($eid, 'mayor', $ruta, $nombre, $origen);
+        }
+        // que no se vuelva a «traer» lo que acaba de subirse aquí
+        \App\Support\FicherosBase::traer($eid, $clave === 'mayor' ? 'mayor' : 'sys', $clave === 'mayor' ? null : ((int) $this->ejercicio).'-12',
+            $clave === 'mayor' ? (int) $this->ejercicio : null, dirname($ruta), $clave);
     }
 
     /** Mayores guardados de la empresa en los ficheros base centrales (otro proceso los subió): el IS usa el de cada ejercicio, así que se elige uno a mano. */
@@ -371,6 +412,7 @@ class Is extends Component
         if (! $this->guardar()) {
             return;
         }
+        $this->traerFicherosBase();
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         try {
             $r = Process::path($this->baseDir())->timeout(180)->run([$this->pythonBin(), 'motor/construye.py', $this->dirEjercicio()]);

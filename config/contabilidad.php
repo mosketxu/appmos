@@ -151,6 +151,7 @@ return [
         ->first(fn ($d) => is_dir($d)) ?? '/var/www/m349'),
     'leoybra_entidad' => (int) env('LEOYBRA_ENTIDAD', 2484),   // entidad «GRUPO LEOYBRA, S.L.»: sus ficheros base centrales (FicherosBase)
 
+    'fiq_entidad' => (int) env('FIQ_ENTIDAD', 2229),   // entidad «FASHION IQ BCN, S.L»: sus ficheros base centrales (SyS y mayor de Procesos FIQ)
     'neteges_entidad' => (int) env('NETEGES_ENTIDAD', 2552),   // entidad «Neteges Sicilia SL»: sus ficheros base centrales (FicherosBase)
 
     'neteges_dir' => env('NETEGES_DIR') ?: (collect(['e', 'f', 'd'])

@@ -85,6 +85,10 @@ class Neteges extends Component
         $this->cargarEstado();
         $this->sincronizarEstado('neteges.estado');
         $this->retomarTareas();
+        // 16-oct-2026: lo último que se haya subido en cualquier pantalla (plan, mayor, clientes, proveedores) se trae solo, sin botón
+        if ($this->centralNuevos()) {
+            $this->traerDelCentral();
+        }
     }
 
     /** «↻ Sincronizar estado» del panel de PCs. */

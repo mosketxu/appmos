@@ -150,6 +150,11 @@
                                                     @foreach ($opc as $e)
                                                         <div class="text-yellow-700">· {{ $e['que'] }} <span class="text-gray-500">({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})</span></div>
                                                     @endforeach
+                                                    @if ($sc = $this->entradas['sys_central'] ?? null)
+                                                        <div class="{{ $sc['nuevo'] ? 'text-indigo-700' : 'text-gray-500' }}" title="Ficheros base de Fashion IQ: lo último subido en cualquier pantalla (Procesos FIQ, 202, IS...)">
+                                                            {{ $sc['nuevo'] ? '📥 SyS '.$mmSel.' nuevo en los ficheros base' : '⚖️ SyS '.$mmSel.' de los ficheros base' }}: «{{ $sc['nombre'] }}», {{ $sc['fecha'] }}{{ $sc['origen'] ? ' · '.$sc['origen'] : '' }}{{ $sc['nuevo'] ? ' → se deja en la carpeta al ejecutar' : '' }}
+                                                        </div>
+                                                    @endif
                                                     @if (! empty($this->entradas['origen']))<div class="text-gray-400">{{ $this->entradas['origen'] }}</div>@endif
                                                 </div>
                                             @else
@@ -166,6 +171,19 @@
                                         </label>
                                     @endif
                                     @if ($id === 'cashflow')
+                                        @php $mc = $this->cashflowMayorCentral; @endphp
+                                        <label class="flex flex-col text-xs text-gray-600" title="Opcional: el mayor de SAGE (listado en columnas, el mismo que usan Bancos, Facturas OCR...). Se guarda en los ficheros base de Fashion IQ para todos los procesos. Si no eliges ninguno, se usa el último subido en cualquier pantalla.">
+                                            <span>Mayor (.xlsx, opcional)</span>
+                                            <input type="file" wire:model="cashflowMayor" accept=".xlsx" class="text-xs">
+                                            <span wire:loading wire:target="cashflowMayor" class="text-gray-500">⏳ subiendo…</span>
+                                            @if ($cashflowMayor)
+                                                <span class="text-green-700">✓ {{ $cashflowMayor->getClientOriginalName() }}</span>
+                                            @elseif ($mc)
+                                                <span class="text-gray-500">Usa: «{{ $mc['nombre'] }}», {{ $mc['fecha'] }}{{ $mc['origen'] ? ' · '.$mc['origen'] : '' }}</span>
+                                            @else
+                                                <span class="text-yellow-700">No hay mayor en los ficheros base: lo busca en Descargas del PC.</span>
+                                            @endif
+                                        </label>
                                         @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
                                         <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"
                                             wire:confirm="¿Mandar YA a Plein el «Cashflow 2026 {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)"

@@ -7,6 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Livewire\Component;
+use App\Support\FicherosBase;
 use Livewire\WithFileUploads;
 
 /**
@@ -219,7 +220,22 @@ class IsPagos extends Component
             return;
         }
         file_put_contents($dir.'/'.$clave.'.origen.txt', $f->getClientOriginalName()."\n".date('d/m/Y H:i')."\n");
+        if ($tipo === 'pyg' && $this->mesPeriodo() && FicherosBase::esSumasSaldos($dir.'/'.$clave.'.'.$ext)) {
+            // a los ficheros base de la empresa, para todos los procesos (16-oct-2026)
+            if (! FicherosBase::existeContenido($id, 'sys', $dir.'/'.$clave.'.'.$ext)) {
+                FicherosBase::guardar($id, 'sys', $dir.'/'.$clave.'.'.$ext, $f->getClientOriginalName(), '202'.(auth()->user() ? ' · '.auth()->user()->name : ''), $this->mesPeriodo());
+            }
+            FicherosBase::traer($id, 'sys', $this->mesPeriodo(), null, $dir, 'pyg202');   // apunta que ya lo tiene
+        }
         $this->dispatch('proceso-terminado', mensaje: '✅ '.['is' => "IS {$ej}", 'p202' => "202 {$ej}", 'pyg' => "P&G {$ej}"][$tipo].': '.$f->getClientOriginalName());
+    }
+
+    /** Mes (AAAA-MM) al que llega el sumas y saldos del periodo del 202 (40.3: 3, 9 u 11 primeros meses). */
+    protected function mesPeriodo(): ?string
+    {
+        $m = ['1P' => '03', '2P' => '09', '3P' => '11'][$this->periodo] ?? null;
+
+        return $m ? $this->ejercicio.'-'.$m : null;
     }
 
     /** Importe escrito a mano ('1.234,56' o '1234.56') → número, o null si no es un número. */
@@ -298,6 +314,10 @@ class IsPagos extends Component
         foreach ($this->clientes() as $c) {
             if (! in_array($c['id'], $ids, true)) {
                 continue;
+            }
+            // el sumas y saldos del periodo subido en cualquier pantalla (ficheros base de la empresa), si es nuevo para el 202
+            if ($this->mesPeriodo() && ($t = FicherosBase::traer((int) $c['id'], 'sys', $this->mesPeriodo(), null, $this->dirCliente($c['nif']).'/'.$this->ejercicio.'/fuentes', 'pyg202'))) {
+                $this->salida .= "📥 {$c['entidad']}: uso el sumas y saldos a ".$this->mesPeriodo()." de los ficheros base («{$t['nombre']}»".($t['origen'] ? ", de {$t['origen']}" : '').").\n";
             }
             $ajustes = $this->dirCliente($c['nif']).'/'.$this->ejercicio.'/ajustes202.json';
             $cnae = trim((string) ($this->cnae[$c['id']] ?? ''));

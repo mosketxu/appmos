@@ -95,6 +95,9 @@ class RevisionMayor extends Component
     {
         $out = [];
         foreach (FicherosBase::TIPOS as $t => $d) {
+            if (! empty($d['por_periodo'])) {
+                continue;   // el sumas y saldos se sube en la pantalla que lo usa, que sabe de qué mes es
+            }
             $u = $this->entidadId ? FicherosBase::ultimo((int) $this->entidadId, $t) : null;
             $out[$t] = $d + ['ultimo' => $u ? ['nombre' => $u['nombre'], 'fecha' => date('d/m/Y H:i', $u['fecha']), 'origen' => $u['origen']] : null];
         }

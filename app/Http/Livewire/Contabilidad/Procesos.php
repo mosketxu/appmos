@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Contabilidad;
 
 use App\Http\Livewire\Concerns\EjecutaEnPcs;
 use App\Support\ColaTareas;
+use App\Support\FicherosBase;
 use App\Support\IntrastatMotor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -40,6 +41,8 @@ class Procesos extends Component
      */
     public $sysFichero = null;
     public bool $sysForzar = false;
+    /** Cash flow: mayor de SAGE elegido a mano (opcional; si no, el último de los ficheros base de Fashion IQ, 16-oct-2026). */
+    public $cashflowMayor = null;
 
     protected string $grupoPc = 'fiq';
 
@@ -367,7 +370,22 @@ class Procesos extends Component
             $origen = 'comprobado ahora en este PC';
         }
 
-        return $todo && isset($todo[$mm]) ? $todo[$mm] + ['origen' => $origen] : [];
+        $r = $todo && isset($todo[$mm]) ? $todo[$mm] + ['origen' => $origen] : [];
+        // El SyS del mes en los ficheros base (subido en cualquier pantalla) cuenta como «está»: se deja en la carpeta al ejecutar.
+        $c = $this->fiqEntidad() ? FicherosBase::ultimo($this->fiqEntidad(), 'sys', "2026-{$mm}") : null;
+        if ($c) {
+            $nuevo = ($this->sysPuestos()[$mm] ?? null) !== FicherosBase::sha($c['ruta']);
+            $r['sys_central'] = ['nombre' => $c['nombre'], 'fecha' => date('d/m/Y H:i', $c['fecha']), 'origen' => $c['origen'], 'nuevo' => $nuevo];
+            foreach (['monthly_sales', 'anaplan'] as $k) {
+                foreach ($r[$k] ?? [] as $i => $e) {
+                    if ($e['que'] === "SyS {$mm}.xlsx" && ! $e['ok']) {
+                        $r[$k][$i]['ok'] = true;
+                    }
+                }
+            }
+        }
+
+        return $r;
     }
 
     /** En un PC: entradasMes.js ejecutado aquí (una vez por petición). */
@@ -677,26 +695,11 @@ class Procesos extends Component
                 $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--settlement', $f->getRealPath()]);
             }
         }
-        if (in_array($id, ['monthly_sales', 'anaplan'], true) && $this->sysFichero) {
-            $f = $this->sysFichero;
-            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
-                $this->dispatch('proceso-terminado', mensaje: '⚠️ El balance de sumas y saldos tiene que ser un .xlsx.');
-                return;
-            }
-            $poner = ['script' => 'ponerSyS.js', 'timeout' => 120, 'etiqueta' => "Dejar SyS {$mm}.xlsx en Anaplan"];
-            $extra = $this->sysForzar ? ['--forzar'] : [];
-            if ($this->remoto()) {
-                $poner['args'] = [$mm, '{E0}', ...$extra];
-                $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/sys_in', 'sello' => true]];
-            } else {
-                $poner['args'] = [$mm, $f->getRealPath(), ...$extra];
-            }
-            // si no se ha podido dejar el SyS, no se sigue con el proceso
-            foreach ($pasos as $i => $paso) {
-                $pasos[$i]['solo_si_ok'] = true;
-            }
-            array_unshift($pasos, $poner);
-            $opc['ctx']['pasoSys'] = true;
+        if (in_array($id, ['monthly_sales', 'anaplan'], true) && ! $this->prepararSys($mm, $pasos, $opc)) {
+            return;
+        }
+        if ($id === 'cashflow' && ! $this->prepararMayorCashflow($pasos, $opc)) {
+            return;
         }
         if ($id === 'laboral' && $this->laboralFichero) {
             $f = $this->laboralFichero;
@@ -722,15 +725,155 @@ class Procesos extends Component
             $this->sysFichero = null;
             $this->sysForzar = false;
         }
+        if ($id === 'cashflow') {
+            $this->cashflowMayor = null;
+        }
+    }
+
+    // -- Ficheros base de Fashion IQ (SyS y mayor), comunes a todos los procesos (App\Support\FicherosBase, 16-oct-2026) --------------
+
+    protected function fiqEntidad(): int
+    {
+        return (int) config('contabilidad.fiq_entidad');
+    }
+
+    /** [MM => sha256 del SyS de los ficheros base que ya se dejó en la carpeta Anaplan]: así solo se vuelve a poner si llega otro. */
+    protected function sysPuestos(): array
+    {
+        try {
+            return Schema::hasTable('estado_procesos') ? ((array) ColaTareas::estado('fiq.sys_puesto')) : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Antes del proceso, deja como Anaplan/SyS MM.xlsx (ponerSyS.js) el sumas y saldos que toca: el que se acaba de elegir en la fila o,
+     * si no, el último del mes subido en CUALQUIER pantalla (ficheros base de Fashion IQ: Procesos FIQ, 202, IS...) si aún no se puso.
+     * Lo elegido aquí pasa a los ficheros base cuando ponerSyS lo da por bueno (postSys). false = no seguir.
+     */
+    protected function prepararSys(string $mm, array &$pasos, array &$opc): bool
+    {
+        $eid = $this->fiqEntidad();
+        $args = [];
+        if ($f = $this->sysFichero) {
+            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ El balance de sumas y saldos tiene que ser un .xlsx.');
+                return false;
+            }
+            $sha = hash_file('sha256', $f->getRealPath());
+            $ruta = FicherosBase::raiz().'/_pendientes/'.$sha.'.xlsx';   // a los ficheros base, cuando ponerSyS lo dé por bueno
+            @mkdir(dirname($ruta), 0775, true);
+            if (! @copy($f->getRealPath(), $ruta)) {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ No he podido guardar el sumas y saldos subido.');
+                return false;
+            }
+            $nombre = $f->getClientOriginalName();
+            $opc['ctx']['sysNuevo'] = ['ruta' => $ruta, 'nombre' => $nombre];
+            if ($this->sysForzar) {
+                $args[] = '--forzar';
+            }
+        } else {
+            $c = $eid ? FicherosBase::ultimo($eid, 'sys', "2026-{$mm}") : null;
+            if (! $c || ($this->sysPuestos()[$mm] ?? null) === ($sha = FicherosBase::sha($c['ruta']))) {
+                return true;   // no hay ninguno en los ficheros base, o ya es el que está en la carpeta
+            }
+            [$ruta, $nombre] = [$c['ruta'], $c['nombre']];
+            // si no vale (sin desglose por canal, otro mes...), se avisa y se sigue con el SyS que ya hubiera en la carpeta
+            $args[] = '--opcional';
+            $this->salida .= "\n\nℹ️ Sumas y saldos {$mm}: uso el último subido («{$nombre}», ".date('d/m/Y H:i', $c['fecha']).($c['origen'] ? ", desde {$c['origen']}" : '').').';
+        }
+        $poner = ['script' => 'ponerSyS.js', 'timeout' => 120, 'etiqueta' => "Dejar SyS {$mm}.xlsx en Anaplan"];
+        if ($this->remoto()) {
+            $poner['args'] = [$mm, '{E0}', ...$args];
+            $opc['entradas'] = [['ruta' => $ruta, 'nombre' => $nombre, 'dir' => '_tmp/sys_in', 'sello' => true]];
+        } else {
+            $poner['args'] = [$mm, $ruta, ...$args];
+        }
+        foreach ($pasos as $i => $paso) {
+            $pasos[$i]['solo_si_ok'] = true;   // si no se ha podido dejar el SyS, no se sigue con el proceso
+        }
+        array_unshift($pasos, $poner);
+        $opc['ctx'] += ['pasoSys' => $mm, 'sysSha' => $sha];
+
+        return true;
+    }
+
+    /** Tras ponerSyS: apunta qué SyS hay en la carpeta y pasa a los ficheros base el que se eligió en la fila. Devuelve $oks sin ese paso. */
+    protected function postSys(array $ctx, array $oks): array
+    {
+        if (empty($ctx['pasoSys'])) {
+            return $oks;
+        }
+        $ok = (bool) array_shift($oks);
+        $nuevo = $ctx['sysNuevo'] ?? null;
+        if ($ok && Schema::hasTable('estado_procesos')) {
+            ColaTareas::guardarEstado('fiq.sys_puesto', [$ctx['pasoSys'] => $ctx['sysSha']] + $this->sysPuestos(), 'Procesos FIQ');
+        }
+        if ($nuevo && is_file($nuevo['ruta'])) {
+            $eid = $this->fiqEntidad();
+            if ($ok && $eid && ! FicherosBase::existeContenido($eid, 'sys', $nuevo['ruta'])) {
+                FicherosBase::guardar($eid, 'sys', $nuevo['ruta'], $nuevo['nombre'], 'Procesos FIQ'.(auth()->user() ? ' · '.auth()->user()->name : ''), '2026-'.$ctx['pasoSys']);
+            }
+            @unlink($nuevo['ruta']);
+        }
+        unset($this->entradasLocales);
+
+        return $oks;
+    }
+
+    /**
+     * Cash flow: el mayor elegido en la fila (pasa a los ficheros base para todos los procesos si es el listado de SAGE que usan los
+     * demás) o, si no, el último mayor de 2026 de los ficheros base de Fashion IQ. Sin ninguno, el script lo busca en Descargas como siempre.
+     */
+    protected function prepararMayorCashflow(array &$pasos, array &$opc): bool
+    {
+        $eid = $this->fiqEntidad();
+        if ($f = $this->cashflowMayor) {
+            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ El mayor tiene que ser un Excel (.xlsx) de SAGE.');
+                return false;
+            }
+            [$ruta, $nombre] = [$f->getRealPath(), $f->getClientOriginalName()];
+            if ($eid && ! FicherosBase::existeContenido($eid, 'mayor', $ruta)) {
+                if (FicherosBase::esMayorLineal($ruta)) {
+                    FicherosBase::guardar($eid, 'mayor', $ruta, $nombre, 'Procesos FIQ · Cash flow'.(auth()->user() ? ' · '.auth()->user()->name : ''));
+                } else {
+                    $this->salida .= "\n\n⚠️ «{$nombre}» es el mayor en formato «fichas» (una cuenta debajo de otra): lo uso para el Cash flow, pero no lo guardo para los demás procesos, que leen el listado en columnas (Código cuenta, Fecha asiento, Debe, Haber...).";
+                }
+            }
+        } else {
+            $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, 2026) : null;
+            if (! $c) {
+                return true;
+            }
+            [$ruta, $nombre] = [$c['ruta'], 'mayor_central.xlsx'];
+            $this->salida .= "\n\nℹ️ Cash flow: uso el último mayor subido («{$c['nombre']}», ".date('d/m/Y H:i', $c['fecha']).($c['origen'] ? ", desde {$c['origen']}" : '').').';
+        }
+        if ($this->remoto()) {
+            $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--mayor', '{E0}']);
+            $opc['entradas'] = [['ruta' => $ruta, 'nombre' => 'mayor_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $nombre), 'dir' => '_tmp/mayor_in']];
+        } else {
+            $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--mayor', $ruta]);
+        }
+
+        return true;
+    }
+
+    /** Lo que se enseña en la fila de Cash flow: el mayor que se usará. */
+    public function getCashflowMayorCentralProperty(): ?array
+    {
+        $c = $this->fiqEntidad() ? FicherosBase::ultimo($this->fiqEntidad(), 'mayor', null, 2026) : null;
+
+        return $c ? ['nombre' => $c['nombre'], 'fecha' => date('d/m/Y H:i', $c['fecha']), 'origen' => $c['origen']] : null;
     }
 
     /** Fin de un proceso de la tabla: si todo fue bien, marca el checklist (con envío aparte: «procesado», no «hecho»). */
     protected function postProceso(array $ctx, int $desde, array $oks): void
     {
-        if (! empty($ctx['pasoSys']) && ($oks[0] ?? false)) {
-            unset($this->entradasLocales);   // el SyS ya está en su sitio: que deje de salir como «falta»
-        }
-        if (! in_array(false, $oks, true)) {
+        $ok = ! in_array(false, $oks, true);
+        $this->postSys($ctx, $oks);
+        if ($ok) {
             $p = $this->procesos()[$ctx['id']] ?? [];
             $this->marcarChecklist($ctx['id'], $ctx['mes'], ! empty($p['envio']) ? 'proc' : 'ok');
         }
@@ -806,12 +949,18 @@ class Procesos extends Component
                 'etiqueta' => "RentasVariables · Declaración {$tienda} (mes {$mm}, REAL)",
             ];
         }
-        $this->lanzar($pasos, ['resultados' => 'rv', 'post' => 'postRvCalculos', 'ctx' => ['mes' => $this->mes]]);
+        $opc = ['resultados' => 'rv', 'post' => 'postRvCalculos', 'ctx' => ['mes' => $this->mes]];
+        $sysElegido = $this->sysFichero;
+        $this->sysFichero = null;   // aquí no hay selector: solo el último de los ficheros base, si aún no está en la carpeta
+        $this->prepararSys($mm, $pasos, $opc);
+        $this->sysFichero = $sysElegido;
+        $this->lanzar($pasos, $opc);
     }
 
     /** $oks[0] = Cálculos; el resto, una Declaración por tienda marcada. */
     protected function postRvCalculos(array $ctx, int $desde, array $oks): void
     {
+        $oks = $this->postSys($ctx, $oks);
         if ($oks[0] ?? false) {
             $this->marcarChecklist('rv_calculos', $ctx['mes']);
         }
