@@ -452,18 +452,21 @@ class Procesos extends Component
         if (! $this->autorizar('anaplan_web')) {
             return;
         }
+        $ids = [];
         if ($this->remoto()) {
             $ids = DB::table('tareas')->where('proceso', 'pc.script')->whereIn('estado', ['preparando', 'pendiente', 'en_curso'])
                 ->where('parametros', 'like', '%subirAnaplan%')->pluck('id')->all();
             if ($ids) {
                 DB::table('tareas')->whereIn('id', $ids)->update(['estado' => 'cancelada', 'terminada_at' => now(), 'updated_at' => now()]);
-                $this->salida .= "\n\n🚫 Subida a Anaplan cancelada (tarea #".implode(', #', $ids).'): el PC la corta en unos segundos.';
             }
         }
         $this->lanzar([[
             'script' => 'anaplanWeb/resetAnaplan.js', 'args' => [], 'timeout' => 120,
             'etiqueta' => 'Reiniciar Chrome de Anaplan', 'windows' => true,
         ]], ['resultados' => 'anaplan_web']);
+        if (! empty($ids)) {
+            $this->salida .= "\n🚫 Subida a Anaplan cancelada (tarea #".implode(', #', $ids).'): el PC la corta en unos segundos.';
+        }
     }
 
     public function limpiarSalida(): void
@@ -581,9 +584,10 @@ class Procesos extends Component
             $this->resultados[$clave] = [];
         }
         if ($this->remoto()) {
-            $this->lanzarEnCola($pasos, $opc);
+            $this->lanzarEnCola($pasos, $opc);   // limpia la Salida
             return;
         }
+        $this->salida = '';   // cada proceso empieza con la Salida limpia (16-oct-2026)
         $oks = [];
         $desde = strlen($this->salida);
         foreach ($pasos as $p) {

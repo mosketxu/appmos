@@ -114,6 +114,18 @@
                                             <span wire:loading wire:target="reiniciarAnaplan">⏳…</span>
                                         </button>
                                     @endif
+                                    @if (in_array($id, ['anaplan', 'anaplan_web'], true) && ! empty($this->entradas['sin_canal']))
+                                        {{-- 16-oct-2026 (Alex: «dato muy importante, aviso en pantalla fuera de la salida»): gastos/ingresos del SyS
+                                             del mes sin tienda. Van a «Alta automática»: en Anaplan LE ≠ AC por ese importe. --}}
+                                        @php $sc = $this->entradas['sin_canal']; @endphp
+                                        <div style="max-width:24rem;padding:.4rem .6rem;border:1px solid #fca5a5;border-left:5px solid #dc2626;border-radius:.375rem;background:#fef2f2;font-size:.75rem;line-height:1.25;color:#7f1d1d">
+                                            <div style="font-weight:700">🚨 {{ count($sc) }} cuenta(s) de gasto/ingreso SIN TIENDA en el SyS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} · {{ number_format(array_sum(array_column($sc, 'mes')), 2, ',', '.') }} €</div>
+                                            @foreach ($sc as $h)
+                                                <div>{{ $h['cuenta'] }} {{ \Illuminate\Support\Str::limit($h['descripcion'], 30) }}: <b>{{ number_format($h['mes'], 2, ',', '.') }} €</b></div>
+                                            @endforeach
+                                            <div style="margin-top:.2rem;color:#991b1b">👉 En Anaplan, LE y AC no cuadrarán por ese importe. Asigna tienda en SAGE, exporta de nuevo el SyS y vuelve a lanzar Anaplan.</div>
+                                        </div>
+                                    @endif
                                     @if ($id === 'adyen')
                                         <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes.">
                                             <span>Settlement (.xlsx, opcional)</span>

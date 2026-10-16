@@ -63,6 +63,8 @@ trait EjecutaEnPcs
      */
     protected function lanzarEnCola(array $pasos, array $opc = []): ?int
     {
+        // Cada proceso empieza con la Salida limpia (16-oct-2026, Alex: «si no, va acumulando y ahí sí que me pierdo»)
+        $this->salida = '';
         $etiquetas = array_column($pasos, 'etiqueta');
         $titulo = implode(' + ', $etiquetas);
         if (! $this->colaLista()) {
