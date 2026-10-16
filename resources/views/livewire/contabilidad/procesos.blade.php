@@ -113,6 +113,41 @@
                                             @if ($adyenSettlement)<span class="text-green-700">✓ {{ $adyenSettlement->getClientOriginalName() }}</span>@endif
                                         </label>
                                     @endif
+                                    @if (in_array($id, ['monthly_sales', 'anaplan'], true))
+                                        @php $mmSel = str_pad($mes, 2, '0', STR_PAD_LEFT); $ent = $this->entradas[$id] ?? null; @endphp
+                                        <div class="flex flex-col text-xs text-gray-600 gap-y-1">
+                                            <label class="flex flex-col" title="Opcional: el balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera). Vale para Monthly sales y Anaplan: basta subirlo una vez.">
+                                                <span>Sumas y saldos {{ $mmSel }} (.xlsx, opcional)</span>
+                                                <input type="file" wire:model="sysFichero" accept=".xlsx" class="text-xs">
+                                                <span wire:loading wire:target="sysFichero" class="text-gray-500">⏳ subiendo…</span>
+                                                @if ($sysFichero)
+                                                    <span class="text-green-700">✓ {{ $sysFichero->getClientOriginalName() }} → SyS {{ $mmSel }}.xlsx</span>
+                                                    <label class="flex items-center gap-1" title="Si al comprobarlo no parece el mes {{ $mmSel }} (o no es de Fashion IQ), se para; marca esto si estás seguro de que es el bueno.">
+                                                        <input type="checkbox" wire:model="sysForzar" class="rounded"> Usarlo igualmente aunque no parezca el mes
+                                                    </label>
+                                                @endif
+                                            </label>
+                                            @if ($ent)
+                                                @php $faltan = array_filter($ent, fn ($e) => ! $e['ok'] && empty($e['opcional'])); $opc = array_filter($ent, fn ($e) => ! $e['ok'] && ! empty($e['opcional'])); @endphp
+                                                <div class="leading-tight" title="{{ $this->entradas['origen'] ?? '' }}">
+                                                    @if (! $faltan)
+                                                        <span class="text-green-700">✓ Están todos los ficheros del mes {{ $mmSel }}</span>
+                                                    @else
+                                                        <span class="font-medium text-red-700">Falta para el mes {{ $mmSel }}:</span>
+                                                        @foreach ($faltan as $e)
+                                                            <div class="text-red-700">✗ {{ $e['que'] }} <span class="text-gray-500">({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})</span></div>
+                                                        @endforeach
+                                                    @endif
+                                                    @foreach ($opc as $e)
+                                                        <div class="text-yellow-700">· {{ $e['que'] }} <span class="text-gray-500">({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})</span></div>
+                                                    @endforeach
+                                                    @if (! empty($this->entradas['origen']))<div class="text-gray-400">{{ $this->entradas['origen'] }}</div>@endif
+                                                </div>
+                                            @else
+                                                <span class="text-gray-400">Sin datos de qué ficheros hay (pulsa «↻ Sincronizar estado» en el panel de PCs).</span>
+                                            @endif
+                                        </div>
+                                    @endif
                                     @if ($id === 'laboral')
                                         <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}2026…» de versión más alta en la carpeta Laboral 2026 del mes.">
                                             <span>Imputación de costes (.xlsx, opcional)</span>

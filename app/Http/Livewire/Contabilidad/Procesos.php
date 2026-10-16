@@ -32,6 +32,13 @@ class Procesos extends Component
     public $adyenSettlement = null;
     /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
     public $laboralFichero = null;
+    /**
+     * Balance de sumas y saldos del mes elegido a mano (16-oct-2026: "quiero un input para ir a buscarlo; tú lo renombras y lo
+     * llevas a la carpeta"). Lo usan Monthly sales y Anaplan: antes de su script, ponerSyS.js lo comprueba y lo deja como
+     * Anaplan/SyS MM.xlsx. $sysForzar = «Usarlo igualmente» si ponerSyS dice que no parece ese mes (Alex decide).
+     */
+    public $sysFichero = null;
+    public bool $sysForzar = false;
 
     protected string $grupoPc = 'fiq';
 
@@ -341,6 +348,40 @@ class Procesos extends Component
         return $this->procesos();
     }
 
+    /**
+     * Ficheros que necesitan Monthly sales y Anaplan para el mes del título y si están (16-oct-2026: "pones si me falta
+     * subir algo en el mes seleccionado"). Lo calcula monthlyFIQ/entradasMes.js: en la web, la copia que sube el PC con
+     * el estado (fiq.entradas, al terminar cada tarea o con «↻ Sincronizar»); en un PC, ejecutándolo aquí.
+     * Forma: ['monthly_sales' => [['que','donde','ok','opcional'?,'nota'?], ...], 'anaplan' => [...], 'origen' => texto].
+     */
+    public function getEntradasProperty(): array
+    {
+        $mm = sprintf('%02d', $this->mes);
+        if ($this->remoto()) {
+            $todo = $this->estadoRemoto('fiq.entradas');
+            $cuando = $this->colaLista() ? \Illuminate\Support\Facades\DB::table('estado_procesos')->where('clave', 'fiq.entradas')->first(['updated_at', 'origen']) : null;
+            $origen = $cuando ? 'comprobado '.\Carbon\Carbon::parse($cuando->updated_at)->format('d/m H:i').($cuando->origen ? ' en '.$cuando->origen : '') : '';
+        } else {
+            $todo = $this->entradasLocales;
+            $origen = 'comprobado ahora en este PC';
+        }
+
+        return $todo && isset($todo[$mm]) ? $todo[$mm] + ['origen' => $origen] : [];
+    }
+
+    /** En un PC: entradasMes.js ejecutado aquí (una vez por petición). */
+    public function getEntradasLocalesProperty(): ?array
+    {
+        try {
+            $r = Process::path($this->scriptDir())->timeout(60)->run($this->nodeCmd('entradasMes.js'));
+            $d = $r->successful() ? json_decode($r->output(), true) : null;
+        } catch (\Throwable $e) {
+            $d = null;
+        }
+
+        return is_array($d) ? $d : null;
+    }
+
     /** /mnt/e/Foo/Bar  ->  E:\Foo\Bar  (para enseñar/copiar la ruta en Windows). */
     protected function rutaWindows(string $p): string
     {
@@ -502,6 +543,10 @@ class Procesos extends Component
         $oks = [];
         $desde = strlen($this->salida);
         foreach ($pasos as $p) {
+            if (! empty($p['solo_si_ok']) && in_array(false, $oks, true)) {
+                $oks[] = false;   // un paso anterior falló (p. ej. no se ha podido dejar el SyS): este no se hace
+                continue;
+            }
             $this->salida .= "\n\n===== {$p['etiqueta']} =====\n";
             $desde = strlen($this->salida);
             if (! empty($p['windows']) && ! is_dir($this->scriptDir() . '/' . dirname($p['script']) . '/node_modules/playwright-core')) {
@@ -606,6 +651,27 @@ class Procesos extends Component
                 $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--settlement', $f->getRealPath()]);
             }
         }
+        if (in_array($id, ['monthly_sales', 'anaplan'], true) && $this->sysFichero) {
+            $f = $this->sysFichero;
+            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ El balance de sumas y saldos tiene que ser un .xlsx.');
+                return;
+            }
+            $poner = ['script' => 'ponerSyS.js', 'timeout' => 120, 'etiqueta' => "Dejar SyS {$mm}.xlsx en Anaplan"];
+            $extra = $this->sysForzar ? ['--forzar'] : [];
+            if ($this->remoto()) {
+                $poner['args'] = [$mm, '{E0}', ...$extra];
+                $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/sys_in', 'sello' => true]];
+            } else {
+                $poner['args'] = [$mm, $f->getRealPath(), ...$extra];
+            }
+            // si no se ha podido dejar el SyS, no se sigue con el proceso
+            foreach ($pasos as $i => $paso) {
+                $pasos[$i]['solo_si_ok'] = true;
+            }
+            array_unshift($pasos, $poner);
+            $opc['ctx']['pasoSys'] = true;
+        }
         if ($id === 'laboral' && $this->laboralFichero) {
             $f = $this->laboralFichero;
             if (! in_array(strtolower($f->getClientOriginalExtension()), ['xlsx', 'xls'], true)) {
@@ -626,11 +692,18 @@ class Procesos extends Component
         if ($id === 'laboral') {
             $this->laboralFichero = null;
         }
+        if (in_array($id, ['monthly_sales', 'anaplan'], true)) {
+            $this->sysFichero = null;
+            $this->sysForzar = false;
+        }
     }
 
     /** Fin de un proceso de la tabla: si todo fue bien, marca el checklist (con envío aparte: «procesado», no «hecho»). */
     protected function postProceso(array $ctx, int $desde, array $oks): void
     {
+        if (! empty($ctx['pasoSys']) && ($oks[0] ?? false)) {
+            unset($this->entradasLocales);   // el SyS ya está en su sitio: que deje de salir como «falta»
+        }
         if (! in_array(false, $oks, true)) {
             $p = $this->procesos()[$ctx['id']] ?? [];
             $this->marcarChecklist($ctx['id'], $ctx['mes'], ! empty($p['envio']) ? 'proc' : 'ok');

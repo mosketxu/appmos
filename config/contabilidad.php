@@ -244,7 +244,7 @@ return [
     'pc_grupos' => [
         'fiq' => ['scripts' => [
             'monthlyFIQ.js', 'sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js', 'anaplanWeb/subirAnaplan.js',
-            'imputacionCostes.js', 'adyenReparto.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
+            'imputacionCostes.js', 'adyenReparto.js', 'ponerSyS.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
             'enviarRentasVariables.py', 'pagosFinMes.py', 'FacturasEmitidas/facturasEmitidas.py', 'CashFlow/cashflow.py',
             'CashInStore/cashInStore.py',
             'ComunicarImpuestos/comunicarImpuestos.py',
