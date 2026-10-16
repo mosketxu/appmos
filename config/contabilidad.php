@@ -215,6 +215,7 @@ return [
         'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
         'pc.dejar_en_onedrive' => 'Dejar en una carpeta de OneDrive un fichero preparado en la web (M349: el .349 en la carpeta de trabajo)',
         'pc.traer_de_onedrive' => 'Subir a la web el fichero que toca de una carpeta de OneDrive (M349: el borrador para el correo a Marta)',
+        'pc.aeat_349' => 'M349: importar el .349 en el formulario de la AEAT con el certificado de Suma, validar y bajar la vista previa (borrador); no presenta',
         'pc.facturasocr' => 'Llevar al OneDrive de este PC lo validado en Facturas OCR (con comprobación de huellas)',
         'pc.facturasocr_z' => 'Facturas OCR: traer las facturas a procesar de la carpeta de la empresa en el disco Z:',
         'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',

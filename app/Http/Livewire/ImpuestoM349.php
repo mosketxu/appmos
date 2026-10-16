@@ -47,6 +47,9 @@ class ImpuestoM349 extends Component
     public ?int $tareaGuardar = null;
     public $subidaBorrador = null;
     public ?int $tareaTraer = null;
+    /** Tarea pc.aeat_349: un PC importa el .349 en el formulario de la AEAT, valida y baja la vista previa (no presenta). */
+    public ?int $tareaAeat = null;
+    public array $aeatErrores = [];
     /** Paso 1 del envío hecho: se enseña el correo y el botón de confirmar (huella de lo que se va a enviar). */
     public string $mailArmado = '';
 
@@ -125,7 +128,8 @@ class ImpuestoM349 extends Component
     protected function cargar(): void
     {
         $this->res = null;
-        $this->tareaGuardar = $this->tareaTraer = null;
+        $this->tareaGuardar = $this->tareaTraer = $this->tareaAeat = null;
+        $this->aeatErrores = [];
         $this->mailArmado = '';
         if (! $this->operativo() || ! isset($this->periodos()[$this->periodo])) {
             return;
@@ -250,6 +254,22 @@ class ImpuestoM349 extends Component
     {
         if ($this->esperandoCarpetas && ! DB::table('tareas')->where('proceso', 'pc.arbol_carpetas')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
             $this->esperandoCarpetas = false;
+        }
+        if ($this->tareaAeat) {
+            $t = DB::table('tareas')->find($this->tareaAeat);
+            if ($t && ! in_array($t->estado, ['preparando', 'pendiente', 'en_curso'], true)) {
+                $this->tareaAeat = null;
+                $r = json_decode($t->resultado ?? 'null', true) ?: [];
+                $src = ColaTareas::carpetaFicheros($t->id).'/'.basename((string) ($r['nombre'] ?? ''));
+                if ($t->estado === 'ok' && ! empty($r['nombre']) && is_file($src)) {
+                    $this->guardarBorrador($src, (string) $r['nombre'], (int) ($r['mtime'] ?? time()), 'aeat');
+                    $this->msg = 'Borrador de la AEAT listo (validado sin errores, sin presentar): «'.$r['nombre'].'», también en la carpeta de trabajo ('.($r['pc'] ?? 'un PC').').'
+                        .(! empty($r['avisos']) ? ' Avisos: '.implode(' · ', (array) $r['avisos']) : '');
+                } else {
+                    $this->aeatErrores = array_values(array_filter((array) ($r['errores'] ?? [])));
+                    $this->error = 'La AEAT no ha dado el borrador'.($this->aeatErrores ? ': '.$this->aeatErrores[0] : ': '.(string) ($r['error'] ?? trim(mb_substr((string) $t->log, -300)) ?: 'error en el PC'));
+                }
+            }
         }
         if ($this->tareaTraer) {
             $t = DB::table('tareas')->find($this->tareaTraer);
@@ -510,6 +530,38 @@ class ImpuestoM349 extends Component
         }
         $this->tareaTraer = ColaTareas::crear('pc.traer_de_onedrive', ['carpeta' => $this->carpeta, 'ext' => 'pdf', 'contiene' => ['borrador'], 'periodo' => $this->periodo, 'dias' => 2],
             ColaTareas::pcElegido() ?: null, auth()->id());
+    }
+
+    /** Un PC con el certificado de Suma importa el .349 en el formulario de la AEAT, lo valida y deja la vista previa (borrador) en la carpeta. */
+    public function prepararAeat(): void
+    {
+        $this->autorizar();
+        $this->error = $this->msg = '';
+        $this->aeatErrores = [];
+        $nombre = (string) ($this->res['fichero'] ?? '');
+        $ruta = $this->dirPeriodo('salida').'/'.basename($nombre);
+        if ($nombre === '' || ! is_file($ruta) || ! empty($this->res['errores'])) {
+            $this->error = 'Primero tiene que haber un .349 sin errores (paso 4).';
+            return;
+        }
+        if ($this->carpeta === '' || ! ColaTareas::rutaRelativaSegura($this->carpeta)) {
+            $this->error = 'Elige primero la carpeta de trabajo: ahí se deja el borrador.';
+            return;
+        }
+        $vivos = DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))
+            ->where('capacidades', 'like', '%pc.aeat_349%')->count();
+        if (! $vivos) {
+            $this->error = 'No hay ningún PC trabajador conectado que pueda entrar en la AEAT ahora mismo.';
+            return;
+        }
+        $id = ColaTareas::crear('pc.aeat_349', ['carpeta' => $this->carpeta, 'nif' => $this->declarante()['nif'] ?? '', 'ejercicio' => (string) $this->ejercicio,
+            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]], ColaTareas::pcElegido() ?: null, auth()->id(), null, null, 'preparando');
+        $dir = ColaTareas::carpetaEntradas($id);
+        @mkdir($dir, 0775, true);
+        copy($ruta, $dir.'/fichero.349');
+        ColaTareas::liberar($id);
+        $this->tareaAeat = $id;
+        $this->mailArmado = '';
     }
 
     public function cancelarMail(): void

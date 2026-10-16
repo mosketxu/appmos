@@ -3,7 +3,7 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_impuestos', ['activa' => 'm349'])
 
-    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas || $tareaGuardar || $tareaTraer) wire:poll.3s="revisar" @endif>
+    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas || $tareaGuardar || $tareaTraer || $tareaAeat) wire:poll.3s="revisar" @endif>
     <style>
         .m3-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; margin-bottom:12px }
         .m3-h { font-weight:600; color:#111827; margin-bottom:8px }
@@ -131,12 +131,21 @@
 
         <div class="m3-card">
             <div class="m3-h">5 · Borrador de la AEAT y correo a Marta</div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+                <button type="button" wire:click="prepararAeat" class="m3-btn" @disabled($tareaAeat || empty($res['fichero']))
+                    title="Un PC entra en la AEAT con el certificado de Suma, importa el .349, lo valida y baja la vista previa a la carpeta de trabajo. No presenta.">🏛 Preparar borrador en la AEAT</button>
+                @if ($tareaAeat)<span class="text-xs text-indigo-700">⏳ un PC está en la AEAT (importar → validar → vista previa, 1-2 min)…</span>@endif
+                <span class="text-xs text-gray-500">No presenta: la presentación la haces tú en la Sede.</span>
+            </div>
+            @if ($aeatErrores)
+                <div class="text-sm" style="color:#b91c1c;margin-bottom:8px">@foreach ($aeatErrores as $e)<div>⛔ {{ $e }}</div>@endforeach</div>
+            @endif
             <div class="m3-zona" x-data="{ encima: false }" :class="encima && 'encima'"
                  x-on:dragover.prevent="encima = true" x-on:dragleave="encima = false"
                  x-on:drop.prevent="encima = false; $wire.upload('subidaBorrador', $event.dataTransfer.files[0])">
                 @if ($borradorInfo)
                     <div class="text-sm" style="display:flex;gap:8px;align-items:center">📄 <span style="flex:1;word-break:break-all">{{ $borradorInfo['nombre'] }}</span>
-                        <span class="text-xs text-gray-500">{{ $borradorInfo['origen'] === 'onedrive' ? 'traído de la carpeta de trabajo' : 'subido' }} · {{ date('d/m/Y H:i', $borradorInfo['fecha']) }}</span>
+                        <span class="text-xs text-gray-500">{{ ['onedrive' => 'traído de la carpeta de trabajo', 'aeat' => 'bajado de la AEAT (validado)'][$borradorInfo['origen']] ?? 'subido' }} · {{ date('d/m/Y H:i', $borradorInfo['fecha']) }}</span>
                         <button type="button" wire:click="quitarBorrador" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button></div>
                 @else
                     <div class="text-sm text-gray-500">Sube aquí el PDF del borrador, o déjalo en la carpeta de trabajo y al pulsar «Enviar a Marta…» lo traigo yo
