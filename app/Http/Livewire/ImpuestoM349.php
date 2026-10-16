@@ -390,9 +390,21 @@ class ImpuestoM349 extends Component
         $this->tareaGuardar = $id;
     }
 
+    /** Nombre y NIF del cliente tal como van al 349 (para copiarlos en la Sede). */
+    public function declarante(): ?array
+    {
+        $e = $this->entidadId ? DB::table('entidades')->find($this->entidadId) : null;
+        if (! $e) {
+            return null;
+        }
+        $nif = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $e->nif));
+
+        return ['nombre' => mb_strtoupper((string) $e->entidad), 'nif' => preg_replace('/^ES(?=[A-Z0-9]{9}$)/', '', $nif)];
+    }
+
     public function render()
     {
         return view('livewire.impuesto-m349', ['empresas' => $this->empresas(), 'periodosLista' => $this->entidadId ? $this->periodos() : [],
-            'esOperativo' => $this->operativo(), 'ficherosLista' => $this->ficheros(), 'aTratar' => $this->ficheroATratar(), 'arbol' => $this->operativo() ? $this->arbolCarpetas() : ['dirs' => [], 'marcas' => [], 'fecha' => '']]);
+            'esOperativo' => $this->operativo(), 'ficherosLista' => $this->ficheros(), 'aTratar' => $this->ficheroATratar(), 'decl' => $this->declarante(), 'arbol' => $this->operativo() ? $this->arbolCarpetas() : ['dirs' => [], 'marcas' => [], 'fecha' => '']]);
     }
 }

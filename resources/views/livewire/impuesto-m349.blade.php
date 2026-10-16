@@ -33,6 +33,12 @@
                 <label class="text-xs text-gray-600" style="margin-left:auto"><input type="checkbox" wire:model.live="verTodos" class="border-gray-300 rounded"> ver todos los clientes</label>
             @endif
         </div>
+        @if ($decl)
+            <div class="text-sm" style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;padding:6px 10px;background:#f9fafb;border-radius:6px">
+                <span><span class="text-xs text-gray-500">Nombre</span> <b><x-copiar :texto="$decl['nombre']" titulo="Copiar el nombre" /></b></span>
+                <span><span class="text-xs text-gray-500">NIF</span> <b><x-copiar :texto="$decl['nif']" titulo="Copiar el NIF" /></b></span>
+            </div>
+        @endif
         @if (! $empresas)<div class="mt-2 text-sm text-gray-500">No tienes clientes con el modelo 349 en Seguimiento de impuestos (se definen en Entidades → zona «Impuestos»).</div>@endif
     </div>
 
@@ -103,8 +109,8 @@
                         <tr style="text-align:left;border-bottom:1px solid #e5e7eb"><th style="padding:3px 8px">Clave</th><th>País</th><th>NIF</th><th>Operador</th><th style="text-align:right">Facturas</th><th style="text-align:right;padding-right:8px">Base imponible</th></tr>
                         @foreach ($res['operadores'] as $o)
                             <tr style="border-bottom:1px solid #f1f5f9"><td style="padding:3px 8px" title="{{ $claves[$o['clave']] ?? '' }}"><b>{{ $o['clave'] }}</b> <span class="text-xs text-gray-500">{{ $claves[$o['clave']] ?? '' }}</span></td>
-                                <td>{{ $o['pais'] }}</td><td>{{ $o['nif'] }}</td><td>{{ $o['nombre'] }}</td><td style="text-align:right">{{ $o['facturas'] }}</td>
-                                <td style="text-align:right;padding-right:8px;font-variant-numeric:tabular-nums">{{ $eur($o['importe']) }}</td></tr>
+                                <td>{{ $o['pais'] }}</td><td><x-copiar :texto="$o['nif']" titulo="Copiar el NIF" /></td><td><x-copiar :texto="$o['nombre']" titulo="Copiar el nombre" /></td><td style="text-align:right">{{ $o['facturas'] }}</td>
+                                <td style="text-align:right;padding-right:8px;font-variant-numeric:tabular-nums"><x-copiar :texto="$eur($o['importe'])" titulo="Copiar el importe" /></td></tr>
                         @endforeach
                         <tr style="font-weight:700"><td colspan="5" style="padding:3px 8px">{{ $res['n_operadores'] }} operadores · total</td><td style="text-align:right;padding-right:8px">{{ $eur($res['total']) }}</td></tr>
                     </table>
