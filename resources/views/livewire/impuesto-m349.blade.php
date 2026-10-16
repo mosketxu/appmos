@@ -3,7 +3,7 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_impuestos', ['activa' => 'm349'])
 
-    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas) wire:poll.3s="revisar" @endif>
+    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas || $tareaGuardar) wire:poll.3s="revisar" @endif>
     <style>
         .m3-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; margin-bottom:12px }
         .m3-h { font-weight:600; color:#111827; margin-bottom:8px }
@@ -25,9 +25,9 @@
             <x-buscador-select model="entidadId" :valor="$entidadId" :opciones="$empresas" ancho="28rem"/>
             @if ($esOperativo)
                 <button type="button" wire:click="cambiarEjercicio(-1)" class="m3-btn">◀</button><b>{{ $ejercicio }}</b><button type="button" wire:click="cambiarEjercicio(1)" class="m3-btn">▶</button>
-                @foreach ($periodosLista as $k => $t)
-                    <button type="button" wire:click="$set('periodo', '{{ $k }}')" class="m3-btn {{ $periodo === $k ? 'on' : '' }}">{{ $t }}</button>
-                @endforeach
+                <select wire:model.live="periodo" class="border-gray-300 rounded-md text-sm" style="padding-top:4px;padding-bottom:4px">
+                    @foreach ($periodosLista as $k => $t)<option value="{{ $k }}">{{ $k }} · {{ $t }}</option>@endforeach
+                </select>
             @endif
             @if (\App\Support\Impuestos::esGestor())
                 <label class="text-xs text-gray-600" style="margin-left:auto"><input type="checkbox" wire:model.live="verTodos" class="border-gray-300 rounded"> ver todos los clientes</label>
@@ -67,12 +67,61 @@
                         <span class="text-xs text-gray-500">{{ number_format($f['tam'] / 1024, 0, ',', '.') }} KB · {{ date('d/m/Y H:i', $f['fecha']) }}</span>
                         <button type="button" wire:click="quitar(@js($f['nombre']))" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button></div>
                 @empty
-                    <div class="text-sm text-gray-500">Arrastra aquí el fichero o pulsa «Elegir…» (Excel, CSV, txt o PDF).</div>
+                    @if ($aTratar)
+                        <div class="text-sm text-gray-600">📄 Se usa «{{ $aTratar['nombre'] }}», subido en {{ $aTratar['periodo'] }} (trae el año entero). Sube otro si hay uno más nuevo.</div>
+                    @else
+                        <div class="text-sm text-gray-500">Arrastra aquí el Excel del 349 (pestañas de ventas y compras intracomunitarias, todo el año) o pulsa «Elegir…».</div>
+                    @endif
                 @endforelse
                 <label class="m3-btn" style="margin-top:8px">＋ {{ $ficherosLista ? 'Cambiar fichero…' : 'Elegir…' }}<input type="file" wire:model="subida" accept=".xlsx,.xls,.csv,.txt,.pdf" style="display:none"></label>
                 <span wire:loading wire:target="subida" class="text-xs text-indigo-700">subiendo…</span>
             </div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px" class="text-sm">
+                <span class="text-xs text-gray-500">Cabecera del 349 · contacto</span>
+                <input type="text" wire:model.blur="aj.contacto" class="border-gray-300 rounded-md text-sm" style="width:20rem;padding:3px 8px">
+                <label>teléfono <input type="text" wire:model.blur="aj.telefono" class="border-gray-300 rounded-md text-sm" style="width:7rem;padding:3px 8px"></label>
+            </div>
         </div>
+
+        @if ($res)
+            @php $eur = fn ($v) => number_format((float) $v, 2, ',', '.'); $claves = ['S' => 'servicios prestados', 'I' => 'servicios adquiridos', 'E' => 'entregas', 'A' => 'adquisiciones']; @endphp
+            <div class="m3-card">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+                    <div class="m3-h" style="margin:0">4 · Fichero para Hacienda · {{ $periodo }}/{{ $ejercicio }}</div>
+                    @if (! empty($res['fichero']))
+                        <button type="button" wire:click="descargar" class="m3-btn" style="background:#059669;border-color:#059669;color:#fff;font-weight:700">⬇ {{ $res['fichero'] }}</button>
+                        <button type="button" wire:click="guardarEnCarpeta" class="m3-btn" @disabled($tareaGuardar || ! $carpeta) title="Un PC lo deja en la carpeta de trabajo de OneDrive">📁 Guardar en la carpeta de trabajo</button>
+                        @if ($tareaGuardar)<span class="text-xs text-indigo-700">⏳ un PC lo está guardando…</span>@endif
+                    @endif
+                </div>
+                <div class="text-xs text-gray-500" style="margin-bottom:6px">Sede AEAT → modelo 349 → presentación mediante fichero: importa el .349 y revisa el borrador antes de presentar.</div>
+                @foreach ($res['errores'] ?? [] as $e)<div class="text-sm" style="color:#b91c1c">⛔ {{ $e }}</div>@endforeach
+                @foreach ($res['avisos'] ?? [] as $a)<div class="text-sm" style="color:#b45309">⚠️ {{ $a }}</div>@endforeach
+
+                @if ($res['operadores'] ?? [])
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+                        <tr style="text-align:left;border-bottom:1px solid #e5e7eb"><th style="padding:3px 8px">Clave</th><th>País</th><th>NIF</th><th>Operador</th><th style="text-align:right">Facturas</th><th style="text-align:right;padding-right:8px">Base imponible</th></tr>
+                        @foreach ($res['operadores'] as $o)
+                            <tr style="border-bottom:1px solid #f1f5f9"><td style="padding:3px 8px" title="{{ $claves[$o['clave']] ?? '' }}"><b>{{ $o['clave'] }}</b> <span class="text-xs text-gray-500">{{ $claves[$o['clave']] ?? '' }}</span></td>
+                                <td>{{ $o['pais'] }}</td><td>{{ $o['nif'] }}</td><td>{{ $o['nombre'] }}</td><td style="text-align:right">{{ $o['facturas'] }}</td>
+                                <td style="text-align:right;padding-right:8px;font-variant-numeric:tabular-nums">{{ $eur($o['importe']) }}</td></tr>
+                        @endforeach
+                        <tr style="font-weight:700"><td colspan="5" style="padding:3px 8px">{{ $res['n_operadores'] }} operadores · total</td><td style="text-align:right;padding-right:8px">{{ $eur($res['total']) }}</td></tr>
+                    </table>
+                @endif
+
+                @if ($res['lineas'] ?? [])
+                    <details style="margin-top:10px"><summary class="text-sm text-gray-600" style="cursor:pointer">Ver las {{ count($res['lineas']) }} facturas del mes</summary>
+                        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:4px">
+                            @foreach ($res['lineas'] as $l)
+                                <tr style="border-bottom:1px solid #f1f5f9"><td style="padding:2px 8px">{{ $l['clave'] }}</td><td>{{ $l['fecha'] }}</td><td>{{ $l['factura'] }}</td><td>{{ $l['nif'] }}</td><td>{{ $l['nombre'] }}</td>
+                                    <td style="text-align:right;padding-right:8px">{{ $eur($l['importe']) }}</td><td class="text-gray-400">fila {{ $l['fila'] }}</td></tr>
+                            @endforeach
+                        </table>
+                    </details>
+                @endif
+            </div>
+        @endif
     @endif
     </div>
 </div>

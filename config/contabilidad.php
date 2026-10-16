@@ -145,6 +145,10 @@ return [
     'm111_dir' => env('M111_DIR') ?: (collect(['e', 'f', 'd'])
         ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/M111/motor")
         ->first(fn ($d) => is_dir($d)) ?? '/var/www/m111'),
+    // Modelo 349 (16-oct-2026): motor prepara349.py (M349_DIR; en el VPS /var/www/m349); en un PC, la carpeta del repo.
+    'm349_dir' => env('M349_DIR') ?: (collect(['e', 'f', 'd'])
+        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/M349/motor")
+        ->first(fn ($d) => is_dir($d)) ?? '/var/www/m349'),
     'leoybra_entidad' => (int) env('LEOYBRA_ENTIDAD', 2484),   // entidad «GRUPO LEOYBRA, S.L.»: sus ficheros base centrales (FicherosBase)
 
     'neteges_entidad' => (int) env('NETEGES_ENTIDAD', 2552),   // entidad «Neteges Sicilia SL»: sus ficheros base centrales (FicherosBase)

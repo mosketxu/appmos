@@ -6,14 +6,17 @@ use App\Support\ColaTareas;
 use App\Support\Impuestos as Imp;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Process;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
 /**
  * Impuestos → M349 operaciones intracomunitarias (16-oct-2026). De momento solo para NAE Comunicacions (NIF en NIF_OPERATIVOS); con otro cliente
- * la pantalla dice «en construcción». Primer paso: carpeta de trabajo (OneDrive, explorador de LibroIva con el árbol onedrive.arbol_iva que sube un PC;
- * se recuerda por empresa) y fichero a tratar (se sube al servidor). Datos: storage/app/m349/<entidad>/ (carpeta.txt) y <AAAA>-<periodo>/entrada/.
- * Guía: Contabilidad/Impuestos/M349/PLAN.md.
+ * la pantalla dice «en construcción». Carpeta de trabajo (OneDrive, explorador de LibroIva con el árbol onedrive.arbol_iva que sube un PC; se recuerda
+ * por empresa) y fichero a tratar: el Excel anual del cliente (pestañas de ventas y compras intracomunitarias), que se sube al servidor. El motor
+ * (Contabilidad/Impuestos/M349/motor/prepara349.py; M349_DIR, en el VPS /var/www/m349) saca las operaciones del mes y deja el «<MM> <NIF>.349»
+ * para importar en la AEAT; se descarga o se deja en la carpeta de trabajo (tarea pc.dejar_en_onedrive de un PC).
+ * Datos: storage/app/m349/<entidad>/ (carpeta.txt, ajustes.json) y <AAAA>-<periodo>/entrada|salida. Guía: Contabilidad/Impuestos/M349/PLAN.md.
  */
 class ImpuestoM349 extends Component
 {
@@ -21,6 +24,9 @@ class ImpuestoM349 extends Component
 
     /** Clientes para los que el proceso ya funciona (NAE Comunicacions, S.L.). */
     public const NIF_OPERATIVOS = ['B63442701'];
+
+    /** Persona y teléfono de contacto de la cabecera del 349 si el cliente no tiene otros guardados (los de los .349 de NAE de 2026). */
+    public const CONTACTO_DEFECTO = ['contacto' => 'MARTA MARIA RUIZ SIERRA', 'telefono' => '659501389'];
 
     public ?int $entidadId = null;
     public int $ejercicio;
@@ -30,6 +36,9 @@ class ImpuestoM349 extends Component
     public string $carpetaElegida = '';
     public $subida = null;
     public bool $esperandoCarpetas = false;
+    public array $aj = ['contacto' => '', 'telefono' => ''];
+    public ?array $res = null;
+    public ?int $tareaGuardar = null;
     public string $error = '';
     public string $msg = '';
 
@@ -95,6 +104,24 @@ class ImpuestoM349 extends Component
         }
         $f = $this->dirEmpresa().'/carpeta.txt';
         $this->carpeta = is_file($f) ? trim((string) file_get_contents($f)) : '';
+        $f = $this->dirEmpresa().'/ajustes.json';
+        $g = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: []) : [];
+        $this->aj = array_merge(self::CONTACTO_DEFECTO, array_intersect_key($g, self::CONTACTO_DEFECTO));
+        $this->cargar();
+    }
+
+    protected function cargar(): void
+    {
+        $this->res = null;
+        $this->tareaGuardar = null;
+        if (! $this->operativo() || ! isset($this->periodos()[$this->periodo])) {
+            return;
+        }
+        $f = $this->dirPeriodo('salida').'/resumen.json';
+        $this->res = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: null) : null;
+        if (! $this->res && $this->ficheroATratar()) {
+            $this->generar();
+        }
     }
 
     protected function recordar(): void
@@ -111,13 +138,25 @@ class ImpuestoM349 extends Component
 
     public function updatedPeriodo(): void
     {
+        $this->error = $this->msg = '';
         $this->recordar();
+        $this->cargar();
     }
 
     public function cambiarEjercicio(int $d): void
     {
+        $this->error = $this->msg = '';
         $this->ejercicio += $d;
         $this->recordar();
+        $this->cargar();
+    }
+
+    public function updatedAj(): void
+    {
+        $this->autorizar();
+        $this->aj = ['contacto' => mb_strtoupper(trim((string) $this->aj['contacto'])), 'telefono' => preg_replace('/\D/', '', (string) $this->aj['telefono'])];
+        file_put_contents($this->dirEmpresa().'/ajustes.json', json_encode($this->aj, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        $this->generar();
     }
 
     public function updatedVerTodos(): void
@@ -199,9 +238,51 @@ class ImpuestoM349 extends Component
         if ($this->esperandoCarpetas && ! DB::table('tareas')->where('proceso', 'pc.arbol_carpetas')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
             $this->esperandoCarpetas = false;
         }
+        if ($this->tareaGuardar) {
+            $t = DB::table('tareas')->find($this->tareaGuardar);
+            if ($t && ! in_array($t->estado, ['preparando', 'pendiente', 'en_curso'], true)) {
+                $this->tareaGuardar = null;
+                $r = json_decode($t->resultado ?? 'null', true) ?: [];
+                if ($t->estado === 'ok') {
+                    $this->msg = 'Guardado en OneDrive\\'.str_replace('/', '\\', (string) ($r['ruta'] ?? '')).' (desde '.($r['pc'] ?? 'un PC').')'
+                        .(! empty($r['apartado']) ? '. El que había se ha renombrado a «'.$r['apartado'].'».' : '.');
+                } else {
+                    $this->error = 'No se ha podido guardar en OneDrive: '.(string) ($r['error'] ?? trim(mb_substr((string) $t->log, -300)) ?: 'error en el PC');
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------------ fichero a tratar
+
+    /**
+     * Fichero que se trata en este periodo: el subido en el mes o, si no hay, el último subido en un mes anterior del mismo ejercicio
+     * (el Excel trae el año entero). [ruta, nombre, propio (subido en este mes)] o null.
+     */
+    public function ficheroATratar(): ?array
+    {
+        if (! $this->operativo() || ! isset($this->periodos()[$this->periodo])) {
+            return null;
+        }
+        $propio = glob($this->dirPeriodo('entrada').'/*') ?: [];
+        if ($propio) {
+            return ['ruta' => $propio[0], 'nombre' => basename($propio[0]), 'propio' => true];
+        }
+        $cands = [];
+        foreach (glob($this->dirEmpresa().'/'.$this->ejercicio.'-*/entrada/*') ?: [] as $f) {
+            $per = substr(basename(dirname($f, 2)), 5);
+            if (strcmp($per, $this->periodo) < 0) {
+                $cands[$per] = $f;
+            }
+        }
+        if (! $cands) {
+            return null;
+        }
+        ksort($cands);
+        $f = end($cands);
+
+        return ['ruta' => $f, 'nombre' => basename($f), 'propio' => false, 'periodo' => (string) array_key_last($cands)];
+    }
 
     public function ficheros(): array
     {
@@ -235,18 +316,94 @@ class ImpuestoM349 extends Component
         $nombre = preg_replace('/[^A-Za-z0-9._ &()-]+/', '_', basename($this->subida->getClientOriginalName()));
         copy($this->subida->getRealPath(), $dir.'/'.$nombre);
         $this->subida = null;
-        $this->msg = 'Fichero «'.$nombre.'» guardado para '.$this->periodos()[$this->periodo].' '.$this->ejercicio.'.';
+        $this->generar();
     }
 
     public function quitar(string $nombre): void
     {
         @unlink($this->dirPeriodo('entrada').'/'.basename($nombre));
         $this->msg = '';
+        $this->generar();
+    }
+
+    // ------------------------------------------------------------------ generar el .349
+
+    public function generar(): void
+    {
+        $this->error = '';
+        $salida = $this->dirPeriodo('salida');
+        foreach (glob($salida.'/*') ?: [] as $viejo) {
+            @unlink($viejo);
+        }
+        $this->res = null;
+        $fic = $this->ficheroATratar();
+        if (! $fic) {
+            return;
+        }
+        if (! in_array(strtolower(pathinfo($fic['nombre'], PATHINFO_EXTENSION)), ['xlsx', 'xlsm'], true)) {
+            $this->error = 'De momento el 349 se prepara desde el Excel (.xlsx) con las pestañas de ventas y compras intracomunitarias.';
+            return;
+        }
+        $ent = DB::table('entidades')->find($this->entidadId);
+        $spec = ['xlsx' => $fic['ruta'], 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'nif' => (string) $ent->nif,
+            'nombre' => (string) $ent->entidad, 'contacto' => $this->aj['contacto'], 'telefono' => $this->aj['telefono'], 'salida' => $salida];
+        $specF = $this->dirPeriodo().'/spec.json';
+        file_put_contents($specF, json_encode($spec, JSON_UNESCAPED_UNICODE));
+        $motor = rtrim((string) config('contabilidad.m349_dir'), '/').'/prepara349.py';
+        try {
+            $r = Process::timeout(120)->env(['PYTHONIOENCODING' => 'utf-8'])->run([\App\Support\IntrastatMotor::python(), '-I', $motor, $specF]);
+        } catch (\Throwable $e) {
+            $this->error = 'No se ha podido ejecutar el motor del 349: '.$e->getMessage();
+            return;
+        }
+        if (! $r->successful()) {
+            $this->error = 'El motor del 349 ha fallado: '.mb_substr(trim($r->errorOutput() ?: $r->output()), -600);
+            return;
+        }
+        $f = $salida.'/resumen.json';
+        $this->res = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: null) : null;
+    }
+
+    public function descargar()
+    {
+        $nombre = (string) ($this->res['fichero'] ?? '');
+        $ruta = $this->dirPeriodo('salida').'/'.basename($nombre);
+        abort_unless($nombre !== '' && is_file($ruta), 404);
+
+        return response()->download($ruta, $nombre, ['Content-Type' => 'text/plain; charset=ISO-8859-1']);
+    }
+
+    /** Un PC trabajador deja el .349 en la carpeta de trabajo de OneDrive. */
+    public function guardarEnCarpeta(): void
+    {
+        $this->error = $this->msg = '';
+        $nombre = (string) ($this->res['fichero'] ?? '');
+        $ruta = $this->dirPeriodo('salida').'/'.basename($nombre);
+        if ($nombre === '' || ! is_file($ruta)) {
+            $this->error = 'No hay fichero .349 que guardar.';
+            return;
+        }
+        if ($this->carpeta === '' || ! ColaTareas::rutaRelativaSegura($this->carpeta)) {
+            $this->error = 'Elige primero la carpeta de trabajo.';
+            return;
+        }
+        $vivos = DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))->count();
+        if (! $vivos) {
+            $this->error = 'No hay ningún PC trabajador conectado ahora mismo (mira la barra de arriba).';
+            return;
+        }
+        $id = ColaTareas::crear('pc.dejar_en_onedrive', ['carpeta' => $this->carpeta, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]],
+            ColaTareas::pcElegido() ?: null, auth()->id(), null, null, 'preparando');
+        $dir = ColaTareas::carpetaEntradas($id);
+        @mkdir($dir, 0775, true);
+        copy($ruta, $dir.'/fichero.349');
+        ColaTareas::liberar($id);
+        $this->tareaGuardar = $id;
     }
 
     public function render()
     {
         return view('livewire.impuesto-m349', ['empresas' => $this->empresas(), 'periodosLista' => $this->entidadId ? $this->periodos() : [],
-            'esOperativo' => $this->operativo(), 'ficherosLista' => $this->ficheros(), 'arbol' => $this->operativo() ? $this->arbolCarpetas() : ['dirs' => [], 'marcas' => [], 'fecha' => '']]);
+            'esOperativo' => $this->operativo(), 'ficherosLista' => $this->ficheros(), 'aTratar' => $this->ficheroATratar(), 'arbol' => $this->operativo() ? $this->arbolCarpetas() : ['dirs' => [], 'marcas' => [], 'fecha' => '']]);
     }
 }
