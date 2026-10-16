@@ -219,7 +219,12 @@ trait EjecutaEnPcs
             $ok = ! empty($paso['ok']);
             $oks[] = $ok;
             if ($ok) {
-                $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nTerminado correctamente.");
+                // Líneas «⚠️ ALARMA …» del script (p. ej. Monthly sales: Base vs Fiscal por tienda, 16-oct-2026):
+                // terminó bien, pero el aviso las enseña para que no se pierdan en la caja de Salida.
+                preg_match_all('/^\s*⚠️ ALARMA\b.*$/mu', (string) ($paso['salida'] ?? ''), $alarmas);
+                $this->dispatch('proceso-terminado', mensaje: $alarmas[0]
+                    ? "🚨 {$etiqueta}\nTerminado, pero con ALARMAS:\n".implode("\n", array_map('trim', $alarmas[0]))
+                    : "✅ {$etiqueta}\nTerminado correctamente.");
             } else {
                 $this->salida .= "\n\n⚠️ El proceso terminó con código de salida ".($paso['codigo'] ?? '?').'.';
                 $motivo = '';
