@@ -1,5 +1,5 @@
 {{-- Pestañas de IMPUESTOS (9-oct-2026): una subpestaña por impuesto, mismo aspecto de hoja de Excel que Contabilidad y el TO-DO.
-     $activa: 'seguimiento' | 'iva' | 'm111' | 'is' | 'pago202' | 'intrastat'. Para añadir un impuesto nuevo: una fila en $pestanas (y su ruta). Estilos propios (el app.css de Tailwind está compilado y purgado). --}}
+     $activa: 'seguimiento' | 'iva' | 'm111' | 'm349' | 'is' | 'pago202' | 'intrastat'. Para añadir un impuesto nuevo: una fila en $pestanas (y su ruta). Estilos propios (el app.css de Tailwind está compilado y purgado). --}}
 @php
     // [permiso, ruta, texto, clave de $activa]
     $pestanas = [
@@ -8,6 +8,7 @@
         ['impuestos.ver', 'impuestos.m111', 'IRPF M111', 'm111'],
         ['contabilidad.is', 'contabilidad.is', 'IS M200', 'is'],
         ['contabilidad.is', 'impuestos.pago-cuenta', 'Pago Cuenta M202', 'pago202'],
+        ['impuestos.ver', 'impuestos.m349', 'M349', 'm349'],
         ['impuestos.ver', 'impuestos.intrastat', 'Intrastat', 'intrastat'],
     ];
 @endphp
