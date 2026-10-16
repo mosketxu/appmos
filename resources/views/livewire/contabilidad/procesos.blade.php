@@ -223,6 +223,19 @@
                                             @if ($laboralFichero)<span class="text-green-700">✓ {{ $laboralFichero->getClientOriginalName() }}</span>@endif
                                         </label>
                                     @endif
+                                    @if ($id === 'open_items')
+                                        @php $mc = $this->cashflowMayorCentral; @endphp
+                                        <label class="flex flex-col text-xs text-gray-600" title="Opcional: el mayor de SAGE en columnas («FIQ MAyor.xlsx» de SageLauncher). Si no eliges ninguno, se usa el más reciente entre el de SageLauncher del PC y el último subido en cualquier pantalla. Resultado: OpenItems_FIQ_CL_<hoy>.xlsx, con el cuadre por cuenta en el resumen (amarillo = no cuadra).">
+                                            <span>Mayor (.xlsx, opcional)</span>
+                                            <input type="file" wire:model="openItemsMayor" accept=".xlsx" class="text-xs">
+                                            <span wire:loading wire:target="openItemsMayor" class="text-gray-500">⏳ subiendo…</span>
+                                            @if ($openItemsMayor)
+                                                <span class="text-green-700">✓ {{ $openItemsMayor->getClientOriginalName() }}</span>
+                                            @else
+                                                <span class="text-gray-500">Usa el de SageLauncher del PC{{ $mc ? ' o «'.$mc['nombre'].'» ('.$mc['fecha'].'), el más reciente' : '' }}</span>
+                                            @endif
+                                        </label>
+                                    @endif
                                     @if ($id === 'cashflow')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
                                         <label class="flex flex-col text-xs text-gray-600" title="Opcional: el mayor de SAGE (listado en columnas, el mismo que usan Bancos, Facturas OCR...). Se guarda en los ficheros base de Fashion IQ para todos los procesos. Si no eliges ninguno, se usa el último subido en cualquier pantalla.">

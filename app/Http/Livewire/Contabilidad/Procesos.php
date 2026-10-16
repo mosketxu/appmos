@@ -56,6 +56,8 @@ class Procesos extends Component
 
     /** Cash flow: mayor de SAGE elegido a mano (opcional; si no, el último de los ficheros base de Fashion IQ, 16-oct-2026). */
     public $cashflowMayor = null;
+    /** Open Sold Items: mayor de SAGE elegido a mano (opcional; si no, el más reciente entre el de SageLauncher del PC y los ficheros base). */
+    public $openItemsMayor = null;
 
     protected string $grupoPc = 'fiq';
 
@@ -350,6 +352,16 @@ class Procesos extends Component
                 'envio' => true, // al procesar queda «procesado, sin enviar»; «Enviar» lo cierra
                 'soportaReal' => true,
                 'ayuda' => 'Cashflow del mes a partir del mayor de los bancos.',
+            ],
+            // 2026-10-16: Excel Open Items (OpenItems_FIQ_CL_AAAA_MM_DD.xlsx) = el último + lo que falta del mayor de las
+            // cuentas 4000001, 4000003-7 y 4030000-4, con el cuadre por cuenta. Escribe con Excel por COM (el PC tiene que tener Excel).
+            'open_items' => [
+                'label' => 'Open Sold Items',
+                'script' => 'OpenItems/openItems.py',
+                'python' => true,
+                'soportaReal' => true,
+                'timeout' => 900,
+                'ayuda' => 'Copia el último Open Items con la fecha de hoy, añade lo que falta del mayor y lo cuadra cuenta a cuenta.',
             ],
             'adyen' => [
                 'label' => 'Adyen',
@@ -718,6 +730,9 @@ class Procesos extends Component
         if ($id === 'cashflow' && ! $this->prepararMayorCashflow($pasos, $opc)) {
             return;
         }
+        if ($id === 'open_items' && ! $this->prepararMayorOpenItems($pasos, $opc)) {
+            return;
+        }
         if ($id === 'laboral' && $this->laboralFichero) {
             $f = $this->laboralFichero;
             if (! in_array(strtolower($f->getClientOriginalExtension()), ['xlsx', 'xls'], true)) {
@@ -744,6 +759,9 @@ class Procesos extends Component
         }
         if ($id === 'cashflow') {
             $this->cashflowMayor = null;
+        }
+        if ($id === 'open_items') {
+            $this->openItemsMayor = null;
         }
     }
 
@@ -1097,6 +1115,45 @@ class Procesos extends Component
             $opc['entradas'] = [['ruta' => $ruta, 'nombre' => 'mayor_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $nombre), 'dir' => '_tmp/mayor_in']];
         } else {
             $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--mayor', $ruta]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Open Sold Items: el mayor elegido en la fila (a los ficheros base si es el listado en columnas) o, si no, el último de 2026 de los
+     * ficheros base, que openItems.py solo usa si es más reciente que el de SageLauncher del PC (--mayor-fecha).
+     */
+    protected function prepararMayorOpenItems(array &$pasos, array &$opc): bool
+    {
+        $eid = $this->fiqEntidad();
+        if ($f = $this->openItemsMayor) {
+            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ El mayor tiene que ser un Excel (.xlsx) de SAGE.');
+                return false;
+            }
+            [$ruta, $nombre] = [$f->getRealPath(), $f->getClientOriginalName()];
+            if (! FicherosBase::esMayorLineal($ruta)) {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ Ese mayor está en formato «fichas»: Open Sold Items necesita el listado en columnas (el «FIQ MAyor.xlsx» de SageLauncher).');
+                return false;
+            }
+            if ($eid && ! FicherosBase::existeContenido($eid, 'mayor', $ruta)) {
+                FicherosBase::guardar($eid, 'mayor', $ruta, $nombre, 'Procesos FIQ · Open Sold Items'.(auth()->user() ? ' · '.auth()->user()->name : ''));
+            }
+            $flag = '--mayor';
+        } else {
+            $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, 2026) : null;
+            if (! $c || ! FicherosBase::esMayorLineal($c['ruta'])) {
+                return true;   // el script usa el de SageLauncher (o Descargas) del PC
+            }
+            [$ruta, $nombre, $flag] = [$c['ruta'], $c['nombre'], '--mayor-central'];
+            $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--mayor-fecha', date('Y-m-d H:i', $c['fecha'])]);
+        }
+        if ($this->remoto()) {
+            $pasos[0]['args'] = array_merge($pasos[0]['args'], [$flag, '{E0}']);
+            $opc['entradas'] = [['ruta' => $ruta, 'nombre' => 'mayor_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $nombre), 'dir' => '_tmp/mayor_in']];
+        } else {
+            $pasos[0]['args'] = array_merge($pasos[0]['args'], [$flag, $ruta]);
         }
 
         return true;
