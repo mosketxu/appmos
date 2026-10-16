@@ -24,6 +24,9 @@ trait EjecutaEnPcs
      */
     public array $pendientes = [];
 
+    /** Último «AVISO_WEB: …» de cada tarea en curso (p. ej. Anaplan esperando a que inicies sesión), para el panel «Pensando». */
+    public array $avisosEnCurso = [];
+
     /** En el VPS (sin ejecucion_local) los scripts los hacen los PCs trabajadores vía cola de tareas. */
     protected function remoto(): bool
     {
@@ -163,9 +166,15 @@ trait EjecutaEnPcs
         foreach ($this->pendientes as $tid => $p) {
             $t = DB::table('tareas')->find($tid);
             if ($t && in_array($t->estado, ['preparando', 'pendiente', 'en_curso'], true)) {
+                // 16-oct-2026: el script puede avisar mientras trabaja (líneas AVISO_WEB que el PC manda al momento);
+                // se enseña en el panel «Pensando» y, la primera vez que cambia, como aviso.
+                if (preg_match_all('/^AVISO_WEB:\s*(.+)$/mu', (string) $t->log, $m) && ($ultimo = trim(end($m[1]))) !== ($this->avisosEnCurso[$tid] ?? null)) {
+                    $this->avisosEnCurso[$tid] = $ultimo;
+                    $this->dispatch('proceso-terminado', mensaje: $ultimo);
+                }
                 continue;
             }
-            unset($this->pendientes[$tid]);
+            unset($this->pendientes[$tid], $this->avisosEnCurso[$tid]);
             // Quien la cierra es quien consigue marcarla: con dos pestañas abiertas no se hace dos veces
             if ($t && ! DB::table('tareas')->where('id', $tid)->whereNull('cerrada_at')->update(['cerrada_at' => now()])) {
                 continue;
