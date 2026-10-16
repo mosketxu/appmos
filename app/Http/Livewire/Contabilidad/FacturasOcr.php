@@ -1671,8 +1671,9 @@ class FacturasOcr extends Component
             $d[$k] = isset($d[$k]) && $d[$k] !== null ? (string) $d[$k] : '';
         }
         $this->form = $d;
-        if (($f['estado'] ?? '') === 'pendiente' && abs((float) ($this->descuadre() ?? 0)) >= 0.01) {
-            $this->aplicarTransaccion38();   // con 38 y sin cuadrar (p.ej. bases sin leer): IVA 0 y base = total
+        if (($f['estado'] ?? '') === 'pendiente') {
+            // Con 38, SIEMPRE IVA 0 y base = total, aunque la factura traiga el IVA desglosado y cuadre (Alex, 16-oct-2026)
+            $this->aplicarTransaccion38();
         }
         $this->cifAviso = $this->enLote ? '' : (string) ($this->analizarCif($d['cif'] ?? '')['mensaje'] ?? '');
         $this->avisarHistoria($id);
@@ -2427,6 +2428,7 @@ class FacturasOcr extends Component
         if (! $this->sel) {
             return;
         }
+        $this->aplicarTransaccion38();   // con 38 no se valida nunca un IVA desglosado (16-oct-2026)
         $datos = $this->form;
         foreach (['total', 'base_retencion', 'pct_retencion', 'cuota_retencion'] as $k) {
             $datos[$k] = $this->num($datos[$k] ?? '');
