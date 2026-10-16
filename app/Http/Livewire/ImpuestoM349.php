@@ -2,11 +2,15 @@
 
 namespace App\Http\Livewire;
 
+use App\Models\ImpuestoDocumento;
 use App\Support\ColaTareas;
+use App\Support\ComunicarImpuestos;
+use App\Support\GraphMail;
 use App\Support\Impuestos as Imp;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -16,7 +20,9 @@ use Livewire\WithFileUploads;
  * por empresa) y fichero a tratar: el Excel anual del cliente (pestañas de ventas y compras intracomunitarias), que se sube al servidor. El motor
  * (Contabilidad/Impuestos/M349/motor/prepara349.py; M349_DIR, en el VPS /var/www/m349) saca las operaciones del mes y deja el «<MM> <NIF>.349»
  * para importar en la AEAT; se descarga o se deja en la carpeta de trabajo (tarea pc.dejar_en_onedrive de un PC).
- * Datos: storage/app/m349/<entidad>/ (carpeta.txt, ajustes.json) y <AAAA>-<periodo>/entrada|salida. Guía: Contabilidad/Impuestos/M349/PLAN.md.
+ * Borrador de la AEAT: lo sube el usuario o, al pulsar «Enviar a Marta», un PC lo trae de la carpeta de trabajo (pc.traer_de_onedrive); el correo
+ * (Graph, desde el buzón del usuario, dos pasos) lo lleva adjunto, y el PDF queda como borrador en la casilla 349 de Seguimiento (estado «revisión»).
+ * Datos: storage/app/m349/<entidad>/ (carpeta.txt, ajustes.json) y <AAAA>-<periodo>/entrada|salida|borrador. Guía: Contabilidad/Impuestos/M349/PLAN.md.
  */
 class ImpuestoM349 extends Component
 {
@@ -39,6 +45,12 @@ class ImpuestoM349 extends Component
     public array $aj = ['contacto' => '', 'telefono' => ''];
     public ?array $res = null;
     public ?int $tareaGuardar = null;
+    public $subidaBorrador = null;
+    public ?int $tareaTraer = null;
+    /** Paso 1 del envío hecho: se enseña el correo y el botón de confirmar (huella de lo que se va a enviar). */
+    public string $mailArmado = '';
+
+    public const TEXTO_MARTA = "Hola Marta,\n\nAdjunto el borrador del M349 de Nae de este mes.\n\nYa me respondes.";
     public string $error = '';
     public string $msg = '';
 
@@ -113,7 +125,8 @@ class ImpuestoM349 extends Component
     protected function cargar(): void
     {
         $this->res = null;
-        $this->tareaGuardar = null;
+        $this->tareaGuardar = $this->tareaTraer = null;
+        $this->mailArmado = '';
         if (! $this->operativo() || ! isset($this->periodos()[$this->periodo])) {
             return;
         }
@@ -237,6 +250,24 @@ class ImpuestoM349 extends Component
     {
         if ($this->esperandoCarpetas && ! DB::table('tareas')->where('proceso', 'pc.arbol_carpetas')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
             $this->esperandoCarpetas = false;
+        }
+        if ($this->tareaTraer) {
+            $t = DB::table('tareas')->find($this->tareaTraer);
+            if ($t && ! in_array($t->estado, ['preparando', 'pendiente', 'en_curso'], true)) {
+                $this->tareaTraer = null;
+                $r = json_decode($t->resultado ?? 'null', true) ?: [];
+                $src = ColaTareas::carpetaFicheros($t->id).'/'.basename((string) ($r['nombre'] ?? ''));
+                if ($t->estado === 'ok' && ! empty($r['nombre']) && is_file($src)) {
+                    $this->guardarBorrador($src, (string) $r['nombre'], (int) ($r['mtime'] ?? time()), 'onedrive');
+                    $this->mailArmado = $this->huellaMail();
+                } elseif ($t->estado === 'ok') {
+                    $pdfs = array_map(fn ($c) => $c['nombre'], array_slice((array) ($r['candidatos'] ?? []), 0, 6));
+                    $this->error = 'No encuentro el borrador en la carpeta de trabajo (busco un PDF con «borrador» y «'.$this->periodo.'» en el nombre, o uno descargado en los últimos 2 días).'
+                        .($pdfs ? ' PDF que hay: '.implode(' · ', $pdfs).'.' : '').' Puedes subirlo tú en el paso 5.';
+                } else {
+                    $this->error = 'No se ha podido traer el borrador: '.(string) ($r['error'] ?? trim(mb_substr((string) $t->log, -300)) ?: 'error en el PC');
+                }
+            }
         }
         if ($this->tareaGuardar) {
             $t = DB::table('tareas')->find($this->tareaGuardar);
@@ -402,9 +433,148 @@ class ImpuestoM349 extends Component
         return ['nombre' => mb_strtoupper((string) $e->entidad), 'nif' => preg_replace('/^ES(?=[A-Z0-9]{9}$)/', '', $nif)];
     }
 
+    // ------------------------------------------------------------------ borrador de la AEAT y correo a Marta
+
+    /** Borrador del periodo guardado aquí: ['ruta', 'nombre', 'fecha', 'origen'] o null. */
+    public function borrador(): ?array
+    {
+        if (! $this->operativo() || ! isset($this->periodos()[$this->periodo])) {
+            return null;
+        }
+        $f = $this->dirPeriodo('borrador').'/info.json';
+        $i = is_file($f) ? (json_decode((string) file_get_contents($f), true) ?: null) : null;
+
+        return $i && is_file($this->dirPeriodo('borrador').'/borrador.pdf') ? $i + ['ruta' => $this->dirPeriodo('borrador').'/borrador.pdf'] : null;
+    }
+
+    protected function guardarBorrador(string $origen, string $nombre, int $fecha, string $de): void
+    {
+        $dir = $this->dirPeriodo('borrador');
+        copy($origen, $dir.'/borrador.pdf');
+        file_put_contents($dir.'/info.json', json_encode(['nombre' => $nombre, 'fecha' => $fecha, 'origen' => $de], JSON_UNESCAPED_UNICODE));
+    }
+
+    public function updatedSubidaBorrador(): void
+    {
+        $this->error = $this->msg = '';
+        $this->mailArmado = '';
+        if (! $this->subidaBorrador instanceof UploadedFile) {
+            return;
+        }
+        if (strtolower($this->subidaBorrador->getClientOriginalExtension()) !== 'pdf') {
+            $this->error = 'El borrador tiene que ser el PDF que da la AEAT.';
+            $this->subidaBorrador = null;
+            return;
+        }
+        $this->guardarBorrador($this->subidaBorrador->getRealPath(), basename($this->subidaBorrador->getClientOriginalName()), time(), 'web');
+        $this->subidaBorrador = null;
+    }
+
+    public function quitarBorrador(): void
+    {
+        foreach (glob($this->dirPeriodo('borrador').'/*') ?: [] as $f) {
+            @unlink($f);
+        }
+        $this->mailArmado = '';
+    }
+
+    public function asuntoMail(): string
+    {
+        return 'Borrador M349 Nae '.(Imp::MESES[(int) $this->periodo - 1] ?? $this->periodo).' '.$this->ejercicio;
+    }
+
+    protected function huellaMail(): string
+    {
+        $b = $this->borrador();
+
+        return $b ? md5($this->entidadId.'|'.$this->ejercicio.'|'.$this->periodo.'|'.hash_file('sha256', $b['ruta'])) : '';
+    }
+
+    /** Paso 1: con borrador subido, enseña el correo; si no, un PC lo trae de la carpeta de trabajo y después lo enseña. */
+    public function prepararMail(): void
+    {
+        $this->autorizar();
+        $this->error = $this->msg = '';
+        if ($this->borrador()) {
+            $this->mailArmado = $this->huellaMail();
+            return;
+        }
+        if ($this->carpeta === '' || ! ColaTareas::rutaRelativaSegura($this->carpeta)) {
+            $this->error = 'No hay borrador: súbelo en el paso 5 o elige la carpeta de trabajo donde lo has descargado.';
+            return;
+        }
+        $vivos = DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))->count();
+        if (! $vivos) {
+            $this->error = 'No hay ningún PC trabajador conectado para traer el borrador de OneDrive: súbelo tú en el paso 5.';
+            return;
+        }
+        $this->tareaTraer = ColaTareas::crear('pc.traer_de_onedrive', ['carpeta' => $this->carpeta, 'ext' => 'pdf', 'contiene' => ['borrador'], 'periodo' => $this->periodo, 'dias' => 2],
+            ColaTareas::pcElegido() ?: null, auth()->id());
+    }
+
+    public function cancelarMail(): void
+    {
+        $this->mailArmado = '';
+        $this->tareaTraer = null;
+    }
+
+    /** Paso 2: envía (solo si se preparó y no ha cambiado el borrador) y deja el borrador en la casilla 349 de Seguimiento. */
+    public function enviarMail(): void
+    {
+        $this->autorizar();
+        $this->error = $this->msg = '';
+        $b = $this->borrador();
+        if (! $b || $this->mailArmado === '' || $this->mailArmado !== $this->huellaMail()) {
+            $this->error = 'Ha cambiado el borrador desde que pulsaste «Enviar a Marta…»: vuelve a pulsarlo.';
+            $this->mailArmado = '';
+            return;
+        }
+        $this->mailArmado = '';
+        $de = (string) auth()->user()->email;
+        $nombreAdj = preg_match('/\.pdf$/i', $b['nombre']) ? $b['nombre'] : 'borrador 349 '.$this->periodo.'.pdf';
+        try {
+            GraphMail::enviarHtml($de, [ComunicarImpuestos::CC_DEFECTO], [], $this->asuntoMail(), GraphMail::html(self::TEXTO_MARTA), [['nombre' => $nombreAdj, 'ruta' => $b['ruta']]]);
+        } catch (\Throwable $e) {
+            $this->error = 'No se ha podido enviar el correo: '.$e->getMessage();
+            return;
+        }
+        $extra = $this->registrarEnSeguimiento($b, $nombreAdj);
+        $this->msg = 'Correo enviado a '.ComunicarImpuestos::CC_DEFECTO.' con «'.$nombreAdj.'».'.$extra;
+        $this->dispatch('notify', '✉ Borrador enviado a Marta');
+    }
+
+    /** El borrador va a la casilla 349 del periodo (tipo borrador; sustituye al anterior de este proceso) y la casilla pasa a «revisión». */
+    protected function registrarEnSeguimiento(array $b, string $nombre): string
+    {
+        $ob = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where('ei.entidad_id', $this->entidadId)->where('m.codigo', '349')->first(['ei.id', 'ei.etiqueta']);
+        if (! $ob) {
+            return '';
+        }
+        $sha = hash_file('sha256', $b['ruta']);
+        $almacen = 'impuestos/docs/'.$sha.'.pdf';
+        Storage::disk('local')->put($almacen, fopen($b['ruta'], 'rb'));
+        ImpuestoDocumento::where(['entidad_id' => $this->entidadId, 'modelo' => '349', 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'origen' => 'm349'])
+            ->whereNull('quitado_at')->update(['quitado_at' => now()]);
+        ImpuestoDocumento::create(['entidad_id' => $this->entidadId, 'modelo' => '349', 'etiqueta' => (string) $ob->etiqueta, 'ejercicio' => $this->ejercicio,
+            'periodo' => $this->periodo, 'tipo' => 'borrador', 'nombre' => $nombre, 'almacen' => $almacen, 'tam' => filesize($b['ruta']),
+            'sha256' => $sha, 'origen' => 'm349', 'user_id' => auth()->id()]);
+        $clave = ['entidad_impuesto_id' => $ob->id, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo];
+        $fila = DB::table('impuesto_estados')->where($clave)->first();
+        $cambio = '';
+        if (! $fila || in_array($fila->estado, ['no', 'pendiente'], true)) {
+            $fila ? DB::table('impuesto_estados')->where('id', $fila->id)->update(['estado' => 'revision', 'user_id' => auth()->id(), 'updated_at' => now()])
+                  : DB::table('impuesto_estados')->insert($clave + ['estado' => 'revision', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+            $cambio = ' La casilla 349 de '.$this->periodo.' pasa a «Listo para revisión».';
+        }
+        DB::table('impuesto_comentarios')->insert($clave + ['texto' => '✉ Borrador enviado a Marta («'.$nombre.'»).', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+
+        return ' Queda en Seguimiento de impuestos (casilla 349 de '.$this->periodo.').'.$cambio;
+    }
+
     public function render()
     {
         return view('livewire.impuesto-m349', ['empresas' => $this->empresas(), 'periodosLista' => $this->entidadId ? $this->periodos() : [],
-            'esOperativo' => $this->operativo(), 'ficherosLista' => $this->ficheros(), 'aTratar' => $this->ficheroATratar(), 'decl' => $this->declarante(), 'arbol' => $this->operativo() ? $this->arbolCarpetas() : ['dirs' => [], 'marcas' => [], 'fecha' => '']]);
+            'esOperativo' => $this->operativo(), 'ficherosLista' => $this->ficheros(), 'aTratar' => $this->ficheroATratar(), 'decl' => $this->declarante(), 'borradorInfo' => $this->operativo() ? $this->borrador() : null, 'arbol' => $this->operativo() ? $this->arbolCarpetas() : ['dirs' => [], 'marcas' => [], 'fecha' => '']]);
     }
 }

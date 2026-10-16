@@ -3,7 +3,7 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_impuestos', ['activa' => 'm349'])
 
-    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas || $tareaGuardar) wire:poll.3s="revisar" @endif>
+    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas || $tareaGuardar || $tareaTraer) wire:poll.3s="revisar" @endif>
     <style>
         .m3-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; margin-bottom:12px }
         .m3-h { font-weight:600; color:#111827; margin-bottom:8px }
@@ -128,6 +128,42 @@
                 @endif
             </div>
         @endif
+
+        <div class="m3-card">
+            <div class="m3-h">5 · Borrador de la AEAT y correo a Marta</div>
+            <div class="m3-zona" x-data="{ encima: false }" :class="encima && 'encima'"
+                 x-on:dragover.prevent="encima = true" x-on:dragleave="encima = false"
+                 x-on:drop.prevent="encima = false; $wire.upload('subidaBorrador', $event.dataTransfer.files[0])">
+                @if ($borradorInfo)
+                    <div class="text-sm" style="display:flex;gap:8px;align-items:center">📄 <span style="flex:1;word-break:break-all">{{ $borradorInfo['nombre'] }}</span>
+                        <span class="text-xs text-gray-500">{{ $borradorInfo['origen'] === 'onedrive' ? 'traído de la carpeta de trabajo' : 'subido' }} · {{ date('d/m/Y H:i', $borradorInfo['fecha']) }}</span>
+                        <button type="button" wire:click="quitarBorrador" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button></div>
+                @else
+                    <div class="text-sm text-gray-500">Sube aquí el PDF del borrador, o déjalo en la carpeta de trabajo y al pulsar «Enviar a Marta…» lo traigo yo
+                        (un PDF con «borrador» y «{{ $periodo }}» en el nombre, o el descargado en los últimos 2 días).</div>
+                @endif
+                <label class="m3-btn" style="margin-top:8px">＋ {{ $borradorInfo ? 'Cambiar borrador…' : 'Subir borrador…' }}<input type="file" wire:model="subidaBorrador" accept=".pdf" style="display:none"></label>
+                <span wire:loading wire:target="subidaBorrador" class="text-xs text-indigo-700">subiendo…</span>
+            </div>
+
+            <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                @if ($mailArmado === '')
+                    <button type="button" wire:click="prepararMail" class="m3-btn" @disabled($tareaTraer)>✉ Enviar a Marta…</button>
+                    @if ($tareaTraer)<span class="text-xs text-indigo-700">⏳ un PC está buscando el borrador en la carpeta de trabajo…</span>
+                        <button type="button" wire:click="cancelarMail" class="m3-btn" style="padding:0 8px">dejar de esperar</button>@endif
+                @endif
+            </div>
+            @if ($mailArmado !== '' && $borradorInfo)
+                <div style="margin-top:10px;border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;padding:10px 12px" class="text-sm">
+                    <div><span class="text-gray-500">De:</span> {{ auth()->user()->email }} · <span class="text-gray-500">Para:</span> {{ \App\Support\ComunicarImpuestos::CC_DEFECTO }}</div>
+                    <div><span class="text-gray-500">Asunto:</span> {{ $this->asuntoMail() }}</div>
+                    <div><span class="text-gray-500">Adjunto:</span> 📎 {{ $borradorInfo['nombre'] }}</div>
+                    <div style="white-space:pre-line;margin:8px 0;padding:8px;background:#fff;border-radius:6px">{{ \App\Http\Livewire\ImpuestoM349::TEXTO_MARTA }}</div>
+                    <button type="button" wire:click="enviarMail" wire:confirm="¿Envío el correo a Marta con el borrador?" class="m3-btn" style="background:#059669;border-color:#059669;color:#fff;font-weight:700">✉ Confirmar y enviar</button>
+                    <button type="button" wire:click="cancelarMail" class="m3-btn">Cancelar</button>
+                </div>
+            @endif
+        </div>
     @endif
     </div>
 </div>

@@ -214,6 +214,7 @@ return [
         'pc.estado' => 'Subir el estado de un grupo de procesos (la web no ve OneDrive)',
         'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
         'pc.dejar_en_onedrive' => 'Dejar en una carpeta de OneDrive un fichero preparado en la web (M349: el .349 en la carpeta de trabajo)',
+        'pc.traer_de_onedrive' => 'Subir a la web el fichero que toca de una carpeta de OneDrive (M349: el borrador para el correo a Marta)',
         'pc.facturasocr' => 'Llevar al OneDrive de este PC lo validado en Facturas OCR (con comprobación de huellas)',
         'pc.facturasocr_z' => 'Facturas OCR: traer las facturas a procesar de la carpeta de la empresa en el disco Z:',
         'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',
