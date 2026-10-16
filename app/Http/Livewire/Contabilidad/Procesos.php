@@ -41,6 +41,19 @@ class Procesos extends Component
      */
     public $sysFichero = null;
     public bool $sysForzar = false;
+    /**
+     * Anaplan · personal (16-oct-2026): «Bruto sin Bonus» y «Bonus + Incentivo» de cada empleado (imputación de costes del mes) a
+     * «Input Staff Data for AC» (Salary / Bonus Value MTD). Propuesta de qué empleado de Anaplan es cada uno de las nóminas, en un modal;
+     * lo que se confirma queda como histórico (estado fiq.anaplan_staff_asoc) y la vez siguiente lo nuevo sale en amarillo.
+     * $staff = [tienda => [[excel, bruto, bonus, anaplan, origen: 'historico'|'propuesta'|'', nota], ...]], $staffAnaplan = [tienda => [nombres]].
+     */
+    public array $staff = [];
+    public array $staffAnaplan = [];
+    public array $staffAvisos = [];
+    public string $staffMesAnaplan = '';
+    public string $staffFichero = '';
+    public bool $staffAbierto = false;
+
     /** Cash flow: mayor de SAGE elegido a mano (opcional; si no, el último de los ficheros base de Fashion IQ, 16-oct-2026). */
     public $cashflowMayor = null;
 
@@ -734,6 +747,231 @@ class Procesos extends Component
         }
     }
 
+    // -- Anaplan · personal (Input Staff Data for AC) -----------------------------------------------------------------
+
+    /** «🔎 Preparar»: un PC lee el Excel de nóminas y la lista de empleados de Anaplan del mes; aquí se arma la propuesta. */
+    public function prepararStaff(): void
+    {
+        if (! $this->autorizar('anaplan_staff')) {
+            return;
+        }
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        $this->lanzar([['script' => 'anaplanWeb/staffAnaplan.js', 'args' => [$mm, '--leer'], 'timeout' => 600, 'windows' => true,
+            'etiqueta' => "Anaplan · personal {$mm} · leer nóminas y Anaplan"]], ['post' => 'postStaffLeer', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    protected function postStaffLeer(array $ctx, int $desde, array $oks): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        if (! preg_match('/^STAFF_JSON: (.*)$/m', $nuevo, $m) || ! is_array($d = json_decode($m[1], true))) {
+            return;
+        }
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^STAFF_JSON: .*(\r?\n)?/m', '', $nuevo));
+        if ((int) $ctx['mes'] !== $this->mes) {
+            return;
+        }
+        $this->staffAnaplan = (array) ($d['anaplan'] ?? []);
+        $this->staffAvisos = (array) ($d['avisos'] ?? []);
+        $this->staffMesAnaplan = (string) ($d['mes'] ?? '');
+        $this->staffFichero = (string) ($d['fichero'] ?? '');
+        // lo que el usuario ya hubiera elegido a mano (p. ej. un empleado que acaba de crear en Anaplan y «↻ Releer») se respeta
+        $antes = [];
+        foreach ($this->staff as $b) {
+            foreach ($b['filas'] as $f) {
+                if ($f['origen'] === 'mano') {
+                    $antes[$b['tienda']][$f['excel']] = $f['anaplan'];
+                }
+            }
+        }
+        $this->staff = [];
+        foreach (self::proponerStaff((array) ($d['excel'] ?? []), $this->staffAnaplan, $this->staffHistorico()) as $tienda => $filas) {
+            foreach ($filas as $i => $f) {
+                if (isset($antes[$tienda][$f['excel']])) {
+                    $filas[$i]['anaplan'] = $antes[$tienda][$f['excel']];
+                    $filas[$i]['origen'] = 'mano';
+                    $filas[$i]['nota'] = '';
+                }
+            }
+            $this->staff[] = ['tienda' => $tienda, 'filas' => $filas];
+        }
+        $this->staffAbierto = true;
+    }
+
+    protected function staffHistorico(): array
+    {
+        try {
+            return Schema::hasTable('estado_procesos') ? (array) ColaTareas::estado('fiq.anaplan_staff_asoc') : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /** Nombre → palabras en mayúsculas sin acentos (Ñ → N), sin comas ni puntos. */
+    public static function palabrasNombre(string $n): array
+    {
+        $n = strtoupper(strtr($n, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n', 'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N', 'ç' => 'c', 'Ç' => 'C']));
+
+        return array_values(array_unique(array_filter(preg_split('/[^A-Z]+/', $n), fn ($w) => strlen($w) > 0)));
+    }
+
+    /**
+     * Cuántas palabras coinciden (en cualquier orden; una palabra cortada vale si es el principio de la otra y tiene 3 letras o más,
+     * p. ej. «HUG» = «HUGO»; una inicial suelta vale contra su palabra). Devuelve [coincidencias, máximo de palabras de los dos].
+     */
+    public static function parecidoNombres(string $a, string $b): array
+    {
+        $pa = self::palabrasNombre($a);
+        $pb = self::palabrasNombre($b);
+        $libres = $pb;
+        $n = 0;
+        foreach ($pa as $w) {
+            foreach ($libres as $i => $v) {
+                if ($w === $v || (min(strlen($w), strlen($v)) >= 3 && (str_starts_with($w, $v) || str_starts_with($v, $w)))
+                    || (min(strlen($w), strlen($v)) === 1 && $w[0] === $v[0])) {
+                    $n++;
+                    unset($libres[$i]);
+                    break;
+                }
+            }
+        }
+
+        return [$n, max(count($pa), count($pb), 1)];
+    }
+
+    /** Propuesta: primero el histórico; después, por tienda, las parejas más parecidas (≥ 2 palabras, o 1 si alguno tiene una sola). */
+    public static function proponerStaff(array $excel, array $anaplan, array $historico): array
+    {
+        $out = [];
+        foreach ($excel as $tienda => $emps) {
+            $lista = array_values((array) ($anaplan[$tienda] ?? []));
+            $usados = [];
+            $filas = [];
+            foreach ($emps as $i => $e) {
+                $h = $historico[$tienda][$e['nombre']] ?? null;
+                $filas[$i] = ['excel' => $e['nombre'], 'bruto' => $e['bruto'], 'bonus' => $e['bonus'], 'anaplan' => '', 'origen' => '', 'nota' => ''];
+                if ($h !== null && in_array($h, $lista, true)) {
+                    $filas[$i]['anaplan'] = $h;
+                    $filas[$i]['origen'] = 'historico';
+                    $usados[$h] = true;
+                } elseif ($h !== null) {
+                    $filas[$i]['nota'] = "En el histórico era «{$h}», que ya no está en Anaplan.";
+                }
+            }
+            $pares = [];
+            foreach ($filas as $i => $f) {
+                if ($f['anaplan'] !== '') {
+                    continue;
+                }
+                foreach ($lista as $a) {
+                    if (isset($usados[$a])) {
+                        continue;
+                    }
+                    [$n, $max] = self::parecidoNombres($f['excel'], $a);
+                    $min = min(count(self::palabrasNombre($f['excel'])), count(self::palabrasNombre($a)));
+                    if ($n >= 2 || ($n >= 1 && $min === 1)) {
+                        $pares[] = [$n, $n / $max, $i, $a];
+                    }
+                }
+            }
+            usort($pares, fn ($x, $y) => [$y[0], $y[1]] <=> [$x[0], $x[1]]);
+            foreach ($pares as [$n, $ratio, $i, $a]) {
+                if ($filas[$i]['anaplan'] !== '' || isset($usados[$a])) {
+                    continue;
+                }
+                $filas[$i]['anaplan'] = $a;
+                $filas[$i]['origen'] = 'propuesta';
+                $filas[$i]['nota'] = $ratio < 1 ? 'Parecido, no igual: revísalo.' : '';
+                $usados[$a] = true;
+            }
+            foreach ($filas as $i => $f) {
+                if ($f['anaplan'] === '' && $f['nota'] === '') {
+                    $filas[$i]['nota'] = 'No lo encuentro en Anaplan: créalo allí y elígelo (o escribe su nombre), o déjalo vacío para no subirlo.';
+                }
+            }
+            $out[$tienda] = array_values($filas);
+        }
+
+        return $out;
+    }
+
+    /** «⬆ Subir a Anaplan» desde el modal: solo las filas con empleado de Anaplan. */
+    public function subirStaff(): void
+    {
+        if (! $this->autorizar('anaplan_staff') || ! $this->staff) {
+            return;
+        }
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        $filas = [];
+        $repes = [];
+        foreach ($this->staff as $bloque) {
+            $tienda = $bloque['tienda'];
+            $vistos = [];
+            foreach ($bloque['filas'] as $f) {
+                $a = trim((string) $f['anaplan']);
+                if ($a === '') {
+                    continue;
+                }
+                if (isset($vistos[$a])) {
+                    $repes[] = "{$tienda}: «{$a}» está elegido para «{$vistos[$a]}» y para «{$f['excel']}»";
+                }
+                $vistos[$a] = $f['excel'];
+                $filas[] = ['tienda' => $tienda, 'anaplan' => $a, 'excel' => $f['excel'], 'bruto' => (float) $f['bruto'], 'bonus' => (float) $f['bonus']];
+            }
+        }
+        if ($repes) {
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ Hay empleados de Anaplan elegidos dos veces:\n".implode("\n", $repes));
+            return;
+        }
+        if (! $filas) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No hay ninguna fila con empleado de Anaplan.');
+            return;
+        }
+        $json = tempnam(sys_get_temp_dir(), 'staff');
+        file_put_contents($json, json_encode(['mes' => $this->staffMesAnaplan, 'filas' => $filas], JSON_UNESCAPED_UNICODE));
+        $paso = ['script' => 'anaplanWeb/staffAnaplan.js', 'timeout' => 900, 'windows' => true, 'etiqueta' => "Anaplan · personal {$mm} · subir"];
+        $opc = ['post' => 'postStaffSubir', 'ctx' => ['mes' => $this->mes, 'asoc' => array_map(fn ($f) => [$f['tienda'], $f['excel'], $f['anaplan']], $filas)]];
+        if ($this->remoto()) {
+            $paso['args'] = [$mm, '--subir', '{E0WIN}', '--real'];
+            $opc['entradas'] = [['ruta' => $json, 'nombre' => 'staff.json', 'dir' => '_tmp/staff_in']];
+        } else {
+            $paso['args'] = [$mm, '--subir', $this->rutaWindows($json), '--real'];
+        }
+        $this->lanzar([$paso], $opc);
+        $this->staffAbierto = false;
+    }
+
+    /** Al cambiar a mano el empleado de Anaplan de una fila del modal. */
+    public function updatedStaff($valor, $clave): void
+    {
+        if (preg_match('/^(\d+)\.filas\.(\d+)\.anaplan$/', (string) $clave, $m) && isset($this->staff[$m[1]]['filas'][$m[2]])) {
+            $f = &$this->staff[$m[1]]['filas'][$m[2]];
+            $f['origen'] = 'mano';
+            $lista = $this->staffAnaplan[$this->staff[$m[1]]['tienda']] ?? [];
+            $f['nota'] = trim((string) $valor) === '' ? 'No se sube.' : (in_array(trim((string) $valor), $lista, true) ? '' : 'Ese nombre no está en la lista de Anaplan que he leído: si lo acabas de crear, pulsa «↻ Releer Anaplan».');
+        }
+    }
+
+    protected function postStaffSubir(array $ctx, int $desde, array $oks): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        $res = preg_match('/^STAFF_RES: (.*)$/m', $nuevo, $m) ? (json_decode($m[1], true) ?: []) : [];
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^STAFF_RES: .*(\r?\n)?/m', '', $nuevo));
+        // al histórico, las parejas que han quedado bien en Anaplan
+        $bien = array_flip(array_map(fn ($x) => $x[0].'|'.$x[1], (array) ($res['ok'] ?? [])));
+        $h = $this->staffHistorico();
+        foreach ($ctx['asoc'] ?? [] as [$tienda, $excel, $anaplan]) {
+            if (isset($bien[$tienda.'|'.$anaplan])) {
+                $h[$tienda][$excel] = $anaplan;
+            }
+        }
+        if ($bien && Schema::hasTable('estado_procesos')) {
+            ColaTareas::guardarEstado('fiq.anaplan_staff_asoc', $h, 'Procesos FIQ');
+        }
+        if (! in_array(false, $oks, true) && empty($res['fallos'])) {
+            $this->marcarChecklist('anaplan_staff', $ctx['mes']);
+        }
+    }
+
     // -- Ficheros base de Fashion IQ (SyS y mayor), comunes a todos los procesos (App\Support\FicherosBase, 16-oct-2026) --------------
 
     protected function fiqEntidad(): int
@@ -1345,6 +1583,8 @@ class Procesos extends Component
     public function updatedMes(): void
     {
         $this->resultados = [];
+        $this->staff = $this->staffAnaplan = $this->staffAvisos = [];
+        $this->staffAbierto = false;
         $this->updatedPfMes();
         $this->cargarCashInStore();
         $this->cargarIntrastat();

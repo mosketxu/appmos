@@ -43,6 +43,47 @@
 
     @include('livewire.contabilidad._pcs')
 
+    @if ($staffAbierto && $staff)
+        {{-- Anaplan · personal: propuesta nómina ↔ empleado de Anaplan (16-oct-2026). Amarillo = pareja nueva (no está en el histórico). --}}
+        <div class="fixed inset-0 z-40 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="$set('staffAbierto', false)">
+            <div class="w-full p-5 space-y-3 bg-white rounded-lg shadow-xl" style="max-width:64rem">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 class="text-lg font-semibold text-gray-900">Anaplan · personal {{ $staffMesAnaplan }}</h2>
+                    <span class="text-xs text-gray-500">{{ $staffFichero }}</span>
+                </div>
+                <p class="text-sm text-gray-600">Bruto sin Bonus → <b>Salary Value MTD</b> · Bonus + Incentivo → <b>Bonus Value MTD</b>.
+                    <span class="px-1 bg-yellow-100">Amarillo</span> = pareja nueva (no está en el histórico): revísala. Si un empleado no está en Anaplan, créalo allí, pulsa «↻ Releer Anaplan» y elígelo; vacío = no se sube.</p>
+                @foreach ($staffAvisos as $a)<p class="text-sm text-yellow-800">⚠️ {{ $a }}</p>@endforeach
+                @foreach ($staff as $bi => $bloque)
+                    <datalist id="staff-anaplan-{{ $bi }}">@foreach ($staffAnaplan[$bloque['tienda']] ?? [] as $n)<option value="{{ $n }}">@endforeach</datalist>
+                    <div>
+                        <div class="mt-2 mb-1 text-sm font-semibold text-gray-800">{{ $bloque['tienda'] }}</div>
+                        <table class="w-full text-sm">
+                            <tr class="text-xs text-left text-gray-500"><th class="pr-2">En la nómina</th><th class="pr-2 text-right">Bruto sin Bonus</th><th class="pr-2 text-right">Bonus + Incentivo</th><th class="pr-2">Empleado en Anaplan</th><th></th></tr>
+                            @foreach ($bloque['filas'] as $fi => $f)
+                                <tr wire:key="staff-{{ $bi }}-{{ $fi }}" class="{{ $f['anaplan'] === '' ? 'bg-red-50' : ($f['origen'] !== 'historico' ? 'bg-yellow-100' : '') }}">
+                                    <td class="py-0.5 pr-2">{{ $f['excel'] }}</td>
+                                    <td class="pr-2 text-right">{{ number_format($f['bruto'], 2, ',', '.') }}</td>
+                                    <td class="pr-2 text-right">{{ number_format($f['bonus'], 2, ',', '.') }}</td>
+                                    <td class="pr-2"><input type="text" list="staff-anaplan-{{ $bi }}" wire:model.blur="staff.{{ $bi }}.filas.{{ $fi }}.anaplan" class="w-full px-1 py-0.5 text-sm border-gray-300 rounded" placeholder="(no se sube)"></td>
+                                    <td class="text-xs {{ $f['anaplan'] === '' ? 'text-red-700' : 'text-yellow-800' }}">{{ $f['origen'] === 'historico' ? '' : $f['nota'] }}</td>
+                                </tr>
+                            @endforeach
+                        </table>
+                    </div>
+                @endforeach
+                @php $nSubir = collect($staff)->sum(fn ($b) => collect($b['filas'])->filter(fn ($f) => trim($f['anaplan']) !== '')->count()); @endphp
+                <div class="flex flex-wrap justify-end gap-2 pt-2 border-t">
+                    <button type="button" wire:click="$set('staffAbierto', false)" class="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
+                    <button type="button" wire:click="prepararStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Vuelve a leer los empleados de Anaplan (y el Excel); lo que has elegido a mano se mantiene">↻ Releer Anaplan</button>
+                    <button type="button" wire:click="subirStaff" wire:loading.attr="disabled"
+                        wire:confirm="¿Escribir en Anaplan ({{ $staffMesAnaplan }}) el salario y el bonus de {{ $nSubir }} empleados?"
+                        class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">⬆ Subir a Anaplan ({{ $nSubir }})</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Procesos del mes + checklist de cierre (pedido 2026-10-01): una fila por
          proceso de monthlyFIQ/checklist.json, ⓘ con el detalle, botón si se lanza
          desde aquí y un check por mes (se marca solo al terminar bien; a mano:
@@ -267,6 +308,19 @@
                                                 <a href="{{ route('impuestos.intrastat') }}" class="text-yellow-800 hover:underline" title="{{ implode("\n", array_slice($intrastatRes['avisos'], 0, 15)) }}">⚠️ {{ count($intrastatRes['avisos']) }} avisos · ver en Impuestos → Intrastat</a>
                                             @endif
                                         </div>
+                                    @endif
+                                </div>
+                            @elseif ($auto === 'anaplan-staff')
+                                {{-- 16-oct-2026: salario y bonus de cada empleado (imputación de costes) a «Input Staff Data for AC» de Anaplan --}}
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                        wire:click="prepararStaff" wire:loading.attr="disabled" wire:target="prepararStaff"
+                                        title="Un PC lee la imputación de costes del mes (versión más alta) y los empleados de Anaplan; te enseño la propuesta antes de subir nada">
+                                        <span wire:loading.remove wire:target="prepararStaff">🔎 Preparar propuesta</span>
+                                        <span wire:loading wire:target="prepararStaff">⏳…</span>
+                                    </button>
+                                    @if ($staff)
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700" wire:click="$set('staffAbierto', true)">✎ Ver propuesta</button>
                                     @endif
                                 </div>
                             @elseif ($auto === 'comunicar-impuestos')
