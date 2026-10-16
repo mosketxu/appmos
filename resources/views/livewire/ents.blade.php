@@ -97,9 +97,9 @@
                         <x-icon.star class="text-gray-500 "></x-icon.star>
                     @endif
                 </div>
-                {{-- Nombre y NIF (y el hueco entre ellos): clic = editar la ficha --}}
-                <a href="{{ route('entidad.edit',$entidad) }}" title="Editar la ficha" class="block py-2 pl-3 pr-2 truncate w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12 ent-nombre hover:text-indigo-700">{{ $entidad->entidad }}</a>
-                <a href="{{ route('entidad.edit',$entidad) }}" title="Editar la ficha" class="hidden py-2 pr-2 truncate xl:block xl:w-1/12 hover:text-indigo-700" style="margin-left:0">{{ $entidad->nif }}</a>
+                {{-- Nombre y NIF: clic = editar la ficha; arrastrar selecciona sin abrirla; doble clic copia el campo (x-celda-ficha) --}}
+                <x-celda-ficha :href="route('entidad.edit',$entidad)" :texto="$entidad->entidad" class="block py-2 pl-3 pr-2 truncate w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12 ent-nombre hover:text-indigo-700" />
+                <x-celda-ficha :href="route('entidad.edit',$entidad)" :texto="$entidad->nif" class="hidden py-2 pr-2 truncate xl:block xl:w-1/12 hover:text-indigo-700" style="margin-left:0" />
                 {{-- Responsable: solo en pantalla media o grande --}}
                 <div class="items-center hidden gap-1 md:flex md:w-2/12 lg:w-1/12">
                     @include('livewire.ents._control', ['e' => $entidad, 'c' => 'responsable'])
