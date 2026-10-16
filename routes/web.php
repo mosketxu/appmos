@@ -155,13 +155,9 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         }
         return view('contabilidad.procesos-mensuales');
     })->name('contabilidad.procesos-mensuales')->middleware('can:contabilidad.procesosmensuales');
-    // Seguimiento mensual: checklist de todos los procesos mensuales (datos en la BD de Appmos: se usa en la web, como Proc.Mensuales)
-    Route::get('/contabilidad/seguimiento-mensual', function () {
-        if (config('contabilidad.procesosmensuales_url') && ! config('contabilidad.procesosmensuales_ejecucion')) {
-            return redirect()->away(str_replace('procesos-mensuales', 'seguimiento-mensual', config('contabilidad.procesosmensuales_url')));
-        }
-        return view('contabilidad.seguimiento-mensual');
-    })->name('contabilidad.seguimiento-mensual')->middleware(['can:contabilidad.procesosmensuales', 'can:proceso.pm.seguimiento']);
+    // Seguimiento mensual: desde el 16-oct-2026 está dentro de Proc.Mensuales (se queda la ruta para los enlaces viejos)
+    Route::get('/contabilidad/seguimiento-mensual', fn () => redirect()->route('contabilidad.procesos-mensuales'))
+        ->name('contabilidad.seguimiento-mensual')->middleware('can:contabilidad.procesosmensuales');
     // Certificados por caducar: se ejecuta en LOCAL (los certificados están en los PCs)
     Route::get('/contabilidad/certificados', function () {
         return view('contabilidad.certificados');

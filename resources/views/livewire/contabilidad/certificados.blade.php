@@ -7,7 +7,7 @@
         <div class="flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-semibold text-gray-900">🔐 Certificados por caducar</h1>
             <span class="px-2 py-0.5 text-xs font-semibold text-indigo-900 bg-indigo-100 rounded">🌐 web + 💻 local · el escaneo lo hace cada PC</span>
-            <a href="{{ route('contabilidad.seguimiento-mensual') }}" class="text-sm text-indigo-600 underline">← Seguimiento mensual</a>
+            <a href="{{ route('contabilidad.procesos-mensuales') }}" class="text-sm text-indigo-600 underline">← Procesos mensuales</a>
         </div>
         @endunless
 

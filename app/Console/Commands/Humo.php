@@ -48,7 +48,6 @@ class Humo extends Command
             'LeoyBra' => [$c.'Contabilidad\\LeoyBra', []],
             'Proc.Mensuales' => [$c.'Contabilidad\\ProcesosMensuales', []],
             'Revisión del mayor' => [$c.'Contabilidad\\RevisionMayor', []],
-            'Seguimiento' => [$c.'Contabilidad\\SeguimientoMensual', []],
             'Certificados' => [$c.'Contabilidad\\Certificados', []],
         ];
         $mal = 0;

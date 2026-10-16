@@ -1,5 +1,5 @@
 {{-- Sub-navegación de la pestaña Contabilidad, con aspecto de pestañas de hoja de Excel:
-     Procesos FIQ / Facturación PDF / Durcal / Bancos / Facturas OCR / IS / Neteges / Proc.Mensuales / Seguimiento.
+     Procesos FIQ / Facturación PDF / Durcal / Bancos / Facturas OCR / IS / Neteges / Proc.Mensuales (con el Seguimiento dentro).
      Son pantallas independientes (rutas y componentes Livewire distintos).
      $activa (opcional): ruta de la pestaña activa, para que siga marcada cuando
      Livewire re-renderiza (en esas peticiones request()->routeIs() ya no vale).
@@ -9,7 +9,6 @@
     // [permiso, ruta, texto, url de la web si se usa desde allí]
     $pestanas = [
         ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', config('contabilidad.procesosmensuales_url')],
-        ['proceso.pm.seguimiento', 'contabilidad.seguimiento-mensual', 'Seguimiento', config('contabilidad.procesosmensuales_url') ? str_replace('procesos-mensuales', 'seguimiento-mensual', config('contabilidad.procesosmensuales_url')) : null],
         ['contabilidad.procesos', 'contabilidad.procesos', 'Procesos FIQ', null],
         ['contabilidad.facturacionpdf', 'contabilidad.facturacion-pdf', 'Facturación PDF', null],
         ['contabilidad.durcal', 'contabilidad.durcal', 'Durcal', null],
@@ -77,7 +76,7 @@
 @php
     $enBancos = ($activa ?? null) === 'contabilidad.bancos' || request()->routeIs('contabilidad.bancos');
     $enIs = ($activa ?? null) === 'contabilidad.is' || request()->routeIs('contabilidad.is');
-    $enPm = in_array($activa ?? null, ['contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual'], true) || request()->routeIs('contabilidad.procesos-mensuales', 'contabilidad.seguimiento-mensual');
+    $enPm = ($activa ?? null) === 'contabilidad.procesos-mensuales' || request()->routeIs('contabilidad.procesos-mensuales');
     // Bancos, IS y Proc.Mensuales van por su cuenta: operativos en la web aunque el resto esté bloqueado
     $web = $enBancos ? ['Bancos', 'bancos'] : ($enIs ? ['IS', 'is'] : ($enPm ? ['Proc.Mensuales', 'procesosmensuales'] : null));
     // 4-oct-2026: todas las pantallas de Contabilidad funcionan ya desde la web (los PCs trabajadores ejecutan por la cola de tareas): no hay bloqueo ni marca de agua
