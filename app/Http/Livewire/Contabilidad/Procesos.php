@@ -974,12 +974,16 @@ class Procesos extends Component
         $nuevo = substr($this->salida, $desde);
         $res = preg_match('/^STAFF_RES: (.*)$/m', $nuevo, $m) ? (json_decode($m[1], true) ?: []) : [];
         $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^STAFF_RES: .*(\r?\n)?/m', '', $nuevo));
-        // al histórico, las parejas que han quedado bien en Anaplan
-        $bien = array_flip(array_map(fn ($x) => $x[0].'|'.$x[1], (array) ($res['ok'] ?? [])));
+        // al histórico, las parejas que han quedado bien en Anaplan, con el nombre tal cual está allí (3.º elemento; puede diferir
+        // en mayúsculas o acentos del escrito a mano en el modal)
+        $bien = [];
+        foreach ((array) ($res['ok'] ?? []) as $x) {
+            $bien[$x[0].'|'.$x[1]] = $x[2] ?? $x[1];
+        }
         $h = $this->staffHistorico();
         foreach ($ctx['asoc'] ?? [] as [$tienda, $excel, $anaplan]) {
             if (isset($bien[$tienda.'|'.$anaplan])) {
-                $h[$tienda][$excel] = $anaplan;
+                $h[$tienda][$excel] = $bien[$tienda.'|'.$anaplan];
             }
         }
         if ($bien && Schema::hasTable('estado_procesos')) {
