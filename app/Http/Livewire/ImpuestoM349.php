@@ -256,8 +256,8 @@ class ImpuestoM349 extends Component
     // ------------------------------------------------------------------ fichero a tratar
 
     /**
-     * Fichero que se trata en este periodo: el subido en el mes o, si no hay, el último subido en un mes anterior del mismo ejercicio
-     * (el Excel trae el año entero). [ruta, nombre, propio (subido en este mes)] o null.
+     * Fichero que se trata en este periodo: el subido en el mes o, si no hay, el último subido en otro mes del mismo ejercicio
+     * (el Excel trae el año entero). [ruta, nombre, propio (subido en este mes), periodo] o null.
      */
     public function ficheroATratar(): ?array
     {
@@ -266,22 +266,11 @@ class ImpuestoM349 extends Component
         }
         $propio = glob($this->dirPeriodo('entrada').'/*') ?: [];
         if ($propio) {
-            return ['ruta' => $propio[0], 'nombre' => basename($propio[0]), 'propio' => true];
+            return ['ruta' => $propio[0], 'nombre' => basename($propio[0]), 'propio' => true, 'periodo' => $this->periodo];
         }
-        $cands = [];
-        foreach (glob($this->dirEmpresa().'/'.$this->ejercicio.'-*/entrada/*') ?: [] as $f) {
-            $per = substr(basename(dirname($f, 2)), 5);
-            if (strcmp($per, $this->periodo) < 0) {
-                $cands[$per] = $f;
-            }
-        }
-        if (! $cands) {
-            return null;
-        }
-        ksort($cands);
-        $f = end($cands);
+        $f = collect(glob($this->dirEmpresa().'/'.$this->ejercicio.'-*/entrada/*') ?: [])->sortByDesc(fn ($f) => filemtime($f))->first();
 
-        return ['ruta' => $f, 'nombre' => basename($f), 'propio' => false, 'periodo' => (string) array_key_last($cands)];
+        return $f ? ['ruta' => $f, 'nombre' => basename($f), 'propio' => false, 'periodo' => substr(basename(dirname($f, 2)), 5)] : null;
     }
 
     public function ficheros(): array
