@@ -31,14 +31,7 @@
                 <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
             @endforeach
         </select>
-        {{-- Saltos a cada zona de la pantalla (pedido 2026-09-25) --}}
-        <span class="flex flex-wrap items-center text-sm font-normal gap-x-2 gap-y-1">
-            @foreach (['rentas-variables' => 'Rentas Variables', 'cash-in-store' => 'Cash in store', 'pagos-fin-mes' => 'Pagos fin de mes'] as $ancla => $txt)
-                <a href="#{{ $ancla }}"
-                   onclick="event.preventDefault(); window.dispatchEvent(new CustomEvent('abrir-panel', {detail: '{{ $ancla }}'})); document.getElementById('{{ $ancla }}').scrollIntoView({behavior: 'smooth', block: 'start'})"
-                   class="px-2 py-1 text-indigo-700 border border-indigo-200 rounded-md bg-indigo-50 hover:bg-indigo-100">{{ $txt }}</a>
-            @endforeach
-        </span>
+        {{-- 17-oct-2026: quitados los saltos «Rentas Variables · Cash in store · Pagos fin de mes»: los tres son filas del checklist --}}
     </h1>
 
     @include('livewire.contabilidad._pcs')
