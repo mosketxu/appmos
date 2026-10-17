@@ -1438,16 +1438,20 @@ class Procesos extends Component
      *  2. rentasVariablesDeclaracion.js <tienda> <mes> por cada tienda marcada
      *     (BCN/MAL) -- rellena el fichero del arrendador (turnover).
      */
-    public function ejecutarRvCalculosYDeclaracion(): void
+    public function ejecutarRvCalculosYDeclaracion(bool $calculos = true, bool $declaracion = true): void
     {
-        if (! $this->autorizar('rv_calculos')) {
+        if (! $this->autorizar($calculos ? 'rv_calculos' : 'rv_certificacion')) {
             return;
         }
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
-        $pasos = [[
+        $pasos = $calculos ? [[
             'script' => 'calculosRentasVariables.js', 'args' => [$mm, '--no-open', '--real'], 'timeout' => 180,
             'etiqueta' => "RentasVariables · Cálculos (mes {$mm}, REAL)",
-        ]];
+        ]] : [];
+        if (! $declaracion) {
+            $this->rvSoloPasos($pasos, 'calculos');
+            return;
+        }
 
         $tiendas = array_values(array_intersect(
             array_keys($this->rvTiendasArrendador()),
@@ -1455,6 +1459,9 @@ class Procesos extends Component
         ));
         if (empty($tiendas)) {
             $this->salida .= "\n\n(Declaración a arrendador: no hay ninguna tienda marcada -- Barcelona / Málaga -- así que solo se hacen los Cálculos.)\n";
+            if (! $calculos) {
+                return;
+            }
         }
         foreach ($tiendas as $tienda) {
             $pasos[] = [
@@ -1462,12 +1469,53 @@ class Procesos extends Component
                 'etiqueta' => "RentasVariables · Declaración {$tienda} (mes {$mm}, REAL)",
             ];
         }
+        if (! $calculos) {
+            $this->rvSoloPasos($pasos, 'declaracion');
+            return;
+        }
         $opc = ['resultados' => 'rv', 'post' => 'postRvCalculos', 'ctx' => ['mes' => $this->mes]];
         $sysElegido = $this->sysFichero;
         $this->sysFichero = null;   // aquí no hay selector: solo el último de los ficheros base, si aún no está en la carpeta
         $this->prepararSys($mm, $pasos, $opc);
         $this->sysFichero = $sysElegido;
         $this->lanzar($pasos, $opc);
+    }
+
+    /** Fila «Alquiler» del checklist (17-oct-2026): «▶ Provisión» = solo Cálculos; «▶ Certificación» = solo el Turnover de BCN/MAL. */
+    public function ejecutarRvCalculos(): void
+    {
+        $this->ejecutarRvCalculosYDeclaracion(true, false);
+    }
+
+    public function ejecutarRvDeclaracion(): void
+    {
+        $this->ejecutarRvCalculosYDeclaracion(false, true);
+    }
+
+    /** Lanza solo una de las dos partes de Rentas Variables y marca su check. */
+    protected function rvSoloPasos(array $pasos, string $parte): void
+    {
+        $opc = ['resultados' => 'rv', 'post' => 'postRvParte', 'ctx' => ['mes' => $this->mes, 'parte' => $parte]];
+        if ($parte === 'calculos') {
+            $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+            $sysElegido = $this->sysFichero;
+            $this->sysFichero = null;
+            $this->prepararSys($mm, $pasos, $opc);
+            $this->sysFichero = $sysElegido;
+        }
+        $this->lanzar($pasos, $opc);
+    }
+
+    protected function postRvParte(array $ctx, int $desde, array $oks): void
+    {
+        if ($ctx['parte'] === 'calculos') {
+            $oks = $this->postSys($ctx, $oks);
+            if ($oks[0] ?? false) {
+                $this->marcarChecklist('rv_calculos', $ctx['mes']);
+            }
+        } elseif (in_array(true, $oks, true)) {
+            $this->marcarChecklist('rv_certificacion', $ctx['mes']);
+        }
     }
 
     /** $oks[0] = Cálculos; el resto, una Declaración por tienda marcada. */

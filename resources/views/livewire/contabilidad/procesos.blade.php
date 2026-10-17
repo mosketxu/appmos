@@ -103,6 +103,10 @@
             $marcas = $this->checklistMarcas;
             $mesSel = sprintf('2026-%02d', $mes);
             $botones = $this->procesos;
+            // Filas con «grupo» en checklist.json (17-oct-2026, Alex: «si son procesos diferentes, pon seguido varios botones»):
+            // una sola fila con el nombre del grupo, un botón por proceso («boton») y un check pequeño por proceso en cada mes.
+            $grupos = collect($this->checklist)->filter(fn ($p) => ! empty($p['grupo']))->groupBy('grupo')->map->values()->all();
+            $gruposPintados = [];
         @endphp
         <div class="overflow-x-auto">
         <table class="text-sm">
@@ -120,7 +124,16 @@
                 x-data="{ arrastrando: null, sobre: null, debajo: false }"
                 x-on:dragend.window="arrastrando = null; sobre = null">
                 @forelse ($this->checklist as $p)
-                    @php $id = $p['id']; $auto = $p['auto'] ?? null; @endphp
+                    @php
+                        $id = $p['id']; $auto = $p['auto'] ?? null;
+                        $grupo = $p['grupo'] ?? null;
+                        $miembros = $grupo ? $grupos[$grupo] : [$p];
+                        $idsFila = array_column($miembros, 'id');
+                    @endphp
+                    @if ($grupo && in_array($grupo, $gruposPintados, true))
+                        @continue
+                    @endif
+                    @php if ($grupo) { $gruposPintados[] = $grupo; } @endphp
                     <tr wire:key="chk-{{ $id }}" x-show="ver($el.textContent)" @if ($id === 'cash_in_store') id="cash-in-store" @endif class="align-top hover:bg-gray-50"
                         x-on:dragover.prevent="if (arrastrando && arrastrando !== '{{ $id }}') { sobre = '{{ $id }}'; debajo = $event.clientY > $el.getBoundingClientRect().top + $el.offsetHeight / 2 }"
                         x-on:drop.prevent="if (arrastrando && arrastrando !== '{{ $id }}') $wire.moverChecklist(arrastrando, '{{ $id }}', debajo); arrastrando = null; sobre = null"
@@ -131,12 +144,34 @@
                         <td class="px-2 py-1" x-data="{ info: false }" style="width:340px;max-width:340px">
                             <div class="flex items-start gap-x-1">
                                 <button type="button" x-on:click="info = !info" class="text-indigo-500 shrink-0 hover:text-indigo-700" title="Detalle">ⓘ</button>
-                                <span class="{{ $auto ? 'font-medium text-gray-900' : 'text-gray-700' }}">{{ $p['nombre'] }}</span>
+                                <span class="{{ $auto ? 'font-medium text-gray-900' : 'text-gray-700' }}">{{ $grupo ?? $p['nombre'] }}</span>
                             </div>
-                            <div x-show="info" style="display:none;max-width:420px" x-on:click.outside="info = false" class="p-2 mt-1 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">{{ $p['detalle'] ?? '' }}</div>
+                            <div x-show="info" style="display:none;max-width:420px" x-on:click.outside="info = false" class="p-2 mt-1 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
+                                @if ($grupo)
+                                    @foreach ($miembros as $mb)<p class="{{ $loop->first ? '' : 'mt-1' }}"><b>{{ $mb['boton'] ?? $mb['nombre'] }}</b> ({{ $mb['nombre'] }}): {{ $mb['detalle'] ?? '' }}</p>@endforeach
+                                @else
+                                    {{ $p['detalle'] ?? '' }}
+                                @endif
+                            </div>
                         </td>
                         <td class="px-2 py-1">
-                            @if ($auto === 'tabla' && isset($botones[$id]))
+                            @if ($grupo === 'Alquiler')
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" x-on:click="$dispatch('abrir-panel', 'rentas-variables')"
+                                        wire:click="ejecutarRvCalculos" wire:loading.attr="disabled" wire:target="ejecutarRvCalculos"
+                                        wire:confirm="Provisión: Cálculos de las 4 tiendas en CalculosRentasVbles2026.xlsx, mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}. Escribe sobre los ficheros reales. ¿Seguro?"
+                                        title="calculosRentasVariables.js: alquiler del mes (6210000 del SyS) y ventas fiscales de CTROL_ALL por tienda">
+                                        <span wire:loading.remove wire:target="ejecutarRvCalculos">▶ Provisión</span><span wire:loading wire:target="ejecutarRvCalculos">⏳…</span>
+                                    </button>
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" x-on:click="$dispatch('abrir-panel', 'rentas-variables')"
+                                        wire:click="ejecutarRvDeclaracion" wire:loading.attr="disabled" wire:target="ejecutarRvDeclaracion"
+                                        wire:confirm="Certificación: ventas netas del trimestre en el fichero del arrendador de {{ implode(' y ', $rvTiendas) ?: '(ninguna tienda marcada)' }}, mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}. Escribe sobre los ficheros reales. ¿Seguro?"
+                                        title="rentasVariablesDeclaracion.js: Turnover de las tiendas marcadas en el panel (BCN, MAL)">
+                                        <span wire:loading.remove wire:target="ejecutarRvDeclaracion">▶ Certificación</span><span wire:loading wire:target="ejecutarRvDeclaracion">⏳…</span>
+                                    </button>
+                                    <button type="button" x-data="{ ab: false }" x-on:panel-abierto.window="if ($event.detail.id === 'rentas-variables') ab = $event.detail.open" x-on:click="$dispatch('alternar-panel', 'rentas-variables')" x-text="ab ? '▴ Plegar' : 'Envío ↓'" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" title="Envío a los arrendadores (y correo de prueba), tiendas y resultados">Envío ↓</button>
+                                </div>
+                            @elseif ($auto === 'tabla' && isset($botones[$id]))
                                 <div class="flex items-start gap-x-2">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
                                         wire:click="ejecutar('{{ $id }}')"
@@ -362,6 +397,20 @@
                         </td>
                         @foreach ($this->checklistMeses as $k => $n)
                             @php $m = $marcas[$k][$id] ?? null; @endphp
+                            @if ($grupo)
+                                <td class="px-1 py-1 text-center {{ $k === $mesSel ? 'bg-indigo-50' : '' }}">
+                                    <span class="inline-flex" style="gap:1px">
+                                        @foreach ($miembros as $mb)
+                                            @php $mm2 = $marcas[$k][$mb['id']] ?? null; @endphp
+                                            <button type="button" wire:click="alternarChecklist('{{ $mb['id'] }}', '{{ $k }}')"
+                                                title="{{ $mb['boton'] ?? $mb['nombre'] }}: {{ $mm2 ? ((['ok' => 'Hecho', 'na' => 'No toca', 'proc' => 'Procesado, sin enviar'][$mm2['estado']] ?? $mm2['estado']) . ($mm2['cuando'] ? ' · ' . $mm2['cuando'] : '') . ' · ' . $mm2['como']) : 'Sin hacer' }}"
+                                                class="border rounded-sm {{ ['ok' => 'bg-green-500 border-green-600', 'na' => 'bg-gray-200 border-gray-300', 'proc' => 'bg-yellow-300 border-yellow-500'][$mm2['estado'] ?? ''] ?? 'bg-white border-gray-300' }}"
+                                                style="width:10px;height:20px"></button>
+                                        @endforeach
+                                    </span>
+                                </td>
+                                @continue
+                            @endif
                             <td class="px-1 py-1 text-center {{ $k === $mesSel ? 'bg-indigo-50' : '' }}">
                                 <button type="button" wire:click="alternarChecklist('{{ $id }}', '{{ $k }}')"
                                     title="{{ $m ? ((['ok' => 'Hecho', 'na' => 'No toca', 'proc' => 'Procesado, sin enviar'][$m['estado']] ?? $m['estado']) . ($m['cuando'] ? ' · ' . $m['cuando'] : '') . ' · ' . $m['como']) : 'Sin hacer' }}"
@@ -445,7 +494,7 @@
                             </td>
                         </tr>
                     @endif
-                    @if ($id === 'rv_envio')
+                    @if (in_array('rv_envio', $idsFila, true))
                         {{-- Rentas Variables (Cálculos + Turnover y envío a los arrendadores de BCN y MAL): antes era un desplegable
                              aparte debajo de la tabla; desde el 17-oct-2026 se abre aquí. «abrir ↓» de las otras filas de RV y el enlace de arriba también. --}}
                         <tr wire:key="chk-rv-detalle" id="rentas-variables" x-data="{ open: false }" x-show="open && ver('rentas variables enviar ventas arrendatarios turnover')" style="display:none"
