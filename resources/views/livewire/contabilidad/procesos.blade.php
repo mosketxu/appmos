@@ -199,17 +199,17 @@
                                     @if (in_array($id, ['monthly_sales', 'anaplan'], true))
                                         @php $mmSel = str_pad($mes, 2, '0', STR_PAD_LEFT); $ent = $this->entradas[$id] ?? null; @endphp
                                         <div class="flex flex-col text-xs text-gray-600 gap-y-1">
-                                            <label class="flex flex-col" title="Opcional: el balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera). Vale para Monthly sales y Anaplan: basta subirlo una vez.">
-                                                <span>Sumas y saldos {{ $mmSel }} (.xlsx, opcional)</span>
-                                                <input type="file" wire:model="sysFichero" accept=".xlsx" class="text-xs">
-                                                <span wire:loading wire:target="sysFichero" class="text-gray-500">⏳ subiendo…</span>
+                                            <div class="flex flex-col">
+                                                <x-subir-fichero wire:model="sysFichero" accept=".xlsx" :fichero="$sysFichero" opcional
+                                                    texto="Sumas y saldos {{ $mmSel }}"
+                                                    title="Opcional: el balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera). Vale para Monthly sales y Anaplan: basta subirlo una vez. Puedes arrastrarlo aquí." />
                                                 @if ($sysFichero)
-                                                    <span class="text-green-700">✓ {{ $sysFichero->getClientOriginalName() }} → SyS {{ $mmSel }}.xlsx</span>
+                                                    <span class="text-green-700">→ se dejará como SyS {{ $mmSel }}.xlsx</span>
                                                     <label class="flex items-center gap-1" title="Si al comprobarlo no parece el mes {{ $mmSel }} (o no es de Fashion IQ), se para; marca esto si estás seguro de que es el bueno.">
                                                         <input type="checkbox" wire:model="sysForzar" class="rounded"> Usarlo igualmente aunque no parezca el mes
                                                     </label>
                                                 @endif
-                                            </label>
+                                            </div>
                                             @if ($ent)
                                                 @php $faltan = array_filter($ent, fn ($e) => ! $e['ok'] && empty($e['opcional'])); $opc = array_filter($ent, fn ($e) => ! $e['ok'] && ! empty($e['opcional'])); @endphp
                                                 <div class="leading-tight" title="{{ $this->entradas['origen'] ?? '' }}">
@@ -320,12 +320,9 @@
                             @elseif ($auto === 'intrastat')
                                 {{-- 14-oct-2026: se elige el Excel de Outbound, se procesa con el motor de Impuestos → Intrastat y se marca hecho --}}
                                 <div class="flex flex-wrap items-start gap-x-2 gap-y-1">
-                                    <label class="flex flex-col text-xs text-gray-600" title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.2026.xlsx». Sustituye al que hubiera procesado de este mes.">
-                                        <span>Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} (.xlsx)</span>
-                                        <input type="file" wire:model="intrastatFichero" accept=".xlsx,.xlsm" class="text-xs">
-                                        <span wire:loading wire:target="intrastatFichero" class="text-gray-500">⏳ subiendo…</span>
-                                        @if ($intrastatFichero)<span class="text-green-700">✓ {{ $intrastatFichero->getClientOriginalName() }}</span>@endif
-                                    </label>
+                                    <x-subir-fichero wire:model="intrastatFichero" accept=".xlsx,.xlsm" :fichero="$intrastatFichero"
+                                        texto="Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
+                                        title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.2026.xlsx». Sustituye al que hubiera procesado de este mes. Puedes arrastrarlo aquí." />
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
                                         wire:click="procesarIntrastat" wire:loading.attr="disabled" wire:target="procesarIntrastat,intrastatFichero"
                                         @if (! $intrastatFichero && ! $intrastatRes) disabled title="Elige antes el Excel" @endif>
