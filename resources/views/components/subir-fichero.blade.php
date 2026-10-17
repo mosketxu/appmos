@@ -15,7 +15,7 @@
     <label {{ $attributes->only('title') }}
         x-on:dragover.prevent="arrastrando = true" x-on:dragleave.prevent="arrastrando = false"
         x-on:drop.prevent="arrastrando = false; $refs.input.files = $event.dataTransfer.files; $refs.input.dispatchEvent(new Event('change'))"
-        x-bind:style="arrastrando ? 'box-shadow:0 0 0 2px #6366f1' : ''"
+        x-bind:style="arrastrando ? { boxShadow: '0 0 0 2px #6366f1' } : { boxShadow: 'none' }"
         class="inline-flex items-center gap-1.5 px-2 py-1 border rounded-md cursor-pointer select-none"
         @if ($nombre)
             style="background:#fff;border-color:#d1d5db;color:#374151"
