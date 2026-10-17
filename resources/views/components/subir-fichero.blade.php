@@ -4,6 +4,8 @@
     nombre y ✕ para quitarlo, dentro, a la derecha. Admite arrastrar. Estilos en public/css/subir-fichero.css.
     Uso: <x-subir-fichero wire:model="sysFichero" accept=".xlsx" texto="Sumas y saldos 09" :fichero="$sysFichero" title="…" />
          Sin wire:model (subida propia en JS): <x-subir-fichero multiple x-on:change="subir($event.target.files); $event.target.value = ''" texto="…" />
+    Directriz (Alex, 17-oct-2026, toda la web): el texto de estado («✓ …», «falta…», el fichero que se usará) va A LA DERECHA
+    del botón, en un contenedor flex-wrap: si no cabe, baja solo. Nunca debajo a propósito.
 --}}
 @props(['texto' => 'Subir fichero', 'accept' => null, 'fichero' => null, 'opcional' => false, 'neutro' => false])
 @php

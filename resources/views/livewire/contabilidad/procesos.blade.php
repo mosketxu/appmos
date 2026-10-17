@@ -186,7 +186,8 @@
                                     @endif
                                     @if (in_array($id, ['monthly_sales', 'anaplan'], true))
                                         @php $mmSel = str_pad($mes, 2, '0', STR_PAD_LEFT); $ent = $this->entradas[$id] ?? null; @endphp
-                                        <div class="flex flex-col text-xs text-gray-600 gap-y-1">
+                                        {{-- 17-oct-2026 (Alex, para toda la web): el estado va a la derecha del botón si cabe; si no, debajo --}}
+                                        <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
                                             <div class="flex flex-wrap items-center gap-x-2">
                                                 <x-subir-fichero wire:model="sysFichero" accept=".xlsx" :fichero="$sysFichero" opcional
                                                     texto="Sumas y saldos {{ $mmSel }}"

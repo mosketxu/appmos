@@ -93,9 +93,11 @@
 
     <div class="li-card">
         <div class="li-h">¿El Excel del periodo no está en la carpeta?</div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px">
         <x-subir-fichero wire:model="excelSubido" accept=".xlsx,.xlsm" :fichero="$excelSubido" texto="Excel del libro de IVA" />
+        <div class="li-gris" style="font-size:12px;flex:1 1 16rem">Elígelo aquí (el export del libro de IVA de {{ $periodo }} {{ $ejercicio }}): al generar, el PC lo copia a la carpeta de arriba con el nombre que toca y trabaja con él. Si ya había uno del periodo, se guarda el anterior como «_anterior …».</div>
+        </div>
         @error('excelSubido')<div style="color:#b91c1c;font-size:13px">{{ $message }}</div>@enderror
-        <div class="li-gris" style="font-size:12px;margin-top:4px">Elígelo aquí (el export del libro de IVA de {{ $periodo }} {{ $ejercicio }}): al generar, el PC lo copia a la carpeta de arriba con el nombre que toca y trabaja con él. Si ya había uno del periodo, se guarda el anterior como «_anterior …».</div>
     </div>
 
     <div class="li-card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
