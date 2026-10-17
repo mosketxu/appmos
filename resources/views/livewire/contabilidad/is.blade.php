@@ -134,10 +134,10 @@
                         @endif
                         @error('subida.'.$clave)<div class="mt-1 text-xs text-red-600">{{ $message }}</div>@enderror
                     </div>
-                    <label class="inline-flex items-center px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md cursor-pointer bg-indigo-50 hover:bg-indigo-100">
+                    <x-boton-subir como="label" :vacio="! $estado[$clave] && $obligatorio" target="subida.{{ $clave }}">
                         <input type="file" class="hidden" wire:model="subida.{{ $clave }}" accept="{{ collect($exts)->map(fn ($x) => '.'.$x)->implode(',') }}">
                         {{ $estado[$clave] ? 'Cambiar' : 'Subir' }} ({{ implode(' / ', $exts) }})
-                    </label>
+                    </x-boton-subir>
                     @if ($clave === 'mayor' && $mayoresCentrales)
                         <div class="flex items-center gap-1" x-data="{ m: '' }">
                             <select x-model="m" class="py-1 text-xs border-gray-300 rounded-md" title="Mayores de esta empresa guardados en los ficheros base (los subió otro proceso)">

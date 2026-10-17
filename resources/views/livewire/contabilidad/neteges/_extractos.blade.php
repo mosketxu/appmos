@@ -23,11 +23,11 @@
     @else
         <label x-on:dragover.prevent="encima = true" x-on:dragleave.prevent="encima = false"
                x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
-               :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
-               class="flex items-center gap-2 px-3 py-2 text-xs border-2 border-dashed rounded-md cursor-pointer">
+               :class="encima && 'encima'" class="subir-zona {{ empty($extractosInput) ? 'vacio' : '' }}" style="font-size:.75rem">
             <input type="file" multiple accept=".xlsx,.xls,.xml,.txt,.n43,.csv" class="hidden"
                    x-on:change="subir($event.target.files); $event.target.value = ''">
-            <span class="text-gray-600">Arrastra aquí los extractos o haz clic para elegirlos</span>
+            <x-subir.icono cargando="subiendo || procesando" />
+            <span>Arrastra aquí los extractos o haz clic para elegirlos</span>
             <span x-show="subiendo" x-cloak class="ml-auto text-gray-500">⬆ Subiendo… <span x-text="progreso"></span>%</span>
             <span x-show="procesando" x-cloak class="ml-auto font-bold text-amber-600 animate-pulse">⏳ Reconociendo las cuentas…</span>
         </label>

@@ -105,7 +105,8 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span x-show="subiendo" x-cloak class="text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
-                            <x-button.secondary x-on:click="$refs.input.click()">⬆ {{ ['plan' => 'Subir plan', 'proveedores' => 'Subir proveedores'][$fb['clave']] ?? 'Subir mayor' }}</x-button.secondary>
+                            @php $hayFb = ($fb['clave'] === 'plan' && $fb['datos']) || ($fb['clave'] === 'proveedores' && ! empty($fb['datos']['cuentas'])) || ($fb['clave'] === 'mayor' && $cuentas); @endphp
+                            <x-boton-subir :vacio="! $hayFb" cargando="subiendo" x-on:click="$refs.input.click()">{{ ['plan' => 'Subir plan', 'proveedores' => 'Subir proveedores'][$fb['clave']] ?? 'Subir mayor' }}</x-boton-subir>
                         </div>
                     </div>
                 @endforeach
@@ -214,12 +215,11 @@
                          x-on:dragover.prevent="encima = true"
                          x-on:dragleave.prevent="encima = false"
                          x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)">
-                        <label :class="encima ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:border-indigo-400'"
-                               class="flex items-center gap-2 px-3 py-3 text-sm border-2 border-dashed rounded-md cursor-pointer">
+                        <label :class="encima && 'encima'" class="subir-zona vacio" style="padding:.75rem">
                             <input type="file" multiple accept=".xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp" class="hidden"
                                    x-on:change="subir($event.target.files); $event.target.value = ''">
-                            <span>📄</span>
-                            <span class="text-gray-700">Arrastra aquí los extractos del banco (uno o varios: Excel, o foto/PDF escaneado, que se pasa a Excel) o haz clic para elegirlos</span>
+                            <x-subir.icono cargando="subiendo" />
+                            <span>Arrastra aquí los extractos del banco (uno o varios: Excel, o foto/PDF escaneado, que se pasa a Excel) o haz clic para elegirlos</span>
                             <span x-show="subiendo" class="text-xs text-gray-400">Subiendo…</span>
                         </label>
                         @if ($ocrRevisar)

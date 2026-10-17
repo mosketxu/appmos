@@ -50,8 +50,7 @@
                         <div class="text-xs" style="display:flex;gap:6px;align-items:center">📄 <span style="flex:1;word-break:break-all">{{ $n }}</span>
                             <button type="button" wire:click="quitar('{{ $t }}', @js($n))" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button></div>
                     @endforeach
-                    <label class="m1-btn" style="margin-top:6px">＋ Elegir…<input type="file" multiple wire:model="subidas.{{ $t }}" accept="{{ $t === 'txt' ? '.txt' : ($t === 'pdf' ? '.pdf' : '.xlsx,.xls') }}" style="display:none"></label>
-                    <span wire:loading wire:target="subidas.{{ $t }}" class="text-xs text-indigo-700">subiendo…</span>
+                    <x-boton-subir como="label" :vacio="empty($ficheros[$t] ?? [])" target="subidas.{{ $t }}" style="margin-top:6px">Elegir…<input type="file" multiple wire:model="subidas.{{ $t }}" accept="{{ $t === 'txt' ? '.txt' : ($t === 'pdf' ? '.pdf' : '.xlsx,.xls') }}" style="display:none"></x-boton-subir>
                     @if ($t === 'mayor' && $mayorBase)
                         <label class="text-xs text-gray-600" style="display:block;margin-top:6px"><input type="checkbox" wire:model.live="usarMayorBase" class="border-gray-300 rounded">
                             usar también el mayor de ficheros base: «{{ $mayorBase['nombre'] }}» ({{ date('d/m/Y', $mayorBase['fecha']) }})</label>

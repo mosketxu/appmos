@@ -50,9 +50,8 @@
                                 <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600">
                                     <span class="font-semibold">📎 Adjuntos</span>
                                     <span class="text-gray-400">Excel de las casillas del correo (303, retenciones…) y lo que subas; desmarca lo que no quieras.</span>
-                                    <label class="ml-auto imp-btn" style="border-radius:6px; cursor:pointer">⬆ Subir ficheros…
-                                        <input type="file" wire:model="ciSubidas" multiple class="hidden"></label>
-                                    <span wire:loading wire:target="ciSubidas" class="text-indigo-700">Subiendo…</span>
+                                    <x-boton-subir como="label" target="ciSubidas" class="ml-auto">Subir ficheros…
+                                        <input type="file" wire:model="ciSubidas" multiple class="hidden"></x-boton-subir>
                                 </div>
                                 @error('ciSubidas.*') <div class="text-xs text-red-700">{{ $message }}</div> @enderror
                                 @forelse ($ciAdjuntos as $j => $a)

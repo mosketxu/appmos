@@ -64,7 +64,7 @@
              :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''"
              style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; padding:6px; border:1px dashed #d1d5db; border-radius:6px">
             <input type="file" multiple accept=".xlsx,.xlsm" class="hidden" x-ref="input" x-on:change="subir($event.target.files); $event.target.value = ''">
-            <button type="button" x-on:click="$refs.input.click()" class="in-btn">⬆ Subir Excel</button>
+            <x-boton-subir :vacio="! $entradas" cargando="subiendo" x-on:click="$refs.input.click()">Subir Excel</x-boton-subir>
             <span class="text-xs text-gray-500">o arrástralos aquí (se pueden subir varios)</span>
             @foreach ($entradas as $e)<span class="text-xs" style="color:#047857">✔ {{ \Illuminate\Support\Str::limit($e, 60) }}</span>@endforeach
             @if ($entradas)<button type="button" wire:click="borrarEntradas" wire:confirm="¿Quitar los ficheros subidos de este mes?" class="in-btn" title="Quitar los ficheros">🗑</button>@endif

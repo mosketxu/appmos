@@ -79,8 +79,7 @@
                         <div class="text-sm text-gray-500">Arrastra aquí el Excel del 349 (pestañas de ventas y compras intracomunitarias, todo el año) o pulsa «Elegir…».</div>
                     @endif
                 @endforelse
-                <label class="m3-btn" style="margin-top:8px">＋ {{ $ficherosLista ? 'Cambiar fichero…' : 'Elegir…' }}<input type="file" wire:model="subida" accept=".xlsx,.xls,.csv,.txt,.pdf" style="display:none"></label>
-                <span wire:loading wire:target="subida" class="text-xs text-indigo-700">subiendo…</span>
+                <x-boton-subir como="label" :vacio="! $ficherosLista && ! $aTratar" target="subida" style="margin-top:8px">{{ $ficherosLista ? 'Cambiar fichero…' : 'Elegir…' }}<input type="file" wire:model="subida" accept=".xlsx,.xls,.csv,.txt,.pdf" style="display:none"></x-boton-subir>
             </div>
             <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px" class="text-sm">
                 <span class="text-xs text-gray-500">Cabecera del 349 · contacto</span>
@@ -151,8 +150,7 @@
                     <div class="text-sm text-gray-500">Sube aquí el PDF del borrador, o déjalo en la carpeta de trabajo y al pulsar «Enviar a Marta…» lo traigo yo
                         (un PDF con «borrador» y «{{ $periodo }}» en el nombre, o el descargado en los últimos 2 días).</div>
                 @endif
-                <label class="m3-btn" style="margin-top:8px">＋ {{ $borradorInfo ? 'Cambiar borrador…' : 'Subir borrador…' }}<input type="file" wire:model="subidaBorrador" accept=".pdf" style="display:none"></label>
-                <span wire:loading wire:target="subidaBorrador" class="text-xs text-indigo-700">subiendo…</span>
+                <x-boton-subir como="label" :vacio="! $borradorInfo" target="subidaBorrador" style="margin-top:8px">{{ $borradorInfo ? 'Cambiar borrador…' : 'Subir borrador…' }}<input type="file" wire:model="subidaBorrador" accept=".pdf" style="display:none"></x-boton-subir>
             </div>
 
             <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">

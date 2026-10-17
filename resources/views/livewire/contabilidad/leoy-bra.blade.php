@@ -53,7 +53,7 @@
                          style="display:flex; align-items:center; gap:.5rem; padding:.3rem .75rem" title="{{ $ayuda }}">
                         <input type="file" multiple accept=".xlsx,.xls" class="hidden" x-ref="input" x-on:change="subir($event.target.files); $event.target.value = ''">
                         <span class="text-sm text-gray-800" style="width:9rem; flex:none">{{ $titulo }}</span>
-                        <button type="button" x-on:click="$refs.input.click()" class="{{ $btn }}">⬆ Subir</button>
+                        <x-boton-subir :vacio="! isset($base[$clave])" cargando="subiendo || procesando" x-on:click="$refs.input.click()">Subir</x-boton-subir>
                         <span class="text-xs" style="color:{{ isset($base[$clave]) ? '#047857' : '#b91c1c' }}">
                             @if (isset($base[$clave]))
                                 ✔ {{ \Illuminate\Support\Str::limit(preg_replace('/^[a-z]+_\d{8}_\d{6}_/', '', $base[$clave]['nombre']), 34) }} · {{ $base[$clave]['fecha'] }}
@@ -92,7 +92,7 @@
                          :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''" style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap">
                         <input type="file" accept=".xlsx,.xlsm" class="hidden" x-ref="input" x-on:change="subir($event.target.files); $event.target.value = ''">
                         <span class="text-sm text-gray-800" style="width:11rem">📊 Datos del trimestre</span>
-                        <button type="button" x-on:click="$refs.input.click()" class="{{ $btn }}">⬆ Subir</button>
+                        <x-boton-subir :vacio="! collect($per['datos'] ?? [])->contains(fn ($f) => str_ends_with($f, '.xlsx'))" cargando="subiendo" x-on:click="$refs.input.click()">Subir</x-boton-subir>
                         <span class="text-xs text-gray-500">el Excel del cliente (Emitidas · Recibidas · Banco · Tarjeta)</span>
                         @foreach (($per['datos'] ?? []) as $f)
                             @if (str_ends_with($f, '.xlsx')) <span class="text-xs" style="color:#047857">✔ {{ \Illuminate\Support\Str::limit(preg_replace('/^\d{8}_\d{6}_/', '', $f), 40) }}</span> @endif
@@ -106,7 +106,7 @@
                          :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''" style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap">
                         <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" class="hidden" x-ref="input" x-on:change="subir($event.target.files); $event.target.value = ''">
                         <span class="text-sm text-gray-800" style="width:11rem">🧾 Facturas (opcional)</span>
-                        <button type="button" x-on:click="$refs.input.click()" class="{{ $btn }}">⬆ Subir</button>
+                        <x-boton-subir cargando="subiendo" x-on:click="$refs.input.click()">Subir</x-boton-subir>
                         <span class="text-xs text-gray-500">los PDF de emitidas y recibidas, para contrastar fechas e importes</span>
                         @php $nPdf = count(glob(rtrim(config('contabilidad.leoybra_dir'), '/').'/Datos/'.$periodo.'/PDF/*') ?: []); @endphp
                         @if ($nPdf)

@@ -44,11 +44,11 @@
                                         ✕ = quitar el de arriba (vuelve el anterior de OLD).</div>
                                 </td>
                                 <td style="width:12rem; vertical-align:top">
-                                    <label class="focr-btn b-gris" style="padding:.2rem .6rem; font-size:.75rem; cursor:pointer">
-                                        <span wire:loading.remove wire:target="{{ $prop }}">📂 Elegir uno nuevo…</span>
+                                    <x-boton-subir como="label" :vacio="empty($ficherosBase[$tipo] ?? [])" :target="$prop">
+                                        <span wire:loading.remove wire:target="{{ $prop }}">Subir uno nuevo</span>
                                         <span wire:loading wire:target="{{ $prop }}">Subiendo y rehaciendo…</span>
                                         <input type="file" wire:model="{{ $prop }}" accept=".xlsx" style="display:none">
-                                    </label>
+                                    </x-boton-subir>
                                 </td>
                             </tr>
                         @endforeach

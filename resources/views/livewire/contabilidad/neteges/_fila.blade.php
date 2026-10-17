@@ -26,7 +26,22 @@
     <input type="file" multiple accept="{{ $fb['accept'] }}" class="hidden" x-ref="input"
            x-on:change="subir($event.target.files); $event.target.value = ''">
     <span class="text-sm text-gray-800" style="width:10.5rem; flex:none">{{ $fb['titulo'] }}</span>
-    <button type="button" x-on:click="$refs.input.click()" class="{{ $btn }}" title="Subir (también se puede arrastrar encima)">⬆ Subir</button>
+    @php
+        $vacio = match ($c) {
+            'plan' => empty($estadoBase['plan'] ?? null),
+            'mayor' => empty($mayorDesde ?? null),
+            'clientessage' => ! isset($info['clientes']),
+            'proveedoressage' => ! isset($info['proveedores']),
+            'misclientes' => ! isset($info['mis clientes']),
+            'netcobros' => empty($en['cobros'] ?? null),
+            'netbbva' => empty($en['control']['BBVA'] ?? null),
+            'netsabadell' => empty($en['control']['Sabadell'] ?? null),
+            'remesas' => empty($en['remesas'] ?? null),
+            'ventas' => empty($ev['facturas'] ?? null),
+            default => false,
+        };
+    @endphp
+    <x-boton-subir :vacio="$vacio" cargando="subiendo || procesando" x-on:click="$refs.input.click()" title="Subir (también se puede arrastrar encima)">Subir</x-boton-subir>
 
     <x-neteges-info>
         @switch($c)

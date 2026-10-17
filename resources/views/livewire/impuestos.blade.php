@@ -316,12 +316,8 @@
                         <textarea wire:model="comTexto" rows="2" placeholder="Nuevo comentario…" class="w-full text-sm border-gray-300 rounded-md" autofocus
                             x-on:keydown.ctrl.enter.prevent="$wire.comentar()"></textarea>
                         <div class="flex flex-wrap items-center gap-2 mt-1">
-                            <label class="text-sm text-indigo-700 cursor-pointer hover:underline" title="Un fichero por comentario, hasta 20 MB. Sin texto, se guarda al elegirlo; con texto, pulsa «Añadir comentario»">📎 Adjuntar fichero
-                                <input type="file" wire:model="comArchivo" style="display:none">
-                            </label>
-                            <span wire:loading wire:target="comArchivo" class="text-xs text-indigo-700">Subiendo…</span>
-                            @if ($comArchivo) <span class="text-xs text-gray-700">{{ $comArchivo->getClientOriginalName() }}
-                                <button type="button" wire:click="$set('comArchivo', null)" class="text-gray-400 hover:text-red-600" title="Quitar el fichero">✕</button></span> @endif
+                            <x-subir-fichero wire:model="comArchivo" :fichero="$comArchivo" neutro texto="Adjuntar fichero"
+                                title="Un fichero por comentario, hasta 20 MB. Sin texto, se guarda al elegirlo; con texto, pulsa «Añadir comentario»" />
                             @error('comArchivo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                         </div>
                         <div class="flex items-center gap-2 mt-1">

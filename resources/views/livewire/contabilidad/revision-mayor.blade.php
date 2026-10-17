@@ -29,7 +29,7 @@
                  :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''" style="display:flex; align-items:center; gap:.5rem; padding:.3rem .75rem; flex-wrap:wrap" title="{{ $f['ayuda'] }}">
                 <input type="file" accept=".xlsx" class="hidden" x-ref="input" x-on:change="subir($event.target.files); $event.target.value = ''">
                 <span class="text-sm text-gray-800" style="width:9.5rem">{{ $f['icono'] }} {{ $f['titulo'] }}</span>
-                <button type="button" x-on:click="$refs.input.click()" class="{{ $btn }}">⬆ Subir</button>
+                <x-boton-subir :vacio="! $f['ultimo']" cargando="subiendo" x-on:click="$refs.input.click()">Subir</x-boton-subir>
                 <span class="text-xs" style="color:{{ $f['ultimo'] ? '#047857' : '#b91c1c' }}">
                     @if ($f['ultimo']) ✔ {{ \Illuminate\Support\Str::limit($f['ultimo']['nombre'], 44) }} · {{ $f['ultimo']['fecha'] }}@if ($f['ultimo']['origen']) <span class="text-gray-400">({{ $f['ultimo']['origen'] }})</span>@endif
                     @else sin subir @endif

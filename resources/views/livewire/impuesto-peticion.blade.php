@@ -22,9 +22,8 @@
                     <div class="p-2 mt-3 border border-gray-200 rounded" style="background:#fafafa">
                         <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600">
                             <span class="font-semibold">📎 Adjuntos</span>
-                            <label class="ml-auto imp-btn" style="border-radius:6px; cursor:pointer">⬆ Subir ficheros…
-                                <input type="file" wire:model="pdSubidas" multiple class="hidden"></label>
-                            <span wire:loading wire:target="pdSubidas" class="text-indigo-700">Subiendo…</span>
+                            <x-boton-subir como="label" target="pdSubidas" class="ml-auto">Subir ficheros…
+                                <input type="file" wire:model="pdSubidas" multiple class="hidden"></x-boton-subir>
                         </div>
                         @error('pdSubidas.*') <div class="text-xs text-red-700">{{ $message }}</div> @enderror
                         @foreach ($pdAdjuntos as $j => $a)

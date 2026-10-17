@@ -16,9 +16,8 @@
                         <div x-data="focrSubida()" wire:key="subida">
                             <input type="file" multiple accept="application/pdf,.pdf" x-ref="f" style="display:none" x-on:change="elegir($event.target.files); $event.target.value = ''">
                             <div x-on:click="$refs.f.click()" x-on:dragover.prevent="encima = true" x-on:dragleave.prevent="encima = false" x-on:drop.prevent="encima = false; elegir($event.dataTransfer.files)"
-                                 :style="encima ? 'background:#eef2ff;border-color:#6366f1' : ''"
-                                 style="border:2px dashed #cbd5e1; border-radius:.5rem; padding:.55rem; text-align:center; cursor:pointer; color:#475569">
-                                📥 Arrastra aquí los PDF (o clic para elegirlos)
+                                 :class="{ 'encima': encima, 'vacio': ! archivos.length }" class="subir-zona" style="justify-content:center; padding:.55rem">
+                                <x-subir.icono /> Arrastra aquí los PDF (o clic para elegirlos)
                             </div>
                             <div class="mt-1 text-xs" style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
                                 <button type="button" wire:click="traerDeZ" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.1rem .5rem; font-size:.72rem" @disabled($zTarea)
