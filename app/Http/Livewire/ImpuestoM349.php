@@ -551,11 +551,13 @@ class ImpuestoM349 extends Component
         $vivos = DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))
             ->where('capacidades', 'like', '%pc.aeat_349%')->count();
         if (! $vivos) {
-            $this->error = 'No hay ningún PC trabajador conectado que pueda entrar en la AEAT ahora mismo.';
+            $this->error = 'No hay ningún PC trabajador conectado que pueda entrar en la AEAT ahora mismo (lo hace miniServ: ¿está encendido?).';
             return;
         }
+        // Sin destino (17-oct-2026): la coge el PC que se ofrece para pc.aeat_349, el que tiene la política de Edge con el certificado de Suma
+        // (miniServ). En los PCs de Alex se quitó para poder elegir certificado a mano, así que el selector «Ejecutar en» no vale aquí.
         $id = ColaTareas::crear('pc.aeat_349', ['carpeta' => $this->carpeta, 'nif' => $this->declarante()['nif'] ?? '', 'ejercicio' => (string) $this->ejercicio,
-            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]], ColaTareas::pcElegido() ?: null, auth()->id(), null, null, 'preparando');
+            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]], null, auth()->id(), null, null, 'preparando');
         $dir = ColaTareas::carpetaEntradas($id);
         @mkdir($dir, 0775, true);
         copy($ruta, $dir.'/fichero.349');
