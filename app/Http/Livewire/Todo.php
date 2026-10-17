@@ -79,7 +79,7 @@ class Todo extends Component
                     $this->filtroEstado = 'todas';   // cerrada: con el filtro «Abiertas» no saldría
                 }
                 $aviso = ($a = (int) request('a')) ? TodoAviso::where('user_id', auth()->id())->find($a) : null;
-                $cuando = $aviso ? ' de '.($aviso->created_at->isToday() ? 'las '.$aviso->created_at->format('H:i') : 'el '.$aviso->created_at->format('d/m').' a las '.$aviso->created_at->format('H:i')) : '';
+                $cuando = $aviso ? ($aviso->created_at->isToday() ? ' de las ' : ' del '.$aviso->created_at->format('d/m').' a las ').$aviso->created_at->format('H:i') : '';
                 $this->mensaje = 'Vienes del aviso'.$cuando.' de la campana: tarea «'.$tarea->titulo.'» (abierta y resaltada abajo).';
                 $this->mensajeTipo = 'ok';
             }
