@@ -1,6 +1,6 @@
 {{-- Panel de PCs (3-oct-2026; reducido el 17-oct-2026). Solo en la web (VPS): los procesos los hacen los PCs
      trabajadores por la cola de tareas. Mientras haya tareas pedidas se pregunta cada 3 s si ya han terminado
-     (revisarTareas, trait EjecutaEnPcs). Pide en la pantalla: $pendientes, $this->pcs, sincronizarAhora(), cancelarTarea(). --}}
+     (revisarTareas, trait EjecutaEnPcs). Pide en la pantalla: $pendientes y cancelarTarea(). --}}
     @if ($pendientes)
         <div wire:poll.3s="revisarTareas"></div>
         {{-- «Pensando»: mientras un PC trabaja (no bloquea la pantalla; se quita solo al terminar) --}}
@@ -28,16 +28,6 @@
             <style>@keyframes procesando-giro{to{transform:rotate(360deg)}}</style>
         </div>
     @endif
-    @unless (config('contabilidad.ejecucion_local'))
-        @php $cola = $this->pcs; @endphp
-        {{-- 17-oct-2026 (Alex): solo lo útil. Los PCs en línea se ven en «▶ Ejecutar en» (barra de menú); el resultado de cada
-             proceso, en su salida y en su check; los errores llegan a la campana; cancelar, en el aviso «Pensando…».
-             Quitado el historial de tareas (nadie lo miraba). Queda el aviso si no hay ningún PC y «Sincronizar estado». --}}
-        <div class="flex flex-wrap items-center justify-end text-xs gap-x-4 gap-y-1">
-            @if ($cola['pcs'] && ! collect($cola['pcs'])->contains('conectado', true))
-                <span class="mr-auto text-sm text-amber-700">⚠️ Ningún PC de trabajo conectado: lo que pidas esperará a que uno arranque.</span>
-            @endif
-            <button type="button" wire:click="sincronizarAhora" class="text-gray-500 hover:text-indigo-700 hover:underline" title="Pide a un PC que suba el estado actual (checklist, importes, Pagos fin de mes...)">↻ Sincronizar estado</button>
-        </div>
-    @endunless
+    {{-- 17-oct-2026 (Alex): quitados también el aviso «Ningún PC conectado» (ya lo dicen el punto gris de «▶ Ejecutar en» y la
+         campana) y «↻ Sincronizar estado» (el estado se pide solo al abrir la pantalla si tiene más de 30 min). --}}
 

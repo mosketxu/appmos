@@ -215,7 +215,7 @@
                                                     @endif
                                                 </div>
                                             @else
-                                                <span class="text-gray-400">Sin datos de qué ficheros hay (pulsa «↻ Sincronizar estado» en el panel de PCs).</span>
+                                                <span class="text-gray-400">Sin datos de qué ficheros hay todavía (se piden solos al PC al abrir la pantalla: vuelve a mirar en un momento).</span>
                                             @endif
                                         </div>
                                     @endif
