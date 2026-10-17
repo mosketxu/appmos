@@ -621,11 +621,11 @@
                 {{-- Subir copias: sin File System Access API, o carpetas que Chrome bloquea (C:\ProgramData,
                      Archivos de programa, AppData...). El resultado va solo en el .zip. --}}
                 <div class="mt-2" x-show="! carpeta && ! sueltos">
-                    <label class="block text-xs text-gray-600">
-                        <span x-show="soportado">…o <strong>subir una copia</strong> (desde cualquier carpeta, también las que Chrome no deja abrir; sale solo en .zip):</span>
-                        <input type="file" multiple accept="application/pdf,.pdf,image/*" class="block mt-1 text-xs"
-                               x-on:change="subirSueltos($event.target.files); $event.target.value = ''">
-                    </label>
+                    <div class="text-xs text-gray-600">
+                        <div x-show="soportado" class="mb-1">…o <strong>subir una copia</strong> (desde cualquier carpeta, también las que Chrome no deja abrir; sale solo en .zip):</div>
+                        <x-subir-fichero multiple accept="application/pdf,.pdf,image/*" texto="Subir PDF o imágenes"
+                            x-on:change="subirSueltos($event.target.files); $event.target.value = ''" />
+                    </div>
                     @if ($archivosGenerico)
                         <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
                             @foreach ($archivosGenerico as $i => $a)

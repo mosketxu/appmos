@@ -85,17 +85,17 @@
                                 </td>
                                 <td class="px-3 py-2">
                                     @if ($c['tieneIs'])<span class="text-green-700">✓ {{ $c['fechaIs'] }}</span>@else<span class="text-red-700">falta</span>@endif
-                                    <input type="file" wire:model="subidaIs.{{ $c['id'] }}" accept="application/pdf" class="block w-48 mt-1 text-xs">
+                                    <div class="mt-1"><x-subir-fichero wire:model="subidaIs.{{ $c['id'] }}" accept="application/pdf" :fichero="$subidaIs[$c['id']] ?? null" texto="PDF del IS" /></div>
                                     @error('subidaIs.'.$c['id'])<div class="text-xs text-red-700">{{ $message }}</div>@enderror
                                 </td>
                                 <td class="px-3 py-2">
                                     @if ($c['tiene202'])<span class="text-green-700">✓</span>@endif
-                                    <input type="file" wire:model="subida202.{{ $c['id'] }}" accept="application/pdf" class="block w-48 mt-1 text-xs">
+                                    <div class="mt-1"><x-subir-fichero wire:model="subida202.{{ $c['id'] }}" accept="application/pdf" :fichero="$subida202[$c['id']] ?? null" texto="PDF del 202" /></div>
                                     @error('subida202.'.$c['id'])<div class="text-xs text-red-700">{{ $message }}</div>@enderror
                                 </td>
                                 <td class="px-3 py-2">
                                     @if ($c['tienePyg'])<span class="text-green-700">✓ {{ $c['fechaPyg'] }}</span>@endif
-                                    <input type="file" wire:model="subidaPyg.{{ $c['id'] }}" accept=".xlsx,.csv" class="block w-48 mt-1 text-xs">
+                                    <div class="mt-1"><x-subir-fichero wire:model="subidaPyg.{{ $c['id'] }}" accept=".xlsx,.csv" :fichero="$subidaPyg[$c['id']] ?? null" texto="Sumas y saldos" /></div>
                                     <div class="mt-1 text-xs text-gray-500" style="width:12rem">Sube el <b>sumas y saldos de SAGE acumulado desde el 1-ene</b> (xlsx). Vale también la Cuenta de Explotación (PL), con menos control.</div>
                                     @error('subidaPyg.'.$c['id'])<div class="text-xs text-red-700">{{ $message }}</div>@enderror
                                     <details class="mt-1 text-xs text-gray-600">

@@ -189,32 +189,25 @@
                                         @include('livewire.contabilidad._staff-faltan')
                                     @endif
                                     @if ($id === 'adyen')
-                                        <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes.">
-                                            <span>Settlement (.xlsx, opcional)</span>
-                                            <input type="file" wire:model="adyenSettlement" accept=".xlsx" class="text-xs">
-                                            <span wire:loading wire:target="adyenSettlement" class="text-gray-500">⏳ subiendo…</span>
-                                            @if ($adyenSettlement)<span class="text-green-700">✓ {{ $adyenSettlement->getClientOriginalName() }}</span>@endif
-                                        </label>
+                                        <x-subir-fichero wire:model="adyenSettlement" accept=".xlsx" :fichero="$adyenSettlement" opcional texto="Settlement"
+                                            title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes." />
                                     @endif
                                     @if (in_array($id, ['monthly_sales', 'anaplan'], true))
                                         @php $mmSel = str_pad($mes, 2, '0', STR_PAD_LEFT); $ent = $this->entradas[$id] ?? null; @endphp
                                         <div class="flex flex-col text-xs text-gray-600 gap-y-1">
-                                            <div class="flex flex-col">
+                                            <div class="flex flex-wrap items-center gap-x-2">
                                                 <x-subir-fichero wire:model="sysFichero" accept=".xlsx" :fichero="$sysFichero" opcional
                                                     texto="Sumas y saldos {{ $mmSel }}"
-                                                    title="Opcional: el balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera). Vale para Monthly sales y Anaplan: basta subirlo una vez. Puedes arrastrarlo aquí." />
-                                                @if ($sysFichero)
-                                                    <span class="text-green-700">→ se dejará como SyS {{ $mmSel }}.xlsx</span>
-                                                    <label class="flex items-center gap-1" title="Si al comprobarlo no parece el mes {{ $mmSel }} (o no es de Fashion IQ), se para; marca esto si estás seguro de que es el bueno.">
-                                                        <input type="checkbox" wire:model="sysForzar" class="rounded"> Usarlo igualmente aunque no parezca el mes
-                                                    </label>
-                                                @endif
+                                                    title="Opcional: el balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera); si no lo parece, se para y te lo digo. Vale para Monthly sales y Anaplan: basta subirlo una vez. Puedes arrastrarlo aquí." />
+                                                @if ($sysFichero)<span class="text-green-700">→ SyS {{ $mmSel }}.xlsx</span>@endif
                                             </div>
                                             @if ($ent)
                                                 @php $faltan = array_filter($ent, fn ($e) => ! $e['ok'] && empty($e['opcional'])); $opc = array_filter($ent, fn ($e) => ! $e['ok'] && ! empty($e['opcional'])); @endphp
-                                                <div class="leading-tight" title="{{ $this->entradas['origen'] ?? '' }}">
+                                                @php $sc = $this->entradas['sys_central'] ?? null; @endphp
+                                                <div class="leading-tight" title="{{ $this->entradas['origen'] ?? '' }}{{ $sc ? "\nSyS {$mmSel} de los ficheros base: «{$sc['nombre']}», {$sc['fecha']}".($sc['origen'] ? " · {$sc['origen']}" : '') : '' }}">
                                                     @if (! $faltan)
-                                                        <span class="text-green-700">✓ Están todos los ficheros del mes {{ $mmSel }}</span>
+                                                        {{-- 17-oct-2026 (Alex): en una línea y más corto; el detalle, al pasar el ratón --}}
+                                                        <span class="text-green-700">✓ Ficheros del mes {{ $mmSel }} completos</span>@if ($sc)<span class="{{ $sc['nuevo'] ? 'text-indigo-700' : 'text-gray-500' }}"> · SyS: «{{ $sc['nombre'] }}» {{ \Illuminate\Support\Str::before($sc['fecha'], ' ') }}{{ $sc['nuevo'] ? ' (nuevo: se deja en la carpeta al ejecutar)' : '' }}</span>@endif
                                                     @else
                                                         <span class="font-medium text-red-700">Falta para el mes {{ $mmSel }}:</span>
                                                         @foreach ($faltan as $e)
@@ -224,12 +217,9 @@
                                                     @foreach ($opc as $e)
                                                         <div class="text-yellow-700">· {{ $e['que'] }} <span class="text-gray-500">({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})</span></div>
                                                     @endforeach
-                                                    @if ($sc = $this->entradas['sys_central'] ?? null)
-                                                        <div class="{{ $sc['nuevo'] ? 'text-indigo-700' : 'text-gray-500' }}" title="Ficheros base de Fashion IQ: lo último subido en cualquier pantalla (Procesos FIQ, 202, IS...)">
-                                                            {{ $sc['nuevo'] ? '📥 SyS '.$mmSel.' nuevo en los ficheros base' : '⚖️ SyS '.$mmSel.' de los ficheros base' }}: «{{ $sc['nombre'] }}», {{ $sc['fecha'] }}{{ $sc['origen'] ? ' · '.$sc['origen'] : '' }}{{ $sc['nuevo'] ? ' → se deja en la carpeta al ejecutar' : '' }}
-                                                        </div>
+                                                    @if ($sc && $faltan)
+                                                        <div class="{{ $sc['nuevo'] ? 'text-indigo-700' : 'text-gray-500' }}">SyS: «{{ $sc['nombre'] }}» {{ \Illuminate\Support\Str::before($sc['fecha'], ' ') }}{{ $sc['nuevo'] ? ' (nuevo: se deja en la carpeta al ejecutar)' : '' }}</div>
                                                     @endif
-                                                    @if (! empty($this->entradas['origen']))<div class="text-gray-400">{{ $this->entradas['origen'] }}</div>@endif
                                                 </div>
                                             @else
                                                 <span class="text-gray-400">Sin datos de qué ficheros hay (pulsa «↻ Sincronizar estado» en el panel de PCs).</span>
@@ -237,22 +227,14 @@
                                         </div>
                                     @endif
                                     @if ($id === 'laboral')
-                                        <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}2026…» de versión más alta en la carpeta Laboral 2026 del mes.">
-                                            <span>Imputación de costes (.xlsx, opcional)</span>
-                                            <input type="file" wire:model="laboralFichero" accept=".xlsx,.xls" class="text-xs">
-                                            <span wire:loading wire:target="laboralFichero" class="text-gray-500">⏳ subiendo…</span>
-                                            @if ($laboralFichero)<span class="text-green-700">✓ {{ $laboralFichero->getClientOriginalName() }}</span>@endif
-                                        </label>
+                                        <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" opcional texto="Imputación de costes"
+                                            title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}2026…» de versión más alta en la carpeta Laboral 2026 del mes." />
                                     @endif
                                     @if ($id === 'open_items')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
                                         <label class="flex flex-col text-xs text-gray-600" title="Opcional: el mayor de SAGE en columnas («FIQ MAyor.xlsx» de SageLauncher). Si no eliges ninguno, se usa el más reciente entre el de SageLauncher del PC y el último subido en cualquier pantalla. Resultado: OpenItems_FIQ_CL_<hoy>.xlsx, con el cuadre por cuenta en el resumen (amarillo = no cuadra).">
-                                            <span>Mayor (.xlsx, opcional)</span>
-                                            <input type="file" wire:model="openItemsMayor" accept=".xlsx" class="text-xs">
-                                            <span wire:loading wire:target="openItemsMayor" class="text-gray-500">⏳ subiendo…</span>
-                                            @if ($openItemsMayor)
-                                                <span class="text-green-700">✓ {{ $openItemsMayor->getClientOriginalName() }}</span>
-                                            @else
+                                            <x-subir-fichero wire:model="openItemsMayor" accept=".xlsx" :fichero="$openItemsMayor" opcional texto="Mayor" />
+                                            @if (! $openItemsMayor)
                                                 <span class="text-gray-500">Usa el de SageLauncher del PC{{ $mc ? ' o «'.$mc['nombre'].'» ('.$mc['fecha'].'), el más reciente' : '' }}</span>
                                             @endif
                                         </label>
@@ -260,11 +242,8 @@
                                     @if ($id === 'cashflow')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
                                         <label class="flex flex-col text-xs text-gray-600" title="Opcional: el mayor de SAGE (listado en columnas, el mismo que usan Bancos, Facturas OCR...). Se guarda en los ficheros base de Fashion IQ para todos los procesos. Si no eliges ninguno, se usa el último subido en cualquier pantalla.">
-                                            <span>Mayor (.xlsx, opcional)</span>
-                                            <input type="file" wire:model="cashflowMayor" accept=".xlsx" class="text-xs">
-                                            <span wire:loading wire:target="cashflowMayor" class="text-gray-500">⏳ subiendo…</span>
+                                            <x-subir-fichero wire:model="cashflowMayor" accept=".xlsx" :fichero="$cashflowMayor" opcional texto="Mayor" />
                                             @if ($cashflowMayor)
-                                                <span class="text-green-700">✓ {{ $cashflowMayor->getClientOriginalName() }}</span>
                                             @elseif ($mc)
                                                 <span class="text-gray-500">Usa: «{{ $mc['nombre'] }}», {{ $mc['fecha'] }}{{ $mc['origen'] ? ' · '.$mc['origen'] : '' }}</span>
                                             @else

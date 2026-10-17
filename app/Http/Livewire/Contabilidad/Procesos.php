@@ -37,7 +37,7 @@ class Procesos extends Component
     /**
      * Balance de sumas y saldos del mes elegido a mano (16-oct-2026: "quiero un input para ir a buscarlo; tú lo renombras y lo
      * llevas a la carpeta"). Lo usan Monthly sales y Anaplan: antes de su script, ponerSyS.js lo comprueba y lo deja como
-     * Anaplan/SyS MM.xlsx. $sysForzar = «Usarlo igualmente» si ponerSyS dice que no parece ese mes (Alex decide).
+     * Anaplan/SyS MM.xlsx. $sysForzar: el check «Usarlo igualmente» se quitó el 17-oct-2026 (Alex: «si el fichero no te vale ya me lo dices»); queda siempre false.
      */
     public $sysFichero = null;
     public bool $sysForzar = false;
