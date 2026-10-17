@@ -836,7 +836,7 @@ class Procesos extends Component
         $lista = $this->staffEstado('fiq.anaplan_staff_lista');
         $json = tempnam(sys_get_temp_dir(), 'staff');
         file_put_contents($json, json_encode(['historico' => (object) $this->staffHistorico(), 'anaplan' => (object) ($lista['tiendas'] ?? []),
-            'mes' => $lista['mes'] ?? ''], JSON_UNESCAPED_UNICODE));
+            'nuevos' => (object) $this->staffEstado('fiq.anaplan_staff_nuevos'), 'mes' => $lista['mes'] ?? ''], JSON_UNESCAPED_UNICODE));
         if ($this->remoto()) {
             $opc['entradas'] = $opc['entradas'] ?? [];
             $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--staff', '{E'.count($opc['entradas']).'}']);
@@ -854,6 +854,23 @@ class Procesos extends Component
         }
         $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^STAFF_DATOS: .*(\r?\n)?/m', '', $nuevo));
         if (Schema::hasTable('estado_procesos')) {
+            // las parejas que Laboral ha encontrado solo (mismo nombre en Anaplan) pasan al histórico y quedan como nuevas de este mes
+            $h = $this->staffHistorico();
+            $nuevos = $this->staffEstado('fiq.anaplan_staff_nuevos');
+            $cambia = false;
+            foreach ((array) ($d['tiendas'] ?? []) as $tienda => $emps) {
+                foreach ($emps as $e) {
+                    if (($e['origen'] ?? '') === 'mismo nombre en Anaplan' && ($e['anaplan'] ?? '') !== '' && ! isset($h[$tienda][$e['nomina']])) {
+                        $h[$tienda][$e['nomina']] = $e['anaplan'];
+                        $nuevos[$tienda][$e['nomina']] = ['mes' => sprintf('%02d', (int) $ctx['mes']), 'cuando' => now()->format('d/m'), 'como' => 'mismo nombre en Anaplan'];
+                        $cambia = true;
+                    }
+                }
+            }
+            if ($cambia) {
+                ColaTareas::guardarEstado('fiq.anaplan_staff_asoc', $h, 'Procesos FIQ');
+                ColaTareas::guardarEstado('fiq.anaplan_staff_nuevos', $nuevos, 'Procesos FIQ');
+            }
             $todo = $this->staffEstado('fiq.anaplan_staff_datos');
             $todo[sprintf('%02d', (int) $ctx['mes'])] = ['cuando' => now()->format('d/m H:i'), 'fichero' => (string) ($d['fichero'] ?? ''), 'tiendas' => (array) ($d['tiendas'] ?? [])];
             ColaTareas::guardarEstado('fiq.anaplan_staff_datos', $todo, 'Procesos FIQ');
@@ -957,12 +974,14 @@ class Procesos extends Component
             return;
         }
         $h = $this->staffHistorico();
+        $nuevos = $this->staffEstado('fiq.anaplan_staff_nuevos');
         $n = 0;
         foreach ($this->staff as $bi => $b) {
             foreach ($b['filas'] as $fi => $f) {
                 $a = trim((string) $f['anaplan']);
                 if ($f['origen'] === 'mano' && $a !== '' && ($h[$b['tienda']][$f['excel']] ?? null) !== $a) {
                     $h[$b['tienda']][$f['excel']] = $a;
+                    $nuevos[$b['tienda']][$f['excel']] = ['mes' => sprintf('%02d', $this->mes), 'cuando' => now()->format('d/m'), 'como' => 'a mano'];
                     $n++;
                 }
                 if ($f['origen'] === 'mano') {
@@ -972,6 +991,7 @@ class Procesos extends Component
         }
         if ($n) {
             ColaTareas::guardarEstado('fiq.anaplan_staff_asoc', $h, 'Procesos FIQ');
+            ColaTareas::guardarEstado('fiq.anaplan_staff_nuevos', $nuevos, 'Procesos FIQ');   // en el Excel, en negrita verde («NUEVO»)
             unset($this->staffSinNombreMes);
         }
         if ($avisar) {
