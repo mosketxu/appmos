@@ -73,13 +73,19 @@
                         <span class="text-xs text-gray-500">{{ number_format($f['tam'] / 1024, 0, ',', '.') }} KB · {{ date('d/m/Y H:i', $f['fecha']) }}</span>
                         <button type="button" wire:click="quitar(@js($f['nombre']))" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button></div>
                 @empty
-                    @if ($aTratar)
-                        <div class="text-sm text-gray-600">📄 Se usa «{{ $aTratar['nombre'] }}», subido en {{ $aTratar['periodo'] }} (trae el año entero). Sube otro si hay uno más nuevo.</div>
-                    @else
-                        <div class="text-sm text-gray-500">Arrastra aquí el Excel del 349 (pestañas de ventas y compras intracomunitarias, todo el año) o pulsa «Elegir…».</div>
-                    @endif
+                    {{-- 17-oct-2026 (Alex): el texto de estado va a la derecha del botón si cabe --}}
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px">
+                        <x-boton-subir como="label" :vacio="! $ficherosLista && ! $aTratar" target="subida">Elegir…<input type="file" wire:model="subida" accept=".xlsx,.xls,.csv,.txt,.pdf" style="display:none"></x-boton-subir>
+                        @if ($aTratar)
+                            <span class="text-sm text-gray-600" style="flex:1 1 16rem">📄 Se usa «{{ $aTratar['nombre'] }}», subido en {{ $aTratar['periodo'] }} (trae el año entero). Sube otro si hay uno más nuevo.</span>
+                        @else
+                            <span class="text-sm text-gray-500" style="flex:1 1 16rem">Arrastra aquí el Excel del 349 (pestañas de ventas y compras intracomunitarias, todo el año) o pulsa «Elegir…».</span>
+                        @endif
+                    </div>
                 @endforelse
-                <x-boton-subir como="label" :vacio="! $ficherosLista && ! $aTratar" target="subida" style="margin-top:8px">{{ $ficherosLista ? 'Cambiar fichero…' : 'Elegir…' }}<input type="file" wire:model="subida" accept=".xlsx,.xls,.csv,.txt,.pdf" style="display:none"></x-boton-subir>
+                @if ($ficherosLista)
+                    <x-boton-subir style="margin-top:8px" como="label"  target="subida" style="margin-top:8px">Cambiar fichero…<input type="file" wire:model="subida" accept=".xlsx,.xls,.csv,.txt,.pdf" style="display:none"></x-boton-subir>
+                @endif
             </div>
             <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px" class="text-sm">
                 <span class="text-xs text-gray-500">Cabecera del 349 · contacto</span>
@@ -147,10 +153,15 @@
                         <span class="text-xs text-gray-500">{{ ['onedrive' => 'traído de la carpeta de trabajo', 'aeat' => 'bajado de la AEAT (validado)'][$borradorInfo['origen']] ?? 'subido' }} · {{ date('d/m/Y H:i', $borradorInfo['fecha']) }}</span>
                         <button type="button" wire:click="quitarBorrador" class="text-gray-400 hover:text-red-600" title="Quitar">✕</button></div>
                 @else
-                    <div class="text-sm text-gray-500">Sube aquí el PDF del borrador, o déjalo en la carpeta de trabajo y al pulsar «Enviar a Marta…» lo traigo yo
-                        (un PDF con «borrador» y «{{ $periodo }}» en el nombre, o el descargado en los últimos 2 días).</div>
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px">
+                        <x-boton-subir como="label" :vacio="! $borradorInfo" target="subidaBorrador">Subir borrador…<input type="file" wire:model="subidaBorrador" accept=".pdf" style="display:none"></x-boton-subir>
+                        <span class="text-sm text-gray-500" style="flex:1 1 16rem">Sube aquí el PDF del borrador, o déjalo en la carpeta de trabajo y al pulsar «Enviar a Marta…» lo traigo yo
+                        (un PDF con «borrador» y «{{ $periodo }}» en el nombre, o el descargado en los últimos 2 días).</span>
+                    </div>
                 @endif
-                <x-boton-subir como="label" :vacio="! $borradorInfo" target="subidaBorrador" style="margin-top:8px">{{ $borradorInfo ? 'Cambiar borrador…' : 'Subir borrador…' }}<input type="file" wire:model="subidaBorrador" accept=".pdf" style="display:none"></x-boton-subir>
+                @if ($borradorInfo)
+                    <x-boton-subir como="label" :vacio="! $borradorInfo" target="subidaBorrador" style="margin-top:8px">Cambiar borrador…<input type="file" wire:model="subidaBorrador" accept=".pdf" style="display:none"></x-boton-subir>
+                @endif
             </div>
 
             <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
