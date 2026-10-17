@@ -13,7 +13,7 @@ class TodoCampana extends Component
         $a = TodoAviso::where('user_id', auth()->id())->findOrFail($id);
         TodoAviso::where('user_id', auth()->id())->where('tarea_id', $a->tarea_id)->sinLeer()->update(['leido_at' => now()]);
 
-        return redirect()->route('todo', ['t' => $a->tarea_id]);
+        return redirect()->route('todo', ['t' => $a->tarea_id, 'a' => $a->id]);
     }
 
     /** «Es correcto, lo he apagado»: deja de avisar de ese PC hasta que vuelva a encenderse. Solo Admin y gestores. */

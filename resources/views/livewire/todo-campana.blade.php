@@ -33,8 +33,12 @@
             </div>
             @forelse ($avisos as $a)
                 <button type="button" wire:key="av{{ $a->id }}" wire:click="leer({{ $a->id }})" class="block w-full px-3 py-2 text-left border-b border-gray-100 hover:bg-indigo-50">
-                    <span class="block text-sm text-gray-800"><b>{{ $a->origen?->name ?? 'Alguien' }}</b> {{ $a->texto }}</span>
-                    <span class="block text-xs text-gray-500 truncate">{{ $a->tarea?->titulo }} · {{ $a->created_at->format('d/m H:i') }}</span>
+                    {{-- Hora del aviso siempre a la vista (17-oct-2026); si no es de hoy, también el día --}}
+                    <span class="flex items-start justify-between gap-2">
+                        <span class="text-sm text-gray-800"><b>{{ $a->origen?->name ?? 'Alguien' }}</b> {{ $a->texto }}</span>
+                        <span class="text-xs font-medium text-indigo-700 whitespace-nowrap shrink-0">{{ $a->created_at->isToday() ? $a->created_at->format('H:i') : $a->created_at->format('d/m H:i') }}</span>
+                    </span>
+                    <span class="block text-xs text-gray-500 truncate">{{ $a->tarea?->titulo }}</span>
                 </button>
             @empty
                 <p class="px-3 py-4 text-sm text-center text-gray-400">No tienes avisos nuevos.</p>
