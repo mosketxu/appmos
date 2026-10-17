@@ -83,7 +83,7 @@ trait EjecutaEnPcs
         // Mismo botón pulsado dos veces: no se duplica (sobre todo importante en los envíos de correo).
         if (! $entradas && DB::table('tareas')->where('proceso', 'pc.script')->whereIn('estado', ['pendiente', 'en_curso'])
             ->where('parametros', json_encode($params, JSON_UNESCAPED_UNICODE))->exists()) {
-            $this->salida .= "\n\n⚠️ [".date('H:i:s')."] {$titulo}: ya está pedido y sin terminar (mira «Tareas en los PCs»).";
+            $this->salida .= "\n\n⚠️ [".date('H:i:s')."] {$titulo}: ya está pedido y sin terminar (mira el aviso «Pensando…» de abajo a la derecha).";
             return null;
         }
         $this->podarFicherosViejos();
@@ -106,7 +106,7 @@ trait EjecutaEnPcs
         DB::table('tareas')->where('id', $tid)->update(['web' => json_encode(['pantalla' => static::class] + $this->pendientes[$tid], JSON_UNESCAPED_UNICODE)]);
         $this->salida .= "\n\n⏳ [".date('H:i:s')."] {$titulo} · pedido a los PCs (tarea #{$tid}); el resultado saldrá aquí en cuanto lo terminen.";
         if ($this->pcsConectados() === 0) {
-            $this->salida .= "\n⚠️ Ahora mismo no hay ningún PC conectado: esperará hasta que alguno arranque (puedes cancelarla en «Tareas en los PCs»).";
+            $this->salida .= "\n⚠️ Ahora mismo no hay ningún PC conectado: esperará hasta que alguno arranque (puedes cancelarla en el aviso «Pensando…» de abajo a la derecha).";
         }
 
         return $tid;
@@ -308,22 +308,17 @@ trait EjecutaEnPcs
         $this->revisarTareas();
     }
 
-    /** PCs trabajadores y últimas tareas del grupo, para el panel «Tareas en los PCs» (solo en la web). */
+    /** PCs trabajadores, para el aviso «Ningún PC conectado» del panel de PCs (solo en la web). */
     public function getPcsProperty(): array
     {
-        if (! $this->remoto() || ! Schema::hasTable('trabajadores') || ! Schema::hasTable('tareas')) {
-            return ['pcs' => [], 'tareas' => []];
+        if (! $this->remoto() || ! Schema::hasTable('trabajadores')) {
+            return ['pcs' => []];
         }
         $limite = now()->subSeconds(ColaTareas::LATIDO_MAX)->toDateTimeString();
 
         return [
             'pcs' => DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()
                 ->map(fn ($t) => ['nombre' => $t->nombre, 'conectado' => (bool) ($t->ultimo_latido && $t->ultimo_latido >= $limite), 'latido' => $t->ultimo_latido])->all(),
-            'tareas' => DB::table('tareas')->leftJoin('trabajadores', 'trabajadores.id', '=', 'tareas.trabajador_id')
-                ->whereIn('tareas.proceso', ['pc.script', 'pc.estado', 'pc.fichero'])
-                ->where('tareas.parametros', 'like', '%"grupo":"'.$this->grupoPc.'"%')
-                ->orderByDesc('tareas.id')->limit(6)
-                ->get(['tareas.id', 'tareas.proceso', 'tareas.parametros', 'tareas.estado', 'tareas.created_at', 'trabajadores.nombre as pc'])->all(),
         ];
     }
 

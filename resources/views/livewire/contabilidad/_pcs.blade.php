@@ -1,4 +1,4 @@
-{{-- Panel «PCs de trabajo» + «Tareas en los PCs» (3-oct-2026). Solo en la web (VPS): los procesos los hacen los PCs
+{{-- Panel de PCs (3-oct-2026; reducido el 17-oct-2026). Solo en la web (VPS): los procesos los hacen los PCs
      trabajadores por la cola de tareas. Mientras haya tareas pedidas se pregunta cada 3 s si ya han terminado
      (revisarTareas, trait EjecutaEnPcs). Pide en la pantalla: $pendientes, $this->pcs, sincronizarAhora(), cancelarTarea(). --}}
     @if ($pendientes)
@@ -15,6 +15,12 @@
                 @foreach ($progresoEnCurso ?? [] as $prog)
                     <div style="margin-top:.35rem;font-size:.8rem;color:#3730a3">{{ $prog }}</div>
                 @endforeach
+                {{-- Cancelar lo que aún no ha cogido ningún PC (p. ej. pedido con todos apagados): antes estaba en el historial de tareas --}}
+                <div style="margin-top:.35rem;font-size:.75rem">
+                    @foreach (array_keys($pendientes) as $tid)
+                        <button type="button" wire:click="cancelarTarea({{ $tid }})" wire:confirm="¿Cancelar la tarea #{{ $tid }}? Solo se puede si ningún PC la ha empezado." class="text-red-700 hover:underline">cancelar #{{ $tid }}</button>
+                    @endforeach
+                </div>
                 @foreach ($avisosEnCurso ?? [] as $aviso)
                     <div style="margin-top:.35rem;font-size:.8rem;font-weight:600;color:#b45309">{{ $aviso }}</div>
                 @endforeach
@@ -24,45 +30,14 @@
     @endif
     @unless (config('contabilidad.ejecucion_local'))
         @php $cola = $this->pcs; @endphp
-        {{-- 17-oct-2026 (Alex: «¿qué información útil me da?»): compacto, una línea pequeña a la derecha. Los PCs en línea ya
-             se ven en «▶ Ejecutar en» de la barra de menú; aquí solo queda el aviso si no hay ninguno, el historial y Sincronizar. --}}
-        <div class="text-xs" x-data="{ abierto: {{ $pendientes ? 'true' : 'false' }} }">
-            <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
-                @if ($cola['pcs'] && ! collect($cola['pcs'])->contains('conectado', true))
-                    <span class="mr-auto text-sm text-amber-700">⚠️ Ningún PC de trabajo conectado: lo que pidas esperará a que uno arranque.</span>
-                @endif
-                <button type="button" x-on:click="abierto = !abierto" class="text-gray-500 hover:text-indigo-700 hover:underline"
-                    title="Lo último que se ha pedido a los PCs (cuándo, qué PC, cómo acabó). Sirve para ver si algo se quedó en cola o cancelarlo.">Historial de tareas <span x-text="abierto ? '▴' : '▾'"></span></button>
-                <button type="button" wire:click="sincronizarAhora" class="text-gray-500 hover:text-indigo-700 hover:underline" title="Pide a un PC que suba el estado actual (checklist, importes, Pagos fin de mes...)">↻ Sincronizar estado</button>
-            </div>
-            <div x-show="abierto" style="display:none" class="p-2 mt-1 overflow-x-auto bg-white border rounded-lg shadow">
-                <table class="text-xs">
-                    <tbody class="divide-y divide-gray-100">
-                        @forelse ($cola['tareas'] as $t)
-                            @php
-                                $pasosT = json_decode($t->parametros ?? '[]', true)['pasos'] ?? [];
-                                $quePide = $t->proceso === 'pc.script'
-                                    ? collect($pasosT)->map(fn ($p) => $p['script'].' '.implode(' ', array_map(fn ($a) => mb_strlen($a) > 30 ? mb_substr($a, 0, 30).'…' : $a, $p['args'] ?? [])))->implode(' + ')
-                                    : (config('contabilidad.tareas_procesos')[$t->proceso] ?? $t->proceso);
-                            @endphp
-                            <tr wire:key="tarea-{{ $t->id }}">
-                                <td class="px-2 py-0.5 text-gray-400">#{{ $t->id }}</td>
-                                <td class="px-2 py-0.5 text-gray-500">{{ $t->created_at }}</td>
-                                <td class="px-2 py-0.5">{{ ['preparando' => '🕓 preparando', 'pendiente' => '⏳ en cola', 'en_curso' => '⚙️ en curso', 'ok' => '✅ ok', 'error' => '❌ error', 'cancelada' => '🚫 cancelada'][$t->estado] ?? $t->estado }}</td>
-                                <td class="px-2 py-0.5 text-gray-500">{{ $t->pc }}</td>
-                                <td class="px-2 py-0.5 font-mono text-gray-700">{{ \Illuminate\Support\Str::limit($quePide, 110) }}</td>
-                                <td class="px-2 py-0.5">
-                                    @if ($t->estado === 'pendiente')
-                                        <button type="button" wire:click="cancelarTarea({{ $t->id }})" class="text-red-700 hover:underline">cancelar</button>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td class="px-2 py-1 text-gray-500">Todavía no se ha pedido nada a los PCs.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+        {{-- 17-oct-2026 (Alex): solo lo útil. Los PCs en línea se ven en «▶ Ejecutar en» (barra de menú); el resultado de cada
+             proceso, en su salida y en su check; los errores llegan a la campana; cancelar, en el aviso «Pensando…».
+             Quitado el historial de tareas (nadie lo miraba). Queda el aviso si no hay ningún PC y «Sincronizar estado». --}}
+        <div class="flex flex-wrap items-center justify-end text-xs gap-x-4 gap-y-1">
+            @if ($cola['pcs'] && ! collect($cola['pcs'])->contains('conectado', true))
+                <span class="mr-auto text-sm text-amber-700">⚠️ Ningún PC de trabajo conectado: lo que pidas esperará a que uno arranque.</span>
+            @endif
+            <button type="button" wire:click="sincronizarAhora" class="text-gray-500 hover:text-indigo-700 hover:underline" title="Pide a un PC que suba el estado actual (checklist, importes, Pagos fin de mes...)">↻ Sincronizar estado</button>
         </div>
     @endunless
 
