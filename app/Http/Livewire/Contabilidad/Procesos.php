@@ -815,14 +815,21 @@ class Procesos extends Component
             }
             $this->staff[] = ['tienda' => $tienda, 'filas' => $filas];
         }
-        $this->guardarListaYFaltan($ctx['mes']);
+        if (Schema::hasTable('estado_procesos')) {
+            ColaTareas::guardarEstado('fiq.anaplan_staff_lista', ['mes' => $this->staffMesAnaplan, 'cuando' => now()->format('Y-m-d H:i'), 'tiendas' => $this->staffAnaplan], 'Procesos FIQ');
+        }
         $this->staffAbierto = true;
     }
 
     /**
-     * Laboral (17-oct-2026, pedido de Alex): imputacionCostes.js escribe en el cuadro de cada tienda el nombre del empleado en Anaplan
-     * (histórico de parejas o el mismo nombre en la última lista leída de Anaplan) y avisa de los que faltan, con el nombre propuesto
-     * para crearlos. Aquí se le pasan el histórico y la lista.
+     * Flujo de personal desde el 17-oct-2026 (Alex: «primero rellenas el Excel con lo que ya tienes, si falta alguien me avisas, lo creo
+     * en Anaplan y te pongo su nombre, y luego un botón Subir que ya se conecta a Anaplan»):
+     *   1. Laboral: imputacionCostes.js recibe el histórico de parejas (y la última lista de Anaplan, si la hay), escribe en el cuadro de
+     *      cada tienda el nombre de Anaplan y devuelve STAFF_DATOS = por tienda, nombre de la nómina, nombre de Anaplan, bruto y bonus.
+     *      Se guarda en fiq.anaplan_staff_datos (por mes).
+     *   2. «✎ Nombres»: el modal enseña esos datos; los que no tienen nombre de Anaplan salen en rojo y Alex escribe el que tiene allí
+     *      («💾 Guardar nombres» → histórico).
+     *   3. «⬆ Subir a Anaplan»: con esos datos, sin leer nada antes; staffAnaplan.js --subir escribe y relee.
      */
     protected function prepararStaffLaboral(array &$pasos, array &$opc): void
     {
@@ -842,60 +849,135 @@ class Procesos extends Component
     protected function postStaffLaboral(array $ctx, int $desde): void
     {
         $nuevo = substr($this->salida, $desde);
-        if (! preg_match('/^STAFF_FALTAN: (.*)$/m', $nuevo, $m) || ! is_array($d = json_decode($m[1], true))) {
+        if (! preg_match('/^STAFF_DATOS: (.*)$/m', $nuevo, $m) || ! is_array($d = json_decode($m[1], true))) {
             return;
         }
-        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^STAFF_FALTAN: .*(\r?\n)?/m', '', $nuevo));
-        $this->guardarFaltan((int) $ctx['mes'], (array) ($d['faltan'] ?? []));
-        if ($d['faltan'] ?? []) {
-            $txt = collect($d['faltan'])->map(fn ($f) => "· {$f['tienda']}: {$f['nomina']} → crear como «{$f['propuesta']}»".($f['quizas'] ? " (¿o es «{$f['quizas']}»?)" : ''))->implode("\n");
-            $this->dispatch('proceso-terminado', mensaje: '⚠️ '.count($d['faltan'])." empleado(s) sin pareja en Anaplan. Créalos en Anaplan antes de subir el personal:\n{$txt}");
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^STAFF_DATOS: .*(\r?\n)?/m', '', $nuevo));
+        if (Schema::hasTable('estado_procesos')) {
+            $todo = $this->staffEstado('fiq.anaplan_staff_datos');
+            $todo[sprintf('%02d', (int) $ctx['mes'])] = ['cuando' => now()->format('d/m H:i'), 'fichero' => (string) ($d['fichero'] ?? ''), 'tiendas' => (array) ($d['tiendas'] ?? [])];
+            ColaTareas::guardarEstado('fiq.anaplan_staff_datos', $todo, 'Procesos FIQ');
+            unset($this->staffDatosMes);
+        }
+        if ((int) $ctx['mes'] === $this->mes) {
+            $this->cargarStaffDatos();
+        }
+        $faltan = $this->staffSinNombre();
+        if ($faltan) {
+            $txt = collect($faltan)->map(fn ($f) => "· {$f['tienda']}: {$f['excel']} → créalo como «{$f['propuesta']}»")->implode("\n");
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ '.count($faltan)." empleado(s) sin nombre de Anaplan:\n{$txt}\n\n👉 Créalos en Anaplan y escribe su nombre en ANAPLAN · personal → «✎ Nombres». Después, «⬆ Subir a Anaplan».");
         }
     }
 
-    /** Tras leer Anaplan: se guarda su lista de empleados (la usa Laboral) y se quitan de «faltan» los que ya tienen pareja. */
-    protected function guardarListaYFaltan(int $mes): void
+    /** Datos de personal del mes del título (los deja Laboral). */
+    public function getStaffDatosMesProperty(): array
     {
-        if (! Schema::hasTable('estado_procesos')) {
-            return;
-        }
-        ColaTareas::guardarEstado('fiq.anaplan_staff_lista', ['mes' => $this->staffMesAnaplan, 'cuando' => now()->format('Y-m-d H:i'), 'tiendas' => $this->staffAnaplan], 'Procesos FIQ');
-        $antes = collect($this->staffFaltan($mes))->keyBy(fn ($f) => $f['tienda'].'|'.$f['nomina']);
-        $faltan = [];
-        foreach ($this->staff as $bi => $b) {
-            foreach ($b['filas'] as $fi => $f) {
-                if (trim((string) $f['anaplan']) === '') {
-                    $x = $antes[$b['tienda'].'|'.$f['excel']] ?? ['tienda' => $b['tienda'], 'nomina' => $f['excel'], 'propuesta' => $f['excel'], 'quizas' => '', 'nota' => ''];
-                    $faltan[] = $x;
-                    if (! str_starts_with((string) $f['nota'], 'En el histórico')) {
-                        $this->staff[$bi]['filas'][$fi]['nota'] = "No está en Anaplan: créalo allí como «{$x['propuesta']}», pulsa «↻ Releer Anaplan» y elígelo (vacío = no se sube).";
-                    }
+        return $this->staffEstado('fiq.anaplan_staff_datos')[sprintf('%02d', $this->mes)] ?? [];
+    }
+
+    /** Para los recuadros de Laboral y ANAPLAN · personal: [['tienda','excel','propuesta'], ...] del mes, con el histórico de ahora. */
+    public function getStaffSinNombreMesProperty(): array
+    {
+        $h = $this->staffHistorico();
+        $out = [];
+        foreach ((array) ($this->staffDatosMes['tiendas'] ?? []) as $tienda => $emps) {
+            foreach ($emps as $e) {
+                if (($h[$tienda][$e['nomina']] ?? (string) ($e['anaplan'] ?? '')) === '') {
+                    $out[] = ['tienda' => $tienda, 'excel' => $e['nomina'], 'propuesta' => ($e['propuesta'] ?? '') ?: $e['nomina'], 'quizas' => $e['quizas'] ?? ''];
                 }
             }
         }
-        $this->guardarFaltan($mes, $faltan);
+
+        return $out;
     }
 
-    protected function guardarFaltan(int $mes, array $faltan): void
+    /** $this->staff a partir de lo que dejó Laboral, con el histórico de ahora (los nombres escritos después de pasar Laboral). */
+    protected function cargarStaffDatos(): bool
     {
-        if (! Schema::hasTable('estado_procesos')) {
+        unset($this->staffDatosMes);
+        $d = $this->staffDatosMes;
+        if (empty($d['tiendas'])) {
+            $this->staff = [];
+            return false;
+        }
+        $h = $this->staffHistorico();
+        $lista = $this->staffEstado('fiq.anaplan_staff_lista');
+        $this->staffAnaplan = (array) ($lista['tiendas'] ?? []);
+        $this->staffMesAnaplan = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][$this->mes - 1].'-26';
+        $this->staffFichero = (string) ($d['fichero'] ?? '').' · Laboral del '.($d['cuando'] ?? '');
+        $this->staffAvisos = [];
+        $this->staff = [];
+        foreach ($d['tiendas'] as $tienda => $emps) {
+            $filas = [];
+            foreach ($emps as $e) {
+                $a = $h[$tienda][$e['nomina']] ?? (string) ($e['anaplan'] ?? '');
+                $filas[] = ['excel' => $e['nomina'], 'bruto' => (float) $e['bruto'], 'bonus' => (float) $e['bonus'], 'anaplan' => $a,
+                    'origen' => $a === '' ? '' : 'historico', 'propuesta' => (string) (($e['propuesta'] ?? '') ?: $e['nomina']),
+                    'nota' => $a === '' ? 'No tiene nombre de Anaplan: créalo allí (propuesta: «'.(($e['propuesta'] ?? '') ?: $e['nomina']).'»'
+                        .(! empty($e['quizas']) ? ', ¿o es «'.$e['quizas'].'»?' : '').') y escribe aquí el nombre que tiene en Anaplan.' : ''];
+            }
+            $this->staff[] = ['tienda' => $tienda, 'filas' => $filas];
+        }
+
+        return true;
+    }
+
+    /** Filas sin nombre de Anaplan: [['tienda','excel','propuesta'], ...]. */
+    protected function staffSinNombre(): array
+    {
+        $out = [];
+        foreach ($this->staff as $b) {
+            foreach ($b['filas'] as $f) {
+                if (trim((string) $f['anaplan']) === '') {
+                    $out[] = ['tienda' => $b['tienda'], 'excel' => $f['excel'], 'propuesta' => $f['propuesta'] ?? $f['excel']];
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /** «✎ Nombres»: abre el modal con los datos de Laboral del mes. */
+    public function abrirNombresStaff(): void
+    {
+        if (! $this->autorizar('anaplan_staff')) {
             return;
         }
-        $todo = $this->staffEstado('fiq.anaplan_staff_faltan');
-        $todo[sprintf('%02d', $mes)] = ['cuando' => now()->format('d/m H:i'), 'faltan' => array_values($faltan)];
-        ColaTareas::guardarEstado('fiq.anaplan_staff_faltan', $todo, 'Procesos FIQ');
-        unset($this->staffFaltanMes);
+        if (! $this->cargarStaffDatos()) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No tengo los datos de personal del mes '.sprintf('%02d', $this->mes).'. 👉 Pasa antes «Laboral» (Entrar nóminas · imputación de costes).');
+            return;
+        }
+        $this->staffAbierto = true;
     }
 
-    /** Empleados de la nómina del mes sin pareja en Anaplan (los avisa Laboral y los recalcula «Preparar propuesta»). */
-    protected function staffFaltan(int $mes): array
+    /** «💾 Guardar nombres»: lo escrito a mano en el modal pasa al histórico de parejas (nómina → nombre en Anaplan). */
+    public function guardarNombresStaff(bool $avisar = true): void
     {
-        return (array) ($this->staffEstado('fiq.anaplan_staff_faltan')[sprintf('%02d', $mes)]['faltan'] ?? []);
-    }
-
-    public function getStaffFaltanMesProperty(): array
-    {
-        return $this->staffEstado('fiq.anaplan_staff_faltan')[sprintf('%02d', $this->mes)] ?? [];
+        if (! $this->autorizar('anaplan_staff') || ! $this->staff || ! Schema::hasTable('estado_procesos')) {
+            return;
+        }
+        $h = $this->staffHistorico();
+        $n = 0;
+        foreach ($this->staff as $bi => $b) {
+            foreach ($b['filas'] as $fi => $f) {
+                $a = trim((string) $f['anaplan']);
+                if ($f['origen'] === 'mano' && $a !== '' && ($h[$b['tienda']][$f['excel']] ?? null) !== $a) {
+                    $h[$b['tienda']][$f['excel']] = $a;
+                    $n++;
+                }
+                if ($f['origen'] === 'mano') {
+                    $this->staff[$bi]['filas'][$fi]['origen'] = $a === '' ? '' : 'historico';
+                }
+            }
+        }
+        if ($n) {
+            ColaTareas::guardarEstado('fiq.anaplan_staff_asoc', $h, 'Procesos FIQ');
+            unset($this->staffSinNombreMes);
+        }
+        if ($avisar) {
+            $faltan = count($this->staffSinNombre());
+            $this->dispatch('proceso-terminado', mensaje: "💾 {$n} nombre(s) guardado(s).".($faltan ? " Quedan {$faltan} sin nombre de Anaplan (no se subirán)." : ' Ya están todos: puedes pulsar «⬆ Subir a Anaplan».'));
+        }
     }
 
     protected function staffEstado(string $clave): array
@@ -1008,9 +1090,14 @@ class Procesos extends Component
     /** «⬆ Subir a Anaplan» desde el modal: solo las filas con empleado de Anaplan. */
     public function subirStaff(): void
     {
-        if (! $this->autorizar('anaplan_staff') || ! $this->staff) {
+        if (! $this->autorizar('anaplan_staff')) {
             return;
         }
+        if (! $this->staffAbierto && ! $this->cargarStaffDatos()) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No tengo los datos de personal del mes '.sprintf('%02d', $this->mes).'. 👉 Pasa antes «Laboral» (Entrar nóminas · imputación de costes).');
+            return;
+        }
+        $this->guardarNombresStaff(false);
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
         $filas = [];
         $repes = [];
@@ -1058,7 +1145,7 @@ class Procesos extends Component
             $f = &$this->staff[$m[1]]['filas'][$m[2]];
             $f['origen'] = 'mano';
             $lista = $this->staffAnaplan[$this->staff[$m[1]]['tienda']] ?? [];
-            $f['nota'] = trim((string) $valor) === '' ? 'No se sube.' : (in_array(trim((string) $valor), $lista, true) ? '' : 'Ese nombre no está en la lista de Anaplan que he leído: si lo acabas de crear, pulsa «↻ Releer Anaplan».');
+            $f['nota'] = trim((string) $valor) === '' ? 'No se sube.' : (! $lista || in_array(trim((string) $valor), $lista, true) ? 'Sin guardar: pulsa «💾 Guardar nombres» (o «⬆ Subir», que también lo guarda).' : 'No está en la última lista leída de Anaplan: si lo acabas de crear, está bien; al subir lo busco.');
         }
     }
 

@@ -52,7 +52,8 @@
                     <span class="text-xs text-gray-500">{{ $staffFichero }}</span>
                 </div>
                 <p class="text-sm text-gray-600">Bruto sin Bonus → <b>Salary Value MTD</b> · Bonus + Incentivo → <b>Bonus Value MTD</b>.
-                    <span class="px-1 bg-yellow-100">Amarillo</span> = pareja nueva (no está en el histórico): revísala. Si un empleado no está en Anaplan, créalo allí, pulsa «↻ Releer Anaplan» y elígelo; vacío = no se sube.</p>
+                    <span class="px-1 bg-red-50">Rojo</span> = sin nombre de Anaplan: créalo allí y escribe aquí el nombre tal cual está en Anaplan.
+                    <span class="px-1 bg-yellow-100">Amarillo</span> = cambiado a mano (se guarda al pulsar «💾 Guardar nombres» o «⬆ Subir»). Vacío = no se sube.</p>
                 @foreach ($staffAvisos as $a)<p class="text-sm text-yellow-800">⚠️ {{ $a }}</p>@endforeach
                 @foreach ($staff as $bi => $bloque)
                     <datalist id="staff-anaplan-{{ $bi }}">@foreach ($staffAnaplan[$bloque['tienda']] ?? [] as $n)<option value="{{ $n }}">@endforeach</datalist>
@@ -61,12 +62,12 @@
                         <table class="w-full text-sm">
                             <tr class="text-xs text-left text-gray-500"><th class="pr-2">En la nómina</th><th class="pr-2 text-right">Bruto sin Bonus</th><th class="pr-2 text-right">Bonus + Incentivo</th><th class="pr-2">Empleado en Anaplan</th><th></th></tr>
                             @foreach ($bloque['filas'] as $fi => $f)
-                                <tr wire:key="staff-{{ $bi }}-{{ $fi }}" class="{{ $f['anaplan'] === '' ? 'bg-red-50' : ($f['origen'] !== 'historico' ? 'bg-yellow-100' : '') }}">
+                                <tr wire:key="staff-{{ $bi }}-{{ $fi }}" class="{{ trim($f['anaplan']) === '' ? 'bg-red-50' : ($f['origen'] !== 'historico' ? 'bg-yellow-100' : '') }}">
                                     <td class="py-0.5 pr-2">{{ $f['excel'] }}</td>
                                     <td class="pr-2 text-right">{{ number_format($f['bruto'], 2, ',', '.') }}</td>
                                     <td class="pr-2 text-right">{{ number_format($f['bonus'], 2, ',', '.') }}</td>
                                     <td class="pr-2"><input type="text" list="staff-anaplan-{{ $bi }}" wire:model.blur="staff.{{ $bi }}.filas.{{ $fi }}.anaplan" class="w-full px-1 py-0.5 text-sm border-gray-300 rounded" placeholder="(no se sube)"></td>
-                                    <td class="text-xs {{ $f['anaplan'] === '' ? 'text-red-700' : 'text-yellow-800' }}">{{ $f['origen'] === 'historico' ? '' : $f['nota'] }}</td>
+                                    <td class="text-xs {{ trim($f['anaplan']) === '' ? 'text-red-700' : 'text-yellow-800' }}">{{ $f['origen'] === 'historico' ? '' : $f['nota'] }}</td>
                                 </tr>
                             @endforeach
                         </table>
@@ -78,12 +79,12 @@
                     $sinPareja = collect($staff)->flatMap(fn ($b) => collect($b['filas'])->filter(fn ($f) => trim($f['anaplan']) === '')->map(fn ($f) => "· {$b['tienda']}: {$f['excel']}"))->values();
                     $confirmar = "¿Escribir en Anaplan ({$staffMesAnaplan}) el salario y el bonus de {$nSubir} empleados?";
                     if ($sinPareja->isNotEmpty()) {
-                        $confirmar = "⚠️ ¿Estás seguro? {$sinPareja->count()} empleado(s) NO tienen pareja en Anaplan y NO se subirán:\n".$sinPareja->implode("\n")."\n\nSi los creas ahora en Anaplan, pulsa «↻ Releer Anaplan» antes.\n\n".$confirmar;
+                        $confirmar = "⚠️ ¿Estás seguro? {$sinPareja->count()} empleado(s) NO tienen pareja en Anaplan y NO se subirán:\n".$sinPareja->implode("\n")."\n\n".$confirmar;
                     }
                 @endphp
                 <div class="flex flex-wrap justify-end gap-2 pt-2 border-t">
                     <button type="button" wire:click="$set('staffAbierto', false)" class="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
-                    <button type="button" wire:click="prepararStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Vuelve a leer los empleados de Anaplan (y el Excel); lo que has elegido a mano se mantiene">↻ Releer Anaplan</button>
+                    <button type="button" wire:click="guardarNombresStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Guarda los nombres escritos a mano (nómina → Anaplan) para este mes y los siguientes">💾 Guardar nombres</button>
                     <button type="button" wire:click="subirStaff" wire:loading.attr="disabled"
                         wire:confirm="{{ $confirmar }}"
                         class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">⬆ Subir a Anaplan ({{ $nSubir }})</button>
@@ -335,17 +336,28 @@
                                     @endif
                                 </div>
                             @elseif ($auto === 'anaplan-staff')
-                                {{-- 16-oct-2026: salario y bonus de cada empleado (imputación de costes) a «Input Staff Data for AC» de Anaplan --}}
-                                <div class="flex flex-wrap items-center gap-1">
+                                {{-- 16-oct-2026: salario y bonus de cada empleado (imputación de costes) a «Input Staff Data for AC» de Anaplan.
+                                     17-oct: los datos los deja Laboral; «✎ Nombres» para los que faltan; «⬆ Subir» ya se conecta a Anaplan. --}}
+                                @php
+                                    $sinNom = $this->staffSinNombreMes;
+                                    $confSubir = '¿Escribir en Anaplan el salario y el bonus del personal del mes '.str_pad($mes, 2, '0', STR_PAD_LEFT).'?';
+                                    if ($sinNom) {
+                                        $confSubir = '⚠️ ¿Estás seguro? '.count($sinNom)." empleado(s) NO tienen nombre de Anaplan y NO se subirán:\n"
+                                            .collect($sinNom)->map(fn ($f) => "· {$f['tienda']}: {$f['excel']}")->implode("\n")."\n\n".$confSubir;
+                                    }
+                                @endphp
+                                <div class="flex flex-wrap items-start gap-1">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
-                                        wire:click="prepararStaff" wire:loading.attr="disabled" wire:target="prepararStaff"
-                                        title="Un PC lee la imputación de costes del mes (versión más alta) y los empleados de Anaplan; te enseño la propuesta antes de subir nada">
-                                        <span wire:loading.remove wire:target="prepararStaff">🔎 Preparar propuesta</span>
-                                        <span wire:loading wire:target="prepararStaff">⏳…</span>
+                                        wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
+                                        title="Empleados de la nómina del mes (los deja «Laboral») con su nombre en Anaplan; escribe el de los que falten">
+                                        ✎ Nombres{{ $sinNom ? ' ('.count($sinNom).' faltan)' : '' }}
                                     </button>
-                                    @if ($staff)
-                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700" wire:click="$set('staffAbierto', true)">✎ Ver propuesta</button>
-                                    @endif
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                                        wire:click="subirStaff" wire:loading.attr="disabled" wire:target="subirStaff" wire:confirm="{{ $confSubir }}"
+                                        title="Se conecta a Anaplan (Chrome del PC de «Ejecutar en»), escribe Bruto sin Bonus en Salary Value MTD y Bonus + Incentivo en Bonus Value MTD, lo relee y marca el check">
+                                        <span wire:loading.remove wire:target="subirStaff">⬆ Subir a Anaplan</span>
+                                        <span wire:loading wire:target="subirStaff">⏳…</span>
+                                    </button>
                                     @include('livewire.contabilidad._staff-faltan')
                                 </div>
                             @elseif ($auto === 'comunicar-impuestos')
