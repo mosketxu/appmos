@@ -351,6 +351,9 @@
                                     @if ($ciEnviado)<span class="text-xs text-green-700">✓ enviado el {{ $ciEnviado }}</span>
                                     @elseif ($ciBorrador)<span class="text-xs text-yellow-700">P borrador en Outlook el {{ $ciBorrador }}</span>@endif
                                 </div>
+                            @elseif (in_array($id, ['rv_envio', 'pagos_fin_mes'], true))
+                                {{-- 17-oct-2026 (Alex): el panel de Rentas Variables / Pagos fin de mes se abre aquí debajo; ya no son desplegables aparte --}}
+                                <button type="button" x-data="{ ab: false }" x-on:panel-abierto.window="if ($event.detail.id === '{{ $auto }}') ab = $event.detail.open" x-on:click="$dispatch('alternar-panel', '{{ $auto }}')" x-text="ab ? '▴ Plegar' : 'abrir ↓'" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50">abrir ↓</button>
                             @elseif ($auto && $auto !== 'pendiente')
                                 <button type="button" x-on:click="$dispatch('abrir-panel', '{{ $auto }}')" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50">abrir ↓</button>
                             @else
@@ -449,51 +452,15 @@
                             </td>
                         </tr>
                     @endif
-                    @if ($id === 'cash_in_store' && $cisFilas && $cisAbierto)
-                        <tr wire:key="chk-cis-detalle" x-show="ver('cash in store')">
-                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-2">
-                                <table class="text-sm text-gray-800 border border-collapse border-gray-300">
-                                    <tr class="text-xs text-left text-gray-600 bg-gray-50">
-                                        <th class="px-2 py-0.5 border">Tienda</th>
-                                        <th class="px-2 py-0.5 border">Cash (Prosegur)</th>
-                                        <th class="px-2 py-0.5 border">Petty Cash</th>
-                                        <th class="px-2 py-0.5 border">Correo ({{ \Carbon\Carbon::create(2026, $mes, 1)->locale('es')->monthName }})</th>
-                                    </tr>
-                                    @foreach ($cisFilas as $t => $r)
-                                        <tr wire:key="cis-{{ $t }}" class="align-top {{ $r['encontrado'] ? '' : 'bg-red-50' }}">
-                                            <td class="px-2 py-0.5 font-semibold border">{{ $t }}</td>
-                                            <td class="px-2 py-0.5 border">
-                                                <input type="text" wire:model.blur="cisFilas.{{ $t }}.cash" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:100px">
-                                            </td>
-                                            <td class="px-2 py-0.5 border">
-                                                <input type="text" wire:model.blur="cisFilas.{{ $t }}.petty" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:90px">
-                                            </td>
-                                            <td class="px-2 py-0.5 text-xs border">
-                                                @if ($r['encontrado'])
-                                                    <div class="font-medium">«{{ $r['asunto'] }}» · {{ $r['recibido'] }}</div>
-                                                    <pre class="text-xs text-gray-600 whitespace-pre-wrap" style="max-height:6rem;overflow:auto">{{ $r['texto'] }}</pre>
-                                                @else
-                                                    <span class="text-red-700">Sin dato: no ha mandado el efectivo → «Pedir»</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </table>
-                            </td>
-                        </tr>
-                    @endif
-                @empty
-                    <tr><td colspan="17" class="px-3 py-2 text-sm text-gray-500">No encuentro monthlyFIQ/checklist.json en este equipo.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-        </div>
-        <div id="rentas-variables" class="border-t border-gray-200" x-data="{ open: false }"
-             x-on:abrir-panel.window="if ($event.detail === 'rentas-variables') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
-            <button type="button" x-on:click="open = !open" class="flex items-center w-full px-3 py-2 text-sm font-semibold text-left text-gray-800 gap-x-2 hover:bg-gray-50">
-                <span x-text="open ? '▾' : '▸'">▸</span> Rentas Variables · cálculos del alquiler variable, turnover y envío a los arrendadores (BCN, MAL)
-            </button>
-            <div x-show="open" style="display:none">
+                    @if ($id === 'rv_envio')
+                        {{-- Rentas Variables (Cálculos + Turnover y envío a los arrendadores de BCN y MAL): antes era un desplegable
+                             aparte debajo de la tabla; desde el 17-oct-2026 se abre aquí. «abrir ↓» de las otras filas de RV y el enlace de arriba también. --}}
+                        <tr wire:key="chk-rv-detalle" id="rentas-variables" x-data="{ open: false }" x-show="open && ver('rentas variables enviar ventas arrendatarios turnover')" style="display:none"
+                            x-effect="$dispatch('panel-abierto', { id: 'rentas-variables', open })"
+                            x-on:alternar-panel.window="if ($event.detail === 'rentas-variables') open = !open"
+                            x-on:abrir-panel.window="if ($event.detail === 'rentas-variables') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-3">
+                                <div class="border border-gray-200 rounded">
     <div class="p-3">
         <div class="flex flex-wrap gap-8">
             {{-- IZQUIERDA 35%: Cálculos + Turnover (usa el "Mes" del título) --}}
@@ -586,14 +553,18 @@
             </div>
         </div>
     </div>
-            </div>
-        </div>
-        <div id="pagos-fin-mes" class="border-t border-gray-200" x-data="{ open: false }"
-             x-on:abrir-panel.window="if ($event.detail === 'pagos-fin-mes') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
-            <button type="button" x-on:click="open = !open" class="flex items-center w-full px-3 py-2 text-sm font-semibold text-left text-gray-800 gap-x-2 hover:bg-gray-50">
-                <span x-text="open ? '▾' : '▸'">▸</span> Pagos fin de mes · correo a Plein con el saldo de BBVA, lo que hay que subir y los cargos previstos
-            </button>
-            <div x-show="open" style="display:none">
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
+                    @if ($id === 'pagos_fin_mes')
+                        {{-- Pagos fin de mes: antes un desplegable aparte debajo de la tabla; desde el 17-oct-2026 se abre aquí. --}}
+                        <tr wire:key="chk-pf-detalle" id="pagos-fin-mes" x-data="{ open: false }" x-show="open && ver('pagos fin de mes correo a plein')" style="display:none"
+                            x-effect="$dispatch('panel-abierto', { id: 'pagos-fin-mes', open })"
+                            x-on:alternar-panel.window="if ($event.detail === 'pagos-fin-mes') open = !open"
+                            x-on:abrir-panel.window="if ($event.detail === 'pagos-fin-mes') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-3">
+                                <div class="border border-gray-200 rounded">
     {{-- Correo mensual a Plein con los cargos de fin/principio de mes en BBVA
          (pedido 2026-09-25). Solo cambian estos datos; el resto sale de
          monthlyFIQ/pagosFinMes.json. --}}
@@ -780,7 +751,48 @@
             @endif
         </div>
     </div>
-            </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
+                    @if ($id === 'cash_in_store' && $cisFilas && $cisAbierto)
+                        <tr wire:key="chk-cis-detalle" x-show="ver('cash in store')">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-2">
+                                <table class="text-sm text-gray-800 border border-collapse border-gray-300">
+                                    <tr class="text-xs text-left text-gray-600 bg-gray-50">
+                                        <th class="px-2 py-0.5 border">Tienda</th>
+                                        <th class="px-2 py-0.5 border">Cash (Prosegur)</th>
+                                        <th class="px-2 py-0.5 border">Petty Cash</th>
+                                        <th class="px-2 py-0.5 border">Correo ({{ \Carbon\Carbon::create(2026, $mes, 1)->locale('es')->monthName }})</th>
+                                    </tr>
+                                    @foreach ($cisFilas as $t => $r)
+                                        <tr wire:key="cis-{{ $t }}" class="align-top {{ $r['encontrado'] ? '' : 'bg-red-50' }}">
+                                            <td class="px-2 py-0.5 font-semibold border">{{ $t }}</td>
+                                            <td class="px-2 py-0.5 border">
+                                                <input type="text" wire:model.blur="cisFilas.{{ $t }}.cash" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:100px">
+                                            </td>
+                                            <td class="px-2 py-0.5 border">
+                                                <input type="text" wire:model.blur="cisFilas.{{ $t }}.petty" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:90px">
+                                            </td>
+                                            <td class="px-2 py-0.5 text-xs border">
+                                                @if ($r['encontrado'])
+                                                    <div class="font-medium">«{{ $r['asunto'] }}» · {{ $r['recibido'] }}</div>
+                                                    <pre class="text-xs text-gray-600 whitespace-pre-wrap" style="max-height:6rem;overflow:auto">{{ $r['texto'] }}</pre>
+                                                @else
+                                                    <span class="text-red-700">Sin dato: no ha mandado el efectivo → «Pedir»</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </table>
+                            </td>
+                        </tr>
+                    @endif
+                @empty
+                    <tr><td colspan="17" class="px-3 py-2 text-sm text-gray-500">No encuentro monthlyFIQ/checklist.json en este equipo.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
         </div>
     </div>
 
