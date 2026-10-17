@@ -532,7 +532,7 @@ class ImpuestoM349 extends Component
             ColaTareas::pcElegido() ?: null, auth()->id());
     }
 
-    /** Un PC con el certificado de Suma importa el .349 en el formulario de la AEAT, lo valida y deja la vista previa (borrador) en la carpeta. */
+    /** El PC de «Ejecutar en» abre Edge con ventana (quien lo lanza elige el certificado), importa el .349 en el formulario de la AEAT, lo valida y deja la vista previa (borrador) en la carpeta. */
     public function prepararAeat(): void
     {
         $this->autorizar();
@@ -548,16 +548,15 @@ class ImpuestoM349 extends Component
             $this->error = 'Elige primero la carpeta de trabajo: ahí se deja el borrador.';
             return;
         }
-        $vivos = DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))
-            ->where('capacidades', 'like', '%pc.aeat_349%')->count();
-        if (! $vivos) {
-            $this->error = 'No hay ningún PC trabajador conectado que pueda entrar en la AEAT ahora mismo (lo hace miniServ: ¿está encendido?).';
+        // Con ventana (17-oct-2026): Edge se abre en el PC donde está quien lo lanza y elige ahí el certificado (Suma o el del cliente),
+        // así que va siempre al PC del selector «Ejecutar en»; no hay reparto automático ni relevo a otro PC.
+        $pc = ColaTareas::pcElegido();
+        if (! $pc) {
+            $this->error = 'Elige arriba en «Ejecutar en» el PC en el que estás: ahí se abrirá Edge para que elijas el certificado.';
             return;
         }
-        // Sin destino (17-oct-2026): la coge el PC que se ofrece para pc.aeat_349, el que tiene la política de Edge con el certificado de Suma
-        // (miniServ). En los PCs de Alex se quitó para poder elegir certificado a mano, así que el selector «Ejecutar en» no vale aquí.
         $id = ColaTareas::crear('pc.aeat_349', ['carpeta' => $this->carpeta, 'nif' => $this->declarante()['nif'] ?? '', 'ejercicio' => (string) $this->ejercicio,
-            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]], null, auth()->id(), null, null, 'preparando');
+            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]], $pc, auth()->id(), null, null, 'preparando');
         $dir = ColaTareas::carpetaEntradas($id);
         @mkdir($dir, 0775, true);
         copy($ruta, $dir.'/fichero.349');

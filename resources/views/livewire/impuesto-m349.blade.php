@@ -132,8 +132,8 @@
             <div class="m3-h">5 · Borrador de la AEAT y correo a Marta</div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
                 <button type="button" wire:click="prepararAeat" class="m3-btn" @disabled($tareaAeat || empty($res['fichero']))
-                    title="Un PC entra en la AEAT con el certificado de Suma, importa el .349, lo valida y baja la vista previa a la carpeta de trabajo. No presenta.">🏛 Preparar borrador en la AEAT</button>
-                @if ($tareaAeat)<span class="text-xs text-indigo-700">⏳ un PC está en la AEAT (importar → validar → vista previa, 1-2 min)…</span>@endif
+                    title="Se abre Edge en el PC de «Ejecutar en» (el tuyo): eliges el certificado, y entra en la AEAT, importa el .349, lo valida y baja la vista previa a la carpeta de trabajo. No presenta.">🏛 Preparar borrador en la AEAT</button>
+                @if ($tareaAeat)<span class="text-xs text-indigo-700">⏳ mira tu pantalla: elige el certificado en la ventana de Edge (tienes 5 min); luego importa → valida → vista previa (1-2 min)…</span>@endif
                 <span class="text-xs text-gray-500">No presenta: la presentación la haces tú en la Sede.</span>
             </div>
             @if ($aeatErrores)
