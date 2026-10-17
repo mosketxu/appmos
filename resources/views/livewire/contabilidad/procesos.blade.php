@@ -72,12 +72,20 @@
                         </table>
                     </div>
                 @endforeach
-                @php $nSubir = collect($staff)->sum(fn ($b) => collect($b['filas'])->filter(fn ($f) => trim($f['anaplan']) !== '')->count()); @endphp
+                @php
+                    $nSubir = collect($staff)->sum(fn ($b) => collect($b['filas'])->filter(fn ($f) => trim($f['anaplan']) !== '')->count());
+                    // 17-oct-2026: si queda alguno sin empleado de Anaplan, se avisa en la confirmación (Alex decide: avisar, no bloquear)
+                    $sinPareja = collect($staff)->flatMap(fn ($b) => collect($b['filas'])->filter(fn ($f) => trim($f['anaplan']) === '')->map(fn ($f) => "· {$b['tienda']}: {$f['excel']}"))->values();
+                    $confirmar = "¿Escribir en Anaplan ({$staffMesAnaplan}) el salario y el bonus de {$nSubir} empleados?";
+                    if ($sinPareja->isNotEmpty()) {
+                        $confirmar = "⚠️ ¿Estás seguro? {$sinPareja->count()} empleado(s) NO tienen pareja en Anaplan y NO se subirán:\n".$sinPareja->implode("\n")."\n\nSi los creas ahora en Anaplan, pulsa «↻ Releer Anaplan» antes.\n\n".$confirmar;
+                    }
+                @endphp
                 <div class="flex flex-wrap justify-end gap-2 pt-2 border-t">
                     <button type="button" wire:click="$set('staffAbierto', false)" class="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
                     <button type="button" wire:click="prepararStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Vuelve a leer los empleados de Anaplan (y el Excel); lo que has elegido a mano se mantiene">↻ Releer Anaplan</button>
                     <button type="button" wire:click="subirStaff" wire:loading.attr="disabled"
-                        wire:confirm="¿Escribir en Anaplan ({{ $staffMesAnaplan }}) el salario y el bonus de {{ $nSubir }} empleados?"
+                        wire:confirm="{{ $confirmar }}"
                         class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">⬆ Subir a Anaplan ({{ $nSubir }})</button>
                 </div>
             </div>
@@ -166,6 +174,9 @@
                                             @endforeach
                                             <div style="margin-top:.2rem;color:#991b1b">👉 En Anaplan, LE y AC no cuadrarán por ese importe. Asigna tienda en SAGE, exporta de nuevo el SyS y vuelve a lanzar Anaplan.</div>
                                         </div>
+                                    @endif
+                                    @if ($id === 'laboral')
+                                        @include('livewire.contabilidad._staff-faltan')
                                     @endif
                                     @if ($id === 'adyen')
                                         <label class="flex flex-col text-xs text-gray-600" title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes.">
@@ -335,6 +346,7 @@
                                     @if ($staff)
                                         <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700" wire:click="$set('staffAbierto', true)">✎ Ver propuesta</button>
                                     @endif
+                                    @include('livewire.contabilidad._staff-faltan')
                                 </div>
                             @elseif ($auto === 'comunicar-impuestos')
                                 <div class="flex flex-wrap items-center gap-1">

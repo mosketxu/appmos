@@ -746,6 +746,9 @@ class Procesos extends Component
                 $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--fichero', $f->getRealPath()]);
             }
         }
+        if ($id === 'laboral') {
+            $this->prepararStaffLaboral($pasos, $opc);
+        }
         $this->lanzar($pasos, $opc);
         if ($id === 'adyen') {
             $this->adyenSettlement = null;
@@ -812,7 +815,96 @@ class Procesos extends Component
             }
             $this->staff[] = ['tienda' => $tienda, 'filas' => $filas];
         }
+        $this->guardarListaYFaltan($ctx['mes']);
         $this->staffAbierto = true;
+    }
+
+    /**
+     * Laboral (17-oct-2026, pedido de Alex): imputacionCostes.js escribe en el cuadro de cada tienda el nombre del empleado en Anaplan
+     * (histórico de parejas o el mismo nombre en la última lista leída de Anaplan) y avisa de los que faltan, con el nombre propuesto
+     * para crearlos. Aquí se le pasan el histórico y la lista.
+     */
+    protected function prepararStaffLaboral(array &$pasos, array &$opc): void
+    {
+        $lista = $this->staffEstado('fiq.anaplan_staff_lista');
+        $json = tempnam(sys_get_temp_dir(), 'staff');
+        file_put_contents($json, json_encode(['historico' => (object) $this->staffHistorico(), 'anaplan' => (object) ($lista['tiendas'] ?? []),
+            'mes' => $lista['mes'] ?? ''], JSON_UNESCAPED_UNICODE));
+        if ($this->remoto()) {
+            $opc['entradas'] = $opc['entradas'] ?? [];
+            $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--staff', '{E'.count($opc['entradas']).'}']);
+            $opc['entradas'][] = ['ruta' => $json, 'nombre' => 'staff_laboral.json', 'dir' => '_tmp/staff_in'];
+        } else {
+            $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--staff', $json]);
+        }
+    }
+
+    protected function postStaffLaboral(array $ctx, int $desde): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        if (! preg_match('/^STAFF_FALTAN: (.*)$/m', $nuevo, $m) || ! is_array($d = json_decode($m[1], true))) {
+            return;
+        }
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^STAFF_FALTAN: .*(\r?\n)?/m', '', $nuevo));
+        $this->guardarFaltan((int) $ctx['mes'], (array) ($d['faltan'] ?? []));
+        if ($d['faltan'] ?? []) {
+            $txt = collect($d['faltan'])->map(fn ($f) => "· {$f['tienda']}: {$f['nomina']} → crear como «{$f['propuesta']}»".($f['quizas'] ? " (¿o es «{$f['quizas']}»?)" : ''))->implode("\n");
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ '.count($d['faltan'])." empleado(s) sin pareja en Anaplan. Créalos en Anaplan antes de subir el personal:\n{$txt}");
+        }
+    }
+
+    /** Tras leer Anaplan: se guarda su lista de empleados (la usa Laboral) y se quitan de «faltan» los que ya tienen pareja. */
+    protected function guardarListaYFaltan(int $mes): void
+    {
+        if (! Schema::hasTable('estado_procesos')) {
+            return;
+        }
+        ColaTareas::guardarEstado('fiq.anaplan_staff_lista', ['mes' => $this->staffMesAnaplan, 'cuando' => now()->format('Y-m-d H:i'), 'tiendas' => $this->staffAnaplan], 'Procesos FIQ');
+        $antes = collect($this->staffFaltan($mes))->keyBy(fn ($f) => $f['tienda'].'|'.$f['nomina']);
+        $faltan = [];
+        foreach ($this->staff as $bi => $b) {
+            foreach ($b['filas'] as $fi => $f) {
+                if (trim((string) $f['anaplan']) === '') {
+                    $x = $antes[$b['tienda'].'|'.$f['excel']] ?? ['tienda' => $b['tienda'], 'nomina' => $f['excel'], 'propuesta' => $f['excel'], 'quizas' => '', 'nota' => ''];
+                    $faltan[] = $x;
+                    if (! str_starts_with((string) $f['nota'], 'En el histórico')) {
+                        $this->staff[$bi]['filas'][$fi]['nota'] = "No está en Anaplan: créalo allí como «{$x['propuesta']}», pulsa «↻ Releer Anaplan» y elígelo (vacío = no se sube).";
+                    }
+                }
+            }
+        }
+        $this->guardarFaltan($mes, $faltan);
+    }
+
+    protected function guardarFaltan(int $mes, array $faltan): void
+    {
+        if (! Schema::hasTable('estado_procesos')) {
+            return;
+        }
+        $todo = $this->staffEstado('fiq.anaplan_staff_faltan');
+        $todo[sprintf('%02d', $mes)] = ['cuando' => now()->format('d/m H:i'), 'faltan' => array_values($faltan)];
+        ColaTareas::guardarEstado('fiq.anaplan_staff_faltan', $todo, 'Procesos FIQ');
+        unset($this->staffFaltanMes);
+    }
+
+    /** Empleados de la nómina del mes sin pareja en Anaplan (los avisa Laboral y los recalcula «Preparar propuesta»). */
+    protected function staffFaltan(int $mes): array
+    {
+        return (array) ($this->staffEstado('fiq.anaplan_staff_faltan')[sprintf('%02d', $mes)]['faltan'] ?? []);
+    }
+
+    public function getStaffFaltanMesProperty(): array
+    {
+        return $this->staffEstado('fiq.anaplan_staff_faltan')[sprintf('%02d', $this->mes)] ?? [];
+    }
+
+    protected function staffEstado(string $clave): array
+    {
+        try {
+            return Schema::hasTable('estado_procesos') ? (array) ColaTareas::estado($clave) : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     protected function staffHistorico(): array
@@ -865,7 +957,8 @@ class Procesos extends Component
             $usados = [];
             $filas = [];
             foreach ($emps as $i => $e) {
-                $h = $historico[$tienda][$e['nombre']] ?? null;
+                // sin histórico, el nombre de Anaplan que ya escribió Laboral en el Excel (columna D, 17-oct-2026)
+                $h = $historico[$tienda][$e['nombre']] ?? ($e['anaplan'] ?? null);
                 $filas[$i] = ['excel' => $e['nombre'], 'bruto' => $e['bruto'], 'bonus' => $e['bonus'], 'anaplan' => '', 'origen' => '', 'nota' => ''];
                 if ($h !== null && in_array($h, $lista, true)) {
                     $filas[$i]['anaplan'] = $h;
@@ -1176,6 +1269,9 @@ class Procesos extends Component
     {
         $ok = ! in_array(false, $oks, true);
         $this->postSys($ctx, $oks);
+        if (($ctx['id'] ?? '') === 'laboral') {
+            $this->postStaffLaboral($ctx, $desde);
+        }
         if ($ok) {
             $p = $this->procesos()[$ctx['id']] ?? [];
             $this->marcarChecklist($ctx['id'], $ctx['mes'], ! empty($p['envio']) ? 'proc' : 'ok');
