@@ -105,7 +105,7 @@
             $botones = $this->procesos;
             // Filas con «grupo» en checklist.json (17-oct-2026, Alex: «si son procesos diferentes, pon seguido varios botones»):
             // una sola fila con el nombre del grupo, un botón por proceso («boton») y un check pequeño por proceso en cada mes.
-            $grupos = collect($this->checklist)->filter(fn ($p) => ! empty($p['grupo']))->groupBy('grupo')->map->values()->all();
+            $grupos = collect($this->checklist)->filter(fn ($p) => ! empty($p['grupo']))->groupBy('grupo')->map(fn ($g) => $g->values()->all())->all();
             $gruposPintados = [];
         @endphp
         <div class="overflow-x-auto">
