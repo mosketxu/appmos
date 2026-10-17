@@ -24,21 +24,18 @@
     @endif
     @unless (config('contabilidad.ejecucion_local'))
         @php $cola = $this->pcs; @endphp
-        <div class="p-3 text-sm bg-white border rounded-lg shadow" x-data="{ abierto: {{ $pendientes ? 'true' : 'false' }} }">
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span class="font-medium text-gray-800">PCs de trabajo:</span>
-                @forelse ($cola['pcs'] as $pc)
-                    <span title="{{ $pc['latido'] ? 'Última señal: '.$pc['latido'] : 'Sin señales todavía' }}">{{ $pc['conectado'] ? '🟢' : '⚪' }} {{ $pc['nombre'] }}</span>
-                @empty
-                    <span class="text-gray-500">ninguno dado de alta</span>
-                @endforelse
+        {{-- 17-oct-2026 (Alex: «¿qué información útil me da?»): compacto, una línea pequeña a la derecha. Los PCs en línea ya
+             se ven en «▶ Ejecutar en» de la barra de menú; aquí solo queda el aviso si no hay ninguno, el historial y Sincronizar. --}}
+        <div class="text-xs" x-data="{ abierto: {{ $pendientes ? 'true' : 'false' }} }">
+            <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
                 @if ($cola['pcs'] && ! collect($cola['pcs'])->contains('conectado', true))
-                    <span class="text-amber-700">⚠️ Ningún PC conectado: lo que pidas esperará a que uno arranque.</span>
+                    <span class="mr-auto text-sm text-amber-700">⚠️ Ningún PC de trabajo conectado: lo que pidas esperará a que uno arranque.</span>
                 @endif
-                <button type="button" x-on:click="abierto = !abierto" class="text-xs text-indigo-700 hover:underline">Tareas en los PCs <span x-text="abierto ? '▴' : '▾'"></span></button>
-                <button type="button" wire:click="sincronizarAhora" class="text-xs text-indigo-700 hover:underline" title="Pide a un PC que suba el estado actual (checklist, importes, Pagos fin de mes...)">↻ Sincronizar estado</button>
+                <button type="button" x-on:click="abierto = !abierto" class="text-gray-500 hover:text-indigo-700 hover:underline"
+                    title="Lo último que se ha pedido a los PCs (cuándo, qué PC, cómo acabó). Sirve para ver si algo se quedó en cola o cancelarlo.">Historial de tareas <span x-text="abierto ? '▴' : '▾'"></span></button>
+                <button type="button" wire:click="sincronizarAhora" class="text-gray-500 hover:text-indigo-700 hover:underline" title="Pide a un PC que suba el estado actual (checklist, importes, Pagos fin de mes...)">↻ Sincronizar estado</button>
             </div>
-            <div x-show="abierto" style="display:none" class="mt-2 overflow-x-auto">
+            <div x-show="abierto" style="display:none" class="p-2 mt-1 overflow-x-auto bg-white border rounded-lg shadow">
                 <table class="text-xs">
                     <tbody class="divide-y divide-gray-100">
                         @forelse ($cola['tareas'] as $t)
