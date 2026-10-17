@@ -28,6 +28,9 @@ class Todo extends Component
 
     public ?int $abierta = null;
 
+    /** Tarea a la que se llega desde un aviso de la campana: se baja hasta ella y se resalta (17-oct-2026). */
+    public ?int $destacar = null;
+
     /** Texto que filtra las filas (título, descripción, creador o asignados). */
     public string $buscar = '';
 
@@ -70,8 +73,13 @@ class Todo extends Component
         if ($t = (int) request('t')) {
             $tarea = TodoTarea::with('asignados')->find($t);
             if ($tarea && $this->puede($tarea)) {
-                $this->abierta = $tarea->id;
+                $this->abierta = $this->destacar = $tarea->id;
                 $this->leerAvisos($tarea->id);
+                if (! $tarea->abierta()) {
+                    $this->filtroEstado = 'todas';   // cerrada: con el filtro «Abiertas» no saldría
+                }
+                $this->mensaje = 'Vienes del aviso de la campana: tarea «'.$tarea->titulo.'» (abierta y resaltada abajo).';
+                $this->mensajeTipo = 'ok';
             }
         }
     }
@@ -289,6 +297,7 @@ class Todo extends Component
     public function abrir(int $id): void
     {
         $this->abierta = $this->abierta === $id ? null : $id;
+        $this->destacar = null;
         if ($this->abierta) {
             $this->leerAvisos($id);
         }
@@ -525,6 +534,15 @@ class Todo extends Component
             $detalle = TodoTarea::with(['creador:id,name', 'asignados:id,name', 'comentarios.user:id,name'])->find($this->abierta);
             if ($detalle && ! $this->puede($detalle)) {
                 $detalle = null;
+            }
+            // La tarea abierta (p. ej. desde la campana) no está en la lista que se ve (filtros, otra persona…): se añade
+            // al principio de las «otras», para que se vea dónde está y su detalle.
+            if ($detalle && ! $tareas->contains('id', $detalle->id)) {
+                $extra = TodoTarea::with(['creador:id,name', 'asignados:id,name', 'prioridadPedidaPor:id,name'])
+                    ->withCount(['comentarios' => fn ($c) => $c->where('tipo', 'respuesta')])->find($detalle->id);
+                $extra->mi_orden = null;
+                $n = count($ids);
+                $tareas = $tareas->take($n)->push($extra)->concat($tareas->slice($n))->values();
             }
         }
 

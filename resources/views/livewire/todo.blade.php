@@ -169,7 +169,8 @@
                         @endphp
                         <tr wire:key="t{{ $t->id }}" @if ($mia) data-orden="{{ $t->id }}" data-grupo="{{ $t->grupo }}" @endif wire:click="abrir({{ $t->id }})"
                             class="todo-fila cursor-pointer hover:bg-indigo-50 {{ $t->abierta() ? '' : 'text-gray-400' }}"
-                            style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : 'border-top:1px solid #9ca3af' }}">
+                            style="{{ $abierta === $t->id ? 'background:#e0e7ff;box-shadow:inset 4px 0 0 #6366f1;border-top:2px solid #6366f1' : 'border-top:1px solid #9ca3af' }}"
+                            @if ($destacar === $t->id) x-init="$nextTick(() => { $el.scrollIntoView({behavior: 'smooth', block: 'center'}); $el.animate([{background: '#fde68a'}, {background: '#e0e7ff'}], {duration: 1500, iterations: 2}) })" @endif>
                             @if ($filtroEstado !== 'cerradas')
                                 <td class="py-2 pl-2 pr-1 text-center whitespace-nowrap todo-oc" wire:click.stop>
                                     @if ($mia)
