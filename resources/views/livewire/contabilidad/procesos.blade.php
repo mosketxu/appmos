@@ -53,7 +53,7 @@
                 </div>
                 <p class="text-sm text-gray-600">Bruto sin Bonus → <b>Salary Value MTD</b> · Bonus + Incentivo → <b>Bonus Value MTD</b>.
                     <span class="px-1 bg-red-50">Rojo</span> = sin nombre de Anaplan: créalo allí y escribe aquí el nombre tal cual está en Anaplan.
-                    <span class="px-1 bg-yellow-100">Amarillo</span> = cambiado a mano (se guarda al pulsar «💾 Guardar nombres» o «⬆ Subir»). Vacío = no se sube.</p>
+                    <span class="px-1 bg-yellow-100">Amarillo</span> = escrito a mano (se guarda al momento). Vacío = no se sube.</p>
                 @foreach ($staffAvisos as $a)<p class="text-sm text-yellow-800">⚠️ {{ $a }}</p>@endforeach
                 @foreach ($staff as $bi => $bloque)
                     <datalist id="staff-anaplan-{{ $bi }}">@foreach ($staffAnaplan[$bloque['tienda']] ?? [] as $n)<option value="{{ $n }}">@endforeach</datalist>
@@ -84,7 +84,7 @@
                 @endphp
                 <div class="flex flex-wrap justify-end gap-2 pt-2 border-t">
                     <button type="button" wire:click="$set('staffAbierto', false)" class="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
-                    <button type="button" wire:click="guardarNombresStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Guarda los nombres escritos a mano (nómina → Anaplan) para este mes y los siguientes">💾 Guardar nombres</button>
+                    <button type="button" wire:click="guardarNombresStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Los nombres se guardan al escribirlos (valen para los meses siguientes). Esto además vuelve a pasar «Laboral» para que el Excel de imputación de costes lleve los nombres de Anaplan (cierra antes el Excel si lo tienes abierto)">💾 Guardar y actualizar el Excel</button>
                     <button type="button" wire:click="subirStaff" wire:loading.attr="disabled"
                         wire:confirm="{{ $confirmar }}"
                         class="px-3 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">⬆ Subir a Anaplan ({{ $nSubir }})</button>

@@ -975,8 +975,12 @@ class Procesos extends Component
             unset($this->staffSinNombreMes);
         }
         if ($avisar) {
+            // «💾 Guardar y actualizar el Excel»: Laboral otra vez, que escribe los nombres de Anaplan en el cuadro (y quita el rojo)
             $faltan = count($this->staffSinNombre());
-            $this->dispatch('proceso-terminado', mensaje: "💾 {$n} nombre(s) guardado(s).".($faltan ? " Quedan {$faltan} sin nombre de Anaplan (no se subirán)." : ' Ya están todos: puedes pulsar «⬆ Subir a Anaplan».'));
+            $this->staffAbierto = false;
+            $this->ejecutarUno('laboral');
+            $this->dispatch('proceso-terminado', mensaje: '💾 Nombres guardados. Actualizo el Excel de imputación de costes con «Laboral» (mira la Salida).'
+                .($faltan ? " Quedan {$faltan} sin nombre de Anaplan (no se subirán)." : ' Ya están todos: después puedes pulsar «⬆ Subir a Anaplan».'));
         }
     }
 
@@ -1145,7 +1149,10 @@ class Procesos extends Component
             $f = &$this->staff[$m[1]]['filas'][$m[2]];
             $f['origen'] = 'mano';
             $lista = $this->staffAnaplan[$this->staff[$m[1]]['tienda']] ?? [];
-            $f['nota'] = trim((string) $valor) === '' ? 'No se sube.' : (! $lista || in_array(trim((string) $valor), $lista, true) ? 'Sin guardar: pulsa «💾 Guardar nombres» (o «⬆ Subir», que también lo guarda).' : 'No está en la última lista leída de Anaplan: si lo acabas de crear, está bien; al subir lo busco.');
+            $f['nota'] = trim((string) $valor) === '' ? 'No se sube.' : (! $lista || in_array(trim((string) $valor), $lista, true) ? 'Guardado.' : 'Guardado (no está en la última lista leída de Anaplan: si lo acabas de crear, está bien; al subir lo busco).');
+            unset($f);
+            // 17-oct-2026: se guarda al momento (Alex escribió el nombre y cerró sin pulsar «Guardar»: se perdía)
+            $this->guardarNombresStaff(false);
         }
     }
 
