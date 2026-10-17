@@ -269,6 +269,13 @@
                                     @endif
                                     @if ($id === 'cashflow')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
+                                        @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
+                                        <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"
+                                            wire:confirm="¿Mandar YA a Plein el «Cashflow 2026 {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)"
+                                            class="inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded shadow-sm disabled:opacity-50 {{ $estCf === 'ok' ? 'text-gray-500 bg-white border-gray-300' : 'text-white bg-indigo-600 border-indigo-600 hover:bg-indigo-700' }}">
+                                            <span wire:loading.remove wire:target="enviarCashflow">{{ $estCf === 'ok' ? '✉ Reenviar' : '✉ Enviar a Plein' }}</span>
+                                            <span wire:loading wire:target="enviarCashflow">⏳…</span>
+                                        </button>
                                         <label class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1" title="Opcional: el mayor de SAGE (listado en columnas, el mismo que usan Bancos, Facturas OCR...). Se guarda en los ficheros base de Fashion IQ para todos los procesos. Si no eliges ninguno, se usa el último subido en cualquier pantalla.">
                                             <x-subir-fichero wire:model="cashflowMayor" accept=".xlsx" :fichero="$cashflowMayor" opcional texto="Mayor" />
                                             @if ($cashflowMayor)
@@ -278,13 +285,6 @@
                                                 <span class="text-yellow-700">No hay mayor en los ficheros base: lo busca en Descargas del PC.</span>
                                             @endif
                                         </label>
-                                        @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
-                                        <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"
-                                            wire:confirm="¿Mandar YA a Plein el «Cashflow 2026 {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)"
-                                            class="inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded shadow-sm disabled:opacity-50 {{ $estCf === 'ok' ? 'text-gray-500 bg-white border-gray-300' : 'text-white bg-indigo-600 border-indigo-600 hover:bg-indigo-700' }}">
-                                            <span wire:loading.remove wire:target="enviarCashflow">{{ $estCf === 'ok' ? '✉ Reenviar' : '✉ Enviar a Plein' }}</span>
-                                            <span wire:loading wire:target="enviarCashflow">⏳…</span>
-                                        </button>
                                     @endif
                                     @if (! empty($resultados[$id]))
                                         <div class="flex flex-col min-w-0 gap-y-1 pt-1">
@@ -327,15 +327,15 @@
                             @elseif ($auto === 'intrastat')
                                 {{-- 14-oct-2026: se elige el Excel de Outbound, se procesa con el motor de Impuestos → Intrastat y se marca hecho --}}
                                 <div class="flex flex-wrap items-start gap-x-2 gap-y-1">
-                                    <x-subir-fichero wire:model="intrastatFichero" accept=".xlsx,.xlsm" :fichero="$intrastatFichero"
-                                        texto="Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
-                                        title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.2026.xlsx». Sustituye al que hubiera procesado de este mes. Puedes arrastrarlo aquí." />
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
                                         wire:click="procesarIntrastat" wire:loading.attr="disabled" wire:target="procesarIntrastat,intrastatFichero"
                                         @if (! $intrastatFichero && ! $intrastatRes) disabled title="Elige antes el Excel" @endif>
                                         <span wire:loading.remove wire:target="procesarIntrastat">▶ Procesar</span>
                                         <span wire:loading wire:target="procesarIntrastat">⏳…</span>
                                     </button>
+                                    <x-subir-fichero wire:model="intrastatFichero" accept=".xlsx,.xlsm" :fichero="$intrastatFichero"
+                                        texto="Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
+                                        title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.2026.xlsx». Sustituye al que hubiera procesado de este mes. Puedes arrastrarlo aquí." />
                                     @if ($intrastatRes)
                                         <div class="flex flex-col text-xs text-gray-600">
                                             <span>
@@ -360,16 +360,16 @@
                                     }
                                 @endphp
                                 <div class="flex flex-wrap items-start gap-1">
-                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
-                                        wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
-                                        title="Empleados de la nómina del mes (los deja «Laboral») con su nombre en Anaplan; escribe el de los que falten">
-                                        ✎ Nombres{{ $sinNom ? ' ('.count($sinNom).' faltan)' : '' }}
-                                    </button>
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                                         wire:click="subirStaff" wire:loading.attr="disabled" wire:target="subirStaff" wire:confirm="{{ $confSubir }}"
                                         title="Se conecta a Anaplan (Chrome del PC de «Ejecutar en»), escribe Bruto sin Bonus en Salary Value MTD y Bonus + Incentivo en Bonus Value MTD, lo relee y marca el check">
                                         <span wire:loading.remove wire:target="subirStaff">⬆ Subir a Anaplan</span>
                                         <span wire:loading wire:target="subirStaff">⏳…</span>
+                                    </button>
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                        wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
+                                        title="Empleados de la nómina del mes (los deja «Laboral») con su nombre en Anaplan; escribe el de los que falten">
+                                        ✎ Nombres{{ $sinNom ? ' ('.count($sinNom).' faltan)' : '' }}
                                     </button>
                                     @include('livewire.contabilidad._staff-faltan')
                                 </div>
