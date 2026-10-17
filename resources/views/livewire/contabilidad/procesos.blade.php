@@ -98,7 +98,6 @@
                 <input type="search" x-model="q" placeholder="🔍 Buscar proceso…" class="px-2 py-1 text-sm border-gray-300 rounded-md shadow-sm" style="width:14rem">
                 <button type="button" x-show="q !== ''" x-on:click="q = ''" class="text-xs text-gray-500 hover:text-gray-800">✕ quitar filtro</button>
             </span>
-            <span class="text-xs text-gray-500">Los que se ejecutan desde aquí se marcan solos al terminar bien; el resto, con «Marcar» (mes del título, resaltado). Clic en un check de cualquier mes: ✓ → «no toca» → vacío (con envío: P procesado sin enviar → ✓ enviado). ⠿ = arrastrar para cambiar el orden.</span>
         </div>
         @php
             $marcas = $this->checklistMarcas;
