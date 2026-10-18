@@ -44,6 +44,12 @@
                                         De baja desde {{ \App\Support\Impuestos::etiquetaPeriodo($o->baja_periodo, $o->baja_ejercicio) }}</span>
                                     @if ($editar) <button type="button" wire:click="reactivar({{ $o->id }})" class="text-xs text-indigo-700 hover:underline">Reactivar</button> @endif
                                 @elseif ($editar)
+                                    @if ($o->alta_ejercicio)
+                                        <span class="px-1.5 py-0.5 text-xs rounded" style="color:#065f46; background:#d1fae5" title="Antes de ahí no se generan casillas">Alta desde {{ \App\Support\Impuestos::etiquetaPeriodo($o->alta_periodo, $o->alta_ejercicio) }}</span>
+                                        <button type="button" wire:click="quitarAlta({{ $o->id }})" class="text-xs text-indigo-700 hover:underline" title="Quita la fecha de alta y vuelve a generar los periodos anteriores">quitar</button>
+                                    @else
+                                        <button type="button" wire:click="abrirAlta({{ $o->id }})" class="text-xs text-indigo-700 hover:underline" title="Empieza a presentarlo desde un periodo (no se generan los anteriores)">▶ Alta desde…</button>
+                                    @endif
                                     <button type="button" wire:click="abrirBaja({{ $o->id }})" class="text-xs text-indigo-700 hover:underline" title="Deja de presentarlo desde un periodo sin perder el historial">⏸ Dejar de presentar…</button>
                                     @if (! isset($conHistorial[$o->id]))
                                         <button type="button" wire:click="quitar({{ $o->id }})" wire:confirm="¿Borrar este impuesto de la entidad? Aún no tiene historial." class="text-gray-400 hover:text-red-600" title="Borrar (solo si no tiene historial)">✕</button>
@@ -51,6 +57,22 @@
                                 @endif
                             </td>
                         </tr>
+                        @if ($altaOb === $o->id)
+                            <tr wire:key="alta-{{ $o->id }}">
+                                <td colspan="6" class="px-2 py-2 rounded" style="background:#ecfdf5; white-space:normal; max-width:640px">
+                                    <span class="text-xs text-gray-700">Empieza a presentarlo <b>desde</b></span>
+                                    <select wire:model="altaEj" class="py-0.5 text-sm border-gray-300 rounded-md">
+                                        @foreach ([now()->year - 1, now()->year, now()->year + 1] as $y) <option value="{{ $y }}">{{ $y }}</option> @endforeach
+                                    </select>
+                                    <select wire:model="altaPer" class="py-0.5 text-sm border-gray-300 rounded-md">
+                                        @foreach (\App\Support\Impuestos::periodos($o->periodicidad) as $p) <option value="{{ $p }}">{{ $p }}</option> @endforeach
+                                    </select>
+                                    <button type="button" wire:click="darDeAlta" style="background:#059669; color:#fff; padding:2px 10px; border-radius:4px; font-weight:600" class="text-sm">Dar de alta</button>
+                                    <button type="button" wire:click="cerrarAlta" class="text-xs text-gray-500 hover:underline">Cancelar</button>
+                                    <span class="text-xs text-gray-500">Los periodos anteriores dejan de generarse (pendientes y «no» desaparecen); presentados, comentarios y PDF se conservan.</span>
+                                </td>
+                            </tr>
+                        @endif
                         @if ($bajaOb === $o->id)
                             <tr wire:key="baja-{{ $o->id }}">
                                 <td colspan="6" class="px-2 py-2 rounded" style="background:#fffbeb; white-space:normal; max-width:640px">

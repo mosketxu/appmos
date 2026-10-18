@@ -21,6 +21,9 @@ class EntidadImpuestos extends Component
     public string $nuevaEtiqueta = '';
 
     // «Dejar de presentar desde…» (baja con historial): obligación, ejercicio y periodo elegidos
+    public ?int $altaOb = null;
+    public int $altaEj = 0;
+    public string $altaPer = '';
     public ?int $bajaOb = null;
     public int $bajaEj = 0;
     public string $bajaPer = '';
@@ -140,6 +143,49 @@ class EntidadImpuestos extends Component
         $this->dispatch('impuestos-cambiados');
     }
 
+    public function abrirAlta(int $id): void
+    {
+        abort_unless($this->puedeEditar(), 403);
+        $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id);
+        $this->altaOb = $id;
+        $this->altaEj = (int) now()->format('Y');
+        $this->altaPer = Impuestos::periodos($ob->periodicidad)[0];
+    }
+
+    public function cerrarAlta(): void
+    {
+        $this->altaOb = null;
+    }
+
+    /** Empieza a presentarlo desde ese periodo: los anteriores no se generan y las casillas pendientes o «no» de antes se quitan; presentados, comentarios y PDF no se tocan. */
+    public function darDeAlta(): void
+    {
+        abort_unless($this->puedeEditar() && $this->altaOb, 403);
+        $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($this->altaOb);
+        if ($this->altaEj < 2009 || $this->altaEj > 2100 || ! in_array($this->altaPer, Impuestos::periodos($ob->periodicidad), true)) {
+            return;
+        }
+        $ob->update(['alta_ejercicio' => $this->altaEj, 'alta_periodo' => $this->altaPer]);
+        $ob = $ob->fresh();
+        DB::table('impuesto_estados')->where('entidad_impuesto_id', $ob->id)->whereIn('estado', ['pendiente', 'no'])->get(['id', 'ejercicio', 'periodo'])
+            ->each(function ($r) use ($ob) {
+                if (Impuestos::anteriorAlAlta($ob, (int) $r->ejercicio, $r->periodo)) {
+                    DB::table('impuesto_estados')->where('id', $r->id)->delete();
+                }
+            });
+        $this->altaOb = null;
+        $this->dispatch('impuestos-cambiados');
+    }
+
+    public function quitarAlta(int $id): void
+    {
+        abort_unless($this->puedeEditar(), 403);
+        $ob = EntidadImpuesto::where('entidad_id', $this->entidadId)->findOrFail($id);
+        $ob->update(['alta_ejercicio' => null, 'alta_periodo' => null]);
+        $this->asegurar($ob->id);
+        $this->dispatch('impuestos-cambiados');
+    }
+
     public function reactivar(int $id): void
     {
         abort_unless($this->puedeEditar(), 403);
@@ -185,7 +231,7 @@ class EntidadImpuestos extends Component
     {
         $obs = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->where('ei.entidad_id', $this->entidadId)->orderBy('m.orden')->orderBy('ei.etiqueta')
-            ->get(['ei.id', 'ei.etiqueta', 'ei.periodicidad', 'ei.baja_ejercicio', 'ei.baja_periodo', 'ei.observaciones', 'm.codigo', 'm.nombre']);
+            ->get(['ei.id', 'ei.etiqueta', 'ei.periodicidad', 'ei.baja_ejercicio', 'ei.baja_periodo', 'ei.alta_ejercicio', 'ei.alta_periodo', 'ei.observaciones', 'm.codigo', 'm.nombre']);
         $modelos = ImpuestoModelo::where('activo', true)->orderBy('orden')->get();
 
         $suma = DB::table('entidades')->join('sumas', 'sumas.id', '=', 'entidades.suma_id')->where('entidades.id', $this->entidadId)->value('sumas.nombre');
