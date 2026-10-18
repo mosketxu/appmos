@@ -8,7 +8,7 @@
     $tipoPdf = in_array($e, ['presentado', 'visto'], true) ? 'presentado' : 'borrador';
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
-    $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true);
+    $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true) && $ob->codigo !== 'MAYOR';
     $cab = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase);
     $titulo = $cab.' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
     // Al pasar el ratón sale una ficha con la leyenda de colores y a qué estado pasa con el clic (15-oct-2026; ver #imp-tip)
@@ -28,6 +28,10 @@
     @else
         <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}', $event.shiftKey)" data-e="{{ $e }}" data-sig="{{ $sig }}" data-t="{{ $cab }}" aria-label="{{ $titulo }}"
             class="imp-m {{ $e === 'no' ? 'no' : '' }}" @if ($e !== 'no') style="background:{{ $color[$e] }}" @endif>{{ $e === 'no' ? '' : $letra[$e] }}</button>
+    @endif
+    @if ($ob->codigo === 'MAYOR' && $e !== 'no')
+        {{-- Revisión del mayor: abre la ventana donde se sube el mayor de ese mes y se revisa --}}
+        <button type="button" class="imp-pdf" style="color:{{ $color[$e] }}" wire:click="mrAbrir({{ $ob->entidad_id }}, '{{ $per }}')" title="Revisión del mayor de {{ $cab }}: subir el mayor y revisar">🔎</button>
     @endif
     @if ($conPdf)
         @if (count($lista) === 1 && $principal)

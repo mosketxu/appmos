@@ -9,12 +9,14 @@
     <p class="text-sm text-gray-600">Revisa el <b>mayor</b> de la empresa y propone conciliaciones y la aplicación de provisiones. <b>Solo informa</b>: no cambia nada en SAGE. «✔ Revisado» lo da por visto y no se vuelve a proponer.
         Usa los <b>ficheros base de la empresa</b> (los mismos que ven los demás procesos).</p>
 
+    @if (! $modal)
     <div class="flex flex-wrap items-center gap-3">
         <label class="text-sm font-semibold text-gray-700">Empresa</label>
         <select wire:model.live="entidadId" class="py-1 text-sm border-gray-300 rounded-md shadow-sm" style="min-width:18rem">
             @foreach ($empresas as $e) <option value="{{ $e->id }}">{{ $e->entidad }}</option> @endforeach
         </select>
     </div>
+    @endif
     @error('subMayor') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
     @if ($error) <div style="padding:.4rem .6rem; background:#fee2e2; border:1px solid #dc2626; border-radius:.4rem; color:#7f1d1d; font-size:.85rem">⚠️ {{ $error }}</div> @endif
 

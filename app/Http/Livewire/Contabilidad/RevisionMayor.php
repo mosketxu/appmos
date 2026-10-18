@@ -22,6 +22,10 @@ class RevisionMayor extends Component
 
     public ?int $entidadId = null;
 
+    /** Modo ventana de Impuestos → Seguimiento (18-oct-2026): empresa y mes (AAAA-MM) fijos, sin selector de empresa. */
+    public bool $modal = false;
+    public string $periodo = '';
+
     public $subMayor = null;
     public $subPlan = null;
     public $subProveedores = null;
@@ -31,8 +35,16 @@ class RevisionMayor extends Component
     public string $salida = '';
     public string $error = '';
 
-    public function mount(): void
+    public function mount(?int $entidadId = null, string $periodo = '', bool $modal = false): void
     {
+        if ($modal && $entidadId) {
+            $this->modal = true;
+            $this->periodo = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodo) ? $periodo : '';
+            $this->entidadId = $entidadId;
+            abort_unless($this->empresas()->contains('id', $entidadId), 403);
+
+            return;
+        }
         $this->entidadId = (int) session('revisionmayor.entidad', 0) ?: ($this->empresas()->first()->id ?? null);
         if ($this->entidadId && ! $this->empresas()->contains('id', $this->entidadId)) {
             $this->entidadId = $this->empresas()->first()->id ?? null;
@@ -41,8 +53,14 @@ class RevisionMayor extends Component
 
     public function empresas()
     {
-        return Entidad::withoutGlobalScopes()->where('cliente', 1)->where('estado', 1)
-            ->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0])->orderBy('entidad')->get(['id', 'entidad', 'alias']);
+        $q = Entidad::withoutGlobalScopes()->where('cliente', 1)->where('estado', 1);
+        if ($this->modal && $this->entidadId && \App\Support\Impuestos::esGestor()) {
+            $q->where('id', $this->entidadId);   // Admin/Suma con «ver todos» en el Seguimiento de impuestos
+        } else {
+            $q->whereIn('id', Accesos::entidadesPropias(auth()->user()) ?: [0]);
+        }
+
+        return $q->orderBy('entidad')->get(['id', 'entidad', 'alias']);
     }
 
     public function updatedEntidadId(): void
@@ -82,7 +100,7 @@ class RevisionMayor extends Component
 
             return;
         }
-        $r = FicherosBase::guardar((int) $this->entidadId, $tipo, $f->getRealPath(), $f->getClientOriginalName(), 'Revisión del mayor · '.auth()->user()->name);
+        $r = FicherosBase::guardar((int) $this->entidadId, $tipo, $f->getRealPath(), $f->getClientOriginalName(), 'Revisión del mayor'.($this->periodo ? ' '.$this->periodo : '').' · '.auth()->user()->name);
         if (! $r) {
             $this->error = 'No se pudo guardar el fichero.';
 

@@ -17,6 +17,7 @@ use Livewire\Component;
  * - ejecucion «local»: el proceso se hace desde un PC (los datos están allí); aquí solo se anota.
  * Clic en el nombre del proceso: modal con su detalle y, si el proceso tiene pantalla propia (PROCESOS: Revisión del mayor,
  * Certificados), esa pantalla dentro del modal.
+ * Revisión del mayor pasó el 18-oct-2026 a Impuestos → Seguimiento (modelo MAYOR, casilla mensual; componente RevisionMayor en modo modal).
  * Pet. Documentación Impuestos pasó el 15-oct-2026 a Impuestos → Seguimiento (ImpuestoPeticion); de aquí siguen
  * textoPeriodo() y destinatarios(), que usa ese componente.
  * Ver Contabilidad/ProcesosMensuales/PLAN.md.
@@ -25,7 +26,6 @@ class ProcesosMensuales extends Component
 {
     /** [clave de seguimiento_procesos => [icono, componente Livewire, parámetros]]: procesos con pantalla propia, que se abre en el modal. */
     public const PROCESOS = [
-        'revisionmayor' => ['icono' => '🔎', 'componente' => 'contabilidad.revision-mayor', 'parametros' => []],
         'certificados' => ['icono' => '🔐', 'componente' => 'contabilidad.certificados', 'parametros' => ['embebido' => true]],
     ];
 

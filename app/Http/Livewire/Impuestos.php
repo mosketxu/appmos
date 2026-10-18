@@ -308,6 +308,23 @@ class Impuestos extends Component
         $this->pdEnt = null;
     }
 
+    /** Ventana «Revisión del mayor» de una casilla mensual (modelo MAYOR; 18-oct-2026): empresa y mes AAAA-MM. Ahí se sube el mayor de ese mes. */
+    public ?int $mrEnt = null;
+    public string $mrPer = '';
+
+    public function mrAbrir(int $entId, string $mes): void
+    {
+        $this->autorizarAviso($entId);
+        abort_unless(preg_match('/^(0[1-9]|1[0-2])$/', $mes), 422);
+        $this->mrEnt = $entId;
+        $this->mrPer = $this->ejercicio.'-'.$mes;
+    }
+
+    public function mrCerrar(): void
+    {
+        $this->mrEnt = null;
+    }
+
     #[On('pd-hecho')]
     public function pdHecho(): void
     {

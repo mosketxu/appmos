@@ -277,6 +277,17 @@
         @if ($pdEnt)
             @livewire('impuesto-peticion', ['entId' => $pdEnt, 'periodo' => $pdPer, 'ejercicio' => $ejercicio, 'verTodos' => $verTodos], key('pd-'.$pdEnt.'-'.$pdPer))
         @endif
+        @if ($mrEnt)
+            <div class="imp-noprint" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center" wire:click.self="mrCerrar" x-on:keydown.escape.window="$wire.mrCerrar()">
+                <div style="background:#fff; border-radius:8px; padding:14px; width:min(1100px, 96vw); max-height:90vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.3)">
+                    <div class="flex items-start justify-between gap-3 mb-2">
+                        <div class="font-semibold text-gray-900">🔎 Revisión del mayor · {{ \Illuminate\Support\Facades\DB::table('entidades')->where('id', $mrEnt)->value('entidad') }} · {{ $mrPer }}</div>
+                        <button type="button" wire:click="mrCerrar" class="text-gray-400 hover:text-gray-700" title="Cerrar">✕</button>
+                    </div>
+                    @livewire('contabilidad.revision-mayor', ['entidadId' => $mrEnt, 'periodo' => $mrPer, 'modal' => true], key('mr-'.$mrEnt.'-'.$mrPer))
+                </div>
+            </div>
+        @endif
         @if ($ciEnt)
             @livewire('impuesto-correo', ['entId' => $ciEnt, 'bloque' => $ciBloque, 'ejercicio' => $ejercicio, 'verTodos' => $verTodos], key('ci-'.$ciEnt.'-'.$ciBloque.'-'.$ejercicio))
         @endif
