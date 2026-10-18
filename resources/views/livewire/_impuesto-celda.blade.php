@@ -8,7 +8,7 @@
     $tipoPdf = in_array($e, ['presentado', 'visto'], true) ? 'presentado' : 'borrador';
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
-    $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true) && ! in_array($ob->codigo, ['MAYOR', 'VENC'], true);
+    $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true) && ! in_array($ob->codigo, ['MAYOR', 'VENC', 'BANC'], true);
     $cab = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase);
     $titulo = $cab.' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
     // Al pasar el ratón sale una ficha con la leyenda de colores y a qué estado pasa con el clic (15-oct-2026; ver #imp-tip)
@@ -75,7 +75,7 @@
             <button type="button" class="imp-pdf gris" x-on:click="{!! $subir !!}" title="Sin PDF: pulsa para subir {{ $tipoPdf === 'presentado' ? 'el presentado' : 'el borrador' }}">@include('livewire._impuesto-pdf')</button>
         @endif
     @endif
-    @if ($e !== 'no' && $ob->codigo !== 'MAYOR')
+    @if ($e !== 'no' && ! in_array($ob->codigo, ['MAYOR', 'BANC'], true))
         {{-- Excel de la casilla (cálculos, listados...): otro icono; con documentos abre su lista, sin ellos sube uno --}}
         @if ($listaX)
             <span class="imp-pdfw imp-xl" x-data="{ o: false }" x-on:click.outside="o = false">

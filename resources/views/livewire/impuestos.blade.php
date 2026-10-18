@@ -386,7 +386,7 @@
                         @php
                             $ent = $f['ent'];
                             // Petición de documentación y aviso (sobre) son de los impuestos: Revisión del mayor y Vencimientos (MAYOR, VENC) no los llevan
-                            $conImp = fn ($bk) => collect($f['matriz'][$bk] ?? [])->flatten(1)->contains(fn ($x) => ! in_array($x[0]->codigo, ['MAYOR', 'VENC'], true));
+                            $conImp = fn ($bk) => collect($f['matriz'][$bk] ?? [])->flatten(1)->contains(fn ($x) => ! in_array($x[0]->codigo, ['MAYOR', 'VENC', 'BANC'], true));
                         @endphp
                         <tr wire:key="c-{{ $entId }}" class="imp-ult">
                             <td class="imp-sticky" style="white-space:nowrap">

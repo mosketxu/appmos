@@ -39,7 +39,24 @@ class ImpuestoVencimientos extends Component
         $this->entId = $entId;
         $this->periodo = $periodo;
         $this->autorizar();
-        $this->bancos = ProcesoEstado::where(['proceso' => self::PROCESO, 'entidad_id' => $entId, 'periodo' => $periodo])->where('estado', 'recibido')->exists();
+        $this->bancos = $this->bancosValidados();
+    }
+
+    /** Obligación BANC (casilla «Bancos» de Seguimiento) de esta empresa, si la tiene. */
+    protected function bancoOb(): ?int
+    {
+        return DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where(['ei.entidad_id' => $this->entId, 'm.codigo' => 'BANC'])->whereNull('ei.baja_ejercicio')->value('ei.id');
+    }
+
+    /** Bancos validados = casilla «Bancos» del mes en «revisado» (validado). Sin casilla Bancos, la marca antigua de este proceso. */
+    protected function bancosValidados(): bool
+    {
+        if ($ob = $this->bancoOb()) {
+            return DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $ob, 'ejercicio' => (int) substr($this->periodo, 0, 4), 'periodo' => substr($this->periodo, 5)])->value('estado') === 'revisado';
+        }
+
+        return ProcesoEstado::where(['proceso' => self::PROCESO, 'entidad_id' => $this->entId, 'periodo' => $this->periodo])->where('estado', 'recibido')->exists();
     }
 
     protected function autorizar(): void
@@ -60,6 +77,19 @@ class ImpuestoVencimientos extends Component
     public function updatedBancos(): void
     {
         $this->autorizar();
+        if ($ob = $this->bancoOb()) {
+            $ej = (int) substr($this->periodo, 0, 4);
+            $per = substr($this->periodo, 5);
+            $fila = DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $ob, 'ejercicio' => $ej, 'periodo' => $per])->first();
+            $nuevo = $this->bancos ? 'revisado' : 'pendiente';
+            if ($fila) {
+                DB::table('impuesto_estados')->where('id', $fila->id)->update(['estado' => $nuevo, 'user_id' => auth()->id(), 'updated_at' => now()]);
+            } else {
+                DB::table('impuesto_estados')->insert(['entidad_impuesto_id' => $ob, 'ejercicio' => $ej, 'periodo' => $per, 'estado' => $nuevo, 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+            }
+
+            return;
+        }
         $f = ProcesoEstado::firstOrNew(['proceso' => self::PROCESO, 'entidad_id' => $this->entId, 'periodo' => $this->periodo]);
         $f->fill(['estado' => $this->bancos ? 'recibido' : 'solicitado', 'user_id' => auth()->id()])->save();
     }
@@ -175,9 +205,10 @@ class ImpuestoVencimientos extends Component
     {
         $this->autorizar();
         $this->error = $this->salida = '';
+        $this->bancos = $this->bancosValidados();   // por si se ha cambiado la casilla Bancos de Seguimiento con la ventana abierta
         if (! $this->bancos) {
             // Decisión de Alex (18-oct-2026), excepción a «avisar, no bloquear»: sin bancos pasados la propuesta saldría con pagos como pendientes
-            $this->error = 'No se puede preparar hasta que los bancos de este mes estén pasados: pásalos (Bancos), sube el mayor con ellos y marca la casilla.';
+            $this->error = 'No se puede preparar hasta que los bancos de este mes estén pasados: pásalos (Bancos), sube el mayor con ellos y valídalos (casilla «Bancos» de Seguimiento o la casilla de abajo).';
 
             return;
         }

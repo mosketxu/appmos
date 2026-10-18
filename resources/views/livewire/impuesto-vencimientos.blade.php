@@ -23,7 +23,7 @@
         </div>
 
         <label class="flex items-center gap-2 text-sm text-gray-800">
-            <input type="checkbox" wire:model.live="bancos" class="border-gray-300 rounded"> Sí, los bancos de este mes están pasados y el mayor los incluye <span class="text-xs text-gray-500">(obligatorio: si no, no se prepara)</span>
+            <input type="checkbox" wire:model.live="bancos" class="border-gray-300 rounded"> Bancos del mes pasados y validados, y el mayor los incluye <span class="text-xs text-gray-500">(es la casilla «Bancos» de Seguimiento)</span> <span class="text-xs text-gray-500">(obligatorio: si no, no se prepara)</span>
         </label>
 
         <div class="flex flex-wrap items-center gap-3">
