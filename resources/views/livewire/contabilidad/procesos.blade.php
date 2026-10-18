@@ -373,6 +373,9 @@
                                     </button>
                                     @include('livewire.contabilidad._staff-faltan')
                                 </div>
+                            @elseif ($auto === 'fiscal-dias')
+                                {{-- 18-oct-2026: estado por días del Fiscal Report y del Cashier + lanzarlos a mano (modal) --}}
+                                <button type="button" wire:click="abrirFiscalDias('{{ $mesSel }}')" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50">📅 Ver días</button>
                             @elseif ($auto === 'comunicar-impuestos')
                                 <div class="flex flex-wrap items-center gap-1">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" wire:click="$toggle('ciAbierto')">{{ $ciAbierto ? '▴ Plegar' : '✎ Preparar correo' }}</button>
@@ -412,7 +415,7 @@
                                 @continue
                             @endif
                             <td class="px-1 py-1 text-center {{ $k === $mesSel ? 'bg-indigo-50' : '' }}">
-                                <button type="button" wire:click="alternarChecklist('{{ $id }}', '{{ $k }}')"
+                                <button type="button" wire:click="{{ $auto === 'fiscal-dias' ? "abrirFiscalDias('{$k}')" : "alternarChecklist('{$id}', '{$k}')" }}"
                                     title="{{ $m ? ((['ok' => 'Hecho', 'na' => 'No toca', 'proc' => 'Procesado, sin enviar'][$m['estado']] ?? $m['estado']) . ($m['cuando'] ? ' · ' . $m['cuando'] : '') . ' · ' . $m['como']) : 'Sin hacer' }}"
                                     class="inline-flex items-center justify-center w-5 h-5 text-xs border rounded {{ ['ok' => 'bg-green-500 border-green-600 text-white', 'na' => 'bg-gray-200 border-gray-300 text-gray-500', 'proc' => 'bg-yellow-300 border-yellow-500 text-yellow-900'][$m['estado'] ?? ''] ?? 'bg-white border-gray-300' }}">
                                     {{ ['ok' => '✓', 'na' => '–', 'proc' => 'P'][$m['estado'] ?? ''] ?? '' }}
@@ -843,4 +846,5 @@
 
     @include('livewire.contabilidad._salida')
     </div>
+    @include('livewire.contabilidad._fiscal-dias')
 </div>

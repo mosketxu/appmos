@@ -61,6 +61,12 @@ class Procesos extends Component
 
     protected string $grupoPc = 'fiq';
 
+    // -- Fiscal Report / Cashier día a día (18-oct-2026) ------------------------------------------------
+    /** Mes ('2026-10') cuyo modal de estado por días está abierto; null = cerrado. */
+    public ?string $fiscalDiasMes = null;
+    /** Último aviso del modal (qué se ha pedido a miniServ). */
+    public string $fiscalMsg = '';
+
     public int $mes;
     public string $salida = '';
     // Ya no hay check "Modo real" (pedido del usuario 2026-09-09: "siempre va a
@@ -459,6 +465,85 @@ class Procesos extends Component
         }
         $this->dispatch('proceso-terminado', mensaje: '⚠️ No tienes acceso a este proceso. Pídeselo a un administrador.');
         return false;
+    }
+
+    /** Las tareas del grupo «fiscal» van siempre a su PC (miniServ), nunca al elegido en «Ejecutar en»: es el que mueve los correos y escribe Ctrol. */
+    protected function destinoPc(): ?string
+    {
+        if ($this->grupoPc === 'fiscal') {
+            return config('contabilidad.pc_grupos.fiscal.pc') ?: null;
+        }
+
+        return ColaTareas::pcElegido() ?: (config('contabilidad.pc_grupos.'.$this->grupoPc.'.pc') ?: null);
+    }
+
+    /** Abre el modal con el estado por días del Fiscal Report y del Cashier de un mes ('2026-10'). */
+    public function abrirFiscalDias(string $mes): void
+    {
+        if (! $this->autorizar('fiscal_report') || ! preg_match('/^2026-(0[1-9]|1[0-2])$/', $mes)) {
+            return;
+        }
+        $this->fiscalDiasMes = $mes;
+        $this->fiscalMsg = '';
+        $this->pedirEstadoFiscal(false);
+    }
+
+    public function cerrarFiscalDias(): void
+    {
+        $this->fiscalDiasMes = null;
+    }
+
+    /** Estado por días que subió miniServ (null si aún no hay). */
+    public function getFiscalDiasProperty(): ?array
+    {
+        return $this->fiscalDiasMes ? $this->estadoRemoto('fiscal.dias.'.substr($this->fiscalDiasMes, 5)) : null;
+    }
+
+    /** «↻ Actualizar estado»: pide a miniServ que lo recalcule (solo si el que hay tiene más de 10 min, o si se fuerza). */
+    public function pedirEstadoFiscal(bool $forzar = true): void
+    {
+        $this->grupoPc = 'fiscal';
+        try {
+            $this->sincronizarEstado('fiscal.dias.'.substr((string) $this->fiscalDiasMes, 5), $forzar, 10);
+            if ($forzar) {
+                $this->fiscalMsg = '⏳ Pedido a miniServ el estado al día; se actualiza solo en cuanto lo tenga.';
+            }
+        } finally {
+            $this->grupoPc = 'fiq';
+        }
+    }
+
+    /** Lanza a mano un paso del Fiscal Report / Cashier en miniServ: correos | ctrol_fiscal | ctrol_cash | reclamar (con fecha). */
+    public function lanzarFiscal(string $que, ?string $fecha = null): void
+    {
+        if (! $this->autorizar('fiscal_report')) {
+            return;
+        }
+        $pasos = [
+            'correos' => ['Leer los correos de las tiendas y de Plein ahora', ['--correo'], 300],
+            'ctrol_fiscal' => ['Pasar los Fiscal Report a Ctrol Dinamico ahora', ['--ctrol', '--real', '--forzar', '--solo', 'fiscal'], 1500],
+            'ctrol_cash' => ['Pasar Cash (X-out y semanal) a Ctrol Dinamico ahora', ['--ctrol', '--real', '--forzar', '--solo', 'cash'], 1500],
+            'reclamar' => ['Reclamar a las tiendas lo que falta del '.$fecha, ['--reclamar', '--fecha', (string) $fecha], 300],
+        ];
+        if (! isset($pasos[$que]) || ($que === 'reclamar' && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $fecha))) {
+            return;
+        }
+        [$etiqueta, $args, $timeout] = $pasos[$que];
+        $this->grupoPc = 'fiscal';
+        try {
+            $tid = $this->lanzarEnCola([['script' => 'FiscalReport/fiscalReport.py', 'args' => $args, 'timeout' => $timeout, 'etiqueta' => $etiqueta]],
+                ['post' => 'finFiscal', 'ctx' => ['etiqueta' => $etiqueta, 'ini' => 0]]);
+        } finally {
+            $this->grupoPc = 'fiq';
+        }
+        $this->fiscalMsg = $tid ? "⏳ {$etiqueta}: pedido a miniServ (tarea #{$tid}). El resultado sale en «Salida» y el estado se actualiza solo."
+            : '⚠️ No se ha podido pedir (¿ya está pedido? mira «Tareas en los PCs»).';
+    }
+
+    /** Fin de una tarea del Fiscal Report: el estado ya viene con ella; se enseña el aviso en el modal. */
+    protected function finFiscal(array $ctx, int $desde, array $oks): void
+    {
+        $this->fiscalMsg = (! in_array(false, $oks, true) ? '✅ ' : '⚠️ ').($ctx['etiqueta'] ?? 'Fiscal Report').(! in_array(false, $oks, true) ? ': hecho.' : ': ha terminado con avisos (mira «Salida»).');
     }
 
     public function ejecutar(string $id): void

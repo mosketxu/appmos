@@ -250,6 +250,8 @@ return [
             'CashInStore/cashInStore.py',
             'ComunicarImpuestos/comunicarImpuestos.py',
         ]],
+        // Fiscal Report y Cashier de Fashion (18-oct-2026): lo hace SOLO el PC que mueve los correos y escribe Ctrol Dinamico (FISCAL_REPORT_PC, miniServ); sin relevo.
+        'fiscal' => ['pc' => env('FISCAL_REPORT_PC', 'miniServ'), 'exclusivo' => true, 'relevo' => [], 'scripts' => ['FiscalReport/fiscalReport.py', 'FiscalReport/estadoDias.py']],
         // Facturación PDF (Suma/Balerga): el PDF subido viaja como entrada y el PC lo procesa con su OneDrive.
         'facturacion' => ['scripts' => ['procesar_facturas.py', 'herramientas/listar_destinatarios.py', 'herramientas/editar_destinatario.py']],
         // Facturas OCR (web): OCR de Windows por adelantado de las facturas escaneadas (ocr_previo.py)
