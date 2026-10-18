@@ -1,6 +1,7 @@
 {{-- Aviso al cliente de un periodo (sobre ✉): estado + comentarios. Variables: $entId, $bl, $avisos, $avisoCom. --}}
 @php
     [$av, $avAt, $falta] = $avisos[$entId.'|'.$bl['k']] ?? ['sin_comunicar', null, false];
+    if (! in_array($av, ['sin_comunicar', 'comunicado', 'respondido'], true)) { $av = 'sin_comunicar'; } // valor truncado/antiguo en BD
     $avFecha = $avAt ? \Illuminate\Support\Carbon::parse($avAt)->format('d/m/Y') : '';
     $coms = $avisoCom[$entId.'|'.$bl['k']] ?? [];
     $estados = ['sin_comunicar' => ['Sin comunicar', '#6b7280', '✉'], 'comunicado' => ['Comunicado', '#2563eb', '✉'], 'respondido' => ['Respondido', '#16a34a', '✉✔']];
