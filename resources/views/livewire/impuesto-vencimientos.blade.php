@@ -52,7 +52,18 @@
                     </tbody>
                 </table>
             </div>
-            <p class="text-xs text-gray-500">⚠ amarillo = ya vencida. Los impuestos a pagar (AEAT…) de momento se añaden a mano en el Excel. Aún no se compara con los pagos del mes anterior (Z:\VENCIMIENTOS).</p>
+            @if (! empty($res['impuestos']))
+                <div class="text-sm font-semibold text-gray-800">Impuestos a pagar (de los justificantes presentados en Seguimiento)</div>
+                <table class="w-full text-xs">
+                    @foreach ($res['impuestos'] as $i)
+                        <tr class="border-t"><td class="px-2 py-1">{{ $fecha($i['vence']) }}</td><td class="px-2 py-1">AEAT · {{ $i['texto'] }}</td>
+                            <td class="px-2 py-1 text-right">@if ($i['importe'] && $i['importe'] > 0) {{ $eur($i['importe']) }} € <span class="text-gray-500">{{ $i['forma'] }}</span> @elseif ($i['importe']) a devolver/compensar {{ $eur(-$i['importe']) }} € @else <span class="text-red-700">{{ $i['error'] ?: 'sin importe' }}</span> @endif</td></tr>
+                    @endforeach
+                </table>
+            @else
+                <p class="text-xs text-gray-500">No hay justificantes presentados que se paguen este mes (o no están subidos en Seguimiento): si falta alguno, súbelo a su casilla de Impuestos y vuelve a preparar.</p>
+            @endif
+            <p class="text-xs text-gray-500">⚠ amarillo = ya vencida. Aún no se compara con los pagos del mes anterior (Z:\VENCIMIENTOS).</p>
         @else
             <p class="text-sm text-gray-500">Aún no se ha preparado: sube el mayor y pulsa «Preparar vencimientos».</p>
         @endif

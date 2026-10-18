@@ -92,6 +92,52 @@ class ImpuestoVencimientos extends Component
         return 'python3';
     }
 
+    /** Modelos que se pagan a la AEAT y cuándo: [modelo => true]; el mes de pago sale de pagoDe(). */
+    const MODELOS_PAGO = ['303', '111', '115', '123', '130', '202', '216', '210'];
+
+    /** Periodos [ejercicio, periodo] cuyo pago cae en el mes AAAA-MM: mensuales (mes anterior), trimestrales (abr/jul/oct/ene) y pagos fraccionados 202 (abr/oct/dic). */
+    protected function periodosQuePagan(): array
+    {
+        [$a, $m] = array_map('intval', explode('-', $this->periodo));
+        $out = [[$m === 1 ? $a - 1 : $a, sprintf('%02d', $m === 1 ? 12 : $m - 1)]];
+        $t = [4 => 'T1', 7 => 'T2', 10 => 'T3'][$m] ?? null;
+        if ($t) {
+            $out[] = [$a, $t];
+        }
+        if ($m === 1) {
+            $out[] = [$a - 1, 'T4'];
+        }
+        $p = [4 => 'P1', 10 => 'P2', 12 => 'P3'][$m] ?? null;
+        if ($p) {
+            $out[] = [$a, $p];
+        }
+
+        return $out;
+    }
+
+    /** Justificantes presentados de la empresa cuyo pago cae en el mes: [modelo, periodo, ejercicio, ruta]. */
+    protected function justificantes(): array
+    {
+        $res = [];
+        foreach ($this->periodosQuePagan() as [$ej, $per]) {
+            $docs = DB::table('impuesto_documentos as d')
+                ->join('entidad_impuestos as ei', fn ($j) => $j->on('ei.entidad_id', '=', 'd.entidad_id')->on('ei.modelo_id', '=', DB::raw('(select id from impuesto_modelos where codigo = d.modelo)')))
+                ->join('impuesto_estados as s', fn ($j) => $j->on('s.entidad_impuesto_id', '=', 'ei.id')->where('s.ejercicio', $ej)->where('s.periodo', $per))
+                ->where('d.entidad_id', $this->entId)->where('d.ejercicio', $ej)->where('d.periodo', $per)->where('d.tipo', 'presentado')->whereNull('d.quitado_at')
+                ->whereIn('d.modelo', self::MODELOS_PAGO)->whereIn('s.estado', ['presentado', 'visto'])
+                ->orderBy('d.id')->get(['d.id', 'd.modelo', 'd.nombre', 'd.almacen']);
+            foreach ($docs->reject(fn ($d) => preg_match('/anexo/i', $d->nombre))->groupBy('modelo') as $modelo => $lista) {
+                $d = $lista->last();   // si hay complementaria, el último subido
+                $ruta = storage_path('app/'.$d->almacen);
+                if (is_file($ruta)) {
+                    $res[$modelo.'|'.$per] = ['modelo' => (string) $modelo, 'periodo' => $per, 'ejercicio' => $ej, 'ruta' => $ruta];
+                }
+            }
+        }
+
+        return array_values($res);
+    }
+
     public function preparar(): void
     {
         $this->autorizar();
@@ -111,8 +157,23 @@ class ImpuestoVencimientos extends Component
         $d = $this->dir();
         $empresa = (string) DB::table('entidades')->where('id', $this->entId)->value('entidad');
         $script = rtrim((string) config('contabilidad.facturasocr_dir'), '/').'/vencimientos.py';
+        $orden = [$this->python(), $script, $mayor['ruta'], $d.'/vencimientos.xlsx', '--empresa', $empresa, '--mes', $this->periodo, '--json', $d.'/vencimientos.json'];
         try {
-            $r = Process::timeout(300)->run([$this->python(), $script, $mayor['ruta'], $d.'/vencimientos.xlsx', '--empresa', $empresa, '--mes', $this->periodo, '--json', $d.'/vencimientos.json']);
+            // Impuestos a pagar: importe de los justificantes ya presentados y subidos a Seguimiento (impuestos_a_pagar.py)
+            $just = $this->justificantes();
+            if ($just) {
+                file_put_contents($d.'/justificantes.json', json_encode($just));
+                $ri = Process::timeout(300)->run([$this->python(), dirname($script).'/impuestos_a_pagar.py', $d.'/justificantes.json', $d.'/impuestos.json']);
+                if ($ri->successful() && is_file($d.'/impuestos.json')) {
+                    $imp = json_decode((string) file_get_contents($d.'/impuestos.json'), true) ?: [];
+                    foreach ($imp as $i => $x) {
+                        $imp[$i]['ejercicio'] = collect($just)->first(fn ($j) => $j['modelo'] === $x['modelo'] && $j['periodo'] === $x['periodo'])['ejercicio'] ?? (int) substr($this->periodo, 0, 4);
+                    }
+                    file_put_contents($d.'/impuestos.json', json_encode($imp));
+                    array_push($orden, '--impuestos', $d.'/impuestos.json');
+                }
+            }
+            $r = Process::timeout(300)->run($orden);
         } catch (\Throwable $e) {
             $this->error = 'No se pudo preparar: '.$e->getMessage();
 
