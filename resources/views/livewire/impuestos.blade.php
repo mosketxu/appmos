@@ -383,7 +383,11 @@
                 </thead>
                 <tbody>
                     @forelse ($filas as $entId => $f)
-                        @php $ent = $f['ent']; @endphp
+                        @php
+                            $ent = $f['ent'];
+                            // Petición de documentación y aviso (sobre) son de los impuestos: Revisión del mayor y Vencimientos (MAYOR, VENC) no los llevan
+                            $conImp = fn ($bk) => collect($f['matriz'][$bk] ?? [])->flatten(1)->contains(fn ($x) => ! in_array($x[0]->codigo, ['MAYOR', 'VENC'], true));
+                        @endphp
                         <tr wire:key="c-{{ $entId }}" class="imp-ult">
                             <td class="imp-sticky" style="white-space:nowrap">
                                 <button type="button" wire:click="abrirEntidad({{ $entId }})" class="font-medium text-left text-gray-900 hover:underline" style="background:none; border:0; padding:0; cursor:pointer"
@@ -399,7 +403,7 @@
                                         $tit = collect($res)->map(fn ($n, $e) => $n.' '.strtolower($etq[$e]))->implode(' · ');
                                     @endphp
                                     <td class="imp-qb" style="text-align:center" title="{{ $tit }}">
-                                        @if (isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
+                                        @if ($conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
                                         @if ($peor)
                                             <span class="imp-m" style="background:{{ $color[$peor] }}; cursor:default">{{ $peor === 'pendiente' ? $res['pendiente'] : $letra[$peor] }}</span>
                                         @endif
@@ -409,7 +413,7 @@
                                     @foreach ($bl['cols'] as $ci => $col)
                                         @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
                                         <td class="{{ $loop->first ? 'imp-qb' : ($barra ? '' : 'imp-mod') }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
-                                            @if ($loop->first && isset($f['matriz'][$bl['k']])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
+                                            @if ($loop->first && $conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
                                             @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
                                                 @if ($ob->etiqueta !== '')
                                                     <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
