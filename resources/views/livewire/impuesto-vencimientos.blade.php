@@ -23,7 +23,7 @@
         </div>
 
         <div class="text-sm">
-            <button type="button" wire:click="$toggle('verNotarios')" class="text-indigo-700 hover:underline">{{ $verNotarios ? '▾' : '▸' }} Notarios ({{ count($notarios) }}) <span class="text-xs text-gray-500">proveedores que se dan por pagados y no salen</span></button>
+            <button type="button" wire:click="$toggle('verNotarios')" class="text-indigo-700 hover:underline">{{ $verNotarios ? '▾' : '▸' }} Notarios y otros ({{ count($notarios) }}) <span class="text-xs text-gray-500">proveedores que se dan por pagados y no salen</span></button>
             @if ($verNotarios)
                 <div class="p-2 mt-1 space-y-2 border rounded" style="background:#f9fafb">
                     <div class="flex flex-wrap items-center gap-2">
@@ -48,7 +48,7 @@
                             <button type="button" wire:click="quitarNotario({{ $n->id }})" wire:confirm="¿Quitar «{{ $n->nombre }}»?" class="text-red-600 hover:underline" style="margin-left:auto">Quitar</button>
                         </div>
                     @empty
-                        <p class="text-xs text-gray-500">Aún no hay ninguno. (Los de la lista fija de reglas, p. ej. Notarios Provenza 269, siguen aplicándose.)</p>
+                        <p class="text-xs text-gray-500">Aún no hay ninguno.</p>
                     @endforelse
                 </div>
             @endif

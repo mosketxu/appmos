@@ -39,7 +39,7 @@
             <button type="button" class="imp-pdf" style="color:{{ $color[$e] }}" x-on:click="o = !o" title="Vencimientos de {{ $cab }}">📅</button>
             <div class="imp-pop" x-show="o" x-cloak>
                 <button type="button" wire:click="vtAbrir({{ $ob->entidad_id }}, '{{ $per }}')" x-on:click="o = false">1 · Preparar vencimientos (propuesta)</button>
-                <button type="button" wire:click="vtAbrir({{ $ob->entidad_id }}, '{{ $per }}', true)" x-on:click="o = false">📜 Notarios (proveedores que no salen)</button>
+                <button type="button" wire:click="vtAbrir({{ $ob->entidad_id }}, '{{ $per }}', true)" x-on:click="o = false">📜 Notarios y otros</button>
                 <button type="button" disabled style="color:#9ca3af; cursor:not-allowed" title="Se activará cuando revises la propuesta">2 · Llevar al fichero del grupo (pendiente)</button>
             </div>
         </span>

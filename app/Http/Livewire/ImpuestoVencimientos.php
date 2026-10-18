@@ -302,6 +302,14 @@ class ImpuestoVencimientos extends Component
 
             return;
         }
+        $norm = fn (string $t) => trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]/', ' ', strtolower(\Illuminate\Support\Str::ascii($t)))));
+        foreach (DB::table('vencimientos_notarios')->get() as $x) {
+            if ($norm($x->nombre) !== '' && (str_contains($norm($x->nombre), $norm($nombre)) || str_contains($norm($nombre), $norm($x->nombre)))) {
+                $this->error = 'Ya está en la lista: «'.$x->nombre.'» ('.($x->todas ? 'todas las empresas' : 'algunas empresas').'). Quítalo antes si quieres cambiar a qué empresas afecta.';
+
+                return;
+            }
+        }
         $this->error = '';
         DB::table('vencimientos_notarios')->insert(['nombre' => $nombre, 'todas' => $this->nAmbito === 'todas', 'entidades' => $ids ? json_encode($ids) : null, 'created_at' => now(), 'updated_at' => now()]);
         $this->nNombre = '';
