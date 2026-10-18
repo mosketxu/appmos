@@ -75,7 +75,7 @@
             <button type="button" class="imp-pdf gris" x-on:click="{!! $subir !!}" title="Sin PDF: pulsa para subir {{ $tipoPdf === 'presentado' ? 'el presentado' : 'el borrador' }}">@include('livewire._impuesto-pdf')</button>
         @endif
     @endif
-    @if ($e !== 'no')
+    @if ($e !== 'no' && $ob->codigo !== 'MAYOR')
         {{-- Excel de la casilla (cálculos, listados...): otro icono; con documentos abre su lista, sin ellos sube uno --}}
         @if ($listaX)
             <span class="imp-pdfw imp-xl" x-data="{ o: false }" x-on:click.outside="o = false">
