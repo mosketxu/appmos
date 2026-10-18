@@ -63,6 +63,9 @@
             @else
                 <p class="text-xs text-gray-500">No hay justificantes presentados que se paguen este mes (o no están subidos en Seguimiento): si falta alguno, súbelo a su casilla de Impuestos y vuelve a preparar.</p>
             @endif
+            @if (! empty($res['excluidos']))
+                <p class="text-xs text-gray-600">Por regla (notarios, registradores… siempre pagados) no salen: {{ collect($res['excluidos'])->pluck('proveedor')->implode(', ') }}. Detalle en la hoja «Excluidos por regla»; si alguno no está pagado, añádelo a mano.</p>
+            @endif
             @if (! empty($res['a_favor']))
                 <p class="text-xs text-gray-600">No salen {{ count($res['a_favor']) }} proveedores con saldo a nuestro favor o cero (pagos ≥ facturas): {{ collect($res['a_favor'])->pluck('proveedor')->take(8)->implode(', ') }}{{ count($res['a_favor']) > 8 ? '…' : '' }}. Están en la hoja «Saldo a nuestro favor» del Excel.</p>
             @endif
