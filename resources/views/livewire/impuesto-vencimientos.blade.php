@@ -8,7 +8,7 @@
             <div class="font-semibold text-gray-900">📅 Vencimientos · {{ $empresa }} · {{ $periodo }}</div>
             <button type="button" wire:click="cerrar" class="text-gray-400 hover:text-gray-700" title="Cerrar">✕</button>
         </div>
-        <p class="text-sm text-gray-600">Propuesta de pagos del mes a partir del <b>mayor con los bancos</b>: facturas de proveedores y acreedores aún abiertas. Vencimiento = día 25 del mes siguiente a la factura (se puede cambiar en el Excel). Es una propuesta: no cambia nada en SAGE ni guarda nada en OneDrive.</p>
+        <p class="text-sm text-gray-600">Propuesta de pagos del mes a partir del <b>mayor con los bancos</b>: facturas de proveedores y acreedores aún abiertas. Vencimiento = el del mayor si lo trae; si no, el día 25 de este mes (se puede cambiar en el Excel). Es una propuesta: no cambia nada en SAGE ni guarda nada en OneDrive.</p>
 
         @if ($error) <div style="padding:.4rem .6rem; background:#fee2e2; border:1px solid #dc2626; border-radius:.4rem; color:#7f1d1d; font-size:.85rem">⚠️ {{ $error }}</div> @endif
 
@@ -23,12 +23,11 @@
         </div>
 
         <label class="flex items-center gap-2 text-sm text-gray-800">
-            <input type="checkbox" wire:model.live="bancos" class="border-gray-300 rounded"> Los bancos de este mes están pasados y puenteados en el mayor
+            <input type="checkbox" wire:model.live="bancos" class="border-gray-300 rounded"> Sí, los bancos de este mes están pasados y el mayor los incluye <span class="text-xs text-gray-500">(obligatorio: si no, no se prepara)</span>
         </label>
 
         <div class="flex flex-wrap items-center gap-3">
-            <button type="button" @if (! $bancos) x-on:click.prevent="if (confirm('¿Estás seguro? Mira que no has marcado que los bancos estén pasados: los pagos sin pasar aparecerán como facturas pendientes.')) $wire.preparar()" @else wire:click="preparar" @endif
-                wire:loading.attr="disabled" wire:target="preparar" class="px-4 py-1.5 font-bold text-white bg-green-600 rounded-md">
+            <button type="button" wire:click="preparar" wire:loading.attr="disabled" wire:target="preparar" class="px-4 py-1.5 font-bold text-white rounded-md" style="background:{{ $bancos ? '#16a34a' : '#9ca3af' }}">
                 <span wire:loading.remove wire:target="preparar">▶ Preparar vencimientos</span><span wire:loading wire:target="preparar">Preparando…</span>
             </button>
             @if ($res)
@@ -53,7 +52,7 @@
                     </tbody>
                 </table>
             </div>
-            <p class="text-xs text-gray-500">⚠ amarillo = ya vencida. Los impuestos a pagar (AEAT…) de momento se añaden a mano en el Excel.</p>
+            <p class="text-xs text-gray-500">⚠ amarillo = ya vencida. Los impuestos a pagar (AEAT…) de momento se añaden a mano en el Excel. Aún no se compara con los pagos del mes anterior (Z:\VENCIMIENTOS).</p>
         @else
             <p class="text-sm text-gray-500">Aún no se ha preparado: sube el mayor y pulsa «Preparar vencimientos».</p>
         @endif

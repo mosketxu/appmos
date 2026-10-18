@@ -13,7 +13,7 @@ use Livewire\WithFileUploads;
 
 /**
  * Impuestos → Seguimiento: ventana «Vencimientos» (modelo VENC, 18-oct-2026) de una empresa del Grupo y un mes (AAAA-MM).
- * Sube el mayor (fichero base central, el mismo para todos los procesos), pide confirmar que los bancos están pasados y ejecuta
+ * Sube el mayor (fichero base central, el mismo para todos los procesos), exige marcar que los bancos están pasados (si no, no sigue) y ejecuta
  * Contabilidad/FacturasOcr/vencimientos.py: facturas abiertas de proveedores/acreedores del mayor → propuesta de pagos con el formato
  * de «Vtos\NN Vtos <Empresa>.xlsx». Fase 1: propuesta y descarga. Pendiente: guardarla en la carpeta Vtos del cliente y llevarla al
  * fichero del grupo (Grupo 2026\Vencimientos\MM 2026) cuando Alex la dé por buena, y la comprobación de pagos en Z:\VENCIMIENTOS.
@@ -96,6 +96,12 @@ class ImpuestoVencimientos extends Component
     {
         $this->autorizar();
         $this->error = $this->salida = '';
+        if (! $this->bancos) {
+            // Decisión de Alex (18-oct-2026), excepción a «avisar, no bloquear»: sin bancos pasados la propuesta saldría con pagos como pendientes
+            $this->error = 'No se puede preparar hasta que los bancos de este mes estén pasados: pásalos (Bancos), sube el mayor con ellos y marca la casilla.';
+
+            return;
+        }
         $mayor = FicherosBase::ultimo($this->entId, 'mayor');
         if (! $mayor) {
             $this->error = 'Falta el mayor de esta empresa: súbelo arriba (con los bancos incluidos).';
