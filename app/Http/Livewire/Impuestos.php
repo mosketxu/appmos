@@ -329,9 +329,11 @@ class Impuestos extends Component
     /** Ventana «Vencimientos» de una casilla mensual del modelo VENC (empresas del Grupo; ImpuestoVencimientos). */
     public ?int $vtEnt = null;
     public string $vtPer = '';
+    public bool $vtNotarios = false;
 
-    public function vtAbrir(int $entId, string $mes): void
+    public function vtAbrir(int $entId, string $mes, bool $notarios = false): void
     {
+        $this->vtNotarios = $notarios;
         $this->autorizarAviso($entId);
         abort_unless(preg_match('/^(0[1-9]|1[0-2])$/', $mes), 422);
         $this->vtEnt = $entId;

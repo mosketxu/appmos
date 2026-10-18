@@ -39,8 +39,9 @@ class ImpuestoVencimientos extends Component
     public string $nAmbito = 'todas';
     public array $nEmpresas = [];
 
-    public function mount(int $entId, string $periodo): void
+    public function mount(int $entId, string $periodo, bool $notarios = false): void
     {
+        $this->verNotarios = $notarios;
         abort_unless(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodo), 422);
         $this->entId = $entId;
         $this->periodo = $periodo;
