@@ -221,6 +221,7 @@ return [
         'pc.facturasocr_z' => 'Facturas OCR: traer las facturas a procesar de la carpeta de la empresa en el disco Z:',
         'fiq.checklist' => 'Aplicar un cambio del checklist de cierre de FIQ en OneDrive',
         'pc.impuestos_pdfs' => 'Subir a Appmos los PDF de impuestos de OneDrive (pestaña Impuestos)',
+        'pc.vencimientos_nas' => 'Vencimientos: copiar del NAS (solo lectura) el fichero del mes anterior a la zona de Claude y subirlo a Appmos',
         'pc.arbol_carpetas' => 'Leer las carpetas de OneDrive/_Clientes (explorador de Facturas OCR y Bancos)',
         'pc.libros_iva_sync' => 'Libros de IVA (303): subir a Appmos los Excel «IVA …» de OneDrive que se hayan modificado a mano',
         'pc.libro_iva' => 'Libro de IVA (303) maquetado: listar la carpeta o generar el Excel del periodo (pestaña Impuestos)',

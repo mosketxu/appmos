@@ -124,6 +124,19 @@ class ImpuestosSyncController extends Controller
      * Cuerpo = el Excel «IVA …» de la carpeta IVA del cliente. Lo usa «Generar» (generado=1: lo registra en la casilla 303 de ese periodo sin tocar
      * su estado) y la sincronización (el Excel se ha modificado a mano en OneDrive: sustituye la copia de Appmos si es más nuevo).
      */
+    /** Vencimientos: el fichero del mes anterior copiado del NAS por un PC (pc.vencimientos_nas) → storage/app/vencimientos/nas/. */
+    public function vencimientosNas(Request $r)
+    {
+        $this->autorizar($r);
+        $nombre = (string) $r->query('nombre');
+        abort_unless(preg_match('/^Vencimientos _\d{2}_\d{4}\.xlsx$/', $nombre), 422, 'Nombre no válido');
+        $cuerpo = $r->getContent();
+        abort_if(strlen($cuerpo) < 100 || substr($cuerpo, 0, 2) !== 'PK', 422, 'No es un Excel');
+        Storage::disk('local')->put('vencimientos/nas/'.$nombre, $cuerpo);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function libroSubir(Request $r)
     {
         $this->autorizar($r);

@@ -207,6 +207,17 @@ class ImpuestoVencimientos extends Component
         return 'He pedido a un PC que busque esos PDF en OneDrive.';
     }
 
+    /** Pide a un PC que copie el fichero del NAS a la zona de Claude y lo suba. */
+    protected function pedirNas(string $nombre): string
+    {
+        if (DB::table('tareas')->where('proceso', 'pc.vencimientos_nas')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            return 'ya hay una copia desde el NAS en marcha.';
+        }
+        \App\Support\ColaTareas::crear('pc.vencimientos_nas', ['nombres' => [$nombre]], \App\Support\ColaTareas::pcElegido() ?: null, auth()->id());
+
+        return 'he pedido a un PC que lo copie del NAS (unos minutos).';
+    }
+
     public function preparar(): void
     {
         $this->autorizar();
@@ -243,6 +254,15 @@ class ImpuestoVencimientos extends Component
                     file_put_contents($d.'/impuestos.json', json_encode($imp));
                     array_push($orden, '--impuestos', $d.'/impuestos.json');
                 }
+            }
+            // Mes anterior (copiado del NAS por un PC): comentarios, fechas, fondos… se arrastran; sin él se pide al PC y el vencimiento que no salga del mayor es el 25
+            [$a, $m] = array_map('intval', explode('-', $this->periodo));
+            $nombreAnt = sprintf('Vencimientos _%02d_%d.xlsx', $m === 1 ? 12 : $m - 1, $m === 1 ? $a - 1 : $a);
+            $ant = storage_path('app/vencimientos/nas/'.$nombreAnt);
+            if (is_file($ant)) {
+                array_push($orden, '--anterior', $ant);
+            } else {
+                $aviso = ($aviso ?? '').'Aún no tengo el fichero «'.$nombreAnt.'» del mes anterior: '.$this->pedirNas($nombreAnt).' Se ha preparado sin arrastrar el mes anterior; cuando llegue, vuelve a preparar. ';
             }
             $r = Process::timeout(300)->run($orden);
         } catch (\Throwable $e) {
