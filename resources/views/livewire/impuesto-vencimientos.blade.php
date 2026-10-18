@@ -22,6 +22,38 @@
             <span x-show="subiendo" x-cloak class="text-xs text-gray-500">⏳</span>
         </div>
 
+        <div class="text-sm">
+            <button type="button" wire:click="$toggle('verNotarios')" class="text-indigo-700 hover:underline">{{ $verNotarios ? '▾' : '▸' }} Notarios ({{ count($notarios) }}) <span class="text-xs text-gray-500">proveedores que se dan por pagados y no salen</span></button>
+            @if ($verNotarios)
+                <div class="p-2 mt-1 space-y-2 border rounded" style="background:#f9fafb">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="text" wire:model="nNombre" wire:keydown.enter="anadirNotario" placeholder="Nombre en el mayor (vale una parte)" class="text-sm border-gray-300 rounded-md" style="width:18rem; max-width:100%">
+                        <select wire:model.live="nAmbito" class="text-sm border-gray-300 rounded-md">
+                            <option value="todas">Todas las empresas</option>
+                            <option value="algunas">Solo algunas…</option>
+                        </select>
+                        <button type="button" wire:click="anadirNotario" class="px-3 py-1 text-sm font-bold text-white bg-green-600 rounded-md">＋ Añadir</button>
+                    </div>
+                    @if ($nAmbito === 'algunas')
+                        <div class="flex flex-wrap gap-x-4 gap-y-1">
+                            @foreach ($empresasVenc as $id => $nombre)
+                                <label class="flex items-center gap-1 text-xs text-gray-800"><input type="checkbox" wire:model="nEmpresas" value="{{ $id }}" class="border-gray-300 rounded"> {{ $nombre }}</label>
+                            @endforeach
+                        </div>
+                    @endif
+                    @forelse ($notarios as $n)
+                        <div class="flex items-center gap-2 text-xs border-t" style="padding-top:.25rem">
+                            <span class="font-semibold text-gray-800">{{ $n->nombre }}</span>
+                            <span class="text-gray-600">· {{ $n->todas ? 'todas las empresas' : collect(json_decode($n->entidades, true) ?: [])->map(fn ($i) => $empresasVenc[$i] ?? '#'.$i)->implode(', ') }}</span>
+                            <button type="button" wire:click="quitarNotario({{ $n->id }})" wire:confirm="¿Quitar «{{ $n->nombre }}»?" class="text-red-600 hover:underline" style="margin-left:auto">Quitar</button>
+                        </div>
+                    @empty
+                        <p class="text-xs text-gray-500">Aún no hay ninguno. (Los de la lista fija de reglas, p. ej. Notarios Provenza 269, siguen aplicándose.)</p>
+                    @endforelse
+                </div>
+            @endif
+        </div>
+
         <label class="flex items-center gap-2 text-sm text-gray-800">
             <input type="checkbox" wire:model.live="bancos" class="border-gray-300 rounded"> Bancos del mes pasados y validados, y el mayor los incluye <span class="text-xs text-gray-500">(es la casilla «Bancos» de Seguimiento)</span> <span class="text-xs text-gray-500">(obligatorio: si no, no se prepara)</span>
         </label>

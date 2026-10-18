@@ -33,6 +33,12 @@ class ImpuestoVencimientos extends Component
     /** Justificantes que Seguimiento da por presentados pero de los que no hay PDF: «303 09/2026»… */
     public array $faltan = [];
 
+    /** Alta de notarios (Vencimientos): nombre, ámbito («todas» o «algunas») y empresas elegidas. */
+    public bool $verNotarios = false;
+    public string $nNombre = '';
+    public string $nAmbito = 'todas';
+    public array $nEmpresas = [];
+
     public function mount(int $entId, string $periodo): void
     {
         abort_unless(preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodo), 422);
@@ -221,7 +227,7 @@ class ImpuestoVencimientos extends Component
         $d = $this->dir();
         $empresa = (string) DB::table('entidades')->where('id', $this->entId)->value('entidad');
         $script = rtrim((string) config('contabilidad.facturasocr_dir'), '/').'/vencimientos.py';
-        $orden = [$this->python(), $script, $mayor['ruta'], $d.'/vencimientos.xlsx', '--empresa', $empresa, '--mes', $this->periodo, '--json', $d.'/vencimientos.json'];
+        $orden = [$this->python(), $script, $mayor['ruta'], $d.'/vencimientos.xlsx', '--empresa', $empresa, '--mes', $this->periodo, '--json', $d.'/vencimientos.json', '--reglas', $this->reglasConNotarios($d, $script)];
         try {
             // Impuestos a pagar: importe de los justificantes ya presentados y subidos a Seguimiento (impuestos_a_pagar.py)
             $just = $this->justificantes();
@@ -253,6 +259,56 @@ class ImpuestoVencimientos extends Component
         file_put_contents($d.'/mayor_usado.txt', $mayor['nombre']);
     }
 
+    /** Empresas del Grupo con la obligación VENC: [id => nombre]. */
+    protected function empresasVenc(): array
+    {
+        return DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')->join('entidades as e', 'e.id', '=', 'ei.entidad_id')
+            ->where('m.codigo', 'VENC')->whereNull('ei.baja_ejercicio')->orderBy('e.entidad')->pluck('e.entidad', 'e.id')->all();
+    }
+
+    public function anadirNotario(): void
+    {
+        $this->autorizar();
+        $nombre = trim($this->nNombre);
+        if ($nombre === '') {
+            $this->error = 'Escribe el nombre del notario tal como sale en el mayor (vale una parte, p. ej. «Notarios Provenza»).';
+
+            return;
+        }
+        $ids = $this->nAmbito === 'todas' ? [] : array_values(array_map('intval', $this->nEmpresas));
+        if ($this->nAmbito !== 'todas' && ! $ids) {
+            $this->error = 'Elige al menos una empresa, o marca «Todas las empresas».';
+
+            return;
+        }
+        $this->error = '';
+        DB::table('vencimientos_notarios')->insert(['nombre' => $nombre, 'todas' => $this->nAmbito === 'todas', 'entidades' => $ids ? json_encode($ids) : null, 'created_at' => now(), 'updated_at' => now()]);
+        $this->nNombre = '';
+        $this->nAmbito = 'todas';
+        $this->nEmpresas = [];
+    }
+
+    public function quitarNotario(int $id): void
+    {
+        $this->autorizar();
+        DB::table('vencimientos_notarios')->where('id', $id)->delete();
+    }
+
+    /** Reglas del fichero + los notarios que valen para esta empresa (todas, o ella entre las elegidas) → ruta del JSON a pasar a vencimientos.py. */
+    protected function reglasConNotarios(string $dir, string $script): string
+    {
+        $base = dirname($script).'/vencimientos_reglas.json';
+        $r = is_file($base) ? (json_decode((string) file_get_contents($base), true) ?: []) : [];
+        foreach (DB::table('vencimientos_notarios')->get() as $n) {
+            if ($n->todas || in_array($this->entId, json_decode((string) $n->entidades, true) ?: [], true)) {
+                $r['excluir_proveedores'][] = $n->nombre;
+            }
+        }
+        file_put_contents($dir.'/reglas.json', json_encode($r, JSON_UNESCAPED_UNICODE));
+
+        return $dir.'/reglas.json';
+    }
+
     public function descargar()
     {
         $this->autorizar();
@@ -277,6 +333,7 @@ class ImpuestoVencimientos extends Component
         return view('livewire.impuesto-vencimientos', [
             'res' => $res, 'mayorUsado' => (string) @file_get_contents($this->dir().'/mayor_usado.txt'),
             'mayor' => $u ? ['nombre' => $u['nombre'], 'fecha' => date('d/m/Y H:i', $u['fecha'])] : null,
+            'notarios' => DB::table('vencimientos_notarios')->orderBy('nombre')->get(), 'empresasVenc' => $this->empresasVenc(),
             'empresa' => DB::table('entidades')->where('id', $this->entId)->value('entidad'),
         ]);
     }
