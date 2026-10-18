@@ -325,6 +325,24 @@ class Impuestos extends Component
         $this->mrEnt = null;
     }
 
+    /** Ventana «Vencimientos» de una casilla mensual del modelo VENC (empresas del Grupo; ImpuestoVencimientos). */
+    public ?int $vtEnt = null;
+    public string $vtPer = '';
+
+    public function vtAbrir(int $entId, string $mes): void
+    {
+        $this->autorizarAviso($entId);
+        abort_unless(preg_match('/^(0[1-9]|1[0-2])$/', $mes), 422);
+        $this->vtEnt = $entId;
+        $this->vtPer = $this->ejercicio.'-'.$mes;
+    }
+
+    #[On('vt-cerrar')]
+    public function vtCerrar(): void
+    {
+        $this->vtEnt = null;
+    }
+
     #[On('pd-hecho')]
     public function pdHecho(): void
     {

@@ -288,6 +288,9 @@
                 </div>
             </div>
         @endif
+        @if ($vtEnt)
+            @livewire('impuesto-vencimientos', ['entId' => $vtEnt, 'periodo' => $vtPer], key('vt-'.$vtEnt.'-'.$vtPer))
+        @endif
         @if ($ciEnt)
             @livewire('impuesto-correo', ['entId' => $ciEnt, 'bloque' => $ciBloque, 'ejercicio' => $ejercicio, 'verTodos' => $verTodos], key('ci-'.$ciEnt.'-'.$ciBloque.'-'.$ejercicio))
         @endif

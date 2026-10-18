@@ -8,7 +8,7 @@
     $tipoPdf = in_array($e, ['presentado', 'visto'], true) ? 'presentado' : 'borrador';
     $principal = collect($lista)->where('tipo', $tipoPdf)->last();
     $otros = collect($lista)->reject(fn ($d) => $principal && $d->id === $principal->id)->values();
-    $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true) && $ob->codigo !== 'MAYOR';
+    $conPdf = in_array($e, ['revision', 'revisado', 'presentado', 'visto'], true) && ! in_array($ob->codigo, ['MAYOR', 'VENC'], true);
     $cab = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase);
     $titulo = $cab.' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
     // Al pasar el ratón sale una ficha con la leyenda de colores y a qué estado pasa con el clic (15-oct-2026; ver #imp-tip)
@@ -32,6 +32,16 @@
     @if ($ob->codigo === 'MAYOR' && $e !== 'no')
         {{-- Revisión del mayor: abre la ventana donde se sube el mayor de ese mes y se revisa --}}
         <button type="button" class="imp-pdf" style="color:{{ $color[$e] }}" wire:click="mrAbrir({{ $ob->entidad_id }}, '{{ $per }}')" title="Revisión del mayor de {{ $cab }}: subir el mayor y revisar">🔎</button>
+    @endif
+    @if ($ob->codigo === 'VENC' && $e !== 'no')
+        {{-- Vencimientos: desplegable con los pasos del proceso (hoy: preparar la propuesta; el volcado al fichero del grupo se añadirá tras revisarla) --}}
+        <span class="imp-pdfw" x-data="{ o: false }" x-on:click.outside="o = false">
+            <button type="button" class="imp-pdf" style="color:{{ $color[$e] }}" x-on:click="o = !o" title="Vencimientos de {{ $cab }}">📅</button>
+            <div class="imp-pop" x-show="o" x-cloak>
+                <button type="button" wire:click="vtAbrir({{ $ob->entidad_id }}, '{{ $per }}')" x-on:click="o = false">1 · Preparar vencimientos (propuesta)</button>
+                <button type="button" disabled style="color:#9ca3af; cursor:not-allowed" title="Se activará cuando revises la propuesta">2 · Llevar al fichero del grupo (pendiente)</button>
+            </div>
+        </span>
     @endif
     @if ($conPdf)
         @if (count($lista) === 1 && $principal)
