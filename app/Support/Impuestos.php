@@ -95,8 +95,11 @@ class Impuestos
         };
     }
 
-    public static function siguiente(string $estado): string
+    public static function siguiente(string $estado, ?string $codigo = null): string
     {
+        if ($codigo === 'MAYOR') {
+            return $estado === 'revisado' ? 'pendiente' : 'revisado';   // Revisión del mayor: solo pendiente ↔ revisado (18-oct-2026)
+        }
         if ($estado === 'nopresenta') {
             return 'pendiente';   // «no se presenta» no está en el ciclo del clic (se pone con Mayús+clic); un clic normal lo reabre
         }

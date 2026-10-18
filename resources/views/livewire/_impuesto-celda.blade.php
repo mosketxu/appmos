@@ -12,7 +12,7 @@
     $cab = ($ob->etiqueta !== '' ? $ob->etiqueta.' · ' : '').(ctype_digit($ob->codigo) ? 'M'.$ob->codigo : $ob->codigo).' · '.\App\Support\Impuestos::etiquetaPeriodo($per, $this->ejercicio, $ob->desfase);
     $titulo = $cab.' · '.$etq[$e].' (clic: siguiente estado · Mayús+clic: no se presenta)';
     // Al pasar el ratón sale una ficha con la leyenda de colores y a qué estado pasa con el clic (15-oct-2026; ver #imp-tip)
-    $sig = \App\Support\Impuestos::siguiente($e);
+    $sig = \App\Support\Impuestos::siguiente($e, $ob->codigo);
     if ($sig === 'visto' && ! $this->puedeVisto()) {
         $sig = \App\Support\Impuestos::siguiente('visto');
     }

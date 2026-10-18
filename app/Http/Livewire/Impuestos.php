@@ -261,9 +261,10 @@ class Impuestos extends Component
             return;
         }
         // Mayús+clic: «no se presenta este periodo» (y otra vez Mayús+clic lo reabre como pendiente)
-        $nuevo = $mayus ? ($actual === 'nopresenta' ? 'pendiente' : 'nopresenta') : Imp::siguiente($actual);
+        $codigo = DB::table('impuesto_modelos')->where('id', $ob->modelo_id)->value('codigo');
+        $nuevo = $mayus ? ($actual === 'nopresenta' ? 'pendiente' : 'nopresenta') : Imp::siguiente($actual, $codigo);
         if ($nuevo === 'visto' && ! Imp::puedeVisto()) {
-            $nuevo = Imp::siguiente('visto');   // los demás se saltan «visto»: de presentado a vacío
+            $nuevo = Imp::siguiente('visto', $codigo);   // los demás se saltan «visto»: de presentado a vacío
         }
         if ($fila) {
             DB::table('impuesto_estados')->where('id', $fila->id)->update(['estado' => $nuevo, 'user_id' => auth()->id(), 'updated_at' => now()]);
