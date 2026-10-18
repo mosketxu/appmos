@@ -121,6 +121,16 @@ class Impuestos
         return $ejercicio > (int) $ob->baja_ejercicio || ($ejercicio === (int) $ob->baja_ejercicio && self::ordinal($periodo) >= self::ordinal((string) $ob->baja_periodo));
     }
 
+    /** ¿Ese ejercicio y periodo son anteriores al alta de la obligación? ($ob con alta_ejercicio y alta_periodo.) */
+    public static function anteriorAlAlta(object $ob, int $ejercicio, string $periodo): bool
+    {
+        if (empty($ob->alta_ejercicio)) {
+            return false;
+        }
+
+        return $ejercicio < (int) $ob->alta_ejercicio || ($ejercicio === (int) $ob->alta_ejercicio && self::ordinal($periodo) < self::ordinal((string) $ob->alta_periodo));
+    }
+
     /** Admin y Suma pueden pedir ver los impuestos de todos. */
     public static function esGestor(?User $u = null): bool
     {
@@ -160,7 +170,7 @@ class Impuestos
     /** Crea las filas «pendiente» que falten de cada obligación en ese ejercicio (las ya existentes, incluidas las «no», no se tocan). */
     public static function asegurarEjercicio(int $ejercicio, ?int $entidadImpuestoId = null): int
     {
-        $obl = DB::table('entidad_impuestos')->when($entidadImpuestoId, fn ($q) => $q->where('id', $entidadImpuestoId))->get(['id', 'periodicidad', 'baja_ejercicio', 'baja_periodo']);
+        $obl = DB::table('entidad_impuestos')->when($entidadImpuestoId, fn ($q) => $q->where('id', $entidadImpuestoId))->get(['id', 'periodicidad', 'baja_ejercicio', 'baja_periodo', 'alta_ejercicio', 'alta_periodo']);
         $existen = [];
         DB::table('impuesto_estados')->where('ejercicio', $ejercicio)->when($entidadImpuestoId, fn ($q) => $q->where('entidad_impuesto_id', $entidadImpuestoId))
             ->get(['entidad_impuesto_id', 'periodo'])->each(function ($r) use (&$existen) {
@@ -170,7 +180,7 @@ class Impuestos
         $nuevas = [];
         foreach ($obl as $o) {
             foreach (self::periodos($o->periodicidad) as $p) {
-                if (! isset($existen[$o->id.'|'.$p]) && ! self::dadaDeBaja($o, $ejercicio, $p)) {
+                if (! isset($existen[$o->id.'|'.$p]) && ! self::dadaDeBaja($o, $ejercicio, $p) && ! self::anteriorAlAlta($o, $ejercicio, $p)) {
                     $nuevas[] = ['entidad_impuesto_id' => $o->id, 'ejercicio' => $ejercicio, 'periodo' => $p, 'estado' => 'pendiente', 'created_at' => $ahora, 'updated_at' => $ahora];
                 }
             }
