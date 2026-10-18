@@ -30,6 +30,8 @@ class ImpuestoVencimientos extends Component
     public $subMayor = null;
     public string $error = '';
     public string $salida = '';
+    /** Justificantes que Seguimiento da por presentados pero de los que no hay PDF: «303 09/2026»… */
+    public array $faltan = [];
 
     public function mount(int $entId, string $periodo): void
     {
@@ -135,7 +137,38 @@ class ImpuestoVencimientos extends Component
             }
         }
 
+        $this->faltan = $this->sinPdf($res);
+
         return array_values($res);
+    }
+
+    /** Obligaciones presentadas (o vistas) que se pagan este mes y no tienen PDF subido: [«303 09/2026»]. */
+    protected function sinPdf(array $conPdf): array
+    {
+        $falta = [];
+        foreach ($this->periodosQuePagan() as [$ej, $per]) {
+            $filas = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+                ->join('impuesto_estados as s', fn ($j) => $j->on('s.entidad_impuesto_id', '=', 'ei.id')->where('s.ejercicio', $ej)->where('s.periodo', $per))
+                ->where('ei.entidad_id', $this->entId)->whereIn('m.codigo', self::MODELOS_PAGO)->whereIn('s.estado', ['presentado', 'visto'])->get(['m.codigo']);
+            foreach ($filas as $f) {
+                if (! isset($conPdf[$f->codigo.'|'.$per])) {
+                    $falta[] = $f->codigo.' '.$per.'/'.$ej;
+                }
+            }
+        }
+
+        return $falta;
+    }
+
+    /** Pide a un PC que busque en OneDrive (…/_Impuestos AAAA) los PDF que faltan: la misma tarea que «Buscar PDF en OneDrive» de Seguimiento. */
+    protected function buscarEnOneDrive(): string
+    {
+        if (DB::table('tareas')->where('proceso', 'pc.impuestos_pdfs')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            return 'Ya hay una búsqueda de PDF en OneDrive en marcha.';
+        }
+        \App\Support\ColaTareas::crear('pc.impuestos_pdfs', ['anios' => [(int) substr($this->periodo, 0, 4)]], \App\Support\ColaTareas::pcElegido() ?: null, auth()->id());
+
+        return 'He pedido a un PC que busque esos PDF en OneDrive.';
     }
 
     public function preparar(): void
@@ -161,6 +194,7 @@ class ImpuestoVencimientos extends Component
         try {
             // Impuestos a pagar: importe de los justificantes ya presentados y subidos a Seguimiento (impuestos_a_pagar.py)
             $just = $this->justificantes();
+            $aviso = $this->faltan ? 'Faltan los PDF de: '.implode(', ', $this->faltan).'. '.$this->buscarEnOneDrive().' Cuando termine (unos minutos), vuelve a preparar. ' : '';
             if ($just) {
                 file_put_contents($d.'/justificantes.json', json_encode($just));
                 $ri = Process::timeout(300)->run([$this->python(), dirname($script).'/impuestos_a_pagar.py', $d.'/justificantes.json', $d.'/impuestos.json']);
@@ -184,7 +218,7 @@ class ImpuestoVencimientos extends Component
 
             return;
         }
-        $this->salida = trim($r->output());
+        $this->salida = ($aviso ?? '').trim($r->output());
         file_put_contents($d.'/mayor_usado.txt', $mayor['nombre']);
     }
 
