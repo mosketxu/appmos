@@ -43,6 +43,8 @@ class ImpuestoM349CargarAeatTest extends TestCase
         $this->assertNotNull($t);
         $p = json_decode($t->parametros, true);
         $this->assertTrue($p['dejar_abierto']);
+        $this->assertSame('_Clientes/2026/_Impuestos 2026/Impuestos NAE', $p['justificante_dir']);
+        $this->assertSame('Nae M349 09 2026.pdf', $p['justificante_nombre']);
         $this->assertSame('PCX', $t->destino);
         $this->assertNotNull($c->get('tareaCarga'));
         $this->assertNull($c->get('tareaAeat'));

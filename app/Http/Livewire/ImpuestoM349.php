@@ -31,6 +31,9 @@ class ImpuestoM349 extends Component
     /** Clientes para los que el proceso ya funciona (NAE Comunicacions, S.L.). */
     public const NIF_OPERATIVOS = ['B63442701'];
 
+    /** Dónde se guarda el justificante que baja el usuario al presentar (NIF => [carpeta de OneDrive con {año}, prefijo del nombre]): «Nae M349 09 2026.pdf». */
+    public const JUSTIFICANTES = ['B63442701' => ['_Clientes/{año}/_Impuestos {año}/Impuestos NAE', 'Nae']];
+
     /** Persona y teléfono de contacto de la cabecera del 349 si el cliente no tiene otros guardados (los de los .349 de NAE de 2026). */
     public const CONTACTO_DEFECTO = ['contacto' => 'MARTA MARIA RUIZ SIERRA', 'telefono' => '659501389'];
 
@@ -576,7 +579,7 @@ class ImpuestoM349 extends Component
             return;
         }
         $id = ColaTareas::crear('pc.aeat_349', ['carpeta' => $this->carpeta, 'nif' => $this->declarante()['nif'] ?? '', 'ejercicio' => (string) $this->ejercicio,
-            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]] + ($dejarAbierto ? ['dejar_abierto' => true] : []),
+            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]] + ($dejarAbierto ? ['dejar_abierto' => true] + $this->paramsJustificante() : []),
             $pc, auth()->id(), null, null, 'preparando');
         $dir = ColaTareas::carpetaEntradas($id);
         @mkdir($dir, 0775, true);
@@ -584,6 +587,14 @@ class ImpuestoM349 extends Component
         ColaTareas::liberar($id);
         $dejarAbierto ? $this->tareaCarga = $id : $this->tareaAeat = $id;
         $this->mailArmado = '';
+    }
+
+    /** Carpeta y nombre (sin ruta) donde dejar el justificante: «Nae M349 09 2026.pdf» en la carpeta de impuestos del cliente. */
+    protected function paramsJustificante(): array
+    {
+        $j = self::JUSTIFICANTES[$this->declarante()['nif'] ?? ''] ?? null;
+
+        return $j ? ['justificante_dir' => str_replace('{año}', (string) $this->ejercicio, $j[0]), 'justificante_nombre' => $j[1].' M349 '.$this->periodo.' '.$this->ejercicio.'.pdf'] : [];
     }
 
     /** Estado de la casilla 349 del periodo en Seguimiento (null si no hay casilla/estado). «revisado» = validado por Marta. */
