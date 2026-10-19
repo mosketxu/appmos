@@ -43,7 +43,7 @@ class ImpuestoM111CargarAeatTest extends TestCase
         $p = json_decode($t->parametros, true);
         $this->assertSame('B63442701', $p['nif']);
         $this->assertSame('09', $p['periodo']);
-        $this->assertSame('_Clientes/2026/_Impuestos 2026/Impuestos NAE', $p['justificante_dir']);
+        $this->assertSame('_Clientes/2026/_Impuestos 2026/Impuestos Clientes 2026', $p['justificante_dir']);
         $this->assertSame('Nae M111 09 2026.pdf', $p['justificante_nombre']);
         $this->assertSame('PCX', $t->destino);
         $this->assertNotNull($c->get('tareaCarga'));

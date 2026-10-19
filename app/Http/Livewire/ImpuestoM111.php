@@ -342,8 +342,8 @@ class ImpuestoM111 extends Component
 
     /**
      * Un PC (el de «Ejecutar en») abre Edge con ventana, quien lo lanza elige el certificado y el fichero 111 queda importado en el formulario de la AEAT.
-     * NO valida ni presenta: lo hace el usuario a mano. El justificante que baje se guarda en «_Clientes/<año>/_Impuestos <año>/Impuestos <alias>» como
-     * «<Alias> M111 <periodo> <año>.pdf» (si la carpeta no existe en ese PC, en Descargas).
+     * NO valida ni presenta: lo hace el usuario a mano. Lo que baje (la presentación y el justificante de pago NRC) se guarda en «_Clientes/<año>/_Impuestos <año>/Impuestos Clientes <año>» como
+     * «<Alias> M111 <periodo> <año>.pdf» y «… justificante pago.pdf» (si la carpeta no existe en ese PC, en Descargas).
      */
     public function cargarEnAeat(): void
     {
@@ -364,7 +364,7 @@ class ImpuestoM111 extends Component
         $nif = preg_replace('/^ES(?=[A-Z0-9]{9}$)/', '', strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $e->nif)));
         $alias = trim((string) ($e->alias ?: $e->entidad));
         $id = ColaTareas::crear('pc.aeat_111', ['nif' => $nif, 'ejercicio' => (string) $this->ejercicio, 'periodo' => $this->perAeat(),
-            'justificante_dir' => '_Clientes/'.$this->ejercicio.'/_Impuestos '.$this->ejercicio.'/Impuestos '.mb_strtoupper($alias),
+            'justificante_dir' => '_Clientes/'.$this->ejercicio.'/_Impuestos '.$this->ejercicio.'/Impuestos Clientes '.$this->ejercicio,
             'justificante_nombre' => mb_convert_case(mb_strtolower($alias), MB_CASE_TITLE).' M111 '.$this->perAeat().' '.$this->ejercicio.'.pdf',
             'entrada' => ['archivo' => 'fichero.111', 'nombre' => $nombre]], $pc, auth()->id(), null, null, 'preparando');
         $dir = ColaTareas::carpetaEntradas($id);
