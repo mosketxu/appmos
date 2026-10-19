@@ -182,6 +182,24 @@
                 </div>
             @endif
         </div>
+
+        <div class="m3-card">
+            @php
+                $estCasilla = $this->estadoCasilla();
+                $confirmaCarga = $estCasilla === 'revisado' ? '' : ($estCasilla === 'presentado'
+                    ? '¿Estás seguro? Mira que la casilla 349 de '.$periodo.' ya figura como PRESENTADA: no presentes dos veces.'
+                    : '¿Estás seguro? Mira que la casilla 349 de '.$periodo.' aún no está en «revisado» (Marta no lo ha validado).');
+            @endphp
+            <div class="m3-h">6 · Presentar en la AEAT (lo haces tú)</div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button type="button" wire:click="cargarEnAeat" @if ($confirmaCarga) wire:confirm="{{ $confirmaCarga }}" @endif class="m3-btn" @disabled($tareaCarga || empty($res['fichero']))
+                    title="Se abre Edge en el PC de «Ejecutar en»: eliges el certificado y el .349 queda cargado en el formulario de la AEAT. Validar y presentar lo haces tú.">🏛 Cargar en la AEAT para presentar</button>
+                @if ($tareaCarga)<span class="text-xs text-indigo-700">⏳ mira tu pantalla: elige el certificado en Edge; cuando el .349 esté cargado valida y presenta tú en esa ventana (al cerrarla termina)…</span>@endif
+                <span class="text-xs {{ $estCasilla === 'revisado' ? 'text-green-700' : 'text-gray-500' }}">
+                    Casilla 349 de {{ $periodo }}: {{ $estCasilla === 'revisado' ? '✔ revisada (validada por Marta)' : ($estCasilla ?: 'sin estado') }}</span>
+            </div>
+            <div class="text-xs text-gray-500" style="margin-top:6px">No valida ni presenta por su cuenta. Al acabar, sube el justificante a la casilla 349 de Seguimiento.</div>
+        </div>
     @endif
     </div>
 </div>

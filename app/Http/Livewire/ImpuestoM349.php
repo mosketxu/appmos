@@ -50,6 +50,8 @@ class ImpuestoM349 extends Component
     /** Tarea pc.aeat_349: un PC importa el .349 en el formulario de la AEAT, valida y baja la vista previa (no presenta). */
     public ?int $tareaAeat = null;
     public array $aeatErrores = [];
+    /** Tarea pc.aeat_349 con dejar_abierto: un PC carga el .349 en el formulario de la AEAT y deja Edge abierto; validar y presentar lo hace el usuario. */
+    public ?int $tareaCarga = null;
     /** Paso 1 del envío hecho: se enseña el correo y el botón de confirmar (huella de lo que se va a enviar). */
     public string $mailArmado = '';
 
@@ -268,6 +270,19 @@ class ImpuestoM349 extends Component
                 } else {
                     $this->aeatErrores = array_values(array_filter((array) ($r['errores'] ?? [])));
                     $this->error = 'La AEAT no ha dado el borrador'.($this->aeatErrores ? ': '.$this->aeatErrores[0] : ': '.(string) ($r['error'] ?? trim(mb_substr((string) $t->log, -300)) ?: 'error en el PC'));
+                }
+            }
+        }
+        if ($this->tareaCarga) {
+            $t = DB::table('tareas')->find($this->tareaCarga);
+            if ($t && ! in_array($t->estado, ['preparando', 'pendiente', 'en_curso'], true)) {
+                $this->tareaCarga = null;
+                $r = json_decode($t->resultado ?? 'null', true) ?: [];
+                if ($t->estado === 'ok' && ! empty($r['cargado'])) {
+                    $this->msg = 'Terminada la sesión de la AEAT en '.($r['pc'] ?? 'el PC').'. Si has presentado el 349, sube el justificante a la casilla 349 de Seguimiento y márcala como presentada.';
+                } else {
+                    $this->aeatErrores = array_values(array_filter((array) ($r['errores'] ?? [])));
+                    $this->error = 'No se ha podido cargar el fichero en la AEAT'.($this->aeatErrores ? ': '.$this->aeatErrores[0] : ': '.(string) ($r['error'] ?? trim(mb_substr((string) $t->log, -300)) ?: 'error en el PC'));
                 }
             }
         }
@@ -535,6 +550,11 @@ class ImpuestoM349 extends Component
     /** El PC de «Ejecutar en» abre Edge con ventana (quien lo lanza elige el certificado), importa el .349 en el formulario de la AEAT, lo valida y deja la vista previa (borrador) en la carpeta. */
     public function prepararAeat(): void
     {
+        $this->prepararAeatComun(false);
+    }
+
+    protected function prepararAeatComun(bool $dejarAbierto): void
+    {
         $this->autorizar();
         $this->error = $this->msg = '';
         $this->aeatErrores = [];
@@ -556,13 +576,32 @@ class ImpuestoM349 extends Component
             return;
         }
         $id = ColaTareas::crear('pc.aeat_349', ['carpeta' => $this->carpeta, 'nif' => $this->declarante()['nif'] ?? '', 'ejercicio' => (string) $this->ejercicio,
-            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]], $pc, auth()->id(), null, null, 'preparando');
+            'periodo' => $this->periodo, 'entrada' => ['archivo' => 'fichero.349', 'nombre' => $nombre]] + ($dejarAbierto ? ['dejar_abierto' => true] : []),
+            $pc, auth()->id(), null, null, 'preparando');
         $dir = ColaTareas::carpetaEntradas($id);
         @mkdir($dir, 0775, true);
         copy($ruta, $dir.'/fichero.349');
         ColaTareas::liberar($id);
-        $this->tareaAeat = $id;
+        $dejarAbierto ? $this->tareaCarga = $id : $this->tareaAeat = $id;
         $this->mailArmado = '';
+    }
+
+    /** Estado de la casilla 349 del periodo en Seguimiento (null si no hay casilla/estado). «revisado» = validado por Marta. */
+    public function estadoCasilla(): ?string
+    {
+        return DB::table('impuesto_estados as e')->join('entidad_impuestos as ei', 'ei.id', '=', 'e.entidad_impuesto_id')
+            ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where(['ei.entidad_id' => $this->entidadId, 'm.codigo' => '349', 'e.ejercicio' => $this->ejercicio, 'e.periodo' => $this->periodo])->value('e.estado');
+    }
+
+    /**
+     * Paso 6: un PC abre Edge con ventana, entra en la AEAT con el certificado que elija quien lo lanza, y carga el .349 en el formulario
+     * SIN validar ni presentar: eso lo hace el usuario a mano. Pensado para cuando Marta ya ha revisado (casilla 349 en «revisado»); si no lo está,
+     * la pantalla avisa con un «¿Estás seguro?» y se hace igual (decisión de Alex: se avisa, no se bloquea).
+     */
+    public function cargarEnAeat(): void
+    {
+        $this->prepararAeatComun(true);
     }
 
     public function cancelarMail(): void
