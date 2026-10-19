@@ -520,6 +520,7 @@ def excel(d: dict, ruta: str) -> None:
     ws.sheet_properties.outlinePr.summaryBelow = True   # el total va debajo de cada grupo
     neg = Font(bold=True)
     gris = PatternFill('solid', start_color='FFE5E7EB')
+    beige = PatternFill('solid', start_color='FFDDD9C4')
     fino = Side(style='thin', color='FF9CA3AF')
     caja = Border(top=fino, bottom=fino, left=fino, right=fino)
     eur = '#,##0.00'
@@ -562,12 +563,10 @@ def excel(d: dict, ruta: str) -> None:
                 c.number_format = eur
             r += 1
         ws.cell(r, 1, 'Total general')
-        ws.cell(r, 2, 'Nº Perceptores')
-        ws.cell(r, 3, len(grupos))
-        ws.cell(r, 3).alignment = Alignment(horizontal='left')
+        ws.cell(r, 2, f'Nº Perceptores: {len(grupos)}')
         for j in range(1, 9):
             ws.cell(r, j).font = neg
-            ws.cell(r, j).border = caja
+            ws.cell(r, j).fill = beige
         for j, k in ((6, 'base'), (8, 'retencion')):
             c = ws.cell(r, j, round(sum(p[k] for p in lista), 2))
             c.number_format = eur
@@ -578,44 +577,60 @@ def excel(d: dict, ruta: str) -> None:
     if d.get('alquileres'):
         cuadro_perceptores('ARRENDAMIENTOS (retención del 19 % · modelo 115, no suma en el 111)', d['alquileres'], 'arrendador', 'arrendadores')
 
-    # Nóminas
+    # Nóminas (a la derecha, columnas D-H, como pidió Alex el 19-oct-2026)
     nom = d['nominas']
     if nom['origen']:
-        ws.cell(r, 1, 'NÓMINAS (rendimientos del trabajo · casillas 01-06) · ' + nom['origen']).font = neg
+        ws.cell(r, 4, 'NÓMINAS (rendimientos del trabajo · casillas 01-06)').font = neg
         r += 1
         lin = [l for l in nom['lineas_4751'] if l['incluida']]
         if lin and nom['origen'].startswith('mayor'):
-            cab(r, ['Fecha asiento', 'Código cuenta', 'Comentario', '', 'Haber'])
-            ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
+            for j, t in ((4, 'Fecha asiento'), (5, 'Código cuenta'), (6, 'Comentario'), (7, ''), (8, 'Haber')):
+                c = ws.cell(r, j, t)
+                c.font, c.fill, c.border = neg, gris, caja
+            ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
             r += 1
             for l in lin:
-                for j, v in ((1, l['fecha']), (2, l['cuenta']), (3, l['comentario']), (5, l['haber'])):
+                for j, v in ((4, l['fecha']), (5, l['cuenta']), (6, l['comentario']), (8, l['haber'])):
                     ws.cell(r, j, v)
-                for j in range(1, 6):
+                for j in range(4, 9):
                     ws.cell(r, j).border = caja
-                ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
-                ws.cell(r, 5).number_format = eur
+                ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=7)
+                ws.cell(r, 8).number_format = eur
                 r += 1
-            ws.cell(r, 4, 'Total').font = neg
-            c = ws.cell(r, 5, round(sum(l['haber'] for l in lin), 2))
+            ws.cell(r, 7, 'Total').font = neg
+            ws.cell(r, 7).alignment = Alignment(horizontal='right')
+            c = ws.cell(r, 8, round(sum(l['haber'] for l in lin), 2))
             c.font, c.number_format = neg, eur
             c.fill = gris
             r += 2
         else:
             for c_ in ('01', '02', '03', '04', '05', '06'):
                 if nom['casillas'].get(c_):
-                    ws.cell(r, 1, f'[{c_}] {NOMBRES[c_]}')
-                    c = ws.cell(r, 5, nom['casillas'][c_])
+                    ws.cell(r, 4, f'[{c_}] {NOMBRES[c_]}')
+                    c = ws.cell(r, 8, nom['casillas'][c_])
                     c.number_format = '0' if c_ in PERCEPTORES else eur
                     r += 1
             r += 1
 
+    # Total a ingresar: retenciones de profesionales + nóminas (casilla 28; el arrendamiento va al 115 y no suma)
+    if d['profesionales'] or nom['origen']:
+        r += 1
+        azul = PatternFill('solid', start_color='FF4F81BD')
+        ws.cell(r, 7, 'TOTAL')
+        c = ws.cell(r, 8, d['casillas']['28'])
+        for cc in (ws.cell(r, 7), c):
+            cc.font = Font(bold=True, size=14, color='FFFFFFFF')
+            cc.fill = azul
+        c.number_format = eur
+        ws.cell(r, 7).alignment = Alignment(horizontal='left')
+        r += 1
+
     # (El cuadro de casillas del 111, el tipo de declaración y los avisos ya no van en el Excel: están en la pantalla.)
-    for k, w in zip('ABCDEFGH', (38, 14, 13, 16, 14, 14, 11, 16)):
+    for k, w in zip('ABCDEFGH', (38, 14, 13, 16, 14, 16, 14, 16)):
         ws.column_dimensions[k].width = w
     for fila in ws.iter_rows():
         for c in fila:
-            c.alignment = Alignment(vertical='top')
+            c.alignment = Alignment(vertical='top', horizontal=c.alignment.horizontal)
     wb.save(ruta)
 
 
