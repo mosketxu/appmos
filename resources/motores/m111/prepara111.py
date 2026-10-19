@@ -241,7 +241,7 @@ def lee_mayor(ruta: str, meses: list[int], ejercicio: int) -> dict:
     return out
 
 
-def lee_profesionales(ruta: str, meses: list[int], ejercicio: int, avisos: list) -> list[dict]:
+def lee_profesionales(ruta: str, meses: list[int], ejercicio: int, avisos: list, alquileres: list | None = None) -> list[dict]:
     """Listado de retenciones de SAGE (ESTLisRetencionTMP_*): una fila por factura; solo las recibidas (R) que no son alquileres."""
     filas = filas_xlsx(ruta)
     i, h = cabecera(filas, ['CifDni', 'BaseRetencion', 'ImporteRetencion'])
@@ -264,8 +264,9 @@ def lee_profesionales(ruta: str, meses: list[int], ejercicio: int, avisos: list)
         if tipo != 'R':
             avisos.append(f'Profesionales: fuera «{nombre}» ({r["factura"]}): es una factura emitida (retención que nos practican, no va en el 111).')
             continue
-        if re.search(r'arrend|alquil', clave, re.I):
-            avisos.append(f'Profesionales: fuera «{nombre}» ({r["factura"]}): clave «{clave}» (va en el 115).')
+        if re.search(r'arrend|alquil', clave, re.I):   # retención de alquiler (19 %): va en el 115; sale en un cuadro aparte del Excel
+            if alquileres is not None:
+                alquileres.append(r)
             continue
         if d and (d.year != ejercicio or d.month not in meses):
             avisos.append(f'Profesionales: «{nombre}» ({r["factura"]}) tiene fecha {r["fecha"]}, fuera del periodo; se incluye (el listado de SAGE manda).')
@@ -415,9 +416,10 @@ def prepara(spec: dict) -> dict:
 
     # --- profesionales
     prof = []
+    alquileres = []
     for r in fic.get('profesionales', []):
         try:
-            prof += lee_profesionales(r, meses, ej, avisos)
+            prof += lee_profesionales(r, meses, ej, avisos, alquileres)
         except ErrorDatos as e:
             errores.append(f'Profesionales «{os.path.basename(r)}»: {e}')
     # código postal de cada profesional: del listado de proveedores de SAGE (fichero base del cliente)
@@ -427,12 +429,14 @@ def prepara(spec: dict) -> dict:
             cps.update(lee_cp_proveedores(r))
         except ErrorDatos as e:
             avisos.append(f'Proveedores «{os.path.basename(r)}»: {e}; sin código postal.')
-    for p in prof:
+    for p in prof + alquileres:
         p['cp'] = cps.get(nif_clave(p['nif']), '')
-    if prof and not fic.get('proveedores'):
+    if alquileres:
+        avisos.append(f'{len(alquileres)} factura(s) de arrendamiento (retención del 19 %) van al modelo 115: salen en un cuadro aparte del Excel y no suman en el 111.')
+    if (prof or alquileres) and not fic.get('proveedores'):
         avisos.append('Sin listado de proveedores de SAGE: el Excel sale sin código postal de los profesionales (súbelo como fichero base «Proveedores»).')
-    elif prof:
-        faltan = sorted({p['nombre'] or p['nif'] for p in prof if not p['cp']})
+    elif prof or alquileres:
+        faltan = sorted({p['nombre'] or p['nif'] for p in prof + alquileres if not p['cp']})
         if faltan:
             avisos.append('Sin código postal en el listado de proveedores: ' + ', '.join(faltan[:10]) + (f' y {len(faltan) - 10} más' if len(faltan) > 10 else '') + '.')
     grupos = OrderedDict()
@@ -470,7 +474,7 @@ def prepara(spec: dict) -> dict:
 
     return {'nif': nif, 'nombre': nombre, 'ejercicio': ej, 'periodo': per, 'tipo': tipo, 'iban': iban if tipo == 'U' else '',
             'complementaria': compl, 'justificante_anterior': just if compl else '',
-            'casillas': dict(cas), 'nominas': nominas, 'profesionales': prof, 'perceptores_prof': list(grupos.values()),
+            'casillas': dict(cas), 'nominas': nominas, 'profesionales': prof, 'alquileres': alquileres, 'perceptores_prof': list(grupos.values()),
             'fuentes': fuentes, 'avisos': avisos, 'errores': errores}
 
 
@@ -527,36 +531,44 @@ def excel(d: dict, ruta: str) -> None:
             c = ws.cell(fila, j, t)
             c.font, c.fill, c.border = neg, gris, caja
 
-    # Profesionales (como el resumen de SAGE que se usaba: perceptor, NIF, fecha, factura, base, %, retención)
-    if d['profesionales']:
-        ws.cell(r, 1, 'PROFESIONALES (actividades económicas · casillas 07-09)').font = neg
+    # Cuadros de perceptores: agrupados por perceptor, con subtotal de cada uno y total final con el nº de perceptores (Alex, 19-oct-2026)
+    cab_prof = ['ClienteProveedor', 'CifDni', 'CodigoPostal', 'FechaFactura', 'SuFacturaNo', 'BaseRetencion', '%Retencion', 'ImporteRetencion']
+
+    def cuadro_perceptores(titulo, lista, singular, plural):
+        nonlocal r
+        ws.cell(r, 1, titulo).font = neg
         r += 1
-        cab(r, ['ClienteProveedor', 'CifDni', 'FechaFactura', 'SuFacturaNo', 'BaseRetencion', '%Retencion', 'ImporteRetencion', 'CodigoPostal'])
+        cab(r, cab_prof)
         r += 1
-        for p in d['profesionales']:
-            for j, v in enumerate([p['nombre'], p['nif'], p['fecha'], p['factura'], p['base'], p['pct'], p['retencion'], p.get('cp', '')], 1):
-                c = ws.cell(r, j, v)
-                c.border = caja
-                if j in (5, 7):
-                    c.number_format = eur
-            r += 1
-        ws.cell(r, 4, 'Total').font = neg
-        for j, k in ((5, 'base'), (7, 'retencion')):
-            c = ws.cell(r, j, round(sum(p[k] for p in d['profesionales']), 2))
-            c.font, c.number_format = neg, eur
-        r += 2
-        if len(d['perceptores_prof']) != len(d['profesionales']):
-            ws.cell(r, 1, 'Por perceptor (NIF)').font = neg
-            r += 1
-            cab(r, ['Perceptor', 'NIF', 'Facturas', '', 'Base', '', 'Retención', 'CodigoPostal'])
-            r += 1
-            for g in d['perceptores_prof']:
-                for j, v in ((1, g['nombre']), (2, g['nif']), (3, g['facturas']), (5, g['base']), (7, g['retencion']), (8, g.get('cp', ''))):
+        grupos = OrderedDict()
+        for p in sorted(lista, key=lambda x: ((x['nombre'] or '').lower(), x['nif'])):
+            grupos.setdefault(p['nif'] or p['nombre'], []).append(p)
+        for g in grupos.values():
+            for p in g:
+                for j, v in enumerate([p['nombre'], p['nif'], p.get('cp', ''), p['fecha'], p['factura'], p['base'], p['pct'], p['retencion']], 1):
                     c = ws.cell(r, j, v)
-                    if j in (5, 7):
+                    c.border = caja
+                    if j in (6, 8):
                         c.number_format = eur
                 r += 1
+            ws.cell(r, 5, f'Subtotal · {len(g)} factura(s)').font = neg
+            for j, k in ((6, 'base'), (8, 'retencion')):
+                c = ws.cell(r, j, round(sum(p[k] for p in g), 2))
+                c.font, c.number_format = neg, eur
+                c.fill = gris
             r += 1
+        ws.cell(r, 1, f'{len(grupos)} ' + (singular if len(grupos) == 1 else plural)).font = neg
+        ws.cell(r, 5, 'Total').font = neg
+        for j, k in ((6, 'base'), (8, 'retencion')):
+            c = ws.cell(r, j, round(sum(p[k] for p in lista), 2))
+            c.font, c.number_format = neg, eur
+            c.fill = gris
+        r += 2
+
+    if d['profesionales']:
+        cuadro_perceptores('PROFESIONALES (actividades económicas · casillas 07-09)', d['profesionales'], 'proveedor', 'proveedores')
+    if d.get('alquileres'):
+        cuadro_perceptores('ARRENDAMIENTOS (retención del 19 % · modelo 115, no suma en el 111)', d['alquileres'], 'arrendador', 'arrendadores')
 
     # Nóminas
     nom = d['nominas']
@@ -565,51 +577,33 @@ def excel(d: dict, ruta: str) -> None:
         r += 1
         lin = [l for l in nom['lineas_4751'] if l['incluida']]
         if lin and nom['origen'].startswith('mayor'):
-            cab(r, ['Fecha asiento', 'Número de asiento', 'Código cuenta', 'Contrapartida', 'Comentario', 'Debe', 'Haber'])
+            cab(r, ['Fecha asiento', 'Código cuenta', 'Comentario', '', 'Haber'])
+            ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
             r += 1
             for l in lin:
-                for j, v in enumerate([l['fecha'], l['asiento'], l['cuenta'], l['contrapartida'], l['comentario'], l['debe'], l['haber']], 1):
-                    c = ws.cell(r, j, v)
-                    c.border = caja
-                    if j in (6, 7):
-                        c.number_format = eur
+                for j, v in ((1, l['fecha']), (2, l['cuenta']), (3, l['comentario']), (5, l['haber'])):
+                    ws.cell(r, j, v)
+                for j in range(1, 6):
+                    ws.cell(r, j).border = caja
+                ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
+                ws.cell(r, 5).number_format = eur
                 r += 1
-            c = ws.cell(r, 7, round(sum(l['haber'] for l in lin), 2))
+            ws.cell(r, 4, 'Total').font = neg
+            c = ws.cell(r, 5, round(sum(l['haber'] for l in lin), 2))
             c.font, c.number_format = neg, eur
+            c.fill = gris
             r += 2
         else:
             for c_ in ('01', '02', '03', '04', '05', '06'):
                 if nom['casillas'].get(c_):
                     ws.cell(r, 1, f'[{c_}] {NOMBRES[c_]}')
-                    c = ws.cell(r, 7, nom['casillas'][c_])
+                    c = ws.cell(r, 5, nom['casillas'][c_])
                     c.number_format = '0' if c_ in PERCEPTORES else eur
                     r += 1
             r += 1
 
-    # Casillas del 111
-    ws.cell(r, 1, 'MODELO 111 · casillas').font = neg
-    r += 1
-    cab(r, ['Casilla', 'Concepto', '', '', '', '', 'Importe'])
-    r += 1
-    for c_, _ in CASILLAS:
-        v = d['casillas'][c_]
-        if not v and c_ not in ('28', '30'):
-            continue
-        ws.cell(r, 1, c_)
-        ws.cell(r, 2, NOMBRES[c_])
-        c = ws.cell(r, 7, v)
-        c.number_format = '0' if c_ in PERCEPTORES else eur
-        if c_ in ('28', '30'):
-            for j in (1, 2, 7):
-                ws.cell(r, j).font = neg
-        r += 1
-    r += 1
-    ws.cell(r, 1, 'Tipo de declaración')
-    ws.cell(r, 2, {'I': 'Ingreso', 'U': 'Domiciliación', 'G': 'Ingreso en CCT', 'N': 'Negativa'}.get(d['tipo'], d['tipo']) + (f' · {d["iban"]}' if d['iban'] else ''))
-    for a in d['avisos']:
-        r += 1
-        ws.cell(r, 1, '⚠ ' + a).font = Font(color='FFB45309')
-    for k, w in zip('ABCDEFG', (38, 14, 13, 16, 14, 11, 16)):
+    # (El cuadro de casillas del 111, el tipo de declaración y los avisos ya no van en el Excel: están en la pantalla.)
+    for k, w in zip('ABCDEFGH', (38, 14, 13, 16, 14, 14, 11, 16)):
         ws.column_dimensions[k].width = w
     for fila in ws.iter_rows():
         for c in fila:
