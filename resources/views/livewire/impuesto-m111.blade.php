@@ -19,9 +19,7 @@
 
     <h1 class="text-xl font-semibold" style="margin-bottom:10px">IRPF M111 <span class="text-sm font-normal text-gray-500">retenciones de trabajo y profesionales · fichero para importar en la AEAT</span></h1>
 
-    @if ($entidadId)
-        @livewire('ficheros-base-subida', ['entidadId' => $entidadId, 'tipos' => ['proveedores', 'mayor', 'plan']], key('fb-m111-'.$entidadId))
-    @endif
+    @include('livewire._ficheros_base', ['eid' => (int) $entidadId, 'clave' => 'm111'])
 
     @if ($error)<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#991b1b">⚠️ {{ $error }}</div>@endif
     @if ($msg)<div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#166534">✅ {{ $msg }}</div>@endif

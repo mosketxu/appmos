@@ -19,6 +19,8 @@
 
     <h1 class="text-2xl font-semibold text-gray-900">Neteges</h1>
 
+    @include('livewire._ficheros_base', ['eid' => (int) config('contabilidad.neteges_entidad'), 'clave' => 'neteges'])
+
     @include('livewire.contabilidad._pcs')
 
     @php $centralNuevos = $this->centralNuevos(); @endphp

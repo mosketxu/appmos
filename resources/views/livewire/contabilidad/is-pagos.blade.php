@@ -10,6 +10,7 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'impuestos.pago-cuenta'])
     @include('livewire._subnav_impuestos', ['activa' => 'pago202'])
     <div class="p-4">
+        @include('livewire._ficheros_base', ['eid' => is_numeric($clienteId) ? (int) $clienteId : 0, 'clave' => 'm202'])
         @php $euros = fn ($v) => $v === null ? '' : number_format((float) $v, 2, ',', '.'); @endphp
         <div class="space-y-3 bg-white border border-gray-300 rounded-lg shadow-sm">
             <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-b bg-gray-50">

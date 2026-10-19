@@ -36,6 +36,8 @@
 
     @include('livewire.contabilidad._pcs')
 
+    @include('livewire._ficheros_base', ['eid' => (int) config('contabilidad.fiq_entidad'), 'clave' => 'fiq'])
+
     @if ($staffAbierto && $staff)
         {{-- Anaplan · personal: propuesta nómina ↔ empleado de Anaplan (16-oct-2026). Amarillo = pareja nueva (no está en el histórico). --}}
         <div class="fixed inset-0 z-40 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="$set('staffAbierto', false)">

@@ -1264,7 +1264,7 @@ class Bancos extends Component
         $this->cargarMaestro();
     }
 
-    protected function entidadIdCliente(): int
+    public function entidadIdCliente(): int
     {
         $cfg = json_decode((string) @file_get_contents($this->baseDir().'/'.$this->cliente.'/cliente.json'), true);
 

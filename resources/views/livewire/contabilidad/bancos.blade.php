@@ -26,6 +26,8 @@
     </h1>
     @include('livewire.contabilidad._modal-cliente-nuevo')
 
+    @include('livewire._ficheros_base', ['eid' => $cliente !== '' ? $this->entidadIdCliente() : 0, 'clave' => 'bancos'])
+
     @if ($cliente !== '')
         @php
             $filasBase = [

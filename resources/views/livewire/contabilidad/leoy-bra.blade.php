@@ -16,6 +16,8 @@
     <div class="p-4 space-y-4">
     <h1 class="text-2xl font-semibold text-gray-900">LeoyBra <span class="text-sm font-normal text-gray-500">Grupo Leoybra, S.L. · B06875751</span></h1>
 
+    @include('livewire._ficheros_base', ['eid' => (int) config('contabilidad.leoybra_entidad'), 'clave' => 'leoybra'])
+
     @php
         $btn = 'px-2 py-0.5 text-xs text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50';
         $base = $estado['base'] ?? [];
