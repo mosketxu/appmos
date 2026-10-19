@@ -561,7 +561,10 @@ def excel(d: dict, ruta: str) -> None:
                 c = ws.cell(r, j, round(sum(p[k] for p in g), 2))
                 c.number_format = eur
             r += 1
-        ws.cell(r, 1, f'Total general · {len(grupos)} ' + (singular if len(grupos) == 1 else plural))
+        ws.cell(r, 1, 'Total general')
+        ws.cell(r, 2, 'Nº Perceptores')
+        ws.cell(r, 3, len(grupos))
+        ws.cell(r, 3).alignment = Alignment(horizontal='left')
         for j in range(1, 9):
             ws.cell(r, j).font = neg
             ws.cell(r, j).border = caja
