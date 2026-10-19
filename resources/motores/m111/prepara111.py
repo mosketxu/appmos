@@ -517,6 +517,7 @@ def excel(d: dict, ruta: str) -> None:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Retenciones'
+    ws.sheet_properties.outlinePr.summaryBelow = True   # el total va debajo de cada grupo
     neg = Font(bold=True)
     gris = PatternFill('solid', start_color='FFE5E7EB')
     fino = Side(style='thin', color='FF9CA3AF')
@@ -550,19 +551,23 @@ def excel(d: dict, ruta: str) -> None:
                     c.border = caja
                     if j in (6, 8):
                         c.number_format = eur
+                ws.row_dimensions[r].outline_level = 1   # agrupado como «Datos → Subtotales» de Excel: el [-] pliega las facturas de cada perceptor
                 r += 1
-            ws.cell(r, 5, f'Subtotal · {len(g)} factura(s)').font = neg
+            ws.cell(r, 1, 'Total ' + (g[0]['nombre'] or g[0]['nif']))
+            for j in range(1, 9):
+                ws.cell(r, j).font = neg
+                ws.cell(r, j).border = caja
             for j, k in ((6, 'base'), (8, 'retencion')):
                 c = ws.cell(r, j, round(sum(p[k] for p in g), 2))
-                c.font, c.number_format = neg, eur
-                c.fill = gris
+                c.number_format = eur
             r += 1
-        ws.cell(r, 1, f'{len(grupos)} ' + (singular if len(grupos) == 1 else plural)).font = neg
-        ws.cell(r, 5, 'Total').font = neg
+        ws.cell(r, 1, f'Total general · {len(grupos)} ' + (singular if len(grupos) == 1 else plural))
+        for j in range(1, 9):
+            ws.cell(r, j).font = neg
+            ws.cell(r, j).border = caja
         for j, k in ((6, 'base'), (8, 'retencion')):
             c = ws.cell(r, j, round(sum(p[k] for p in lista), 2))
-            c.font, c.number_format = neg, eur
-            c.fill = gris
+            c.number_format = eur
         r += 2
 
     if d['profesionales']:
