@@ -256,8 +256,8 @@ class ImpuestoM111 extends Component
                 $this->aj['perceptores_nominas'] = (string) ($g['perceptores_nominas'] ?? '');
             }
         }
-        $r = $this->dir('salida').'/resumen.json';
-        $this->res = is_file($r) ? (json_decode((string) file_get_contents($r), true) ?: null) : null;
+        // Siempre se rehace con lo último (motor, ficheros base, listado de proveedores…): el resultado guardado de otro día puede ser de una versión anterior.
+        $this->generar();
     }
 
     public function updatedAj(): void
@@ -324,6 +324,7 @@ class ImpuestoM111 extends Component
     public function descargar(string $cual)
     {
         $this->autorizar();
+        $this->generar();   // lo que se descarga es siempre la última versión (motor + ficheros actuales), no el de la última vez que se generó
         $nombre = (string) ($this->res[$cual === 'excel' ? 'excel' : 'fichero'] ?? '');
         $ruta = $this->dir('salida').'/'.basename($nombre);
         abort_unless($nombre !== '' && is_file($ruta), 404);
