@@ -18,7 +18,7 @@ use Livewire\WithFileUploads;
  * Impuestos → M349 operaciones intracomunitarias (16-oct-2026). De momento solo para NAE Comunicacions (NIF en NIF_OPERATIVOS); con otro cliente
  * la pantalla dice «en construcción». Carpeta de trabajo (OneDrive, explorador de LibroIva con el árbol onedrive.arbol_iva que sube un PC; se recuerda
  * por empresa) y fichero a tratar: el Excel anual del cliente (pestañas de ventas y compras intracomunitarias), que se sube al servidor. El motor
- * (Contabilidad/Impuestos/M349/motor/prepara349.py; M349_DIR, en el VPS /var/www/m349) saca las operaciones del mes y deja el «<MM> <NIF>.349»
+ * (resources/motores/m349/prepara349.py, en el repo de Appmos; M349_DIR solo para otra ruta) saca las operaciones del mes y deja el «<MM> <NIF>.349»
  * para importar en la AEAT; se descarga o se deja en la carpeta de trabajo (tarea pc.dejar_en_onedrive de un PC).
  * Borrador de la AEAT: lo sube el usuario o, al pulsar «Enviar a Marta», un PC lo trae de la carpeta de trabajo (pc.traer_de_onedrive); el correo
  * (Graph, desde el buzón del usuario, dos pasos) lo lleva adjunto, y el PDF queda como borrador en la casilla 349 de Seguimiento (estado «revisión»).

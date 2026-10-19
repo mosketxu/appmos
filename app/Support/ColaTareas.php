@@ -187,7 +187,7 @@ class ColaTareas
                     // lo coge cualquier otro PC que sepa hacerlo (Alex no trabaja en los dos a la vez; Neteges ya hace pull/push de la base por git)
                     $q->orWhere(fn ($r) => $r->whereNotNull('destino')
                         ->where('parametros', 'not like', '%"grupo":"fiq"%')   // los de FIQ siguen sin relevo (decisión anterior); los demás sí
-                        ->where('proceso', '!=', 'pc.aeat_349')   // M349: Edge con ventana en el PC de quien lo lanza (17-oct-2026); en otro PC no hay nadie para elegir el certificado
+                        ->whereNotIn('proceso', ['pc.aeat_349', 'pc.aeat_111'])   // M349: Edge con ventana en el PC de quien lo lanza (17-oct-2026); en otro PC no hay nadie para elegir el certificado
                         ->where('created_at', '<=', now()->subMinutes(self::RELEVO_MIN))
                         ->whereNotIn('destino', DB::table('trabajadores')->where('ultimo_latido', '>=', now()->subSeconds(self::LATIDO_MAX))->select('nombre')));
                     // Relevo del traspaso de Facturas OCR al OneDrive (fijado a FACTURASOCR_PC): si ese PC no da señales, lo hace el de relevo

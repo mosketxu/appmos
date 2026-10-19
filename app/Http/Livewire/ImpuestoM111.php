@@ -3,6 +3,7 @@
 namespace App\Http\Livewire;
 
 use App\Models\ImpuestoDocumento;
+use App\Support\ColaTareas;
 use App\Support\FicherosBase;
 use App\Support\Impuestos as Imp;
 use Illuminate\Http\UploadedFile;
@@ -16,7 +17,7 @@ use Livewire\WithFileUploads;
  * Impuestos → IRPF M111 (15-oct-2026): fichero del modelo 111 para importar en la AEAT y Excel resumen, juntando NÓMINAS (111.txt de
  * la gestoría, PDF del 111 o mayor de SAGE de la 4751/640) y PROFESIONALES (listado de retenciones de SAGE, agrupado por NIF).
  * Cada tipo de fichero tiene su casilla de subida: no hay que renombrar nada. Todo en el servidor (motor Python, sin PC trabajador).
- * Motor: Contabilidad/Impuestos/M111/motor/prepara111.py (M111_DIR en el VPS: /var/www/m111). Datos: storage/app/m111/<entidad>/<AAAA>-<periodo>/.
+ * Motor: resources/motores/m111/prepara111.py (en el repo de Appmos: viaja con el despliegue; M111_DIR solo para otra ruta). Datos: storage/app/m111/<entidad>/<AAAA>-<periodo>/.
  */
 class ImpuestoM111 extends Component
 {
@@ -35,6 +36,8 @@ class ImpuestoM111 extends Component
     public bool $verTodos = false;
     public array $subidas = ['txt' => [], 'pdf' => [], 'mayor' => [], 'profesionales' => []];
     public bool $usarMayorBase = false;
+    /** Tarea pc.aeat_111: un PC carga el fichero en el formulario de la AEAT y deja Edge abierto; validar y presentar lo hace el usuario. */
+    public ?int $tareaCarga = null;
     /** Ajustes a mano (los guarda ajustes.json del periodo). */
     public array $aj = ['tipo' => '', 'iban' => '', 'perceptores_nominas' => '', 'percepciones_nominas' => '', 'retenciones_nominas' => '',
         'resultado_anterior' => '', 'complementaria' => false, 'justificante_anterior' => ''];
@@ -315,6 +318,68 @@ class ImpuestoM111 extends Component
         abort_unless($nombre !== '' && is_file($ruta), 404);
 
         return response()->download($ruta, $nombre);
+    }
+
+    /** Estado de la casilla 111 del periodo en Seguimiento (null si no hay). */
+    public function estadoCasilla(): ?string
+    {
+        return DB::table('impuesto_estados as e')->join('entidad_impuestos as ei', 'ei.id', '=', 'e.entidad_impuesto_id')
+            ->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where(['ei.entidad_id' => $this->entidadId, 'm.codigo' => '111', 'e.ejercicio' => $this->ejercicio, 'e.periodo' => $this->periodo])->value('e.estado');
+    }
+
+    /**
+     * Un PC (el de «Ejecutar en») abre Edge con ventana, quien lo lanza elige el certificado y el fichero 111 queda importado en el formulario de la AEAT.
+     * NO valida ni presenta: lo hace el usuario a mano. El justificante que baje se guarda en «_Clientes/<año>/_Impuestos <año>/Impuestos <alias>» como
+     * «<Alias> M111 <periodo> <año>.pdf» (si la carpeta no existe en ese PC, en Descargas).
+     */
+    public function cargarEnAeat(): void
+    {
+        $this->autorizar();
+        $this->error = $this->msg = '';
+        $nombre = (string) ($this->res['fichero'] ?? '');
+        $ruta = $this->dir('salida').'/'.basename($nombre);
+        if ($nombre === '' || ! is_file($ruta) || ! empty($this->res['errores'])) {
+            $this->error = 'Primero tiene que haber un fichero 111 sin errores.';
+            return;
+        }
+        $pc = ColaTareas::pcElegido();
+        if (! $pc) {
+            $this->error = 'Elige arriba en «Ejecutar en» el PC en el que estás: ahí se abrirá Edge para que elijas el certificado.';
+            return;
+        }
+        $e = DB::table('entidades')->find($this->entidadId);
+        $nif = preg_replace('/^ES(?=[A-Z0-9]{9}$)/', '', strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $e->nif)));
+        $alias = trim((string) ($e->alias ?: $e->entidad));
+        $id = ColaTareas::crear('pc.aeat_111', ['nif' => $nif, 'ejercicio' => (string) $this->ejercicio, 'periodo' => $this->perAeat(),
+            'justificante_dir' => '_Clientes/'.$this->ejercicio.'/_Impuestos '.$this->ejercicio.'/Impuestos '.mb_strtoupper($alias),
+            'justificante_nombre' => mb_convert_case(mb_strtolower($alias), MB_CASE_TITLE).' M111 '.$this->perAeat().' '.$this->ejercicio.'.pdf',
+            'entrada' => ['archivo' => 'fichero.111', 'nombre' => $nombre]], $pc, auth()->id(), null, null, 'preparando');
+        $dir = ColaTareas::carpetaEntradas($id);
+        @mkdir($dir, 0775, true);
+        copy($ruta, $dir.'/fichero.111');
+        ColaTareas::liberar($id);
+        $this->tareaCarga = $id;
+    }
+
+    /** Sigue la tarea de carga (la pantalla la consulta cada pocos segundos mientras dura). */
+    public function revisar(): void
+    {
+        if (! $this->tareaCarga) {
+            return;
+        }
+        $t = DB::table('tareas')->find($this->tareaCarga);
+        if (! $t || in_array($t->estado, ['preparando', 'pendiente', 'en_curso'], true)) {
+            return;
+        }
+        $this->tareaCarga = null;
+        $r = json_decode($t->resultado ?? 'null', true) ?: [];
+        if ($t->estado === 'ok' && ! empty($r['cargado'])) {
+            $this->msg = 'Terminada la sesión de la AEAT en '.($r['pc'] ?? 'el PC').'. Si has presentado el 111, sube el justificante a la casilla 111 de Seguimiento y márcala como presentada.';
+        } else {
+            $err = array_values(array_filter((array) ($r['errores'] ?? [])));
+            $this->error = 'No se ha podido cargar el fichero en la AEAT'.($err ? ': '.$err[0] : ': '.(string) ($r['error'] ?? trim(mb_substr((string) $t->log, -300)) ?: 'error en el PC'));
+        }
     }
 
     /** Deja el Excel resumen (y el .txt) en la casilla 111 del periodo en Seguimiento de impuestos. */

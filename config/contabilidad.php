@@ -141,14 +141,10 @@ return [
         ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/Intrastat")
         ->first(fn ($d) => is_dir($d)) ?? '/var/www/intrastat'),
     'intrastat_datos' => env('INTRASTAT_DATOS'),
-    // Modelo 111 (15-oct-2026): motor prepara111.py en el servidor (M111_DIR=/var/www/m111); en un PC, la carpeta del repo.
-    'm111_dir' => env('M111_DIR') ?: (collect(['e', 'f', 'd'])
-        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/M111/motor")
-        ->first(fn ($d) => is_dir($d)) ?? '/var/www/m111'),
-    // Modelo 349 (16-oct-2026): motor prepara349.py (M349_DIR; en el VPS /var/www/m349); en un PC, la carpeta del repo.
-    'm349_dir' => env('M349_DIR') ?: (collect(['e', 'f', 'd'])
-        ->map(fn ($u) => "/mnt/{$u}/Claude/Contabilidad/Impuestos/M349/motor")
-        ->first(fn ($d) => is_dir($d)) ?? '/var/www/m349'),
+    // Modelo 111 (15-oct-2026): motor prepara111.py. Desde el 19-oct-2026 vive en el repo de Appmos (resources/motores/m111) y viaja con el despliegue normal.
+    'm111_dir' => env('M111_DIR') ?: base_path('resources/motores/m111'),
+    // Modelo 349 (16-oct-2026): motor prepara349.py; desde el 19-oct-2026 en el repo de Appmos (resources/motores/m349), con el despliegue normal.
+    'm349_dir' => env('M349_DIR') ?: base_path('resources/motores/m349'),
     'leoybra_entidad' => (int) env('LEOYBRA_ENTIDAD', 2484),   // entidad «GRUPO LEOYBRA, S.L.»: sus ficheros base centrales (FicherosBase)
 
     'fiq_entidad' => (int) env('FIQ_ENTIDAD', 2229),   // entidad «FASHION IQ BCN, S.L»: sus ficheros base centrales (SyS y mayor de Procesos FIQ)
@@ -216,6 +212,7 @@ return [
         'pc.fichero' => 'Subir un fichero del PC para descargarlo desde la web',
         'pc.dejar_en_onedrive' => 'Dejar en una carpeta de OneDrive un fichero preparado en la web (M349: el .349 en la carpeta de trabajo)',
         'pc.traer_de_onedrive' => 'Subir a la web el fichero que toca de una carpeta de OneDrive (M349: el borrador para el correo a Marta)',
+        'pc.aeat_111' => 'M111: cargar el fichero del 111 en el formulario de la AEAT (certificado a elegir en Edge) y dejar la ventana abierta; no valida ni presenta',
         'pc.aeat_349' => 'M349: importar el .349 en el formulario de la AEAT con el certificado de Suma, validar y bajar la vista previa (borrador); no presenta',
         'pc.facturasocr' => 'Llevar al OneDrive de este PC lo validado en Facturas OCR (con comprobación de huellas)',
         'pc.facturasocr_z' => 'Facturas OCR: traer las facturas a procesar de la carpeta de la empresa en el disco Z:',

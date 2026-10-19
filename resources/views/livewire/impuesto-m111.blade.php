@@ -3,7 +3,7 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_impuestos', ['activa' => 'm111'])
 
-    <div class="p-4" style="max-width:1250px">
+    <div class="p-4" style="max-width:1250px" @if ($tareaCarga) wire:poll.3s="revisar" @endif>
     <style>
         .m1-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; margin-bottom:12px }
         .m1-h { font-weight:600; color:#111827; margin-bottom:8px }
@@ -90,7 +90,16 @@
                     <button type="button" wire:click="descargar('excel')" class="m1-btn">⬇ Excel resumen</button>
                     <button type="button" wire:click="guardarEnCasilla" class="m1-btn" title="Deja el Excel en la casilla 111 del periodo en Seguimiento de impuestos">📌 Guardar en Seguimiento</button>
                 @endif
-                <span class="text-xs text-gray-500">Sede AEAT → modelo 111 → «Importar» el fichero; revisa el borrador antes de presentar.</span>
+                @if (! empty($res['fichero']))
+                    @php
+                        $est = $this->estadoCasilla();
+                        $conf = $est === 'presentado' ? '¿Estás seguro? Mira que la casilla 111 de '.$periodo.' ya figura como PRESENTADA: no presentes dos veces.' : '';
+                    @endphp
+                    <button type="button" wire:click="cargarEnAeat" @if ($conf) wire:confirm="{{ $conf }}" @endif class="m1-btn" @disabled($tareaCarga)
+                        title="Se abre Edge en el PC de «Ejecutar en»: eliges el certificado y el fichero queda importado en el formulario de la AEAT. Validar y presentar lo haces tú.">🏛 Cargar en la AEAT para presentar</button>
+                    @if ($tareaCarga)<span class="text-xs text-indigo-700">⏳ mira tu pantalla: elige el certificado en Edge; cuando el fichero esté cargado valida y presenta tú en esa ventana (al cerrarla termina)…</span>@endif
+                @endif
+                <span class="text-xs text-gray-500">No valida ni presenta por su cuenta: eso lo haces tú en la AEAT.</span>
             </div>
             @foreach ($res['errores'] ?? [] as $e)<div class="text-sm" style="color:#b91c1c">⛔ {{ $e }}</div>@endforeach
             @foreach ($res['avisos'] ?? [] as $a)<div class="text-sm" style="color:#b45309">⚠️ {{ $a }}</div>@endforeach
