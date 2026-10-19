@@ -3,7 +3,7 @@
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     @include('livewire._subnav_impuestos', ['activa' => 'm349'])
 
-    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas || $tareaGuardar || $tareaTraer || $tareaAeat) wire:poll.3s="revisar" @endif>
+    <div class="p-4" style="max-width:1100px" @if ($esperandoCarpetas || $tareaGuardar || $tareaTraer || $tareaAeat || $tareaCarga) wire:poll.3s="revisar" @endif>
     <style>
         .m3-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; margin-bottom:12px }
         .m3-h { font-weight:600; color:#111827; margin-bottom:8px }
