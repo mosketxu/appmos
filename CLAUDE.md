@@ -35,7 +35,7 @@ Cada sitio tiene su **propia BD** (la buena es la del VPS; para copiarla a un PC
 - **VPS:** `ssh mosketxu@100.110.4.69`, `/var/www/appmos` (git de root): `sudo git pull` → `chown mosketxu` **solo de los ficheros tocados** (nunca `-R`: rompe `storage/` y `bootstrap/cache/`, que son de `www-data`) → `sudo -u www-data php artisan migrate --force` (si hay migraciones) → `sudo -u www-data php artisan view:clear` (+ `config:clear` si cambió config). Para `tinker`: `sudo -u www-data env HOME=/tmp php artisan tinker`.
 - Push a GitHub por SSH (`git@github.com:…`); HTTPS no tiene credenciales en WSL.
 - **Si el modo automático deniega el `ssh` al VPS («Production Deploy»):** no es un fallo del servidor; no buscar rodeos. Terminar lo demás y pedir a Alex `! ssh …`, una regla `Bash(ssh mosketxu@100.110.4.69:*)` o la orden explícita «ejecútalo tú». Antes de `pull`, mirar el VPS en solo lectura (otra sesión puede haber desplegado ya) y avisar si suben commits ajenos. Detalle: memoria `appmos-deploy`.
-- Los commits llevan la línea `Co-Authored-By` que indique la sesión. Desplegar al VPS cuando Alex lo pida o lo haya pedido para ese trabajo; no subir cambios a producción por iniciativa propia.
+- Los commits llevan la línea `Co-Authored-By` que indique la sesión. **Desplegar SIEMPRE al VPS todo lo relacionado con Appmos** al terminarlo, sin preguntar (orden fija de Alex, 19-oct-2026). Antes, mirar en solo lectura qué sube (`git fetch` + `HEAD..origin/master`) y avisar si hay commits ajenos.
 
 ## Tests y convenciones
 
