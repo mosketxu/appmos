@@ -97,27 +97,10 @@
             </div>
             <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
                 <div class="w-full form-item">
+                    <div class="flex flex-wrap items-center gap-x-4">
                     <x-jet-label class="inline-flex items-center mt-3">
                         <x-input.checkbox wire:model.defer="entidad.favorito" class="w-4 h-4 text-yellow-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Favorito') }}</span>
                     </x-jet-label>
-                    <x-jet-label class="inline-flex items-center mt-3">
-                        <span class="mr-2 text-gray-700">{{ __('Estado') }}</span>
-                        <select wire:model.live="entidad.estado" class="py-1 text-sm border-gray-300 rounded-md">
-                            @foreach (\App\Models\Entidad::ESTADOS as $k => $l)
-                                <option value="{{ $k }}">{{ $l }}</option>
-                            @endforeach
-                        </select>
-                    </x-jet-label>
-                    @if ($estadoOriginal !== null && (string) ($entidad['estado'] ?? '') !== $estadoOriginal)
-                        <div class="p-2 mt-2 text-xs border border-yellow-300 rounded-md bg-yellow-50" style="max-width:34rem">
-                            Cambio de estado: «{{ \App\Models\Entidad::ESTADOS[(int) $estadoOriginal] ?? '—' }}» → «{{ \App\Models\Entidad::ESTADOS[(int) ($entidad['estado'] ?? 0)] ?? '—' }}».
-                            Se anotará en el historial al guardar.
-                            <div class="flex flex-wrap items-end gap-2 mt-1">
-                                <label>Fecha<br><input type="date" wire:model="cambioFecha" class="py-1 text-sm border-gray-300 rounded-md"></label>
-                                <label class="grow">Motivo<br><input type="text" wire:model="cambioMotivo" class="w-full py-1 text-sm border-gray-300 rounded-md" placeholder="motivo del cambio"></label>
-                            </div>
-                        </div>
-                    @endif
                     <x-jet-label class="inline-flex items-center mt-3">
                         <x-input.checkbox wire:model.defer="entidad.facturar" class="w-4 h-4 text-pink-500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Facturar') }}</span>
                     </x-jet-label>
@@ -133,6 +116,25 @@
                     <x-jet-label class="inline-flex items-center mt-3">
                         <x-input.checkbox wire:model.defer="entidad.enviar" class="w-4 h-4 text-red-400 -500 form-checkbox"/><span class="ml-2 text-gray-700">{{ __('Enviar') }}</span>
                     </x-jet-label>
+                    <x-jet-label class="inline-flex items-center mt-3 md:ml-auto">
+                        <span class="mr-2 text-gray-700">{{ __('Estado') }}</span>
+                        <select wire:model.live="entidad.estado" class="py-1 text-sm border-gray-300 rounded-md">
+                            @foreach (\App\Models\Entidad::ESTADOS as $k => $l)
+                                <option value="{{ $k }}">{{ $l }}</option>
+                            @endforeach
+                        </select>
+                    </x-jet-label>
+                    </div>
+                    @if ($estadoOriginal !== null && (string) ($entidad['estado'] ?? '') !== $estadoOriginal)
+                        <div class="p-2 mt-2 text-xs border border-yellow-300 rounded-md bg-yellow-50" style="max-width:34rem">
+                            Cambio de estado: «{{ \App\Models\Entidad::ESTADOS[(int) $estadoOriginal] ?? '—' }}» → «{{ \App\Models\Entidad::ESTADOS[(int) ($entidad['estado'] ?? 0)] ?? '—' }}».
+                            Se anotará en el historial al guardar.
+                            <div class="flex flex-wrap items-end gap-2 mt-1">
+                                <label>Fecha<br><input type="date" wire:model="cambioFecha" class="py-1 text-sm border-gray-300 rounded-md"></label>
+                                <label class="grow">Motivo<br><input type="text" wire:model="cambioMotivo" class="w-full py-1 text-sm border-gray-300 rounded-md" placeholder="motivo del cambio"></label>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
             <hr class="my-2">
