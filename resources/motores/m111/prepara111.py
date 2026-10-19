@@ -273,6 +273,26 @@ def lee_profesionales(ruta: str, meses: list[int], ejercicio: int, avisos: list)
     return out
 
 
+def nif_clave(v) -> str:
+    """NIF para comparar: mayúsculas, sin espacios ni guiones y sin el «ES» delante."""
+    n = re.sub(r'[^A-Z0-9]', '', str(v or '').upper())
+    return n[2:] if re.fullmatch(r'ES[A-Z0-9]{9}', n) else n
+
+
+def lee_cp_proveedores(ruta: str) -> dict:
+    """Listado de proveedores de SAGE (lisProveedores*.xlsx): {NIF: código postal} (columnas CifDni y CodigoPostal)."""
+    filas = filas_xlsx(ruta)
+    i, h = cabecera(filas, ['CifDni', 'CodigoPostal'])
+    out = {}
+    for f in filas[i + 1:]:
+        nif = nif_clave(f[h['cifdni']] if h['cifdni'] < len(f) else '')
+        cp = f[h['codigopostal']] if h['codigopostal'] < len(f) else ''
+        cp = str(int(cp)) if isinstance(cp, float) and cp == int(cp) else str(cp or '').strip()
+        if nif and cp:
+            out.setdefault(nif, cp.zfill(5) if cp.isdigit() and len(cp) < 5 else cp)
+    return out
+
+
 # ---- cálculo ----------------------------------------------------------------------------------------------------------------
 def prepara(spec: dict) -> dict:
     ej = int(spec['ejercicio'])
@@ -400,9 +420,24 @@ def prepara(spec: dict) -> dict:
             prof += lee_profesionales(r, meses, ej, avisos)
         except ErrorDatos as e:
             errores.append(f'Profesionales «{os.path.basename(r)}»: {e}')
+    # código postal de cada profesional: del listado de proveedores de SAGE (fichero base del cliente)
+    cps = {}
+    for r in fic.get('proveedores', []):
+        try:
+            cps.update(lee_cp_proveedores(r))
+        except ErrorDatos as e:
+            avisos.append(f'Proveedores «{os.path.basename(r)}»: {e}; sin código postal.')
+    for p in prof:
+        p['cp'] = cps.get(nif_clave(p['nif']), '')
+    if prof and not fic.get('proveedores'):
+        avisos.append('Sin listado de proveedores de SAGE: el Excel sale sin código postal de los profesionales (súbelo como fichero base «Proveedores»).')
+    elif prof:
+        faltan = sorted({p['nombre'] or p['nif'] for p in prof if not p['cp']})
+        if faltan:
+            avisos.append('Sin código postal en el listado de proveedores: ' + ', '.join(faltan[:10]) + (f' y {len(faltan) - 10} más' if len(faltan) > 10 else '') + '.')
     grupos = OrderedDict()
     for p in prof:
-        g = grupos.setdefault(p['nif'] or p['nombre'], {'nif': p['nif'], 'nombre': p['nombre'], 'base': 0.0, 'retencion': 0.0, 'facturas': 0})
+        g = grupos.setdefault(p['nif'] or p['nombre'], {'nif': p['nif'], 'nombre': p['nombre'], 'cp': p['cp'], 'base': 0.0, 'retencion': 0.0, 'facturas': 0})
         g['base'] = round(g['base'] + p['base'], 2)
         g['retencion'] = round(g['retencion'] + p['retencion'], 2)
         g['facturas'] += 1
@@ -496,10 +531,10 @@ def excel(d: dict, ruta: str) -> None:
     if d['profesionales']:
         ws.cell(r, 1, 'PROFESIONALES (actividades económicas · casillas 07-09)').font = neg
         r += 1
-        cab(r, ['ClienteProveedor', 'CifDni', 'FechaFactura', 'SuFacturaNo', 'BaseRetencion', '%Retencion', 'ImporteRetencion'])
+        cab(r, ['ClienteProveedor', 'CifDni', 'FechaFactura', 'SuFacturaNo', 'BaseRetencion', '%Retencion', 'ImporteRetencion', 'CodigoPostal'])
         r += 1
         for p in d['profesionales']:
-            for j, v in enumerate([p['nombre'], p['nif'], p['fecha'], p['factura'], p['base'], p['pct'], p['retencion']], 1):
+            for j, v in enumerate([p['nombre'], p['nif'], p['fecha'], p['factura'], p['base'], p['pct'], p['retencion'], p.get('cp', '')], 1):
                 c = ws.cell(r, j, v)
                 c.border = caja
                 if j in (5, 7):
@@ -513,10 +548,10 @@ def excel(d: dict, ruta: str) -> None:
         if len(d['perceptores_prof']) != len(d['profesionales']):
             ws.cell(r, 1, 'Por perceptor (NIF)').font = neg
             r += 1
-            cab(r, ['Perceptor', 'NIF', 'Facturas', '', 'Base', '', 'Retención'])
+            cab(r, ['Perceptor', 'NIF', 'Facturas', '', 'Base', '', 'Retención', 'CodigoPostal'])
             r += 1
             for g in d['perceptores_prof']:
-                for j, v in ((1, g['nombre']), (2, g['nif']), (3, g['facturas']), (5, g['base']), (7, g['retencion'])):
+                for j, v in ((1, g['nombre']), (2, g['nif']), (3, g['facturas']), (5, g['base']), (7, g['retencion']), (8, g.get('cp', ''))):
                     c = ws.cell(r, j, v)
                     if j in (5, 7):
                         c.number_format = eur

@@ -110,6 +110,19 @@ class FicherosBase
         return $ej;
     }
 
+    /** ¿Aparecen todos esos textos al principio del Excel? (para comprobar a grandes rasgos que es el listado que se dice). */
+    public static function contiene(string $ruta, string ...$textos): bool
+    {
+        $t = self::principio($ruta);
+        foreach ($textos as $x) {
+            if (! str_contains($t, $x)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /** ¿Es un balance de sumas y saldos de SAGE? (para no guardar como tal, p. ej., una «Cuenta de explotación»). */
     public static function esSumasSaldos(string $ruta): bool
     {

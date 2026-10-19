@@ -10,6 +10,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -212,6 +213,13 @@ class ImpuestoM111 extends Component
         return $this->entidadId ? FicherosBase::ultimo($this->entidadId, 'mayor') : null;
     }
 
+    /** Se ha subido un fichero base desde el recuadro de la pantalla: se rehace el resultado con él (p. ej. el código postal de los proveedores). */
+    #[On('ficheros-base-cambiados')]
+    public function ficherosBaseCambiados(): void
+    {
+        $this->generar();
+    }
+
     public function updatedUsarMayorBase(): void
     {
         $this->generar();
@@ -288,6 +296,9 @@ class ImpuestoM111 extends Component
             $this->res = null;
             @unlink($this->dir('salida').'/resumen.json');
             return;
+        }
+        if ($pb = FicherosBase::ultimo($this->entidadId, 'proveedores')) {
+            $fic['proveedores'] = [$pb['ruta']];   // código postal de los profesionales en el Excel (no es motivo para generar por sí solo)
         }
         $ajustes = $this->aj + ['excluir_4751' => $this->excluir, 'incluir_4751' => $this->incluir, 'usar_mayor_base' => $this->usarMayorBase];
         file_put_contents($this->dir().'/ajustes.json', json_encode($ajustes, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
