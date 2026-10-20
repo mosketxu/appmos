@@ -416,7 +416,7 @@
 
     <div class="p-4 space-y-4">
         <h1 class="flex flex-wrap items-center text-2xl font-semibold text-gray-900 gap-x-3 gap-y-2">
-            <span>Facturas OCR — recibidas —</span>
+            <span>Facturas OCR — recibidas y emitidas —</span>
             @include('livewire.contabilidad._selector-cliente')
             @if ($entidad)
                 <span class="text-sm font-normal text-gray-500">{{ $entidad->entidad }} · {{ $entidad->nif }}</span>
