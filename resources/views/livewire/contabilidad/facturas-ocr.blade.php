@@ -654,9 +654,21 @@
                     <div wire:loading wire:target="leerZona" class="focr-avisos" style="background:#eef2ff; border-color:#c7d2fe; color:#312e81">Leyendo el recuadro…</div>
                     @error('validar') <pre class="focr-avisos" style="white-space:pre-wrap; background:#fef2f2; border-color:#fca5a5; color:#991b1b">{{ $message }}</pre> @enderror
 
+                    @php $esEm = ($form['tipo'] ?? 'R') === 'E'; @endphp
                     <div class="g4">
+                        <div style="grid-column:1 / -1; display:flex; gap:.5rem; align-items:center; font-size:.75rem">
+                            <label class="focr-lbl" style="margin:0">Tipo de factura</label>
+                            <select wire:change="cambiarTipo($event.target.value)" class="focr-in" style="width:auto; padding:.1rem .4rem; {{ $esEm ? 'background:#ecfdf5; border-color:#34d399' : '' }}"
+                                    title="Se detecta sola; si no acierta, elígela. Al cambiarla se vuelve a proponer con el cliente / proveedor que toque.">
+                                @php $forz = ! empty($form['tipo_forzado']); @endphp
+                                <option value="A" @selected(! $forz)>Detectar sola ({{ $esEm ? 'emitida' : 'recibida' }})</option>
+                                <option value="R" @selected($forz && ! $esEm)>Recibida (proveedor)</option>
+                                <option value="E" @selected($forz && $esEm)>Emitida (cliente)</option>
+                            </select>
+                            @if ($esEm) <span class="focr-chip c-ok">EMITIDA · va a la pestaña Emitidas del plugin</span> @endif
+                        </div>
                         <div style="grid-column:span 3">
-                            <label class="focr-lbl">Proveedor
+                            <label class="focr-lbl">{{ $esEm ? 'Cliente' : 'Proveedor' }}
                                 @if ($esNuevo) <span class="focr-chip c-revisar">nuevo</span> @endif
                                 @if (! empty($actual['motivo_proveedor'])) <span style="font-weight:400; color:#9ca3af">· {{ $actual['motivo_proveedor'] }}</span> @endif
                             </label>
@@ -673,7 +685,7 @@
                             </div>
                         </div>
                         <div style="align-self:end">
-                            <button type="button" wire:click="cuentaNueva" class="focr-btn b-gris" style="width:100%; justify-content:center; padding:.2rem .3rem; font-size:.72rem" title="Proveedor nuevo: siguiente 410 libre">+ Cuenta nueva</button>
+                            <button type="button" wire:click="cuentaNueva" class="focr-btn b-gris" style="width:100%; justify-content:center; padding:.2rem .3rem; font-size:.72rem" title="{{ $esEm ? 'Cliente nuevo: siguiente 430 libre' : 'Proveedor nuevo: siguiente 410 libre' }}">+ Cuenta nueva</button>
                         </div>
 
                         <div style="grid-column:span 2"><label class="focr-lbl">Nombre</label><input type="text" wire:model.blur="form.proveedor" class="focr-in"></div>
@@ -694,7 +706,7 @@
                                 <div style="font-size:.68rem; color:#6b7280">CP {{ $form['cp'] }} {{ $form['provincia'] ?? '' }}</div>
                             @endif
                         </div>
-                        <div><label class="focr-lbl">Nombre corto fichero</label><input type="text" wire:model.blur="form.nombre_fichero" class="focr-in" placeholder="p.ej. Aquaservice"></div>
+                        @unless ($esEm)<div><label class="focr-lbl">Nombre corto fichero</label><input type="text" wire:model.blur="form.nombre_fichero" class="focr-in" placeholder="p.ej. Aquaservice"></div>@endunless
                         @if ($propuestaCif)
                             <div style="grid-column:1 / -1; font-size:.72rem; padding:.3rem .5rem; border:1px solid #c7d2fe; background:#eef2ff; border-radius:.3rem">
                                 @if (! empty($propuestaCif['error']))
@@ -718,10 +730,10 @@
                         @endif
 
                         <div><label class="focr-lbl" style="font-size:.62rem">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in" style="font-size:.75rem; padding:.2rem .3rem"></div>
-                        <div style="grid-column:span 3"><label class="focr-lbl">Nº factura</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
-                        <div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>
-                        <div><label class="focr-lbl">F. expedición</label><input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}"></div>
-                        <div><label class="focr-lbl">F. operación</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
+                        <div style="grid-column:span 3"><label class="focr-lbl">{{ $esEm ? 'Nº factura (solo el número; la serie va aparte)' : 'Nº factura' }}</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
+                        @unless ($esEm)<div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>@endunless
+                        <div><label class="focr-lbl">{{ $esEm ? 'Fecha' : 'F. expedición' }}</label><input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}"></div>
+                        <div><label class="focr-lbl">{{ $esEm ? 'F. operación' : 'F. operación' }}</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
 
                         {{-- Cl.Ope y Cod.Trans: 2 dígitos (estrechos); Contrapartida ocupa todo lo que sobra (cabe «cuenta · concepto»); Canal a su derecha --}}
                         <div style="grid-column:1 / -1; display:flex; gap:.45rem; align-items:flex-end">

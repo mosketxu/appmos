@@ -37,6 +37,16 @@
                         </div>
                     @endif
                     <div>
+                        <label class="focr-lbl">Facturas
+                            <x-neteges-info>Se detecta sola si cada PDF es una factura RECIBIDA (la empresa es el cliente) o EMITIDA (la empresa es el emisor). Si lo quieres forzar para todo lo que subas, elígelo aquí; también se puede cambiar factura a factura al revisarla. Elígelo antes de subir los PDF.</x-neteges-info>
+                        </label>
+                        <select wire:model.live="tipoFactura" class="focr-in">
+                            <option value="auto">Detectar solas</option>
+                            <option value="R">Todas recibidas</option>
+                            <option value="E">Todas emitidas</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="focr-lbl">Analítica
                             <x-neteges-info>Contabilidad analítica: marca la casilla para que cada factura lleve el canal del proveedor por defecto (el código de canal que tenga en su ficha). Se guarda en la entidad.</x-neteges-info>
                         </label>

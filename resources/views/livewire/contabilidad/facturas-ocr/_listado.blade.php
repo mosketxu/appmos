@@ -243,7 +243,7 @@
                             @foreach ($duplicadas as $f)
                                 @php $d = $f['datos'] ?? []; @endphp
                                 <tr wire:key="d-{{ $f['id'] }}">
-                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
+                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }} @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
@@ -309,7 +309,7 @@
                                     <td style="max-width:260px; word-break:break-all">{{ basename($f['ruta']) }} @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
                                         @if (collect($f['avisos'] ?? [])->contains(fn ($a) => str_starts_with($a, 'DUPLICADA'))) <span class="focr-chip c-falta">DUPLICADA</span> @endif
                                         @if (! empty($f['editada'])) <span class="focr-chip c-gris" title="Tocada a mano el {{ $f['editada'] }}; se guarda sola">✎ a medias</span> @endif</td>
-                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
+                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }} @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
@@ -410,7 +410,7 @@
                                     <td x-data x-on:click.stop style="white-space:nowrap">@if ($f['estado'] === 'validada')<input type="checkbox" wire:model.live="marcadasValidadas" value="{{ $f['id'] }}" title="Marcar para retroceder">
                                         <button type="button" wire:click="verValidada('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.72rem" title="Ver cómo se ha contabilizado (asiento, códigos, PDF)">👁 Ver</button>@endif</td>
                                     <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
-                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
+                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }} @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
                                     @php $im = $importes($d); @endphp

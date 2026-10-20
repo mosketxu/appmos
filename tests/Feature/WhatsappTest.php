@@ -85,6 +85,7 @@ class WhatsappTest extends TestCase
         $this->actingAs($u);
         \Livewire\Livewire::test(\App\Http\Livewire\Contabilidad\WhatsApp::class)
             ->assertSee('Factura de Mengual &lt;b&gt;', false)->assertSee('f.pdf')
+            ->assertSee('visor = {"url":', false)   // JSON válido en el atributo (con HEX_QUOT salía \\u0022url\\u0022 y el clic no hacía nada)
             ->set('buscar', 'Mengual')->assertSee('1 mensajes')->assertDontSee('f.pdf');
     }
 }

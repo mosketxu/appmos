@@ -55,7 +55,7 @@
 
             <style>
                 .wa-cols { display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap; }
-                .wa-chat { flex:0 0 auto; width:min(100%, 30rem); height:78vh; overflow-y:auto; padding:.8rem; background:#efeae2; border:1px solid #d6d3d1; border-radius:.5rem; }
+                .wa-chat { flex:0 0 auto; width:min(100%, 60rem); height:78vh; overflow-y:auto; padding:.8rem; background:#efeae2; border:1px solid #d6d3d1; border-radius:.5rem; }
                 .wa-visor { flex:1 1 24rem; min-width:0; height:78vh; display:flex; flex-direction:column; background:#fff; border:1px solid #d6d3d1; border-radius:.5rem; overflow:hidden; }
                 @media (max-width:900px) { .wa-chat { width:100%; } .wa-visor { height:70vh; } }
             </style>
@@ -91,12 +91,12 @@
                                     @if (! $tengo)
                                         <div style="font-size:.8rem; color:#78716c">📎 {{ $m->adjunto }} <em>(adjunto no disponible)</em></div>
                                     @elseif (in_array($ext, $imagenes, true))
-                                        <a href="{{ $url }}" x-on:click.prevent="visor = @json(['url' => $url, 'nombre' => $m->adjunto, 'tipo' => 'img'], JSON_HEX_APOS | JSON_HEX_QUOT)"><img src="{{ $url }}" alt="{{ $m->adjunto }}" loading="lazy" style="max-height:{{ str_starts_with($m->adjunto, 'STK-') ? '90' : '220' }}px; max-width:100%; border-radius:.3rem; cursor:zoom-in"></a>
+                                        <a href="{{ $url }}" x-on:click.prevent='visor = @json(['url' => $url, 'nombre' => $m->adjunto, 'tipo' => 'img'], JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_TAG)'><img src="{{ $url }}" alt="{{ $m->adjunto }}" loading="lazy" style="max-height:{{ str_starts_with($m->adjunto, 'STK-') ? '90' : '220' }}px; max-width:100%; border-radius:.3rem; cursor:zoom-in"></a>
                                     @elseif (in_array($ext, $audios, true))
                                         <audio controls preload="none" src="{{ $url }}" style="max-width:100%; height:2.2rem"></audio>
                                     @else
                                         <a href="{{ $url }}" download="{{ $m->adjunto }}" style="font-size:.85rem; color:#1d4ed8; text-decoration:underline"
-                                           @if ($ext === 'pdf') x-on:click.prevent="visor = @json(['url' => $url, 'nombre' => $m->adjunto, 'tipo' => 'pdf'], JSON_HEX_APOS | JSON_HEX_QUOT)" @endif>{{ $ext === 'pdf' ? '📄' : '📎' }} {{ $m->adjunto }}</a>
+                                           @if ($ext === 'pdf') x-on:click.prevent='visor = @json(['url' => $url, 'nombre' => $m->adjunto, 'tipo' => 'pdf'], JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_TAG)' @endif>{{ $ext === 'pdf' ? '📄' : '📎' }} {{ $m->adjunto }}</a>
                                         <span style="font-size:.7rem; color:#78716c">{{ $kb($adjuntos[$m->adjunto]) }}</span>
                                     @endif
                                 @endif

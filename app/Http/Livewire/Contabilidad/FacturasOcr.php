@@ -57,6 +57,9 @@ class FacturasOcr extends Component
     public array $form = [];
     public string $motivo = '';
 
+    /** Facturas del proceso: 'auto' = se detecta si son recibidas o emitidas; 'R' / 'E' lo fuerzan (selector de la pantalla). */
+    public string $tipoFactura = 'auto';
+
     public string $vista = 'revisar';   // revisar | historico | duplicadas | proveedores
     public string $filtro = '';
     public string $filtroMes = '';
@@ -1274,7 +1277,7 @@ class FacturasOcr extends Component
         foreach ($this->entornoPython() as $k => $v) {
             $env .= $k.'='.escapeshellarg($v).' ';
         }
-        $args = array_merge(['analizar', '--carpeta', $this->dirEntrada()], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']);
+        $args = array_merge(['analizar', '--carpeta', $this->dirEntrada()], $this->parametrosLectura(), ['--analitica', $this->analitica ? '1' : '0']);
         $cmd = 'cd '.escapeshellarg($this->baseDir()).' && ('.$env.escapeshellarg($this->pythonBin()).' facturas_ocr.py '.escapeshellarg($this->cliente)
             .' '.implode(' ', array_map('escapeshellarg', $args)).' > '.escapeshellarg($dir.'/lectura.log').' 2>&1; date +%s > '.escapeshellarg($dir.'/lectura.fin')
             .') < /dev/null > /dev/null 2>&1 &';
@@ -1517,7 +1520,7 @@ class FacturasOcr extends Component
             $this->addError('carpeta', 'No existe la carpeta.');
             return;
         }
-        $this->ejecutar(array_merge(['analizar', '--carpeta', $this->carpeta], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0']),
+        $this->ejecutar(array_merge(['analizar', '--carpeta', $this->carpeta], $this->parametrosLectura(), ['--analitica', $this->analitica ? '1' : '0']),
             1800, 'Leer facturas');
     }
 
@@ -1528,6 +1531,27 @@ class FacturasOcr extends Component
             array_push($p, '--cierre', $this->cierre);
         }
         return $p;
+    }
+
+    /** Parámetros de la lectura de una carpeta: los de siempre y, si se ha forzado, si son recibidas (R) o emitidas (E). */
+    protected function parametrosLectura(): array
+    {
+        return array_merge($this->parametros(), in_array($this->tipoFactura, ['R', 'E'], true) ? ['--tipo', $this->tipoFactura] : []);
+    }
+
+    /** Factura abierta: forzar que es Recibida (R), Emitida (E) o volver a detectarlo (A). Se vuelve a proponer con el cliente / proveedor que toque. */
+    public function cambiarTipo(string $tipo): void
+    {
+        if (! $this->sel || ! in_array($tipo, ['A', 'R', 'E'], true)) {
+            return;
+        }
+        $this->salida = '';
+        if ($this->ejecutar(array_merge(['reproponer', $this->sel], $this->parametros(), ['--analitica', $this->analitica ? '1' : '0', '--tipo', $tipo]), 120, 'Cambiar de recibida a emitida', false)) {
+            $this->dispatch('focr-listas');
+            $this->abrir($this->sel);
+        } else {
+            $this->addError('validar', trim($this->salida));
+        }
     }
 
     /** Se cambió IVA/periodo/cierre mientras se leían facturas: las fechas de registro se recalculan al terminar la lectura. */
@@ -1664,7 +1688,7 @@ class FacturasOcr extends Component
         $d['lineas'] = array_map(fn ($l) => array_map(fn ($v) => $v === null ? '' : (string) $v, $l), $lineas);
         if (empty($d['contrapartida']) && ! empty($d['cuenta'])) {
             // La de su ficha (o la última que se le puso aquí), si al leer la factura no se propuso
-            $d['contrapartida'] = (string) ($this->patrones()[$d['cuenta']]['contrapartida'] ?? ($this->proveedores()[$d['cuenta']]['contrapartida'] ?? ''));
+            $d['contrapartida'] = (string) ($this->patrones()[$d['cuenta']]['contrapartida'] ?? ($this->terceros($d['tipo'] ?? '')[$d['cuenta']]['contrapartida'] ?? ''));
         }
         foreach (['cuenta', 'nombre_fichero', 'proveedor', 'cif', 'serie', 'su_factura', 'fecha_expedicion', 'fecha_operacion',
             'fecha_registro', 'contrapartida', 'codigo_transaccion', 'clave_operacion', 'total', 'codigo_retencion', 'base_retencion',
@@ -1772,6 +1796,25 @@ class FacturasOcr extends Component
         return $cache[$f] ??= (json_decode((string) @file_get_contents($f), true)['proveedores'] ?? []);
     }
 
+    /**
+     * Facturas EMITIDAS: los clientes de SAGE (430...) en vez de los proveedores. Sin $tipo, el de la factura abierta. Lo usan el formulario
+     * de revisión y sus avisos; la pestaña Proveedores sigue con proveedores().
+     */
+    protected function terceros(?string $tipo = null): array
+    {
+        if (($tipo ?? ($this->form['tipo'] ?? '')) !== 'E') {
+            return $this->proveedores();
+        }
+        static $cache = [];
+        $f = $this->dirCliente().'/Base/proveedores.json';
+        return $cache[$f] ??= (json_decode((string) @file_get_contents($f), true)['clientes'] ?? []);
+    }
+
+    protected function esEmitida(): bool
+    {
+        return ($this->form['tipo'] ?? '') === 'E';
+    }
+
     protected function patrones(): array
     {
         return json_decode((string) @file_get_contents($this->dirDatos().'/patrones.json'), true) ?: [];
@@ -1792,12 +1835,12 @@ class FacturasOcr extends Component
     {
         $cta = trim(explode(' ', trim($this->form['cuenta'] ?? ''))[0]);
         $this->form['cuenta'] = $cta;
-        $p = $this->proveedores()[$cta] ?? null;
+        $p = $this->terceros()[$cta] ?? null;
         $pat = $this->patrones()[$cta] ?? [];
         if (! $p) {
             // Proveedor nuevo ya dado de alta aquí con su 410xxx (aún no está en el listado de SAGE)
             if (! empty($pat['nuevo'])) {
-                $this->form['proveedor'] = $pat['proveedor'] ?? '';
+                $this->form['proveedor'] = $pat['cliente'] ?? ($pat['proveedor'] ?? '');
                 $this->form['cif'] = $pat['cif'] ?? '';
                 $this->form['contrapartida'] = $pat['contrapartida'] ?? ($this->form['contrapartida'] ?? '');
                 $this->form['codigo_transaccion'] = (string) ($pat['codigo_transaccion'] ?? ($this->form['codigo_transaccion'] ?? ''));
@@ -1837,15 +1880,15 @@ class FacturasOcr extends Component
         if (! preg_match('/^\d{3,12}$/', $cuenta)) {
             return 'La cuenta tiene que ser solo números.';
         }
-        $largos = array_count_values(array_map('strlen', array_map('strval', array_keys($this->proveedores()))));
+        $largos = array_count_values(array_map('strlen', array_map('strval', array_keys($this->terceros()))));
         arsort($largos);
         $largo = (int) (array_key_first($largos) ?? 0);
         $avisos = [];
         if ($largo && strlen($cuenta) !== $largo) {
             $avisos[] = "Las cuentas de proveedor de este cliente tienen {$largo} cifras y {$cuenta} tiene ".strlen($cuenta).'.';
         }
-        if (! str_starts_with($cuenta, '4')) {
-            $avisos[] = "{$cuenta} no empieza por 4 (las de proveedor son 400/410…).";
+        if ($this->esEmitida() ? ! str_starts_with($cuenta, '43') : ! str_starts_with($cuenta, '4')) {
+            $avisos[] = $this->esEmitida() ? "{$cuenta} no empieza por 43 (las de cliente son 430…)." : "{$cuenta} no empieza por 4 (las de proveedor son 400/410…).";
         }
         $pat = $this->patrones()[$cuenta] ?? [];
         // si es el mismo proveedor (mismo nombre, aunque el NIF sea otro) no se avisa
@@ -1872,7 +1915,7 @@ class FacturasOcr extends Component
         // así que cuenta libre y datos del proveedor en blanco (14-oct-2026, Subiñas propuesta como Espumalia)
         $actual = trim((string) ($this->form['cuenta'] ?? ''));
         if ($cif !== '' && $actual !== '') {
-            $p = $this->proveedores()[$actual] ?? [];
+            $p = $this->terceros()[$actual] ?? [];
             $pat = $this->patrones()[$actual] ?? [];
             $b = $this->cuentasBancos()[$actual] ?? [];
             $suyos = array_merge($pat['nifs'] ?? [], [$pat['cif'] ?? '', $p['cif_europeo'] ?? '', ($p['sigla'] ?? '').($p['nif'] ?? ''), $p['nif'] ?? '', $b['cif'] ?? '']);
@@ -1884,9 +1927,10 @@ class FacturasOcr extends Component
                 }
             }
         }
-        $usadas = array_filter(array_map('strval', array_keys($this->proveedores())), fn ($k) => preg_match('/^410\d{3}$/', $k));
+        $serie = $this->esEmitida() ? '430' : '410';
+        $usadas = array_filter(array_map('strval', array_keys($this->terceros())), fn ($k) => preg_match('/^'.$serie.'\d{3}$/', $k));
         foreach ($this->patrones() as $k => $pat) {
-            if (! empty($pat['nuevo'])) {
+            if (! empty($pat['nuevo']) && str_starts_with((string) $k, '430') === $this->esEmitida()) {
                 if ($cif !== '' && in_array($cif, $pat['nifs'] ?? [], true)) {
                     $this->form['cuenta'] = (string) $k;
                     $this->updatedFormCuenta();
@@ -1909,8 +1953,8 @@ class FacturasOcr extends Component
             }
             $usadas[] = (string) $k;
         }
-        $nums = array_map('intval', array_filter($usadas, fn ($k) => preg_match('/^410\d{3}$/', $k)));
-        $this->form['cuenta'] = (string) ($nums ? max($nums) + 1 : 410001);
+        $nums = array_map('intval', array_filter($usadas, fn ($k) => preg_match('/^'.$serie.'\d{3}$/', $k) && ! str_ends_with($k, '900')));
+        $this->form['cuenta'] = (string) ($nums ? max($nums) + 1 : (int) ($serie.'001'));
         $this->sucio = true;
         $this->altaProveedorNuevo();
     }
@@ -1925,7 +1969,7 @@ class FacturasOcr extends Component
         $cta = trim((string) ($this->form['cuenta'] ?? ''));
         $nombre = trim((string) ($this->form['proveedor'] ?? ''));
         $cif = trim((string) ($this->form['cif'] ?? ''));
-        if (! preg_match('/^\d{3,12}$/', $cta) || $nombre === '' || isset($this->proveedores()[$cta]) || ! $this->ejecutaAqui()) {
+        if (! preg_match('/^\d{3,12}$/', $cta) || $nombre === '' || isset($this->terceros()[$cta]) || ! $this->ejecutaAqui()) {
             return;
         }
         $pat = $this->patrones()[$cta] ?? [];
@@ -2137,14 +2181,14 @@ class FacturasOcr extends Component
         }
         $out = [];
         $pats = $this->patrones();
-        foreach ($this->proveedores() as $cta => $p) {
+        foreach ($this->terceros() as $cta => $p) {
             // El nombre editado aquí (Proveedores → nombre propio) manda sobre el del listado de SAGE
             $nombre = (string) (($pats[$cta]['nombre_propio'] ?? '') !== '' ? $pats[$cta]['nombre_propio'] : ($p['razon'] ?? ''));
             $out[] = [(string) $cta, trim($nombre.' · '.($p['nif'] ?? ''), ' ·')];
         }
         foreach ($pats as $cta => $pat) {
-            if (! empty($pat['nuevo'])) {
-                $out[] = [(string) $cta, trim(($pat['proveedor'] ?? '').' · '.($pat['cif'] ?? '').' (nuevo)', ' ·')];
+            if (! empty($pat['nuevo']) && str_starts_with((string) $cta, '430') === $this->esEmitida()) {
+                $out[] = [(string) $cta, trim(($pat['cliente'] ?? ($pat['proveedor'] ?? '')).' · '.($pat['cif'] ?? '').' (nuevo)', ' ·')];
             }
         }
         return $out;
@@ -2301,7 +2345,7 @@ class FacturasOcr extends Component
 
     protected function esIsp(): bool
     {
-        $cod = (string) ($this->proveedores()[$this->form['cuenta'] ?? '']['codigo_iva'] ?? '');
+        $cod = (string) ($this->terceros()[$this->form['cuenta'] ?? '']['codigo_iva'] ?? '');
         return in_array($cod, ['910', '921', '810', '821'], true);
     }
 
@@ -2354,7 +2398,7 @@ class FacturasOcr extends Component
         }
         $norm = fn ($v) => strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $v));
         $out = [];
-        foreach ($this->proveedores()[$cta]['facturas'] ?? [] as $f) {
+        foreach ($this->terceros()[$cta]['facturas'] ?? [] as $f) {
             if ($norm($f['num'] ?? '') === $a) {
                 $out[] = "Ya contabilizada en SAGE: nº {$f['num']} del {$f['fecha']} ({$f['total']} €)";
                 break;
@@ -2393,7 +2437,7 @@ class FacturasOcr extends Component
     protected function choqueCuenta(): ?string
     {
         $cta = trim((string) ($this->form['cuenta'] ?? ''));
-        if ($cta === '' || isset($this->proveedores()[$cta])) {
+        if ($this->esEmitida() || $cta === '' || isset($this->terceros()[$cta])) {
             return null;
         }
         $limpio = fn ($n) => preg_replace('/^ES(?=.{9}$)/', '', strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $n)));
@@ -2440,7 +2484,7 @@ class FacturasOcr extends Component
         // Lo que Python comprobaría: si falta algo, se dice ya y no se encola
         $faltan = array_filter(['cuenta', 'su_factura', 'fecha_expedicion', 'fecha_registro', 'contrapartida', 'total'],
             fn ($k) => ($datos[$k] ?? '') === '' || $datos[$k] === null);
-        if (! isset($this->proveedores()[(string) ($datos['cuenta'] ?? '')])) {
+        if (! isset($this->terceros()[(string) ($datos['cuenta'] ?? '')])) {
             $faltan = array_merge($faltan, array_filter(['cif', 'proveedor'], fn ($k) => trim((string) ($datos[$k] ?? '')) === ''));
         }
         if ($faltan) {
@@ -2716,6 +2760,7 @@ class FacturasOcr extends Component
         'prov' => ['/lisProveedores/i', 'lisProveedores_', false],
         'mayor' => ['/^Mayor/i', 'Mayor_', true],
         'plan' => ['/plan/i', 'Plan_', false],
+        'cli' => ['/lisClientes|^Clientes/i', 'lisClientes_', false],
     ];
 
     public function updatedSubidaProv(): void { $this->subirBase('prov', 'subidaProv'); }
@@ -2746,7 +2791,7 @@ class FacturasOcr extends Component
     }
 
     /** Fichero base central (App\Support\FicherosBase) ↔ tipo local de Facturas OCR. */
-    protected const CENTRAL = ['prov' => 'proveedores', 'mayor' => 'mayor', 'plan' => 'plan'];
+    protected const CENTRAL = ['prov' => 'proveedores', 'mayor' => 'mayor', 'plan' => 'plan', 'cli' => 'clientes'];
 
     protected function entidadIdCliente(): int
     {
@@ -3059,14 +3104,14 @@ class FacturasOcr extends Component
             'provs' => $provs,
             'esNuevoProv' => $this->provSel !== '' && ! isset($this->proveedores()[$this->provSel]),
             // Factura abierta con proveedor que no está en SAGE: se puede buscar su CIF/CP en internet
-            'provFueraSage' => $this->sel !== '' && ! isset($this->proveedores()[$this->form['cuenta'] ?? '']),
+            'provFueraSage' => $this->sel !== '' && ! isset($this->terceros()[$this->form['cuenta'] ?? '']),
             'nombresCuentas' => $this->vista === 'proveedores' && $valido
                 ? $this->cuentasContables() : [],
             'mesesReg' => $mesesReg,
             'actual' => $actual,
             'posicion' => $actual ? array_search($this->sel, array_column($cola, 'id'), true) : false,
             'isp' => $this->sel ? $this->esIsp() : false,
-            'esNuevo' => $this->sel && ($this->form['cuenta'] ?? '') !== '' && ! isset($this->proveedores()[$this->form['cuenta']]),
+            'esNuevo' => $this->sel && ($this->form['cuenta'] ?? '') !== '' && ! isset($this->terceros()[$this->form['cuenta']]),
             'primeraAbierta' => $this->primeraAbierta(),
             'periodos' => $this->periodos(),
             'mesesCierre' => $this->mesesCierre(),

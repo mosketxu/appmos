@@ -28,8 +28,8 @@
                     <div class="overflow-y-auto p-3 text-sm border-l border-gray-200" style="width:26rem; flex:none">
                         <table class="w-full">
                             @foreach ([
-                                'F. registro' => $fmt($d['fecha_registro'] ?? ''), 'F. factura' => $fmt($d['fecha_expedicion'] ?? ''),
-                                'Proveedor' => trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')), 'CIF' => $d['cif'] ?? '', 'Nº factura' => $d['su_factura'] ?? '',
+                                'F. registro' => (($d['tipo'] ?? 'R') === 'E' ? '' : $fmt($d['fecha_registro'] ?? '')), 'Serie' => $d['serie'] ?? '', 'F. factura' => $fmt($d['fecha_expedicion'] ?? ''),
+                                (($d['tipo'] ?? 'R') === 'E' ? 'Cliente' : 'Proveedor') => trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')), 'CIF' => $d['cif'] ?? '', 'Nº factura' => $d['su_factura'] ?? '',
                                 'Contrapartida' => $d['contrapartida'] ?? '', 'Cód. transacción' => $d['codigo_transaccion'] ?? '', 'Clave operación' => $d['clave_operacion'] ?? '',
                                 'Comentario' => $d['comentario'] ?? '',
                             ] as $k => $val)
@@ -52,6 +52,19 @@
                         @php
                             $ls = array_values(array_filter($d['lineas'] ?? [], fn ($l) => ($l['base'] ?? '') !== '' && $l['base'] !== null));
                             $asiento = [];
+                            if (($d['tipo'] ?? 'R') === 'E') {
+                                // Emitida: el cliente al debe, las ventas y el IVA repercutido al haber
+                                $asiento[] = [$d['cuenta'] ?? '', trim(($d['proveedor'] ?? '').' · '.($d['serie'] ?? '').' '.($d['su_factura'] ?? ''), ' ·'), (float) ($d['total'] ?? 0), null];
+                                if (! empty($d['cuota_retencion'])) {
+                                    $asiento[] = ['4730…', 'Retención '.($d['pct_retencion'] ?? '').' %', (float) $d['cuota_retencion'], null];
+                                }
+                                foreach ($ls as $l) {
+                                    $asiento[] = [$d['contrapartida'] ?? '', 'Venta (base'.((float) ($l['pct'] ?? 0) ? ' al '.$l['pct'].' %' : ', sin IVA').')', null, (float) $l['base']];
+                                    if ((float) ($l['cuota'] ?? 0) != 0) {
+                                        $asiento[] = ['477…', 'IVA repercutido '.$l['pct'].' %', null, (float) $l['cuota']];
+                                    }
+                                }
+                            } else {
                             foreach ($ls as $l) {
                                 $asiento[] = [$d['contrapartida'] ?? '', 'Gasto (base'.((float) ($l['pct'] ?? 0) ? ' al '.$l['pct'].' %' : ', sin IVA').')', (float) $l['base'], null];
                                 if ((float) ($l['cuota'] ?? 0) != 0) {
@@ -62,6 +75,7 @@
                                 $asiento[] = ['4751…', 'Retención '.($d['pct_retencion'] ?? '').' %', null, (float) $d['cuota_retencion']];
                             }
                             $asiento[] = [$d['cuenta'] ?? '', trim(($d['proveedor'] ?? '').' · '.($d['su_factura'] ?? ''), ' ·'), null, (float) ($d['total'] ?? 0)];
+                            }
                             $sd = array_sum(array_map(fn ($x) => $x[2] ?? 0, $asiento));
                             $sh = array_sum(array_map(fn ($x) => $x[3] ?? 0, $asiento));
                         @endphp
