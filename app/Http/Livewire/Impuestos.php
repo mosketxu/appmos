@@ -58,6 +58,7 @@ class Impuestos extends Component
     public ?int $comOb = null;
     public string $comPer = '';
     public string $comTexto = '';
+    public bool $comObligatorio = false;   // el comentario nuevo es de lectura obligatoria
     public $adjArchivo;   // fichero para un comentario que ya existe
     public int $adjuntarA = 0;
     public $comArchivo;   // un fichero adjunto por comentario (máx. 20 MB)
@@ -250,6 +251,14 @@ class Impuestos extends Component
         $this->autorizarCasilla($obId);
         $ob = DB::table('entidad_impuestos')->find($obId);
         if (! $ob || ! in_array($periodo, Imp::periodos($ob->periodicidad), true)) {
+            return;
+        }
+        // Comentarios de lectura obligatoria sin validar: salta la alarma y no se cambia el estado
+        $pendientes = DB::table('impuesto_comentarios')->where(['entidad_impuesto_id' => $obId, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo, 'obligatorio' => 1])
+            ->whereNull('validado_at')->orderBy('id')->pluck('texto');
+        if ($pendientes->isNotEmpty()) {
+            $this->js('alert('.\Illuminate\Support\Js::from("⚠️ Comentario de lectura obligatoria sin validar:\n\n".$pendientes->filter()->implode("\n\n")."\n\nAbre 💬 y marca «Leído y validado» para poder cambiar el estado.").')');
+
             return;
         }
         $fila = DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $obId, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo])->first();
@@ -589,7 +598,33 @@ class Impuestos extends Component
         $this->comOb = null;
         $this->comPer = '';
         $this->comTexto = '';
+        $this->comObligatorio = false;
         $this->comArchivo = null;
+    }
+
+    /** «Leído y validado» de un comentario obligatorio (cualquiera que vea la casilla); volver a pulsarlo lo deja otra vez pendiente. */
+    public function validarComentario(int $id): void
+    {
+        $c = DB::table('impuesto_comentarios')->find($id);
+        if (! $c || ! $c->obligatorio) {
+            return;
+        }
+        $this->autorizarCasilla($c->entidad_impuesto_id);
+        DB::table('impuesto_comentarios')->where('id', $id)->update($c->validado_at
+            ? ['validado_user_id' => null, 'validado_at' => null, 'updated_at' => now()]
+            : ['validado_user_id' => auth()->id(), 'validado_at' => now(), 'updated_at' => now()]);
+    }
+
+    /** Convierte un comentario en obligatorio (o lo quita): su autor, Admin y Suma. */
+    public function alternarObligatorio(int $id): void
+    {
+        $c = DB::table('impuesto_comentarios')->find($id);
+        if (! $c) {
+            return;
+        }
+        $this->autorizarCasilla($c->entidad_impuesto_id);
+        abort_unless($c->user_id === auth()->id() || $this->puedeTodos(), 403);
+        DB::table('impuesto_comentarios')->where('id', $id)->update(['obligatorio' => ! $c->obligatorio, 'validado_user_id' => null, 'validado_at' => null, 'updated_at' => now()]);
     }
 
     /** Guarda un fichero de comentario en el almacén (por SHA-256) y devuelve las columnas adjunto_*. */
@@ -667,7 +702,7 @@ class Impuestos extends Component
             $adj = ['adjunto_nombre' => $nombre, 'adjunto_almacen' => $almacen, 'adjunto_tam' => $this->comArchivo->getSize()];
         }
         DB::table('impuesto_comentarios')->insert(['entidad_impuesto_id' => $this->comOb, 'ejercicio' => $this->ejercicio, 'periodo' => $this->comPer,
-            'texto' => mb_substr($texto, 0, 2000), 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()] + $adj);
+            'texto' => mb_substr($texto, 0, 2000), 'obligatorio' => $this->comObligatorio, 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()] + $adj);
         $this->comTexto = '';
         $this->comArchivo = null;
     }
@@ -694,9 +729,9 @@ class Impuestos extends Component
         }
         $ob = DB::table('entidad_impuestos as ei')->join('entidades as e', 'e.id', '=', 'ei.entidad_id')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->where('ei.id', $this->comOb)->first(['ei.etiqueta', 'e.entidad', 'm.codigo', 'm.desfase']);
-        $lista = DB::table('impuesto_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')
+        $lista = DB::table('impuesto_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')->leftJoin('users as v', 'v.id', '=', 'c.validado_user_id')
             ->where(['c.entidad_impuesto_id' => $this->comOb, 'c.ejercicio' => $this->ejercicio, 'c.periodo' => $this->comPer])
-            ->orderBy('c.id')->get(['c.id', 'c.texto', 'c.user_id', 'c.created_at', 'c.adjunto_nombre', 'c.adjunto_tam', 'u.name']);
+            ->orderBy('c.id')->get(['c.id', 'c.texto', 'c.user_id', 'c.created_at', 'c.adjunto_nombre', 'c.adjunto_tam', 'c.obligatorio', 'c.validado_at', 'v.name as validador', 'u.name']);
 
         return ['ob' => $ob, 'lista' => $lista];
     }
@@ -848,8 +883,8 @@ class Impuestos extends Component
         $coment = [];   // [«obligación|periodo»] => [[texto, autor, fecha]] de las casillas visibles
         foreach (array_chunk($ids ?: [0], 1000) as $trozo) {
             DB::table('impuesto_comentarios as c')->leftJoin('users as u', 'u.id', '=', 'c.user_id')->where('c.ejercicio', $this->ejercicio)->whereIn('c.entidad_impuesto_id', $trozo)
-                ->orderBy('c.id')->get(['c.entidad_impuesto_id', 'c.periodo', 'c.texto', 'c.created_at', 'c.adjunto_nombre', 'u.name'])->each(function ($c) use (&$coment) {
-                    $coment[$c->entidad_impuesto_id.'|'.$c->periodo][] = [$c->texto, $c->name, $c->created_at, $c->adjunto_nombre];
+                ->orderBy('c.id')->get(['c.entidad_impuesto_id', 'c.periodo', 'c.texto', 'c.created_at', 'c.adjunto_nombre', 'c.obligatorio', 'c.validado_at', 'u.name'])->each(function ($c) use (&$coment) {
+                    $coment[$c->entidad_impuesto_id.'|'.$c->periodo][] = [$c->texto, $c->name, $c->created_at, $c->adjunto_nombre, (bool) $c->obligatorio && ! $c->validado_at];
                 });
         }
         $filas = [];

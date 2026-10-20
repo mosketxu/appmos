@@ -102,6 +102,6 @@
             <button type="button" class="imp-pdf gris imp-xl" x-on:click="{!! $subir !!}" title="Subir un Excel de esta casilla">@include('livewire._impuesto-xls')</button>
         @endif
     @endif
-    <button type="button" class="imp-com {{ $cm ? 'tiene' : ($e === 'no' ? 'oculta' : '') }}" wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
-        title="{{ $cm ? $cmTitulo : 'Añadir un comentario' }}">@include('livewire._impuesto-globo', ['n' => count($cm)])</button>
+    <button type="button" class="imp-com {{ $cm ? 'tiene' : ($e === 'no' ? 'oculta' : '') }}" @if (collect($cm)->contains(fn ($x) => $x[4] ?? false)) style="color:#dc2626" @endif wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
+        title="{{ $cm ? (collect($cm)->contains(fn ($x) => $x[4] ?? false) ? '⚠ LECTURA OBLIGATORIA SIN VALIDAR'."\n" : '').$cmTitulo : 'Añadir un comentario' }}">@include('livewire._impuesto-globo', ['n' => count($cm)])</button>
 </span>

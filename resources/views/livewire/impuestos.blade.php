@@ -326,6 +326,16 @@
                                 @endif
                             </div>
                             @if ($c->texto !== '') <div class="text-sm text-gray-800" style="white-space:pre-wrap">{{ $c->texto }}</div> @endif
+                            @if ($c->obligatorio)
+                                <div class="mt-1 text-xs" style="color: {{ $c->validado_at ? '#15803d' : '#b91c1c' }}">
+                                    @if ($c->validado_at) ✔ Leído y validado por {{ $c->validador ?: '—' }} el {{ \Illuminate\Support\Carbon::parse($c->validado_at)->format('d/m/Y H:i') }}
+                                    @else ⚠ Lectura obligatoria: mientras no se valide, la casilla avisa y no deja cambiar el estado. @endif
+                                    <button type="button" wire:click="validarComentario({{ $c->id }})" class="ml-1 px-2 py-0.5 border rounded" style="border-color: currentColor">{{ $c->validado_at ? 'Desmarcar' : 'Leído y validado' }}</button>
+                                </div>
+                            @endif
+                            @if ($c->user_id === auth()->id() || $this->puedeTodos())
+                                <button type="button" wire:click="alternarObligatorio({{ $c->id }})" class="text-xs text-gray-500 hover:underline">{{ $c->obligatorio ? 'Quitar lectura obligatoria' : '⚠ Hacer de lectura obligatoria' }}</button>
+                            @endif
                             @if ($c->adjunto_nombre)
                                 <a href="{{ route('impuestos.adjunto', $c->id) }}" target="_blank" class="text-sm text-indigo-700 hover:underline">📎 {{ $c->adjunto_nombre }}
                                     <span class="text-xs text-gray-400">({{ ($c->adjunto_tam ?? 0) > 1048576 ? number_format($c->adjunto_tam / 1048576, 1, ',', '.').' MB' : number_format(($c->adjunto_tam ?? 0) / 1024, 0, ',', '.').' KB' }})</span></a>
@@ -344,6 +354,7 @@
                             <x-subir-fichero wire:model="comArchivo" :fichero="$comArchivo" neutro texto="Adjuntar fichero"
                                 title="Un fichero por comentario, hasta 20 MB. Sin texto, se guarda al elegirlo; con texto, pulsa «Añadir comentario»" />
                             @error('comArchivo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                            <label class="text-sm text-gray-700" title="Hasta que alguien lo marque como leído y validado, la casilla avisa y no deja cambiar el estado"><input type="checkbox" wire:model="comObligatorio" class="mr-1">⚠ Lectura obligatoria para presentar</label>
                         </div>
                         <div class="flex items-center gap-2 mt-1">
                             <button type="submit" wire:loading.attr="disabled" wire:target="comArchivo" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Añadir comentario</button>
