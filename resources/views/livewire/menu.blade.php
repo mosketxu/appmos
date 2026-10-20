@@ -8,6 +8,7 @@
         'contabilidad.facturasocr' => 'contabilidad.facturas-ocr',
         'contabilidad.neteges' => 'contabilidad.neteges',
         'contabilidad.leoybra' => 'contabilidad.leoybra',
+        'contabilidad.whatsapp' => 'contabilidad.whatsapp',
         'contabilidad.procesosmensuales' => 'contabilidad.procesos-mensuales',
     ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
 @endphp

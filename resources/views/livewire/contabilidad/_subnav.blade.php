@@ -16,6 +16,7 @@
         ['contabilidad.facturasocr', 'contabilidad.facturas-ocr', 'Facturas OCR', null],
         ['contabilidad.neteges', 'contabilidad.neteges', 'Neteges', null],
         ['contabilidad.leoybra', 'contabilidad.leoybra', 'LeoyBra', null],
+        ['contabilidad.whatsapp', 'contabilidad.whatsapp', 'WhatsApp', null],
     ];
 @endphp
 <style>

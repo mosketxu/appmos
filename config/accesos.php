@@ -41,6 +41,7 @@ return [
             'contabilidad.is' => 'Impuesto sobre Sociedades (modelo 200)',
             'contabilidad.neteges' => 'Neteges',
             'contabilidad.leoybra' => 'LeoyBra',
+            'contabilidad.whatsapp' => 'WhatsApp (chats de clientes)',
             'contabilidad.procesosmensuales' => 'Procesos mensuales',
         ],
     ],

@@ -28,6 +28,9 @@ class ColaTareas
         if ($proceso === 'pc.facturasocr') {
             abort_unless(preg_match('/^[A-Za-z0-9 _.-]+$/', (string) ($parametros['cliente'] ?? '')), 422, 'Cliente no válido');
         }
+        if ($proceso === 'pc.whatsapp') {
+            abort_unless(preg_match('/^[a-z0-9-]{1,60}$/', (string) ($parametros['clave'] ?? '')) && preg_match('/^[A-Za-z0-9 _.-]{1,60}$/', (string) ($parametros['carpeta'] ?? '')), 422, 'Chat no válido');
+        }
         if (in_array($proceso, ['pc.script', 'pc.estado', 'pc.fichero'], true)) {
             $grupo = config('contabilidad.pc_grupos.'.($parametros['grupo'] ?? ''));
             abort_unless(is_array($grupo), 422, 'Grupo no permitido');

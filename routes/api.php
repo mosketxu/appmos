@@ -44,6 +44,10 @@ Route::prefix('trabajador')->group(function () {
     Route::get('/impuestos/libros', [\App\Http\Controllers\ImpuestosSyncController::class, 'libros']);
     Route::post('/impuestos/libro-subir', [\App\Http\Controllers\ImpuestosSyncController::class, 'libroSubir'])->withoutMiddleware('throttle:api');
     Route::post('/vencimientos/nas-subir', [\App\Http\Controllers\ImpuestosSyncController::class, 'vencimientosNas']);
+    // WhatsApp (20-oct-2026): mensajes y adjuntos del chat exportado; el X-Token ya autentica, sin el límite de 60/min
+    Route::post('/whatsapp/{clave}/mensajes', [\App\Http\Controllers\WhatsappSyncController::class, 'mensajes'])->withoutMiddleware('throttle:api');
+    Route::post('/whatsapp/{clave}/manifest', [\App\Http\Controllers\WhatsappSyncController::class, 'manifest'])->withoutMiddleware('throttle:api');
+    Route::post('/whatsapp/{clave}/adjunto', [\App\Http\Controllers\WhatsappSyncController::class, 'adjunto'])->withoutMiddleware('throttle:api');
     Route::post('/tareas/{id}/fichero', [\App\Http\Controllers\TrabajadorApiController::class, 'fichero']);
     Route::post('/tareas/{id}/fin', [\App\Http\Controllers\TrabajadorApiController::class, 'fin']);
 });

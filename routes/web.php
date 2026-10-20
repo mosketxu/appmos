@@ -148,6 +148,10 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     })->name('contabilidad.leoybra.descargar')->middleware('can:contabilidad.leoybra');
     Route::get('/contabilidad/leoybra', function () {return view('contabilidad.leoybra');})->name('contabilidad.leoybra')->middleware('can:contabilidad.leoybra');
 
+    // Contabilidad (WhatsApp, 20-oct-2026): chats exportados de WhatsApp guardados en Appmos (los sube un PC trabajador desde OneDrive)
+    Route::get('/contabilidad/whatsapp/adjunto/{clave}/{nombre}', [\App\Http\Controllers\WhatsappController::class, 'adjunto'])->name('contabilidad.whatsapp.adjunto')->middleware('can:contabilidad.whatsapp');
+    Route::get('/contabilidad/whatsapp', function () {return view('contabilidad.whatsapp');})->name('contabilidad.whatsapp')->middleware('can:contabilidad.whatsapp');
+
     // Contabilidad (Proc.Mensuales): agrupa varios procesos mensuales. Se usa en la web (datos de la BD del VPS)
     Route::get('/contabilidad/procesos-mensuales', function () {
         if (config('contabilidad.procesosmensuales_url') && ! config('contabilidad.procesosmensuales_ejecucion')) {
