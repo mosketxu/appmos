@@ -311,6 +311,8 @@ class Impuestos extends Component
 
     /** Ventana «Revisión del mayor» de una casilla mensual (modelo MAYOR; 18-oct-2026): empresa y mes AAAA-MM. Ahí se sube el mayor de ese mes. */
     public ?int $mrEnt = null;
+    /** Entidad cuyo modal de ficheros base de SAGE está abierto (20-oct-2026). */
+    public ?int $fbEnt = null;
     public string $mrPer = '';
 
     public function mrAbrir(int $entId, string $mes): void
@@ -537,6 +539,16 @@ class Impuestos extends Component
     }
 
     // ------------------------------------------------------------------ impuestos del cliente
+
+    public function abrirFicherosBase(int $entId): void
+    {
+        $this->fbEnt = $entId;
+    }
+
+    public function cerrarFicherosBase(): void
+    {
+        $this->fbEnt = null;
+    }
 
     public function abrirEntidad(int $entidadId): void
     {

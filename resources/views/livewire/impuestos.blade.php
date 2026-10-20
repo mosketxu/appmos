@@ -277,6 +277,17 @@
         @if ($pdEnt)
             @livewire('impuesto-peticion', ['entId' => $pdEnt, 'periodo' => $pdPer, 'ejercicio' => $ejercicio, 'verTodos' => $verTodos], key('pd-'.$pdEnt.'-'.$pdPer))
         @endif
+        @if ($fbEnt)
+            <div class="imp-noprint" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center" wire:click.self="cerrarFicherosBase" x-on:keydown.escape.window="$wire.cerrarFicherosBase()">
+                <div style="background:#fff; border-radius:8px; padding:14px; width:min(1100px, 96vw); max-height:90vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.3)">
+                    <div class="flex items-start justify-between gap-3 mb-2">
+                        <div class="font-semibold text-gray-900">📂 Ficheros base de SAGE · {{ \Illuminate\Support\Facades\DB::table('entidades')->where('id', $fbEnt)->value('entidad') }}</div>
+                        <button type="button" wire:click="cerrarFicherosBase" class="text-gray-400 hover:text-gray-700" title="Cerrar">✕</button>
+                    </div>
+                    @livewire('ficheros-base-subida', ['entidadId' => $fbEnt, 'abierto' => true], key('fb-imp-'.$fbEnt))
+                </div>
+            </div>
+        @endif
         @if ($mrEnt)
             <div class="imp-noprint" style="position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center" wire:click.self="mrCerrar" x-on:keydown.escape.window="$wire.mrCerrar()">
                 <div style="background:#fff; border-radius:8px; padding:14px; width:min(1100px, 96vw); max-height:90vh; overflow:auto; box-shadow:0 10px 30px rgba(0,0,0,.3)">
@@ -392,6 +403,7 @@
                             <td class="imp-sticky" style="white-space:nowrap">
                                 <button type="button" wire:click="abrirEntidad({{ $entId }})" class="font-medium text-left text-gray-900 hover:underline" style="background:none; border:0; padding:0; cursor:pointer"
                                     title="Añadir o quitar los impuestos de este cliente. Responsable: {{ $ent->resp ?: '—' }}">{{ $ent->entidad }}</button>
+                                <button type="button" wire:click="abrirFicherosBase({{ $entId }})" title="Subir los ficheros base de SAGE de este cliente" class="text-xs" style="background:none; border:0; padding:0 2px; cursor:pointer">📂</button>
                                 @if ($ent->estado_ent != 1) <span class="text-xs text-amber-700">(baja)</span> @endif
                                 @if ($ent->grupo) <span class="text-xs text-indigo-700" style="background:#eef2ff; border-radius:4px; padding:0 4px" title="Grupo">{{ $ent->grupo }}</span> @endif
                             </td>
