@@ -53,8 +53,14 @@
                 @endif
             </div>
 
-            <div x-data x-init="$nextTick(() => { $el.scrollTop = $el.scrollHeight })"
-                 style="max-height:72vh; overflow-y:auto; padding:.8rem; background:#efeae2; border:1px solid #d6d3d1; border-radius:.5rem">
+            <style>
+                .wa-cols { display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap; }
+                .wa-chat { flex:0 0 auto; width:min(100%, 30rem); height:78vh; overflow-y:auto; padding:.8rem; background:#efeae2; border:1px solid #d6d3d1; border-radius:.5rem; }
+                .wa-visor { flex:1 1 24rem; min-width:0; height:78vh; display:flex; flex-direction:column; background:#fff; border:1px solid #d6d3d1; border-radius:.5rem; overflow:hidden; }
+                @media (max-width:900px) { .wa-chat { width:100%; } .wa-visor { height:70vh; } }
+            </style>
+            <div class="wa-cols" x-data="{ visor: null }">
+            <div class="wa-chat" x-init="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
                 @if ($hay)
                     <div style="text-align:center; margin-bottom:.6rem">
                         <button type="button" wire:click="masAntiguos" class="{{ $btn }}">↑ Cargar mensajes más antiguos ({{ number_format($total - $mensajes->count(), 0, ',', '.') }} más)</button>
@@ -85,11 +91,12 @@
                                     @if (! $tengo)
                                         <div style="font-size:.8rem; color:#78716c">📎 {{ $m->adjunto }} <em>(adjunto no disponible)</em></div>
                                     @elseif (in_array($ext, $imagenes, true))
-                                        <a href="{{ $url }}" target="_blank" rel="noopener"><img src="{{ $url }}" alt="{{ $m->adjunto }}" loading="lazy" style="max-height:{{ str_starts_with($m->adjunto, 'STK-') ? '90' : '220' }}px; max-width:100%; border-radius:.3rem"></a>
+                                        <a href="{{ $url }}" x-on:click.prevent="visor = @json(['url' => $url, 'nombre' => $m->adjunto, 'tipo' => 'img'], JSON_HEX_APOS | JSON_HEX_QUOT)"><img src="{{ $url }}" alt="{{ $m->adjunto }}" loading="lazy" style="max-height:{{ str_starts_with($m->adjunto, 'STK-') ? '90' : '220' }}px; max-width:100%; border-radius:.3rem; cursor:zoom-in"></a>
                                     @elseif (in_array($ext, $audios, true))
                                         <audio controls preload="none" src="{{ $url }}" style="max-width:100%; height:2.2rem"></audio>
                                     @else
-                                        <a href="{{ $url }}" target="_blank" rel="noopener" style="font-size:.85rem; color:#1d4ed8; text-decoration:underline">{{ $ext === 'pdf' ? '📄' : '📎' }} {{ $m->adjunto }}</a>
+                                        <a href="{{ $url }}" download="{{ $m->adjunto }}" style="font-size:.85rem; color:#1d4ed8; text-decoration:underline"
+                                           @if ($ext === 'pdf') x-on:click.prevent="visor = @json(['url' => $url, 'nombre' => $m->adjunto, 'tipo' => 'pdf'], JSON_HEX_APOS | JSON_HEX_QUOT)" @endif>{{ $ext === 'pdf' ? '📄' : '📎' }} {{ $m->adjunto }}</a>
                                         <span style="font-size:.7rem; color:#78716c">{{ $kb($adjuntos[$m->adjunto]) }}</span>
                                     @endif
                                 @endif
@@ -105,6 +112,28 @@
                         {{ trim($buscar) !== '' ? 'Nada coincide con la búsqueda.' : 'Todavía no hay mensajes de este cliente: deja el chat exportado en la carpeta de OneDrive y pulsa «Importar ahora».' }}
                     </p>
                 @endforelse
+            </div>
+
+            <div class="wa-visor" wire:ignore.self>
+                <template x-if="! visor">
+                    <div style="margin:auto; padding:1rem; text-align:center; color:#78716c; font-size:.9rem">
+                        📄 Pulsa una foto o un PDF de la conversación y se verá aquí.
+                    </div>
+                </template>
+                <template x-if="visor">
+                    <div style="display:flex; flex-direction:column; height:100%">
+                        <div style="display:flex; gap:.6rem; align-items:center; padding:.4rem .7rem; background:#f5f5f4; border-bottom:1px solid #d6d3d1; font-size:.8rem">
+                            <strong style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" x-text="visor.nombre"></strong>
+                            <a :href="visor.url" :download="visor.nombre" style="color:#1d4ed8">⬇ descargar</a>
+                            <button type="button" x-on:click="visor = null" style="color:#57534e">✕</button>
+                        </div>
+                        <div style="flex:1; min-height:0; overflow:auto; background:#e7e5e4; text-align:center">
+                            <template x-if="visor.tipo === 'img'"><img :src="visor.url" :alt="visor.nombre" style="max-width:100%; margin:auto"></template>
+                            <template x-if="visor.tipo === 'pdf'"><iframe :src="visor.url" style="width:100%; height:100%; border:0"></iframe></template>
+                        </div>
+                    </div>
+                </template>
+            </div>
             </div>
         @else
             <p class="text-sm text-gray-500">No hay ningún chat. Crea uno con «＋ Nuevo cliente».</p>
