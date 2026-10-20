@@ -6,6 +6,7 @@ use App\Models\Entidad;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -2735,6 +2736,13 @@ class FacturasOcr extends Component
             return;
         }
         $this->instalarBase($tipo, $f->getRealPath(), $nombre, true);
+    }
+
+    /** Se ha subido un fichero base en el recuadro común: se instala en Base/ y se rehacen los proveedores. */
+    #[On('ficheros-base-cambiados')]
+    public function ficherosBaseCambiados(): void
+    {
+        $this->sincronizarCentral();
     }
 
     /** Fichero base central (App\Support\FicherosBase) ↔ tipo local de Facturas OCR. */

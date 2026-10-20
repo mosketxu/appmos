@@ -422,6 +422,7 @@
                 <span class="text-sm font-normal text-gray-500">{{ $entidad->entidad }} · {{ $entidad->nif }}</span>
             @endif
         </h1>
+        @include('livewire._ficheros_base', ['eid' => (int) ($entidad->id ?? 0), 'clave' => 'ocr'])
         @include('livewire.contabilidad._modal-cliente-nuevo')
         @include('livewire.contabilidad.facturas-ocr._modal-validada')
 
