@@ -730,7 +730,7 @@
                         @endif
 
                         <div><label class="focr-lbl" style="font-size:.62rem">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in" style="font-size:.75rem; padding:.2rem .3rem"></div>
-                        <div style="grid-column:span 3"><label class="focr-lbl">{{ $esEm ? 'Nº factura (solo el número; la serie va aparte)' : 'Nº factura' }}</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
+                        <div style="grid-column:span {{ $esEm ? 1 : 3 }}"><label class="focr-lbl" @if ($esEm) title="Solo el número; la serie va en su casilla" @endif>Nº factura</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
                         @unless ($esEm)<div><label class="focr-lbl">F. registro</label><input type="date" wire:model.blur="form.fecha_registro" class="focr-in"></div>@endunless
                         <div><label class="focr-lbl">{{ $esEm ? 'Fecha' : 'F. expedición' }}</label><input type="date" wire:model.blur="form.fecha_expedicion" class="focr-in {{ $cl('fecha') }}"></div>
                         <div><label class="focr-lbl">{{ $esEm ? 'F. operación' : 'F. operación' }}</label><input type="date" wire:model.blur="form.fecha_operacion" class="focr-in"></div>
