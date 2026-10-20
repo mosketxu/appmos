@@ -252,6 +252,11 @@ class Impuestos extends Component
         if (! $ob || ! in_array($periodo, Imp::periodos($ob->periodicidad), true)) {
             return;
         }
+        $entNombre = (string) DB::table('entidades')->where('id', $ob->entidad_id)->value('entidad');
+        $codigoMod = (string) DB::table('impuesto_modelos')->where('id', $ob->modelo_id)->value('codigo');
+        if (Imp::alarmaCasilla($entNombre, $codigoMod, $periodo, (int) $this->ejercicio)) {
+            return;   // casilla con alarma: el aviso sale en el navegador y no se cambia el estado
+        }
         $fila = DB::table('impuesto_estados')->where(['entidad_impuesto_id' => $obId, 'ejercicio' => $this->ejercicio, 'periodo' => $periodo])->first();
         $actual = $fila->estado ?? 'no';
         if ($actual === 'visto' && ! Imp::puedeVisto()) {
