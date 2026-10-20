@@ -41,29 +41,7 @@ class Impuestos
     public const COLOR = ['pendiente' => '#dc2626', 'revision' => '#f97316', 'revisado' => '#2563eb', 'visto' => '#15803d', 'presentado' => '#16a34a', 'nopresenta' => '#9ca3af'];
     public const LETRA = ['pendiente' => 'x', 'revision' => 'r', 'revisado' => 'p', 'presentado' => '✓', 'visto' => 'v', 'nopresenta' => '–'];
 
-    /**
-     * Casillas excepcionales con alarma (20-oct-2026, orden de Alex): al hacer clic sale el aviso y NO cambia de estado.
-     * Para quitarla basta vaciar esta lista. Clave: «entidad (minúsculas, contiene)|modelo|periodo|ejercicio».
-     */
-    public const ALARMAS_CASILLA = [
-        'espiral|202|P3|2026' => 'El pago a cuenta de Espiral debe ir acompañado de un anexo que se genera durante la presentación del M202. '
-            .'En el 1P hubo que hacer una complementaria. Para el 3.er pago (diciembre) no se puede presentar de la misma forma: '
-            .'avisa a tu compañera y lo hacéis juntos para ahorrar la complementaria.',
-    ];
-
-    public static function alarmaCasilla(string $entidad, string $codigo, string $periodo, int $ejercicio): ?string
-    {
-        foreach (self::ALARMAS_CASILLA as $k => $msg) {
-            [$ent, $cod, $per, $ej] = explode('|', $k);
-            if ($codigo === $cod && $periodo === $per && $ejercicio === (int) $ej && str_contains(mb_strtolower($entidad), $ent)) {
-                return $msg;
-            }
-        }
-
-        return null;
-    }
-
-    public const PERIODICIDADES =['M' => 'Mensual', 'T' => 'Trimestral', 'A' => 'Anual', 'P' => 'Pagos fraccionados (1P 2P 3P)'];
+    public const PERIODICIDADES = ['M' => 'Mensual', 'T' => 'Trimestral', 'A' => 'Anual', 'P' => 'Pagos fraccionados (1P 2P 3P)'];
 
     public const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 

@@ -23,11 +23,7 @@
 @endphp
 <span class="imp-cel">
     @php $bloqueada = $e === 'visto' && ! $this->puedeVisto(); @endphp
-    @php $alarma = \App\Support\Impuestos::alarmaCasilla((string) $ob->entidad, (string) $ob->codigo, $per, (int) $this->ejercicio); @endphp
-    @if ($alarma)
-        <button type="button" onclick="alert({{ \Illuminate\Support\Js::from('⚠️ '.$alarma) }})" data-e="{{ $e }}" data-sig="" data-t="{{ $cab }}" aria-label="{{ $titulo }}"
-            class="imp-m {{ $e === 'no' ? 'no' : '' }}" @if ($e !== 'no') style="background:{{ $color[$e] }}" @endif>{{ $e === 'no' ? '' : $letra[$e] }}</button>
-    @elseif ($bloqueada)
+    @if ($bloqueada)
         <span class="imp-m" data-e="{{ $e }}" data-sig="" data-t="{{ $cab }}" style="background:{{ $color[$e] }}; cursor:default">{{ $letra[$e] }}</span>
     @else
         <button type="button" wire:click="clic({{ $ob->id }}, '{{ $per }}', $event.shiftKey)" data-e="{{ $e }}" data-sig="{{ $sig }}" data-t="{{ $cab }}" aria-label="{{ $titulo }}"
