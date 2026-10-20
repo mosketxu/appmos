@@ -27,6 +27,7 @@ class ProcesosMensuales extends Component
     /** [clave de seguimiento_procesos => [icono, componente Livewire, parámetros]]: procesos con pantalla propia, que se abre en el modal. */
     public const PROCESOS = [
         'certificados' => ['icono' => '🔐', 'componente' => 'contabilidad.certificados', 'parametros' => ['embebido' => true]],
+        'limpieza' => ['icono' => '🧹', 'componente' => 'contabilidad.limpieza', 'parametros' => [], 'ancho' => '720px'],
     ];
 
     /** Orden en que pasa el ciclo de impuestos con cada clic (ids de la tabla ciclos; lo usa Entidades). */

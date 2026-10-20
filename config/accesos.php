@@ -59,6 +59,7 @@ return [
             'petdocimpuestos' => 'Pet. Documentación Impuestos',
             'certificados' => 'Certificados por caducar',
             'revisionmayor' => 'Revisión del mayor',
+            'limpieza' => 'Limpieza de OneDrive',
         ]],
     ],
 
