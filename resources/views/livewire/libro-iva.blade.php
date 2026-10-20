@@ -18,6 +18,8 @@
         <h1 class="text-xl font-semibold">📒 Libro de IVA (303)</h1>
     </div>
 
+    @include('livewire._ficheros_base', ['eid' => (int) $entidadId, 'clave' => 'libro-iva'])
+
     @if ($error)<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#991b1b">{{ $error }}</div>@endif
     @if ($mensaje)
         <div style="background:#e0e7ff;border:1px solid #a5b4fc;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#3730a3;display:flex;justify-content:space-between;gap:12px">
