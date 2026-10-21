@@ -5,18 +5,18 @@
             <span class="text-xs font-normal text-gray-500">— los subes aquí y los usan todos los procesos (mayor, proveedores, plan de cuentas…)</span></summary>
         @if ($error)<div class="text-sm" style="color:#b91c1c;margin-top:6px">⛔ {{ $error }}</div>@endif
         @if ($msg)<div class="text-sm" style="color:#166534;margin-top:6px">✅ {{ $msg }}</div>@endif
-        <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+        <table style="width:auto;border-collapse:collapse;font-size:13px;margin-top:8px">
             @foreach ($filas as $t => $f)
                 <tr style="border-bottom:1px solid #f1f5f9">
                     <td style="padding:5px 8px;white-space:nowrap">{{ $f['icono'] }} <b>{{ $f['titulo'] }}</b></td>
-                    <td style="padding:5px 8px;color:#4b5563">
+                    <td style="padding:5px 8px;color:#4b5563;min-width:560px">
                         @if ($f['ultimo'])
                             {{ $f['ultimo']['nombre'] }} <span class="text-xs text-gray-500">· subido el {{ date('d/m/Y H:i', $f['ultimo']['fecha']) }}@if (! empty($f['ultimo']['periodo'])) · hasta {{ $f['ultimo']['periodo'] }}@endif</span>
                         @else
                             <span class="text-gray-400">todavía no hay ninguno</span>
                         @endif
                     </td>
-                    <td style="padding:5px 8px;text-align:right;white-space:nowrap">
+                    <td style="padding:5px 8px;text-align:left;white-space:nowrap">
                         @if (! empty($f['por_periodo']))
                             <label class="text-xs text-gray-500">mes al que llega <input type="month" wire:model="periodoSys" class="border-gray-300 rounded-md text-sm" style="padding:1px 6px"></label>
                         @endif
