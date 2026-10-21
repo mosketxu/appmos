@@ -44,7 +44,6 @@
                 <tr><td>21</td><td>Resultado a ingresar</td><td class="n"><b>0,00</b></td><td></td></tr>
             </table>
             <div class="text-xs text-gray-500" style="margin-top:8px">Se marca «Declaración negativa». Todo sale del libro «{{ $libro->nombre }}» (tabla M216 de RECIBIDAS).
-                @if ($res['coef'] != 1) La tabla del libro también enseña el total × {{ rtrim(rtrim(number_format($res['coef'], 4, ',', ''), '0'), ',') }} ({{ $eur($res['total_coef']) }}): el 1T y el 3T de 2026 se presentaron <b>sin</b> coeficiente, el 2T con él. @endif
                 @if (($res['control'] ?? 0) != 0)<br><span style="color:#b91c1c">⛔ El control del libro no es 0 ({{ $eur($res['control']) }}): la tabla no suma lo mismo que el bloque ISP; revísalo antes de presentar.</span>@endif</div>
             @if ($presentado)
                 <div class="text-sm" style="margin-top:8px">

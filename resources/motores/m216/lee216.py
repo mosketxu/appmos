@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Lee la tabla «M216 · no residentes» del libro de IVA 303 (hoja RECIBIDAS, columnas O:R) y saca los datos de la declaración.
-Uso: lee216.py <libro.xlsx> | lee216.py --pdf <216.pdf>  →  JSON por stdout: {proveedores:[{nombre,pais,total}], n, total, coef, total_coef, control}.
-Solo biblioteca estándar. Declaración NEGATIVA (sin retenciones): casilla 17 = n proveedores, 18/19 = total (Total factura, sin coeficiente)."""
+Uso: lee216.py <libro.xlsx> | lee216.py --pdf <216.pdf>  →  JSON por stdout: {proveedores:[{nombre,pais,total}], n, total, control}.
+Solo biblioteca estándar. Declaración NEGATIVA (sin retenciones): casilla 17 = n proveedores, 18/19 = total (Total factura)."""
 import json, re, sys, zipfile
 from xml.etree import ElementTree as ET
 
@@ -70,21 +70,18 @@ def main():
     if ini is None:
         print(json.dumps({'error': 'el libro no lleva la tabla M216 (¿la empresa tiene el 216 activo en Entidades → Impuestos?)'}))
         return
-    coef = num(cel.get('Q%d' % (ini + 1), 1))
-    prov, fila, total_coef, control = [], ini + 3, None, None
+    prov, fila, control = [], ini + 3, None
     while True:
         nom = cel.get('O%d' % fila)
         if nom is None:
             break
         if nom.startswith('Total general'):
-            total_coef = num(cel.get('R%d' % fila))
             ctl = cel.get('Q%d' % (fila + 1))
             control = None if ctl is None else num(ctl)
             break
         prov.append({'nombre': nom, 'pais': cel.get('P%d' % fila, ''), 'total': round(num(cel.get('Q%d' % fila)), 2)})
         fila += 1
-    print(json.dumps({'proveedores': prov, 'n': len(prov), 'total': round(sum(p['total'] for p in prov), 2), 'coef': coef,
-                      'total_coef': None if total_coef is None else round(total_coef, 2), 'control': control}, ensure_ascii=False))
+    print(json.dumps({'proveedores': prov, 'n': len(prov), 'total': round(sum(p['total'] for p in prov), 2), 'control': control}, ensure_ascii=False))
 
 
 main()
