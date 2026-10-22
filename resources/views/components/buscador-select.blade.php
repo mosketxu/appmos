@@ -1,5 +1,5 @@
 {{--
-    Desplegable con buscador: se escribe y la lista se va filtrando (sin acentos, por palabras en cualquier orden). Es el modelo por defecto
+    Desplegable con buscador: se escribe y la lista se va filtrando (sin acentos, por palabras en cualquier orden). Esc con la lista abierta solo la cierra (no cierra el modal de alrededor). Es el modelo por defecto
     cuando hay muchas opciones (decisión de Alex, 10-oct-2026). Uso:
         <x-buscador-select model="entidadId" :valor="$entidadId" :opciones="$empresas" ancho="22rem" />
     $opciones = [id => texto]. Al elegir, se escribe el id en la propiedad Livewire $model (con petición inmediata, como wire:model.live).
@@ -16,7 +16,7 @@
         elegir(o) { if (!o) return; this.abierto = false; this.q = ''; if (o.id !== this.sel) { this.sel = o.id; $wire.set('{{ $model }}', o.id) } },
         mover(d) { const n = this.filtradas.length; if (n) { this.i = (this.i + d + n) % n; this.$nextTick(() => this.$refs.lista?.children[this.i]?.scrollIntoView({ block: 'nearest' })) } },
     }"
-    x-on:click.outside="abierto = false" x-on:keydown.escape="abierto = false">
+    x-on:click.outside="abierto = false" x-on:keydown.escape="if (abierto) { abierto = false; $event.stopPropagation() }">
     <input type="text" x-ref="q" autocomplete="off" placeholder="Escribe para buscar…" class="border-gray-300 rounded-md text-sm" style="width:100%; padding-right:1.75rem"
         :value="abierto ? q : actual" x-on:focus="abrir()" x-on:click="if (!abierto) abrir()"
         x-on:input="q = $event.target.value; i = 0; abierto = true"

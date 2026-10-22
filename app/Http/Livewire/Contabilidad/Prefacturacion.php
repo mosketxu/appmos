@@ -27,6 +27,7 @@ class Prefacturacion extends Component
     public string $fImporte = '';
     public string $fPeriodo = '';
     public string $fMotivo = '';
+    public string $fRecurrencia = 'puntual';
     public $fAdjunto = null;
     public string $aviso = '';
 
@@ -49,7 +50,7 @@ class Prefacturacion extends Component
 
     public function editar(?int $id = null): void
     {
-        $this->reset('fEntidad', 'fCliente', 'fImporte', 'fMotivo', 'fAdjunto', 'aviso');
+        $this->reset('fEntidad', 'fCliente', 'fImporte', 'fMotivo', 'fAdjunto', 'aviso', 'fRecurrencia');
         $this->fPeriodo = $this->periodo;
         $this->editando = $id ?? 0;
         if ($id && ($p = DB::table('prefacturas')->find($id))) {
@@ -58,6 +59,7 @@ class Prefacturacion extends Component
             $this->fImporte = number_format($p->importe, 2, ',', '');
             $this->fPeriodo = $p->periodo;
             $this->fMotivo = $p->motivo;
+            $this->fRecurrencia = $p->recurrencia ?? 'puntual';
         }
     }
 
@@ -103,6 +105,7 @@ class Prefacturacion extends Component
             'cliente' => $entidad ? $entidad->entidad : (trim($this->fCliente) ?: null),
             'importe' => round((float) $importe, 2),
             'periodo' => $this->fPeriodo,
+            'recurrencia' => in_array($this->fRecurrencia, ['puntual', 'mensual', 'trimestral'], true) ? $this->fRecurrencia : 'puntual',
             'motivo' => trim($this->fMotivo),
             'updated_at' => now(),
         ];
@@ -156,6 +159,19 @@ class Prefacturacion extends Component
         }
     }
 
+    /** Meses del año que se está viendo, para el desplegable «Periodo a facturar» (valor YYYY-MM). */
+    protected function mesesDelAnio(): array
+    {
+        $anio = substr($this->periodo, 0, 4);
+        $nombres = [1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        $r = [];
+        foreach ($nombres as $n => $nombre) {
+            $r[sprintf('%s-%02d', $anio, $n)] = ucfirst($nombre).' '.$anio;
+        }
+
+        return $r;
+    }
+
     public function render()
     {
         $filas = DB::table('prefacturas')->where('periodo', $this->periodo)
@@ -171,6 +187,7 @@ class Prefacturacion extends Component
             'totalPendiente' => $todas->where('estado', 'pendiente')->sum('importe'),
             'totalFacturado' => $todas->where('estado', 'facturado')->sum('importe'),
             'puede' => $this->permitido(),
+            'mesesAnio' => $this->mesesDelAnio(),
         ]);
     }
 }
