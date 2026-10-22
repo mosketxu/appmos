@@ -215,20 +215,29 @@ class Certificados extends Component
         return $l->values()->all();
     }
 
-    /** Descarga la lista del usuario en CSV (separador «;» y BOM para que Excel en español lo abra bien). */
+    /** Descarga la lista del usuario en Excel (Certificado, CIF/NIF, Caduca), ordenada por fecha de caducidad. */
     public function descargarMiLista()
     {
         $filas = $this->misCertificados();
 
         return response()->streamDownload(function () use ($filas) {
-            $f = fopen('php://output', 'w');
-            fwrite($f, "\xEF\xBB\xBF");
-            fputcsv($f, ['Certificado', 'CIF/NIF', 'Caduca'], ';');
+            $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $h = $libro->getActiveSheet()->setTitle('Mis certificados');
+            $h->fromArray(['Certificado', 'CIF/NIF', 'Caduca'], null, 'A1');
+            $h->getStyle('A1:C1')->getFont()->setBold(true);
+            $n = 2;
             foreach ($filas as $c) {
-                fputcsv($f, [$c['nombre'], $c['cif'], $c['caduca']], ';');
+                $h->setCellValue("A{$n}", $c['nombre']);
+                $h->setCellValueExplicit("B{$n}", $c['cif'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $h->setCellValue("C{$n}", \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(\Carbon\Carbon::parse($c['iso'])));
+                $n++;
             }
-            fclose($f);
-        }, 'mis-certificados-'.now()->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=utf-8']);
+            $h->getStyle('C2:C'.max(2, $n - 1))->getNumberFormat()->setFormatCode('dd/mm/yyyy');
+            foreach (['A', 'B', 'C'] as $col) {
+                $h->getColumnDimension($col)->setAutoSize(true);
+            }
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
+        }, 'mis-certificados-'.now()->format('Y-m-d').'.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
     /** «Escanear mi PC ahora»: la tarea de Windows del usuario lo recoge en unos minutos. */
