@@ -125,7 +125,7 @@
                             @if ($f->adjunto_ruta)
                                 <div style="display:inline-flex; align-items:center; gap:.35rem; max-width:100%; background:#e5e7eb; border-radius:999px; padding:2px 10px">
                                     <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline" title="{{ $f->adjunto_nombre }}" style="font-size:.72rem; min-width:0; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left">📎 {{ $f->adjunto_nombre }}</button>
-                                    @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="text-gray-500 hover:text-red-600" style="flex:none; font-size:.8rem; line-height:1" title="Quitar el adjunto (no borra la línea)">🗑</button>@endif
+                                    @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" style="flex:none; line-height:0; color:#dc2626" class="hover:opacity-70" title="Quitar el adjunto (no borra la línea)"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>@endif
                                 </div>
                             @endif
                         </td>
