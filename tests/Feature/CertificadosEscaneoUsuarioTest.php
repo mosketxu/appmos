@@ -242,4 +242,16 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         \Livewire\Livewire::actingAs($otro)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->call('pedirMiEscaneo');
         $this->assertSame(1, DB::table('tareas')->where('proceso', 'certificados.escanear')->count());
     }
+
+    public function test_mi_lista_lleva_el_alias_junto_al_nombre(): void
+    {
+        $u = $this->usuario();
+        DB::table('certificados_escaneos')->insert(['pc' => 'PC de x', 'escaneado' => '2026-10-22T10:00', 'user_id' => $u->id, 'certs' => json_encode([
+            ['clave' => 'per:45465035S', 'nombre' => 'MARTA MARIA RUIZ', 'alias' => 'Casa Alesan', 'caduca' => '2027-01-14', 'huella' => 'A1'],
+            ['clave' => 'emp:B12345678', 'nombre' => 'EMPRESA SIN ALIAS', 'alias' => '', 'caduca' => '2027-02-01', 'huella' => 'A2'],
+        ]), 'created_at' => now(), 'updated_at' => now()]);
+        $l = \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->instance()->misCertificados();
+        $this->assertSame('MARTA MARIA RUIZ (Casa Alesan)', $l[0]['nombre']);
+        $this->assertSame('EMPRESA SIN ALIAS', $l[1]['nombre']);
+    }
 }

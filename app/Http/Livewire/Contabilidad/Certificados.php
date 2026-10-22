@@ -269,12 +269,12 @@ class Certificados extends Component
         }, 'Instalar-escaner-certificados.cmd', ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
-    /** Certificados del último escaneo del PC del usuario, por fecha de caducidad: [nombre, cif, caduca (d/m/Y), caduca (Y-m-d)]. */
+    /** Certificados del último escaneo del PC del usuario, por fecha de caducidad: [nombre (alias), cif, caduca (d/m/Y), caduca (Y-m-d)]; el alias dice de quién es. */
     public function misCertificados(): array
     {
         $e = DB::table('certificados_escaneos')->where('user_id', auth()->id())->first();
         $l = collect(json_decode((string) ($e->certs ?? '[]'), true) ?: [])->sortBy('caduca')->map(fn ($c) => [
-            'nombre' => $c['nombre'], 'cif' => preg_replace('/^(emp|per):/', '', (string) ($c['clave'] ?? '')),
+            'nombre' => $c['nombre'].(($c['alias'] ?? '') !== '' ? ' ('.$c['alias'].')' : ''), 'cif' => preg_replace('/^(emp|per):/', '', (string) ($c['clave'] ?? '')),
             'caduca' => \Carbon\Carbon::parse($c['caduca'])->format('d/m/Y'), 'iso' => $c['caduca'], 'color' => CertificadosLista::color($c['caduca'])]);
 
         return $l->values()->all();
