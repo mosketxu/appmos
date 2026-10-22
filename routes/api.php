@@ -25,6 +25,9 @@ Route::post('/bancos/{cliente}/cuentas-nuevas', [\App\Http\Controllers\BancosCue
 Route::get('/bancos-configuracion', [\App\Http\Controllers\BancosCuentasController::class, 'configuracion']);
 
 Route::post('/certificados/escaneo', [\App\Http\Controllers\CertificadosEscaneoController::class, 'guardar']);
+// Escaneo desde el PC de cualquier usuario: autentica el código personal (X-Codigo) del .ps1 instalado
+Route::post('/certificados/usuario/escaneo', [\App\Http\Controllers\CertificadosEscaneoController::class, 'usuarioEscaneo']);
+Route::get('/certificados/usuario/pendiente', [\App\Http\Controllers\CertificadosEscaneoController::class, 'usuarioPendiente'])->withoutMiddleware('throttle:api');
 
 // PCs trabajadores (cola de tareas de la web). Autenticación por X-Token propio de cada PC.
 Route::prefix('trabajador')->group(function () {

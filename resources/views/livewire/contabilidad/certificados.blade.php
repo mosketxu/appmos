@@ -93,6 +93,28 @@
                 </span>
             </div>
 
+            {{-- Escanear el PC del propio usuario (tarea de Windows sin administrador) --}}
+            <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" x-data="{ instalar: false }" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.10s="actualizarMio" @endif>
+                <div class="flex flex-wrap items-center gap-2">
+                    @if ($miEscaneo)
+                        <button type="button" wire:click="pedirMiEscaneo" @disabled($miEscaneo->solicitado_at)
+                            class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">{{ $miEscaneo->solicitado_at ? '⏳ esperando a tu PC…' : '💻 Escanear mi PC ahora' }}</button>
+                        <span class="text-xs text-gray-700">Tu PC{{ $miEscaneo->equipo ? ' ('.$miEscaneo->equipo.')' : '' }}: último escaneo {{ str_replace('T', ' ', $miEscaneo->escaneado) }}</span>
+                        <button type="button" x-on:click="instalar = !instalar" class="text-xs text-indigo-600 underline">Reinstalar / desinstalar</button>
+                    @else
+                        <button type="button" x-on:click="instalar = !instalar" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">💻 Escanear mi PC</button>
+                        <span class="text-xs text-gray-700">Para leer los certificados instalados en <b>tu</b> PC hay que instalar una pequeña tarea (la primera vez).</span>
+                    @endif
+                    @if ($verTodos) <span class="text-xs text-indigo-800">👥 Ves los escaneos de todos los usuarios y PCs.</span> @else <span class="text-xs text-gray-600">Solo ves lo escaneado desde tu PC.</span> @endif
+                </div>
+                <div x-show="instalar" style="display:none" class="p-2 mt-2 text-xs text-gray-700 bg-white border border-gray-200 rounded">
+                    <p>Voy a instalarte lo necesario: se descarga un fichero <b>.ps1</b> con tu código personal. Al ejecutarlo (clic derecho → «Ejecutar con PowerShell») crea una tarea de Windows <b>tuya, sin administrador</b>
+                    que lee tus certificados (<code>Cert:\CurrentUser\My</code>) al iniciar sesión y cada día, y cada pocos minutos comprueba si has pulsado «Escanear mi PC ahora». Solo se suben nombre, CIF/NIF, alias y fecha de caducidad; nunca la clave privada.
+                    Windows puede mostrar SmartScreen: «Más información → Ejecutar de todas formas». Para quitarlo: ejecutar el mismo fichero con <code>-Desinstalar</code>.</p>
+                    <button type="button" wire:click="descargarScript" class="px-3 py-1 mt-2 text-white bg-emerald-600 rounded hover:bg-emerald-700">⬇ Descargar el instalador</button>
+                </div>
+            </div>
+
             @if ($contradicciones)
                 <div class="p-3 text-sm text-yellow-900 bg-yellow-300 border border-yellow-500 rounded-md">
                     <b>⚠ Contradicciones</b> (no salen en la lista; falta instalar el certificado nuevo):

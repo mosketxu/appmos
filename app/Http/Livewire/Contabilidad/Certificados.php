@@ -3,6 +3,7 @@
 namespace App\Http\Livewire\Contabilidad;
 
 use App\Support\CertificadosLista;
+use App\Support\CertificadosScript;
 use App\Support\ColaTareas;
 use App\Support\GraphMail;
 use Illuminate\Support\Facades\DB;
@@ -165,6 +166,39 @@ class Certificados extends Component
         }
     }
 
+    /** Descarga el .ps1 con el código personal del usuario (lo crea la primera vez). */
+    public function descargarScript()
+    {
+        $u = auth()->user();
+        $codigo = (string) DB::table('users')->where('id', $u->id)->value('certificados_codigo');
+        if ($codigo === '') {
+            $codigo = \Illuminate\Support\Str::random(40);
+            DB::table('users')->where('id', $u->id)->update(['certificados_codigo' => $codigo]);
+        }
+        $ps = CertificadosScript::generar($codigo, url('/api/certificados/usuario'));
+
+        return response()->streamDownload(function () use ($ps) {
+            echo $ps;
+        }, 'Instalar-escaner-certificados.ps1', ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    /** «Escanear mi PC ahora»: la tarea de Windows del usuario lo recoge en unos minutos. */
+    public function pedirMiEscaneo(): void
+    {
+        $n = DB::table('certificados_escaneos')->where('user_id', auth()->id())->update(['solicitado_at' => now()]);
+        $this->salida = $n ? '🛰 Escaneo de tu PC pedido: se hará en unos minutos (tu PC debe estar encendido) y la lista se actualizará sola.'
+            : '⚠ Todavía no has instalado el escáner en tu PC: descarga el fichero e instálalo.';
+    }
+
+    /** Mientras tu PC no responde, mira cada pocos segundos si ya ha subido el escaneo. */
+    public function actualizarMio(): void
+    {
+        if (! DB::table('certificados_escaneos')->where('user_id', auth()->id())->whereNotNull('solicitado_at')->exists()) {
+            $this->salida = '✅ Tu PC ha enviado el escaneo.';
+            $this->calcular();
+        }
+    }
+
     public function updatedMeses(): void
     {
         $this->calcular();
@@ -174,13 +208,13 @@ class Certificados extends Component
     {
         $this->enviado = '';
         $this->confirmar = false;
-        $d = CertificadosLista::calcular(CertificadosLista::escaneos(), max(1, $this->meses));
+        $d = CertificadosLista::calcular(CertificadosLista::escaneos(CertificadosLista::verTodos(auth()->user()) ? null : (int) auth()->id()), max(1, $this->meses));
         $this->calculada = true;
         $this->escaneos = $d['pcs'];
         $this->contradicciones = $d['contradicciones'];
         $this->renovados = $d['renovados'];
         $this->filas = array_map(fn ($i) => ['nombre' => $i['nombre'].($i['alias'] ? ' ('.$i['alias'].')' : ''),
-            'caduca' => $i['caduca'], 'pcs' => implode(' + ', array_map(fn ($p) => $p === 'ALEXMINIPC' ? 'AlexMiniPC' : 'PortalExomen', $i['pcs'])),
+            'caduca' => $i['caduca'], 'pcs' => implode(' + ', array_map(fn ($p) => ['ALEXMINIPC' => 'AlexMiniPC', 'PORTALEXOMEN' => 'PortalExomen', 'MINISERV' => 'miniServ'][$p] ?? $p, $i['pcs'])),
             'incluir' => true, 'nota' => $i['caducado'] ? 'ya caducado' : ''], $d['lista']);
     }
 
@@ -389,6 +423,8 @@ class Certificados extends Component
             'envios' => DB::table('certificados_envios')->where('periodo', 'like', $this->anio.'-%')->orderBy('enviado_at')->get()->groupBy('periodo'),
             'envioAbierto' => $this->verEnvio ? DB::table('certificados_envios')->find($this->verEnvio) : null,
             'graphOk' => GraphMail::configurado(),
+            'miEscaneo' => DB::table('certificados_escaneos')->where('user_id', auth()->id())->first(),
+            'verTodos' => CertificadosLista::verTodos(auth()->user()),
             'enLocal' => (bool) config('contabilidad.ejecucion_local'),
             'pcLocal' => gethostname(),
             'trabajadores' => $cola ? DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()

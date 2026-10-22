@@ -11,10 +11,22 @@ use Illuminate\Support\Facades\DB;
  */
 class CertificadosLista
 {
-    /** [pc => ['escaneado' => ..., 'certs' => [...]]] */
-    public static function escaneos(): array
+    /** Quién ve los escaneos de todos los usuarios: Admin y Marta; el resto solo los de su propio PC. */
+    public static function verTodos(?\App\Models\User $u): bool
+    {
+        return $u && ($u->hasRole('Admin') || strtolower($u->email) === 'marta.ruiz@sumaempresa.com');
+    }
+
+    /** [pc => ['escaneado' => ..., 'certs' => [...]]]. $soloUser: solo el escaneo hecho desde el PC de ese usuario. */
+    public static function escaneos(?int $soloUser = null): array
     {
         $r = [];
+        if ($soloUser !== null) {
+            foreach (DB::table('certificados_escaneos')->where('user_id', $soloUser)->get() as $e) {
+                $r[$e->pc] = ['escaneado' => $e->escaneado, 'certs' => json_decode($e->certs, true) ?: []];
+            }
+            return $r;
+        }
         if (config('contabilidad.ejecucion_local')) {
             foreach (['e', 'f', 'd'] as $u) {
                 foreach (['_Clientes', 'Clientes'] as $c) {
