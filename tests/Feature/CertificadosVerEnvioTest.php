@@ -27,7 +27,7 @@ class CertificadosVerEnvioTest extends TestCase
         (require base_path('database/migrations/2026_10_02_140000_create_certificados_envios_table.php'))->up();
     }
 
-    public function test_ver_envio_carga_lista_y_correo_y_se_puede_volver(): void
+    public function test_clic_en_un_mes_abre_una_ventana_con_el_envio_sin_tocar_la_pantalla(): void
     {
         $id = DB::table('certificados_envios')->insertGetId(['periodo' => '2026-09', 'enviado_at' => '2026-09-15 10:00:00', 'origen' => 'app',
             'para' => 'marta.ruiz@sumaempresa.com', 'asunto' => 'Asunto viejo', 'texto' => "Marta,\n\nIntro vieja\n\n• 01/12/2026 — Cert A\n\nUn saludo",
@@ -35,34 +35,30 @@ class CertificadosVerEnvioTest extends TestCase
             'created_at' => now(), 'updated_at' => now()]);
 
         Livewire::test(Certificados::class, ['embebido' => true])
-            ->call('ver', $id)
-            ->assertSet('viendoEnvio', true)
-            ->assertSet('asunto', 'Asunto viejo')
-            ->assertSet('filas.0.nombre', 'Cert A')
-            ->assertSee('envío ya hecho', false)
-            ->call('volverALista')
-            ->assertSet('viendoEnvio', false)
-            ->assertSet('filas', []);
+            ->call('verMes', '2026-09')
+            ->assertSet('envioId', $id)
+            ->assertSee('Correo de Septiembre 2026 a Marta')->assertSee('Mes que estás mirando')->assertSee('Asunto viejo')->assertSee('Intro vieja')
+            ->assertSet('asunto', 'Certificados digitales que caducan - '.now()->locale('es')->translatedFormat('F Y'))   // el formulario de debajo no cambia
+            ->call('cerrarEnvio')->assertSet('envioVentana', false)->assertSet('envioMes', '2026-09');   // la ventana se cierra y el mes sigue marcado
     }
 
     public function test_envio_a_mano_sin_texto_no_rompe(): void
     {
-        $id = DB::table('certificados_envios')->insertGetId(['periodo' => '2026-10', 'enviado_at' => '2026-10-02 12:00:00', 'origen' => 'manual',
+        DB::table('certificados_envios')->insert(['periodo' => '2026-10', 'enviado_at' => '2026-10-02 12:00:00', 'origen' => 'manual',
             'para' => null, 'asunto' => null, 'texto' => null, 'filas' => null, 'created_at' => now(), 'updated_at' => now()]);
-        Livewire::test(Certificados::class, ['embebido' => true])->call('ver', $id)->assertSet('viendoEnvio', true)->assertSee('envío ya hecho', false);
+        Livewire::test(Certificados::class, ['embebido' => true])->call('verMes', '2026-10')->assertSee('a mano, fuera de Appmos')->assertSee('(sin texto guardado)');
     }
 
-    public function test_mes_sin_envio_sale_vacio_y_se_puede_volver(): void
+    public function test_mes_sin_envio_lo_dice_y_varios_envios_se_eligen(): void
     {
-        DB::table('certificados_envios')->insert(['periodo' => '2026-10', 'enviado_at' => '2026-10-02 12:00:00', 'origen' => 'app',
-            'para' => 'marta.ruiz@sumaempresa.com', 'asunto' => 'Octubre', 'texto' => "Marta,\n\n• 01/12/2026 — Cert A\n\nUn saludo",
-            'filas' => json_encode([['nombre' => 'Cert A', 'caduca' => '2026-12-01']]), 'created_at' => now(), 'updated_at' => now()]);
-
-        Livewire::test(Certificados::class, ['embebido' => true])
-            ->call('verMes', '2026-10')->assertSet('asunto', 'Octubre')->assertSet('filas.0.nombre', 'Cert A')
-            ->call('verMes', '2026-09')
-            ->assertSet('viendoEnvio', true)->assertSet('filas', [])->assertSet('asunto', '')->assertSet('para', '')
-            ->assertSee('no se envió nada ese mes')
-            ->call('verMes', '2026-09')->assertSet('viendoEnvio', false);
+        foreach (['2026-10-02 12:00:00' => 'Primero', '2026-10-20 09:00:00' => 'Segundo'] as $cuando => $asunto) {
+            DB::table('certificados_envios')->insert(['periodo' => '2026-10', 'enviado_at' => $cuando, 'origen' => 'app', 'para' => 'm@x.com', 'asunto' => $asunto,
+                'texto' => 'T', 'filas' => '[]', 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $t = Livewire::test(Certificados::class, ['embebido' => true])
+            ->call('verMes', '2026-09')->assertSee('no se envió ningún correo')
+            ->call('verMes', '2026-10')->assertSee('Segundo')->assertSee('Hubo 2 correos');   // abre el más reciente
+        $primero = DB::table('certificados_envios')->where('asunto', 'Primero')->value('id');
+        $t->call('elegirEnvio', $primero)->assertSee('Primero');
     }
 }

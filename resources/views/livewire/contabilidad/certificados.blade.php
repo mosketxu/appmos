@@ -37,7 +37,8 @@
         <aside class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm cm-lat">
             <h2 class="font-semibold text-gray-900">Caducidad por mes</h2>
             <div class="mt-1 text-xs font-medium text-indigo-700">👇 Pulsa un mes para ver sus certificados a la derecha</div>
-            <div class="mt-1 text-xs text-gray-500"><span class="px-2 cm-rojo">&nbsp;</span> este mes y el próximo · <span class="px-2 cm-amarillo">&nbsp;</span> 3.º y 4.º mes</div>
+            <div class="mt-1 text-xs text-gray-500"><span class="px-2 cm-rojo">&nbsp;</span> rojo: este mes y el próximo</div>
+            <div class="text-xs text-gray-500"><span class="px-2 cm-amarillo">&nbsp;</span> amarillo: 3.º y 4.º mes</div>
             <button type="button" wire:click="elegirMes('todos')" class="cm-mes {{ $mesSel === 'todos' ? 'cm-sel' : '' }}" style="background:#f3f4f6">Todos <span>{{ count($todosCerts) }}</span></button>
             @foreach ($resumenMeses as $m)
                 <button type="button" wire:click="elegirMes('{{ $m['clave'] }}')" wire:key="mes-{{ $m['clave'] }}"
@@ -163,18 +164,6 @@
             </div>
         @endif
 
-
-        @if ($viendoEnvio)
-            <div class="flex flex-wrap items-center gap-3 px-4 py-2 text-sm text-amber-900 border border-amber-300 rounded-md bg-amber-50">
-                @if ($verEnvio)
-                    👁 <b>{{ ucfirst($mesVisto) }}</b>: estás viendo un <b>envío ya hecho</b> ({{ $enviado }}); la lista y el correo son los que salieron.
-                @else
-                    👁 <b>{{ ucfirst($mesVisto) }}</b>: no se envió nada ese mes, por eso está todo vacío.
-                @endif
-                <button type="button" wire:click="volverALista" class="px-2 py-0.5 bg-white border border-amber-300 rounded hover:bg-amber-100">↩ Volver a la lista actual</button>
-            </div>
-        @endif
-
         {{-- PASOS 1 y 2, lado a lado --}}
         <div class="cm-grid">
         {{-- PASO 1 --}}
@@ -281,23 +270,19 @@
             <h2 class="font-semibold text-gray-900">Paso 2 · Enviar el correo</h2>
             <div class="grid gap-2 md:grid-cols-3">
                 <label class="text-xs font-semibold text-gray-600">Para
-                    <input type="text" wire:model.blur="para" @disabled($viendoEnvio) class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                    <input type="text" wire:model.blur="para" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600">CC
-                    <input type="text" wire:model.blur="cc" @disabled($viendoEnvio) class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                    <input type="text" wire:model.blur="cc" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600">Asunto
-                    <input type="text" wire:model.live.debounce.300ms="asunto" @disabled($viendoEnvio) class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
+                    <input type="text" wire:model.live.debounce.300ms="asunto" class="w-full py-1 text-sm font-normal border-gray-300 rounded-md"></label>
                 <label class="text-xs font-semibold text-gray-600 md:col-span-3">Texto de arriba (la lista se añade sola)
-                    <textarea wire:model.live.debounce.300ms="intro" @disabled($viendoEnvio) rows="2" class="w-full py-1 text-sm font-normal leading-snug border-gray-300 rounded-md"></textarea></label>
+                    <textarea wire:model.live.debounce.300ms="intro" rows="2" class="w-full py-1 text-sm font-normal leading-snug border-gray-300 rounded-md"></textarea></label>
             </div>
             <div>
                 <div class="text-xs font-semibold text-gray-600">Así saldrá</div>
                 <pre class="p-2 overflow-y-auto text-xs leading-snug text-gray-800 whitespace-pre-wrap border border-gray-200 rounded-md bg-gray-50" style="font-family:inherit;max-height:14rem">{{ str_replace('{logo}', '[logo de Suma]', $vistaPrevia) }}</pre>
             </div>
-            @if ($viendoEnvio)
-                @if ($enviado)
-                    <div class="text-sm font-semibold text-green-700">✅ Enviado el {{ $enviado }}</div>
-                @endif
-            @elseif ($enviado)
+            @if ($enviado)
                 <div class="text-sm font-semibold text-green-700">✅ Enviado el {{ $enviado }}</div>
             @elseif (! $graphOk)
                 <div class="text-sm text-red-700">No encuentro las credenciales de Microsoft Graph (FacturacionPDFyMail/config.json) en este PC.</div>
@@ -312,24 +297,24 @@
             @endif
         </div>
 
-        {{-- ENVÍOS: detalle por meses, como el checklist de Fashion --}}
+        {{-- ENVÍOS: historial del correo mensual a Marta --}}
         <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm xl:col-start-1 xl:row-start-2">
             <div class="flex items-center gap-3">
-                <h2 class="font-semibold text-gray-900">Envíos de {{ $anio }}</h2>
+                <h2 class="font-semibold text-gray-900">Correos enviados a Marta en {{ $anio }}</h2>
                 <button type="button" wire:click="cambiarAnio(-1)" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">◀</button>
                 <button type="button" wire:click="cambiarAnio(1)" class="px-2 py-0.5 bg-white border border-gray-300 rounded hover:bg-gray-50">▶</button>
             </div>
+            <p class="text-xs text-gray-600">Historial del correo mensual: <b style="color:#16a34a">✓ verde</b> = ese mes ya se envió. Púlsalo para ver, en una ventana, lo que se mandó (esta pantalla no cambia).</p>
             <div class="flex flex-wrap gap-2">
                 @foreach (['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'] as $n => $mes)
                     @php $k = sprintf('%d-%02d', $anio, $n + 1); $e = $envios[$k] ?? collect(); @endphp
                     <div class="text-center" style="min-width:52px">
-                        <div class="text-xs text-gray-500">{{ $mes }}</div>
+                        <div class="text-xs {{ $envioMes === $k ? 'font-bold' : 'text-gray-500' }}" @if ($envioMes === $k) style="color:#4f46e5;text-decoration:underline;text-underline-offset:3px" title="Mes que estás mirando" @endif>{{ $mes }}</div>
                         @if ($e->isNotEmpty())
                             <button type="button" wire:click="verMes('{{ $k }}')" title="{{ $e->count() }} envío(s): clic para ver lo que se mandó"
                                 class="inline-flex items-center justify-center w-6 h-6 text-xs text-white bg-green-500 border border-green-600 rounded">✓</button>
                         @else
-                            <button type="button" wire:click="verMes('{{ $k }}')" title="Sin envíos este mes: clic para ver el mes vacío"
-                                class="inline-flex items-center justify-center w-6 h-6 bg-white border border-gray-300 rounded hover:bg-gray-100"></button>
+                            <span title="No se envió nada este mes" class="inline-flex items-center justify-center w-6 h-6 bg-white border border-gray-200 rounded" style="opacity:.6"></span>
                         @endif
                     </div>
                 @endforeach
@@ -337,6 +322,35 @@
         </div>
         </div>
 
+        @if ($envioVentana)
+            <div class="cm-modal" wire:click.self="cerrarEnvio">
+                <div class="cm-caja" style="max-width:46rem">
+                    <div class="flex items-start justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900">📨 Correo de {{ $etiquetaEnvioMes }} a Marta</h2>
+                        <button type="button" wire:click="cerrarEnvio" class="text-gray-500 hover:text-gray-800" title="Cerrar">✕</button>
+                    </div>
+                    @if (! $envioAbierto)
+                        <p class="mt-3 text-sm text-gray-700">En {{ $etiquetaEnvioMes }} no se envió ningún correo.</p>
+                    @else
+                        @if ($enviosMes->count() > 1)
+                            <div class="flex flex-wrap gap-2 mt-2 text-xs">Hubo {{ $enviosMes->count() }} correos ese mes:
+                                @foreach ($enviosMes as $em)
+                                    <button type="button" wire:click="elegirEnvio({{ $em->id }})" wire:key="env-{{ $em->id }}" class="px-2 py-0.5 border rounded {{ $em->id === $envioAbierto->id ? 'bg-indigo-100 border-indigo-400' : 'bg-white border-gray-300' }}">{{ \Carbon\Carbon::parse($em->enviado_at)->format('d/m/Y H:i') }}</button>
+                                @endforeach
+                            </div>
+                        @endif
+                        <div class="mt-2 text-sm font-semibold text-green-700">✅ Enviado el {{ \Carbon\Carbon::parse($envioAbierto->enviado_at)->format('d/m/Y H:i') }}{{ $envioAbierto->origen === 'manual' ? ' (a mano, fuera de Appmos)' : '' }}</div>
+                        <dl class="mt-2 text-sm text-gray-800">
+                            @if ($envioAbierto->para) <div><b>Para:</b> {{ $envioAbierto->para }}</div> @endif
+                            @if ($envioAbierto->cc) <div><b>CC:</b> {{ $envioAbierto->cc }}</div> @endif
+                            @if ($envioAbierto->asunto) <div><b>Asunto:</b> {{ $envioAbierto->asunto }}</div> @endif
+                        </dl>
+                        <pre class="p-2 mt-2 overflow-y-auto text-xs leading-snug text-gray-800 whitespace-pre-wrap border border-gray-200 rounded-md bg-gray-50" style="font-family:inherit;max-height:50vh">{{ $envioAbierto->texto ?: '(sin texto guardado)' }}</pre>
+                    @endif
+                    <div class="mt-3 text-right"><button type="button" wire:click="cerrarEnvio" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">Cerrar</button></div>
+                </div>
+            </div>
+        @endif
         @endif
         </div>
         </div>

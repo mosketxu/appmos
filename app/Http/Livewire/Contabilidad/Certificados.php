@@ -40,11 +40,11 @@ class Certificados extends Component
 
     /** Año del detalle de envíos y envío abierto para revisar. */
     public int $anio = 0;
-    public ?int $verEnvio = null;
-    /** true mientras la pantalla enseña un envío ya hecho (lista, destinatarios y texto tal como salieron). */
-    public bool $viendoEnvio = false;
-    /** Mes que se está mirando («septiembre 2026»), con o sin envío. */
-    public string $mesVisto = '';
+    /** Mes del historial de envíos que se está mirando en la ventana de encima («2026-09») y el envío abierto de ese mes. */
+    public ?string $envioMes = null;
+    public ?int $envioId = null;
+    /** Ventana de lo enviado abierta. El mes se queda marcado en el cuadro de envíos aunque se cierre la ventana. */
+    public bool $envioVentana = false;
 
     // Fila nueva a mano
     public string $aNombre = '';
@@ -81,9 +81,6 @@ class Certificados extends Component
 
     public function escanear(): void
     {
-        if ($this->viendoEnvio) {
-            $this->volverALista();
-        }
         if (! config('contabilidad.ejecucion_local')) {
             $this->salida = '⚠ El escaneo solo se hace desde AlexMiniPC o PortalExomen (los certificados están en el PC).';
             return;
@@ -124,9 +121,6 @@ class Certificados extends Component
     /** Pide a cada PC trabajador que escanee sus certificados (los PCs lo recogen solos, sin abrir nada en ellos). */
     public function pedirEscaneoPCs(): void
     {
-        if ($this->viendoEnvio) {
-            $this->volverALista();
-        }
         if (config('contabilidad.ejecucion_local')) {
             $this->salida = '⚠ La cola de tareas vive en la web: pide el escaneo desde appmos.sumaempresa.com (aquí escanea solo este PC con el botón).';
             return;
@@ -454,10 +448,8 @@ class Certificados extends Component
     public function cambiarAnio(int $d): void
     {
         $this->anio += $d;
-        if ($this->viendoEnvio) {
-            $this->volverALista();
-        }
-        $this->verEnvio = null;
+        $this->envioMes = $this->envioId = null;
+        $this->envioVentana = false;
     }
 
     protected function etiquetaMes(string $periodo): string
@@ -469,65 +461,27 @@ class Certificados extends Component
         }
     }
 
-    /** Clic en un mes del cuadro de envíos: el envío de ese mes, o todo vacío si no se envió nada. */
+    /** Clic en un mes con correo enviado: ventana con lo que se mandó (la pantalla de debajo no cambia). */
     public function verMes(string $periodo): void
     {
-        $e = DB::table('certificados_envios')->where('periodo', $periodo)->orderByDesc('enviado_at')->first();
-        if ($e) {
-            $this->ver($e->id);
-            return;
-        }
-        $etiqueta = $this->etiquetaMes($periodo);
-        if ($this->viendoEnvio && ! $this->verEnvio && $this->mesVisto === $etiqueta) {
-            $this->volverALista();
-            return;
-        }
-        $this->verEnvio = null;
-        $this->viendoEnvio = true;
-        $this->mesVisto = $etiqueta;
-        $this->confirmar = false;
-        $this->filas = $this->contradicciones = $this->renovados = [];
-        $this->para = $this->cc = $this->asunto = $this->intro = $this->enviado = $this->salida = '';
+        $this->envioMes = $periodo;
+        $this->envioVentana = true;
+        $this->envioId = DB::table('certificados_envios')->where('periodo', $periodo)->orderByDesc('enviado_at')->value('id');
     }
 
-    /** Clic en un mes con envío: la lista, el destinatario y el correo de arriba pasan a ser los de aquel envío. */
-    public function ver(int $id): void
+    /** Si un mes tiene varios correos, elegir cuál se ve. */
+    public function elegirEnvio(int $id): void
     {
-        if ($this->verEnvio === $id) {
-            $this->volverALista();
-            return;
+        if ($e = DB::table('certificados_envios')->find($id)) {
+            $this->envioMes = $e->periodo;
+            $this->envioVentana = true;
+            $this->envioId = $id;
         }
-        $e = DB::table('certificados_envios')->find($id);
-        if (! $e) {
-            return;
-        }
-        $this->verEnvio = $id;
-        $this->viendoEnvio = true;
-        $this->mesVisto = $this->etiquetaMes((string) $e->periodo);
-        $this->confirmar = false;
-        $this->filas = $this->filasDelEnvio($e);
-        $this->contradicciones = $this->renovados = [];
-        $this->para = (string) $e->para;
-        $this->cc = (string) $e->cc;
-        $this->asunto = (string) $e->asunto;
-        $texto = (string) $e->texto;
-        $i = strpos($texto, "\n\n•");
-        $this->intro = $i === false ? $texto : substr($texto, 0, $i);
-        $this->enviado = \Carbon\Carbon::parse($e->enviado_at)->format('d/m/Y H:i').' a '.$e->para.($e->origen === 'manual' ? ' (a mano, fuera de Appmos)' : '');
-        $this->salida = '';
     }
 
-    /** Vuelve a la lista actual (lo escaneado) y a los datos de correo por defecto. */
-    public function volverALista(): void
+    public function cerrarEnvio(): void
     {
-        $this->verEnvio = null;
-        $this->viendoEnvio = false;
-        $this->mesVisto = '';
-        $this->para = 'marta.ruiz@sumaempresa.com';
-        $this->cc = '';
-        $this->asunto = 'Certificados digitales que caducan - '.now()->locale('es')->translatedFormat('F Y');
-        $this->intro = "Marta,\n\nEstos son los certificados digitales que tengo yo instalados y que caducan en los próximos meses.";
-        $this->calcular();
+        $this->envioVentana = false;   // el mes sigue marcado en el cuadro de envíos
     }
 
     /** La lista de un envío: la guardada (JSON) o, si no hay (envíos a mano), la sacada de las viñetas del texto. */
@@ -561,9 +515,11 @@ class Certificados extends Component
         $porMeses = $this->porMeses($todos);
 
         return view('livewire.contabilidad.certificados', [
-            'vistaPrevia' => $this->viendoEnvio ? ($this->verEnvio ? (string) DB::table('certificados_envios')->where('id', $this->verEnvio)->value('texto') : '') : $this->texto(),
+            'vistaPrevia' => $this->texto(),
             'envios' => DB::table('certificados_envios')->where('periodo', 'like', $this->anio.'-%')->orderBy('enviado_at')->get()->groupBy('periodo'),
-            'envioAbierto' => $this->verEnvio ? DB::table('certificados_envios')->find($this->verEnvio) : null,
+            'envioAbierto' => $this->envioId ? DB::table('certificados_envios')->find($this->envioId) : null,
+            'enviosMes' => $this->envioVentana && $this->envioMes ? DB::table('certificados_envios')->where('periodo', $this->envioMes)->orderBy('enviado_at')->get() : collect(),
+            'etiquetaEnvioMes' => $this->envioVentana && $this->envioMes ? ucfirst($this->etiquetaMes($this->envioMes)) : '',
             'graphOk' => GraphMail::configurado(),
             'miEscaneo' => DB::table('certificados_escaneos')->where('user_id', auth()->id())->first(),
             'verTodos' => CertificadosLista::verTodos(auth()->user()),

@@ -96,8 +96,11 @@ class CertificadosEscaneoUsuarioTest extends TestCase
     public function test_marta_ve_la_pantalla_completa(): void
     {
         config(['contabilidad.ejecucion_local' => false]);
-        \Livewire\Livewire::actingAs($this->usuario('marta.ruiz@sumaempresa.com'))->test(\App\Http\Livewire\Contabilidad\Certificados::class)
-            ->assertSee('Escanear mi PC')->assertSee('Paso 2');
+        $marta = $this->usuario('marta.ruiz@sumaempresa.com');
+        \Livewire\Livewire::actingAs($marta)->test(\App\Http\Livewire\Contabilidad\Certificados::class)
+            ->assertSee('Escanear mi PC')->assertSee('Paso 2')->assertSee('Correos enviados a Marta')->assertSee('rojo: este mes y el próximo')->assertSee('amarillo: 3.º y 4.º mes');
+        $html = \Livewire\Livewire::actingAs($marta)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->call('verMes', '2026-09')->html();
+        $this->assertSame(substr_count($html, '<div'), substr_count($html, '</div>'), 'divs sin cerrar en la pantalla completa');
     }
 
     public function test_colores_por_meses_naturales(): void
