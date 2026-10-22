@@ -12,9 +12,9 @@
 
     @if ($puedeEditar)
         <form wire:submit.prevent="guardar" class="p-3 mb-4 bg-white border rounded">
-            <input type="text" wire:model="titulo" placeholder="Tema a explicar" class="w-full text-sm border-gray-300 rounded">
+            <div class="relative"><input type="text" wire:model="titulo" placeholder="Tema a explicar" class="w-full text-sm border-gray-300 rounded" style="padding-right:3rem"><x-boton-dictado /></div>
             @error('titulo') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
-            <textarea wire:model="descripcion" rows="2" placeholder="Notas (opcional): qué contar, para quién, material…" class="w-full mt-2 text-sm border-gray-300 rounded"></textarea>
+            <div class="relative mt-2"><textarea wire:model="descripcion" rows="2" placeholder="Notas (opcional): qué contar, para quién, material…" class="w-full text-sm border-gray-300 rounded" style="padding-right:3rem"></textarea><x-boton-dictado /></div>
             <div class="flex gap-2 mt-2">
                 <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">{{ $editando ? 'Guardar cambios' : 'Añadir' }}</button>
                 @if ($editando)
