@@ -28,6 +28,7 @@ class Prefacturacion extends Component
     public string $fPeriodo = '';
     public string $fMotivo = '';
     public string $fRecurrencia = 'puntual';
+    public bool $fSuplido = false;
     public $fAdjunto = null;
     public string $aviso = '';
 
@@ -50,7 +51,7 @@ class Prefacturacion extends Component
 
     public function editar(?int $id = null): void
     {
-        $this->reset('fEntidad', 'fCliente', 'fImporte', 'fMotivo', 'fAdjunto', 'aviso', 'fRecurrencia');
+        $this->reset('fEntidad', 'fCliente', 'fImporte', 'fMotivo', 'fAdjunto', 'aviso', 'fRecurrencia', 'fSuplido');
         $this->fPeriodo = $this->periodo;
         $this->editando = $id ?? 0;
         if ($id && ($p = DB::table('prefacturas')->find($id))) {
@@ -60,6 +61,7 @@ class Prefacturacion extends Component
             $this->fPeriodo = $p->periodo;
             $this->fMotivo = $p->motivo;
             $this->fRecurrencia = $p->recurrencia ?? 'puntual';
+            $this->fSuplido = (bool) ($p->suplido ?? false);
         }
     }
 
@@ -105,6 +107,7 @@ class Prefacturacion extends Component
             'cliente' => $entidad ? $entidad->entidad : (trim($this->fCliente) ?: null),
             'importe' => round((float) $importe, 2),
             'periodo' => $this->fPeriodo,
+            'suplido' => $this->fSuplido,
             'recurrencia' => in_array($this->fRecurrencia, ['puntual', 'mensual', 'trimestral'], true) ? $this->fRecurrencia : 'puntual',
             'motivo' => trim($this->fMotivo),
             'updated_at' => now(),

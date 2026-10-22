@@ -20,12 +20,12 @@
             .pf-subir > div { display: flex; width: 100%; }
             .pf-subir .subir-btn { width: 100%; justify-content: center; padding: .9rem 1rem; font-size: .85rem; border-style: dashed; border-width: 2px; }
         </style>
-        <div class="grid gap-3 p-4 bg-white border border-indigo-200 rounded-lg md:grid-cols-4">
-            <div class="md:col-span-2">
+        <div class="grid gap-3 p-4 bg-white border border-indigo-200 rounded-lg md:grid-cols-6">
+            <div class="md:col-span-3">
                 <label class="block mb-1 text-xs text-gray-500">Cliente</label>
                 <x-buscador-select model="fEntidad" :valor="$fEntidad" :opciones="$empresas->pluck('entidad', 'id')" ancho="100%" />
             </div>
-            <div class="md:col-span-2">
+            <div class="md:col-span-3">
                 <label class="block mb-1 text-xs text-gray-500">Periodo a facturar</label>
                 <select wire:model="fPeriodo" class="w-full text-sm border-gray-300 rounded-md">
                     @foreach ($mesesAnio as $v => $n)
@@ -33,15 +33,20 @@
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="md:col-span-2">
                 <label class="block mb-1 text-xs text-gray-500">Importe (€)</label>
-                <input type="text" wire:model="fImporte" placeholder="0,00" class="w-full text-sm border-gray-300 rounded-md">
+                <div class="flex items-center gap-3">
+                    <label class="inline-flex items-center gap-1 text-sm text-gray-700 whitespace-nowrap" title="Marca si el importe es un suplido">
+                        <input type="checkbox" wire:model="fSuplido" class="border-gray-300 rounded"> Suplido
+                    </label>
+                    <input type="text" wire:model="fImporte" placeholder="0,00" class="w-full text-sm border-gray-300 rounded-md">
+                </div>
             </div>
             <div class="md:col-span-2">
                 <label class="block mb-1 text-xs text-gray-500">Motivo</label>
                 <input type="text" wire:model="fMotivo" class="w-full text-sm border-gray-300 rounded-md">
             </div>
-            <div>
+            <div class="md:col-span-2">
                 <label class="block mb-1 text-xs text-gray-500">Se factura</label>
                 <select wire:model="fRecurrencia" class="w-full text-sm border-gray-300 rounded-md">
                     <option value="puntual">Solo esta vez (puntual)</option>
@@ -49,12 +54,12 @@
                     <option value="trimestral">Todos los trimestres</option>
                 </select>
             </div>
-            <div class="pf-subir md:col-span-4">
+            <div class="pf-subir md:col-span-6">
                 <x-subir-fichero wire:model="fAdjunto" texto="Adjunto (albarán / factura): pulsa o arrastra aquí el archivo" :fichero="$fAdjunto" opcional neutro />
                 <span wire:loading wire:target="fAdjunto" class="text-xs text-gray-500">Subiendo…</span>
                 @error('fAdjunto') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             </div>
-            <div class="flex flex-wrap items-center gap-3 md:col-span-4">
+            <div class="flex flex-wrap items-center gap-3 md:col-span-6">
                 <button type="button" wire:click="guardar" wire:loading.attr="disabled" wire:target="fAdjunto,guardar" class="px-6 py-2 text-base font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Guardar</button>
                 <button type="button" wire:click="cancelar" class="px-6 py-2 text-base bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
                 @if ($aviso) <span class="text-sm text-red-600">{{ $aviso }}</span> @endif
@@ -67,6 +72,7 @@
             <thead class="bg-gray-50">
                 <tr class="text-left text-gray-500">
                     <th class="px-2 py-1">Cliente</th>
+                    <th class="px-2 py-1">Suplido</th>
                     <th class="px-2 py-1 text-right">Importe</th>
                     <th class="px-2 py-1">Se factura</th>
                     <th class="px-2 py-1">Motivo</th>
@@ -79,6 +85,7 @@
                 @forelse ($filas as $f)
                     <tr wire:key="pf-{{ $f->id }}" class="align-top hover:bg-gray-50">
                         <td class="px-2 py-1">{{ $f->cliente ?: '—' }}</td>
+                        <td class="px-2 py-1">{{ ($f->suplido ?? false) ? '✓ Sí' : '' }}</td>
                         <td class="px-2 py-1 text-right whitespace-nowrap">{{ number_format($f->importe, 2, ',', '.') }} €</td>
                         <td class="px-2 py-1 whitespace-nowrap">{{ ['mensual' => 'Todos los meses', 'trimestral' => 'Todos los trimestres'][$f->recurrencia ?? ''] ?? 'Puntual' }}</td>
                         <td class="px-2 py-1">{{ $f->motivo }}</td>
@@ -100,7 +107,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-2 py-3 text-center text-gray-400">Sin líneas en este periodo.</td></tr>
+                    <tr><td colspan="8" class="px-2 py-3 text-center text-gray-400">Sin líneas en este periodo.</td></tr>
                 @endforelse
             </tbody>
         </table>
