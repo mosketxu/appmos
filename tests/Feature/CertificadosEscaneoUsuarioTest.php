@@ -206,4 +206,17 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         DB::table('certificados_escaneos')->insert(['pc' => 'PC de y', 'escaneado' => '2026-10-22T10:00', 'user_id' => $otro->id, 'created_at' => now(), 'updated_at' => now(), 'certs' => json_encode([$c('emp:B3', 'CERT VIEJO', '2026-08-01', 'H3')])]);
         $this->assertCount(1, \Livewire\Livewire::actingAs($otro)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->viewData('todosCerts'));
     }
+
+    public function test_recuadro_central_mientras_se_espera_al_pc_y_se_quita_a_los_60_segundos(): void
+    {
+        config(['contabilidad.ejecucion_local' => false]);
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22 12:00:00'));
+        $u = $this->usuario();
+        DB::table('certificados_escaneos')->insert(['pc' => 'PC de x', 'escaneado' => '2026-10-22T10:00', 'user_id' => $u->id, 'certs' => '[]', 'solicitado_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        $t = \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class);
+        $this->assertTrue($t->viewData('esperandoMio'));
+        $t->assertSee('Escaneando los certificados de tu PC');
+        $this->travel(61)->seconds();
+        $this->assertFalse(\Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->viewData('esperandoMio'));   // no se bloquea la pantalla si el PC no contesta
+    }
 }

@@ -29,6 +29,11 @@
             .cm-btn { display:inline-block; padding:.45rem .9rem; border-radius:.375rem; color:#fff; font-size:.875rem; cursor:pointer }
         </style>
 
+        {{-- Recuadro central «escaneando…» (el de siempre) mientras se espera a que los PCs lean sus certificados --}}
+        <x-contabilidad.procesando target="escanear, pedirEscaneoPCs, pedirMiEscaneo" :visible="$esperandoMio || $activasRecientes"
+            :titulo="$activasRecientes ? 'Escaneando los certificados de los PCs…' : 'Escaneando los certificados de tu PC…'"
+            :nota="$activasRecientes ? 'Cada PC encendido lee los suyos y la lista se actualiza sola. Suele tardar entre medio minuto y dos minutos; no cierres la página.' : 'Suele tardar unos segundos (hasta un minuto). Si el navegador pregunta si abre «Appmos certificados», di que sí.'" />
+
         @if ($salida)
             <div class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md whitespace-pre-line">{{ $salida }}</div>
         @endif

@@ -521,7 +521,11 @@ class Certificados extends Component
             'enviosMes' => $this->envioVentana && $this->envioMes ? DB::table('certificados_envios')->where('periodo', $this->envioMes)->orderBy('enviado_at')->get() : collect(),
             'etiquetaEnvioMes' => $this->envioVentana && $this->envioMes ? ucfirst($this->etiquetaMes($this->envioMes)) : '',
             'graphOk' => GraphMail::configurado(),
-            'miEscaneo' => DB::table('certificados_escaneos')->where('user_id', auth()->id())->first(),
+            // Recuadro central «escaneando…» mientras se espera (hasta 60 s al PC propio, 2 min a los trabajadores: si no contestan, no se bloquea la pantalla)
+            'esperandoMio' => (bool) ($miEscaneo = DB::table('certificados_escaneos')->where('user_id', auth()->id())->first())
+                && $miEscaneo->solicitado_at && \Carbon\Carbon::parse($miEscaneo->solicitado_at)->gt(now()->subSeconds(60)),
+            'activasRecientes' => $cola && DB::table('tareas')->where('proceso', 'certificados.escanear')->whereIn('estado', ['pendiente', 'en_curso'])->where('created_at', '>=', now()->subSeconds(120))->exists(),
+            'miEscaneo' => $miEscaneo,
             'verTodos' => CertificadosLista::verTodos(auth()->user()),
             'todosCerts' => $todos, 'nOcultos' => $nOcultos,
             'resumenMeses' => $porMeses[0], 'detalle' => $porMeses[1], 'tituloDetalle' => $porMeses[2], 'grupos' => $this->agrupar($porMeses[1]),
