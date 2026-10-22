@@ -18,6 +18,7 @@
     @if ($editando !== null)
         <style>
             .pf-subir > div { display: flex; width: 100%; }
+            .pf-subir .truncate { max-width: none !important; }
             .pf-subir .subir-btn { width: 100%; justify-content: center; padding: .9rem 1rem; font-size: .85rem; border-style: dashed; border-width: 2px; }
         </style>
         <div class="grid gap-3 p-4 bg-white border border-indigo-200 rounded-lg md:grid-cols-6">
@@ -33,12 +34,13 @@
                     @endforeach
                 </select>
             </div>
-            <div class="md:col-span-2">
-                <label class="block mb-1 text-xs text-gray-500">Importe (€)</label>
-                <div class="flex items-center gap-3">
-                    <label class="inline-flex items-center gap-1 text-sm text-gray-700 whitespace-nowrap" title="Marca si el importe es un suplido">
-                        <input type="checkbox" wire:model="fSuplido" class="border-gray-300 rounded"> Suplido
-                    </label>
+            <div class="flex items-end gap-3 md:col-span-2">
+                <div>
+                    <label class="block mb-1 text-xs text-gray-500">Suplido</label>
+                    <div class="flex items-center justify-center" style="height:38px"><input type="checkbox" wire:model="fSuplido" class="border-gray-300 rounded" title="Marca si el importe es un suplido"></div>
+                </div>
+                <div class="flex-1">
+                    <label class="block mb-1 text-xs text-gray-500">Importe (€)</label>
                     <input type="text" wire:model="fImporte" placeholder="0,00" class="w-full text-sm border-gray-300 rounded-md">
                 </div>
             </div>
