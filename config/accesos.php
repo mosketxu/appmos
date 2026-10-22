@@ -32,6 +32,10 @@ return [
         'TO-DO' => [
             'todo.ver' => 'TO-DO: ver y usar Tareas y Pedir mejora (cada uno solo ve las suyas; Alex ve todas las mejoras)',
         ],
+        'Formación' => [
+            'formacion.ver' => 'Formación: ver el listado de temas',
+            'formacion.editar' => 'Formación: añadir, editar, ordenar y marcar temas',
+        ],
         'Impuestos' => [
             'impuestos.ver' => 'Pestaña Impuestos: Seguimiento, IVA M303, IRPF M111, M349, M216 e Intrastat (ver y marcar los suyos; Admin y Suma ven todos)',
             'contabilidad.is' => 'IS M200 y Pago Cuenta M202 (subpestañas de Impuestos)',

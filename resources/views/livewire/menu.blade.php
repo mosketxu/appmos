@@ -56,6 +56,11 @@
                         TO-DO
                     </x-jet-nav-link>
                     @endcan
+                    @can('formacion.ver')
+                    <x-jet-nav-link href="{{ route('formacion') }}" :active="request()->routeIs('formacion')">
+                        Formación
+                    </x-jet-nav-link>
+                    @endcan
                     @if ($rutaImpuestos)
                         <x-jet-nav-link href="{{ route($rutaImpuestos) }}" :active="request()->routeIs('impuestos', 'impuestos.*', 'contabilidad.is')">
                             Impuestos
@@ -211,6 +216,11 @@
             @can('todo.ver')
             <x-jet-responsive-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
                 TO-DO
+            </x-jet-responsive-nav-link>
+            @endcan
+            @can('formacion.ver')
+            <x-jet-responsive-nav-link href="{{ route('formacion') }}" :active="request()->routeIs('formacion')">
+                Formación
             </x-jet-responsive-nav-link>
             @endcan
             @if ($rutaImpuestos)
