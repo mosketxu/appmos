@@ -50,7 +50,8 @@
                         <div class="flex flex-wrap items-center gap-2 mt-2" x-data="{ copiado: false }">
                             <button type="button" wire:click="descargarMiLista" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100">⬇ Descargar mi lista</button>
                             <button type="button" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                                x-on:click='navigator.clipboard.writeText(@js($textoCopia)).then(() => { copiado = true; setTimeout(() => copiado = false, 2500) })'>📋 Copiar</button>
+                                data-texto="{{ $textoCopia }}"
+                                x-on:click="navigator.clipboard.writeText($el.dataset.texto).then(() => { copiado = true; setTimeout(() => copiado = false, 2500) })">📋 Copiar</button>
                             <span x-show="copiado" style="display:none" class="text-emerald-700">✓ Copiado</span>
                         </div>
                     @endif
