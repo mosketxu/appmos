@@ -109,8 +109,8 @@
                     <th class="px-3 py-2">Se factura</th>
                     <th class="px-3 py-2">Motivo</th>
                     <th class="px-3 py-2">Adjunto</th>
-                    <th class="px-3 py-2">Estado</th>
-                    <th class="px-3 py-2"></th>
+                    <th class="px-3 py-2" style="background:#e5e7eb; border-left:2px solid #9ca3af">Estado</th>
+                    <th class="px-3 py-2" style="background:#e5e7eb"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -125,15 +125,15 @@
                             @if ($f->adjunto_ruta)
                                 <div style="display:flex; align-items:center; gap:.4rem; flex-wrap:nowrap">
                                     <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline" title="{{ $f->adjunto_nombre }}" style="font-size:.72rem; flex:1 1 auto; min-width:0; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left">📎 {{ $f->adjunto_nombre }}</button>
-                                    @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="text-red-600 hover:text-red-800" style="flex:none" title="Quitar el adjunto">🗑</button>@endif
+                                    @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="text-gray-500 hover:text-red-600" style="flex:none; font-size:1rem; line-height:1" title="Quitar el adjunto">✕</button>@endif
                                 </div>
                             @endif
                         </td>
-                        <td class="px-3 py-2">
+                        <td class="px-3 py-2" style="background:#f3f4f6; border-left:2px solid #9ca3af">
                             <button type="button" @if ($puede) wire:click="alternarEstado({{ $f->id }})" @endif
                                 class="px-2 border rounded {{ $f->estado === 'facturado' ? 'bg-green-500 border-green-600 text-white' : 'bg-yellow-300 border-yellow-500 text-yellow-900' }}">{{ $f->estado === 'facturado' ? 'Facturado' : 'Pendiente' }}</button>
                         </td>
-                        <td class="px-3 py-2 whitespace-nowrap">
+                        <td class="px-3 py-2 whitespace-nowrap" style="background:#f3f4f6">
                             @if ($puede)
                                 <button type="button" wire:click="editar({{ $f->id }})" class="text-gray-500 hover:text-gray-800" title="Editar">✎</button>
                                 <button type="button" wire:click="borrar({{ $f->id }})" wire:confirm="¿Borrar esta línea?" class="ml-1 text-gray-500 hover:text-red-600" title="Borrar">🗑</button>
