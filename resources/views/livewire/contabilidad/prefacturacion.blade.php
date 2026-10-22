@@ -109,12 +109,12 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse ($filas as $f)
                     <tr wire:key="pf-{{ $f->id }}" class="align-top hover:bg-gray-50">
-                        <td class="px-3 py-2">{{ $f->cliente ?: '—' }}</td>
+                        <td class="px-3 py-2" style="min-width:230px">{{ $f->cliente ?: '—' }}</td>
                         <td class="px-3 py-2">{{ ($f->suplido ?? false) ? '✓ Sí' : '' }}</td>
                         <td class="px-3 py-2 text-right whitespace-nowrap">{{ number_format($f->importe, 2, ',', '.') }} €</td>
                         <td class="px-3 py-2 whitespace-nowrap">{{ ['mensual' => 'Todos los meses', 'trimestral' => 'Todos los trimestres'][$f->recurrencia ?? ''] ?? 'Puntual' }}</td>
-                        <td class="px-3 py-2" style="white-space:pre-line">{{ ($f->suplido ?? false) ? 'Suplido: ' : '' }}{{ $f->motivo }}</td>
-                        <td class="px-3 py-2" style="max-width:240px; word-break:break-word">
+                        <td class="px-3 py-2" style="white-space:pre-line; min-width:320px; width:40%">{{ ($f->suplido ?? false) ? 'Suplido: ' : '' }}{{ $f->motivo }}</td>
+                        <td class="px-3 py-2" style="max-width:150px; word-break:break-word">
                             @if ($f->adjunto_ruta)
                                 <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline">📎 {{ $f->adjunto_nombre }}</button>
                                 @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="ml-1 text-gray-400 hover:text-red-600">✕</button>@endif
