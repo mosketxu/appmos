@@ -61,10 +61,10 @@
                         <button type="button" wire:click="descargarScript" class="cm-btn" style="display:block;width:100%;background:#059669;margin-top:.5rem;padding:1rem 1.25rem;font-size:1.2rem;font-weight:700;border-radius:.5rem">⬇ Pulsar aquí para descargar</button>
                     </div></div>
                     <div class="cm-paso"><span class="cm-num">2</span><div class="text-sm text-gray-800">
-                        Ábrelo: en la carpeta de Descargas, <b>clic derecho</b> sobre <b>Instalar-escaner-certificados.ps1</b> → <b>«Ejecutar con PowerShell»</b>.
+                        Ábrelo: en la carpeta de Descargas, <b>doble clic</b> sobre <b>Instalar-escaner-certificados</b> (tipo «Windows Command Script»). Si el navegador dice que no es habitual, elige <b>«Conservar»</b>.
                     </div></div>
                     <div class="cm-paso"><span class="cm-num">3</span><div class="text-sm text-gray-800">
-                        Si Windows avisa de que el fichero no es conocido, pulsa <b>«Más información»</b> y luego <b>«Ejecutar de todas formas»</b>.
+                        Si Windows avisa de que el fichero no es conocido («Windows protegió su PC»), pulsa <b>«Más información»</b> y luego <b>«Ejecutar de todas formas»</b>.
                     </div></div>
                     <div class="cm-paso"><span class="cm-num">4</span><div class="text-sm text-gray-800">
                         Cuando la ventana diga <b>«LISTO»</b>, pulsa Intro para cerrarla. Esta pantalla se actualizará sola. Desde ahora, cada vez que pulses «Escanear mi PC ahora» el navegador puede preguntar si abre «Appmos certificados»: di que sí y marca «permitir siempre».

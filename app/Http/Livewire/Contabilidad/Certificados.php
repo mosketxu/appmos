@@ -201,7 +201,7 @@ class Certificados extends Component
 
         return response()->streamDownload(function () use ($ps) {
             echo $ps;
-        }, 'Instalar-escaner-certificados.ps1', ['Content-Type' => 'text/plain; charset=utf-8']);
+        }, 'Instalar-escaner-certificados.cmd', ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
     /** «Escanear mi PC ahora»: la tarea de Windows del usuario lo recoge en unos minutos. */

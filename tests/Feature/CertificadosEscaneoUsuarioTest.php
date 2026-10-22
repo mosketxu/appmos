@@ -70,7 +70,7 @@ class CertificadosEscaneoUsuarioTest extends TestCase
     public function test_el_script_lleva_codigo_y_url(): void
     {
         $ps = CertificadosScript::generar(self::CODIGO, 'https://appmos.example/api/certificados/usuario/');
-        $this->assertStringStartsWith("\xEF\xBB\xBF", $ps);
+        $this->assertStringStartsWith('@echo off', $ps);   // .cmd sin BOM
         $this->assertStringContainsString("'".self::CODIGO."'", $ps);
         $this->assertStringContainsString("'https://appmos.example/api/certificados/usuario'", $ps);
         $this->assertStringNotContainsString('__URL__', $ps);
@@ -85,7 +85,7 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         $u = $this->usuario();
         \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)
             ->assertSee('Escanear mi PC')->assertDontSee('Paso 2')->assertDontSee('Escanear y preparar la lista')
-            ->call('abrirInstalar')->assertSee('Pulsar aquí para descargar')->assertSee('Ejecutar con PowerShell')
+            ->call('abrirInstalar')->assertSee('Pulsar aquí para descargar')->assertSee('doble clic')
             ->call('cerrarInstalar')->assertDontSee('Pulsar aquí para descargar');
         DB::table('certificados_escaneos')->insert(['pc' => 'PC de x', 'escaneado' => '2026-10-22T10:00', 'certs' => json_encode([$this->cert()]), 'user_id' => $u->id, 'created_at' => now(), 'updated_at' => now()]);
         \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)

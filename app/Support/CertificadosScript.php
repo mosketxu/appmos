@@ -14,13 +14,24 @@ class CertificadosScript
     {
         $ps = str_replace(['__URL__', '__CODIGO__'], [rtrim($urlBase, '/'), $codigo], self::PLANTILLA);
 
-        return "\xEF\xBB\xBF".str_replace("\n", "\r\n", $ps);   // UTF-8 con BOM y CRLF: Windows PowerShell 5.1
+        return str_replace("\n", "\r\n", $ps);   // .cmd: sin BOM (cmd no lo traga) y con CRLF
     }
 
+    /**
+     * Es un .cmd (doble clic) que se lee a sí mismo y ejecuta la parte PowerShell con -ExecutionPolicy Bypass: así no depende
+     * de la política de scripts de Windows (con un .ps1 suelto, «Ejecutar con PowerShell» fallaba y la ventana se cerraba).
+     * cmd se detiene en «exit /b»; la marca se parte en dos trozos para que solo aparezca en su propia línea.
+     */
     private const PLANTILLA = <<<'PS'
+@echo off
+set AC_DESINSTALAR=0
+if /i "%~1"=="-Desinstalar" set AC_DESINSTALAR=1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$t = [IO.File]::ReadAllText('%~f0', [Text.Encoding]::UTF8); $m = '#PS' + '-AQUI#'; Invoke-Expression $t.Substring($t.LastIndexOf($m) + $m.Length)"
+exit /b
+#PS-AQUI#
 # Appmos · escáner de certificados de este PC (se instala para el usuario actual, sin administrador)
-# Para quitarlo: powershell -ExecutionPolicy Bypass -File "Instalar-escaner-certificados.ps1" -Desinstalar
-param([switch]$Desinstalar)
+# Para quitarlo: ejecutar este mismo fichero desde una ventana de comandos con el parámetro -Desinstalar
+$Desinstalar = ($env:AC_DESINSTALAR -eq '1')
 $ErrorActionPreference = 'Stop'
 # La ventana no se cierra sola: se queda hasta que se pulse Intro (así se puede leer el resultado o el error)
 trap {
