@@ -28,6 +28,7 @@ class ProcesosMensuales extends Component
     public const PROCESOS = [
         'certificados' => ['icono' => '🔐', 'componente' => 'contabilidad.certificados', 'parametros' => ['embebido' => true]],
         'limpieza' => ['icono' => '🧹', 'componente' => 'contabilidad.limpieza', 'parametros' => [], 'ancho' => '720px'],
+        'prefacturacion' => ['icono' => '🧾', 'componente' => 'contabilidad.prefacturacion', 'parametros' => [], 'ancho' => '1000px'],
     ];
 
     /** Orden en que pasa el ciclo de impuestos con cada clic (ids de la tabla ciclos; lo usa Entidades). */

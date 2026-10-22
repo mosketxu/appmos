@@ -60,6 +60,7 @@ return [
             'certificados' => 'Certificados por caducar',
             'revisionmayor' => 'Revisión del mayor',
             'limpieza' => 'Limpieza de OneDrive',
+            'prefacturacion' => 'Prefacturación',
         ]],
     ],
 
