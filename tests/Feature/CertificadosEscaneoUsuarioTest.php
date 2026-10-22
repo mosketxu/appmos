@@ -76,6 +76,7 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         $this->assertStringNotContainsString('__URL__', $ps);
         $this->assertStringContainsString('-Desinstalar', $ps);
         $this->assertStringContainsString('appmos-certificados', $ps);
+        $this->assertStringContainsString('System32\\WindowsPowerShell\\v1.0\\powershell.exe', $ps);   // ruta completa: con el nombre a secas el protocolo no arranca
         $this->assertStringNotContainsString('Register-ScheduledTask', $ps);   // nada en segundo plano
     }
 

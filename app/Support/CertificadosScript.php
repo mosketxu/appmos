@@ -81,14 +81,16 @@ Set-Content -Path $ruta -Value $escaner -Encoding UTF8
 
 # Protocolo appmos-certificados:// (solo para este usuario): lo abre el botón «Escanear mi PC ahora» de la web
 New-Item -Path $clave -Force | Out-Null
-Set-ItemProperty -Path $clave -Name '(Default)' -Value 'URL:Appmos certificados'
+Set-ItemProperty -Path $clave -Name '(Default)' -Value 'Appmos certificados'
 New-ItemProperty -Path $clave -Name 'URL Protocol' -Value '' -PropertyType String -Force | Out-Null
 New-Item -Path "$clave\shell\open\command" -Force | Out-Null
-Set-ItemProperty -Path "$clave\shell\open\command" -Name '(Default)' -Value ('powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $ruta + '"')
+# Ruta completa de powershell.exe: con solo «powershell.exe» el navegador/Windows no encuentra el programa y el escáner no arranca
+$ps = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+Set-ItemProperty -Path "$clave\shell\open\command" -Name '(Default)' -Value ('"' + $ps + '" -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $ruta + '"')
 
 # Primer escaneo ahora mismo
 Write-Host 'Escaneando tus certificados...'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ruta
+& $ps -NoProfile -ExecutionPolicy Bypass -File $ruta
 Write-Host ''
 Write-Host 'LISTO. A partir de ahora, cada vez que pulses «Escanear mi PC ahora» en Appmos se escaneará este PC. No queda nada en marcha en segundo plano.' -ForegroundColor Green
 Read-Host 'Pulsa Intro para cerrar esta ventana'
