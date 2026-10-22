@@ -60,6 +60,7 @@
                             <th class="px-0 py-1 text-center {{ $k === $mesActual ? 'bg-indigo-100 text-indigo-800' : '' }}" style="min-width:34px">{{ $n }}</th>
                         @endforeach
                         <th class="px-2 py-1"></th>
+                        <th class="px-2 py-1" style="min-width:160px">Usuarios</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -109,6 +110,19 @@
                                 <button type="button" wire:click="quitar({{ $p->id }})" wire:confirm="¿Quitar «{{ addslashes($p->nombre) }}» del seguimiento? (las marcas se conservan)" class="ml-1 hover:text-red-600" title="Quitar">✕</button>
                             @endif
                         </td>
+                        <td class="px-2 py-1">
+                            <div class="flex flex-wrap items-center gap-1" style="max-width:260px">
+                                @foreach ($responsables[$p->id] ?? [] as $r)
+                                    <span wire:key="r-{{ $p->id }}-{{ $r->user_id }}" class="inline-flex items-center gap-1 px-2 text-xs text-indigo-800 bg-indigo-100 rounded-full" style="height:20px">{{ $r->name }}@if ($puede)<button type="button" wire:click="quitarUsuario({{ $p->id }}, {{ $r->user_id }})" class="text-indigo-400 hover:text-red-600" title="Quitar">✕</button>@endif</span>
+                                @endforeach
+                                @if ($puede)
+                                    <button type="button" wire:click="asignar({{ $p->id }})" class="inline-flex items-center justify-center text-xs text-gray-500 border border-gray-300 border-dashed rounded-full hover:bg-gray-100" style="width:20px;height:20px" title="Añadir usuario">＋</button>
+                                @endif
+                            </div>
+                            @if ($asignando === $p->id)
+                                <div class="mt-1"><x-buscador-select model="addUsuario" :valor="$addUsuario" :opciones="$usuarios" ancho="14rem" /></div>
+                            @endif
+                        </td>
                     </tr>
                     @if ($p->ambito === 'cliente' && $abierto)
                         @foreach ($lista->when($filtro !== '', fn ($c) => $c->filter(fn ($e) => stripos($e->entidad.' '.$e->alias, $filtro) !== false)) as $e)
@@ -126,7 +140,7 @@
                             </tr>
                         @endforeach
                         @if ($lista->isEmpty())
-                            <tr><td colspan="{{ 2 + count($this->meses) }}" class="py-1 text-xs text-gray-500" style="padding-left:2.5rem">No hay empresas que gestiones para este proceso.</td></tr>
+                            <tr><td colspan="{{ 3 + count($this->meses) }}" class="py-1 text-xs text-gray-500" style="padding-left:2.5rem">No hay empresas que gestiones para este proceso.</td></tr>
                         @endif
                     @endif
                 @endforeach

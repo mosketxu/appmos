@@ -82,6 +82,10 @@ class ProcesosMensuales extends Component
     /** Proceso abierto en el modal (id de seguimiento_procesos). */
     public ?int $modal = null;
 
+    /** Proceso al que se está añadiendo un usuario (desplegable con buscador) y usuario elegido. */
+    public ?int $asignando = null;
+    public string $addUsuario = '';
+
     public function mount(): void
     {
         $this->anio = (int) now()->format('Y');
@@ -162,6 +166,28 @@ class ProcesosMensuales extends Component
                 'estado' => 'ok', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
         } else {
             $q->update(['estado' => 'na', 'user_id' => auth()->id(), 'updated_at' => now()]);
+        }
+    }
+
+    public function asignar(int $proceso): void
+    {
+        $this->asignando = $this->asignando === $proceso ? null : $proceso;
+        $this->addUsuario = '';
+    }
+
+    public function updatedAddUsuario(string $valor): void
+    {
+        if ($this->permitido() && $this->asignando && $valor !== '' && \App\Models\User::whereKey((int) $valor)->exists()) {
+            DB::table('seguimiento_proceso_user')->insertOrIgnore(['proceso_id' => $this->asignando, 'user_id' => (int) $valor]);
+        }
+        $this->asignando = null;
+        $this->addUsuario = '';
+    }
+
+    public function quitarUsuario(int $proceso, int $user): void
+    {
+        if ($this->permitido()) {
+            DB::table('seguimiento_proceso_user')->where('proceso_id', $proceso)->where('user_id', $user)->delete();
         }
     }
 
@@ -256,6 +282,9 @@ class ProcesosMensuales extends Component
 
         return view('livewire.contabilidad.procesos-mensuales', [
             'procesos' => $procesos,
+            'responsables' => DB::table('seguimiento_proceso_user')->join('users', 'users.id', '=', 'seguimiento_proceso_user.user_id')
+                ->orderBy('users.name')->get(['proceso_id', 'user_id', 'users.name'])->groupBy('proceso_id'),
+            'usuarios' => \App\Models\User::where('activo', true)->orderBy('name')->pluck('name', 'id'),
             'estado' => $estado,
             'aplican' => $aplican,
             'hayCliente' => $hayCliente,
