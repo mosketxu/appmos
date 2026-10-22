@@ -165,11 +165,12 @@
             <div class="bg-white rounded-lg shadow-xl" style="width:100%;margin:auto;max-width:{{ $pant ? ($pant['ancho'] ?? '1280px') : '640px' }}">
                 <div class="flex items-start gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50" style="border-radius:.5rem .5rem 0 0">
                     <div class="flex-1">
+                        @php $certSencillo = $enModal->clave === 'certificados' && ! \App\Support\CertificadosLista::verTodos(auth()->user()); @endphp
                         <h2 class="text-lg font-semibold text-gray-900">{{ $pant['icono'] ?? '' }} {{ $enModal->nombre }}
                             <span class="ml-1 text-xs font-normal text-gray-500">{{ $enModal->ambito === 'cliente' ? 'por empresa' : 'general' }} ·
-                                {{ ['web' => '🌐 se hace en la web', 'local' => '💻 se ejecuta en local (desde un PC)', 'ambos' => '🌐💻 web o local'][$enModal->ejecucion] ?? $enModal->ejecucion }}</span>
+                                {{ $certSencillo ? '💻 desde tu PC' : (['web' => '🌐 se hace en la web', 'local' => '💻 se ejecuta en local (desde un PC)', 'ambos' => '🌐💻 web o local'][$enModal->ejecucion] ?? $enModal->ejecucion) }}</span>
                         </h2>
-                        <p class="mt-1 text-sm text-gray-700">{{ $enModal->detalle ?: 'Sin detalle.' }}</p>
+                        <p class="mt-1 text-sm text-gray-700">{{ $certSencillo ? 'Escanea los certificados digitales instalados en tu PC para que sepamos cuáles caducan pronto. Solo tienes que pulsar «Escanear mi PC»; la primera vez te explicamos paso a paso lo que hay que instalar.' : ($enModal->detalle ?: 'Sin detalle.') }}</p>
                         @if ($href)
                             <a href="{{ $href }}" target="_blank" rel="noopener" class="text-sm text-indigo-600 underline">Abrir ↗</a>
                         @endif

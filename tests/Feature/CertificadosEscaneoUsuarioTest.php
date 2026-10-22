@@ -76,4 +76,24 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         $this->assertStringNotContainsString('__URL__', $ps);
         $this->assertStringContainsString('-Desinstalar', $ps);
     }
+
+    public function test_un_usuario_normal_solo_ve_el_boton_y_el_modal_por_pasos(): void
+    {
+        config(['contabilidad.ejecucion_local' => false]);
+        $u = $this->usuario();
+        \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)
+            ->assertSee('Escanear mi PC')->assertDontSee('Paso 2')->assertDontSee('Escanear y preparar la lista')
+            ->call('abrirInstalar')->assertSee('Pulsar aquí para descargar')->assertSee('Ejecutar con PowerShell')
+            ->call('cerrarInstalar')->assertDontSee('Pulsar aquí para descargar');
+        DB::table('certificados_escaneos')->insert(['pc' => 'PC de x', 'escaneado' => '2026-10-22T10:00', 'certs' => json_encode([$this->cert()]), 'user_id' => $u->id, 'created_at' => now(), 'updated_at' => now()]);
+        \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)
+            ->assertSee('Certificados encontrados en tu PC: 1')->assertSee('EMPRESA PRUEBA');
+    }
+
+    public function test_marta_ve_la_pantalla_completa(): void
+    {
+        config(['contabilidad.ejecucion_local' => false]);
+        \Livewire\Livewire::actingAs($this->usuario('marta.ruiz@sumaempresa.com'))->test(\App\Http\Livewire\Contabilidad\Certificados::class)
+            ->assertSee('Escanear mi PC')->assertSee('Paso 2');
+    }
 }

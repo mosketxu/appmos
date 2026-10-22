@@ -15,9 +15,13 @@ class CertificadosVerEnvioTest extends TestCase
     {
         parent::setUp();
         config(['contabilidad.ejecucion_local' => false]);
-        Schema::create('users', fn ($t) => $t->id());
+        Schema::create('users', function ($t) {
+            $t->id(); $t->string('name')->nullable(); $t->string('email')->nullable(); $t->string('password')->nullable(); $t->timestamps();
+        });
+        $this->actingAs(\App\Models\User::forceCreate(['name' => 'Marta', 'email' => 'marta.ruiz@sumaempresa.com', 'password' => 'x']));   // ve la pantalla completa
         Schema::create('certificados_escaneos', function ($t) {
             $t->id(); $t->string('pc')->unique(); $t->string('escaneado'); $t->longText('certs'); $t->timestamps();
+            $t->unsignedBigInteger('user_id')->nullable(); $t->timestamp('solicitado_at')->nullable(); $t->string('equipo')->nullable();
         });
         (require base_path('database/migrations/2026_10_02_140000_create_certificados_envios_table.php'))->up();
     }

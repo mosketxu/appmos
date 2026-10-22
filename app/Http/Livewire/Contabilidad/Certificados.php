@@ -166,6 +166,28 @@ class Certificados extends Component
         }
     }
 
+    public bool $modalInstalar = false;
+
+    public function abrirInstalar(): void
+    {
+        $this->modalInstalar = true;
+    }
+
+    public function cerrarInstalar(): void
+    {
+        $this->modalInstalar = false;
+    }
+
+    /** Con el modal abierto: en cuanto el PC del usuario sube su primer escaneo, se cierra y se enseña el resultado. */
+    public function comprobarInstalacion(): void
+    {
+        if (DB::table('certificados_escaneos')->where('user_id', auth()->id())->exists()) {
+            $this->modalInstalar = false;
+            $this->salida = '✅ Listo: tu PC ya ha enviado su primer escaneo.';
+            $this->calcular();
+        }
+    }
+
     /** Descarga el .ps1 con el código personal del usuario (lo crea la primera vez). */
     public function descargarScript()
     {

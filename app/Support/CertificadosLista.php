@@ -14,7 +14,7 @@ class CertificadosLista
     /** Quién ve los escaneos de todos los usuarios: Admin y Marta; el resto solo los de su propio PC. */
     public static function verTodos(?\App\Models\User $u): bool
     {
-        return $u && ($u->hasRole('Admin') || strtolower($u->email) === 'marta.ruiz@sumaempresa.com');
+        return $u && (strtolower((string) $u->email) === 'marta.ruiz@sumaempresa.com' || $u->hasRole('Admin'));
     }
 
     /** [pc => ['escaneado' => ..., 'certs' => [...]]]. $soloUser: solo el escaneo hecho desde el PC de ese usuario. */

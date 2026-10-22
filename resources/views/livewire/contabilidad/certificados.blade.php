@@ -11,6 +11,73 @@
         </div>
         @endunless
 
+        <style>
+            .cm-modal { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(17,24,39,.55); padding:1rem }
+            .cm-caja { background:#fff; border-radius:.75rem; max-width:34rem; width:100%; max-height:92vh; overflow:auto; padding:1.5rem; box-shadow:0 20px 50px rgba(0,0,0,.3) }
+            .cm-paso { display:flex; gap:.75rem; align-items:flex-start; margin-top:.9rem }
+            .cm-num { flex:none; width:1.75rem; height:1.75rem; border-radius:9999px; background:#4f46e5; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center }
+            .cm-btn { display:inline-block; padding:.45rem .9rem; border-radius:.375rem; color:#fff; font-size:.875rem; cursor:pointer }
+        </style>
+
+        @if ($salida)
+            <div class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md whitespace-pre-line">{{ $salida }}</div>
+        @endif
+
+        {{-- Escanear el PC del propio usuario: lo único que ven los usuarios que no son de los PCs trabajadores --}}
+        <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.10s="actualizarMio" @endif>
+            <div class="flex flex-wrap items-center gap-2">
+                @if ($miEscaneo)
+                    <button type="button" wire:click="pedirMiEscaneo" @disabled($miEscaneo->solicitado_at)
+                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">{{ $miEscaneo->solicitado_at ? '⏳ esperando a tu PC…' : '💻 Escanear mi PC ahora' }}</button>
+                    <span class="text-xs text-gray-700">Tu PC{{ $miEscaneo->equipo ? ' ('.$miEscaneo->equipo.')' : '' }}: último escaneo {{ str_replace('T', ' ', $miEscaneo->escaneado) }}</span>
+                    <button type="button" wire:click="abrirInstalar" class="text-xs text-indigo-600 underline">Reinstalar / desinstalar</button>
+                @else
+                    <button type="button" wire:click="abrirInstalar" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">💻 Escanear mi PC</button>
+                    <span class="text-xs text-gray-700">La primera vez hay que instalar una pequeña tarea en tu PC; te lo explico paso a paso.</span>
+                @endif
+            </div>
+            @if ($miEscaneo)
+                @php $misCerts = json_decode($miEscaneo->certs, true) ?: []; @endphp
+                <div class="mt-2 text-xs text-gray-700">
+                    <b>Certificados encontrados en tu PC: {{ count($misCerts) }}</b>
+                    @foreach ($misCerts as $mc)
+                        <div>· {{ $mc['nombre'] }} — caduca {{ \Carbon\Carbon::parse($mc['caduca'])->format('d/m/Y') }}</div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        @if ($modalInstalar)
+            <div class="cm-modal" wire:poll.5s="comprobarInstalacion" wire:click.self="cerrarInstalar">
+                <div class="cm-caja">
+                    <div class="flex items-start justify-between">
+                        <h2 class="text-lg font-semibold text-gray-900">💻 Instalar el escáner en tu PC</h2>
+                        <button type="button" wire:click="cerrarInstalar" class="text-gray-500 hover:text-gray-800" title="Cerrar">✕</button>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-600">Solo se hace una vez y tarda un minuto. No hace falta ser administrador.</p>
+
+                    <div class="cm-paso"><span class="cm-num">1</span><div class="text-sm text-gray-800">
+                        Descarga el instalador.<br>
+                        <button type="button" wire:click="descargarScript" class="cm-btn" style="display:block;width:100%;background:#059669;margin-top:.5rem;padding:1rem 1.25rem;font-size:1.2rem;font-weight:700;border-radius:.5rem">⬇ Pulsar aquí para descargar</button>
+                    </div></div>
+                    <div class="cm-paso"><span class="cm-num">2</span><div class="text-sm text-gray-800">
+                        Ábrelo: en la carpeta de Descargas, <b>clic derecho</b> sobre <b>Instalar-escaner-certificados.ps1</b> → <b>«Ejecutar con PowerShell»</b>.
+                    </div></div>
+                    <div class="cm-paso"><span class="cm-num">3</span><div class="text-sm text-gray-800">
+                        Si Windows avisa de que el fichero no es conocido, pulsa <b>«Más información»</b> y luego <b>«Ejecutar de todas formas»</b>.
+                    </div></div>
+                    <div class="cm-paso"><span class="cm-num">4</span><div class="text-sm text-gray-800">
+                        Cuando la ventana diga <b>«Listo»</b>, ciérrala. Esta pantalla se actualizará sola en cuanto tu PC envíe el primer escaneo.
+                    </div></div>
+
+                    <p class="p-2 mt-4 text-xs text-gray-600 rounded bg-gray-50">🔒 Solo se envía el nombre, el CIF/NIF y la fecha de caducidad de tus certificados; nunca la clave privada.
+                        Para quitarlo del PC: ejecuta el mismo fichero con <code>-Desinstalar</code>.</p>
+                    <div class="mt-3 text-right"><button type="button" wire:click="cerrarInstalar" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">Cerrar</button></div>
+                </div>
+            </div>
+        @endif
+
+        @if ($verTodos)
         @if ($enLocal)
             <div class="px-4 py-2 text-sm border rounded-md text-emerald-900 border-emerald-200 bg-emerald-50">
                 💻 Estás en <b>{{ $pcLocal }}</b> (local): «Escanear y preparar la lista» lee los certificados de este PC y los sube a la web. Para escanear <b>los dos PCs a la vez</b>, entra en
@@ -27,9 +94,6 @@
             </div>
         @endif
 
-        @if ($salida)
-            <div class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md whitespace-pre-line">{{ $salida }}</div>
-        @endif
 
         @if ($viendoEnvio)
             <div class="flex flex-wrap items-center gap-3 px-4 py-2 text-sm text-amber-900 border border-amber-300 rounded-md bg-amber-50">
@@ -91,28 +155,6 @@
                         @endif
                     </div>
                 </span>
-            </div>
-
-            {{-- Escanear el PC del propio usuario (tarea de Windows sin administrador) --}}
-            <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" x-data="{ instalar: false }" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.10s="actualizarMio" @endif>
-                <div class="flex flex-wrap items-center gap-2">
-                    @if ($miEscaneo)
-                        <button type="button" wire:click="pedirMiEscaneo" @disabled($miEscaneo->solicitado_at)
-                            class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">{{ $miEscaneo->solicitado_at ? '⏳ esperando a tu PC…' : '💻 Escanear mi PC ahora' }}</button>
-                        <span class="text-xs text-gray-700">Tu PC{{ $miEscaneo->equipo ? ' ('.$miEscaneo->equipo.')' : '' }}: último escaneo {{ str_replace('T', ' ', $miEscaneo->escaneado) }}</span>
-                        <button type="button" x-on:click="instalar = !instalar" class="text-xs text-indigo-600 underline">Reinstalar / desinstalar</button>
-                    @else
-                        <button type="button" x-on:click="instalar = !instalar" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">💻 Escanear mi PC</button>
-                        <span class="text-xs text-gray-700">Para leer los certificados instalados en <b>tu</b> PC hay que instalar una pequeña tarea (la primera vez).</span>
-                    @endif
-                    @if ($verTodos) <span class="text-xs text-indigo-800">👥 Ves los escaneos de todos los usuarios y PCs.</span> @else <span class="text-xs text-gray-600">Solo ves lo escaneado desde tu PC.</span> @endif
-                </div>
-                <div x-show="instalar" style="display:none" class="p-2 mt-2 text-xs text-gray-700 bg-white border border-gray-200 rounded">
-                    <p>Voy a instalarte lo necesario: se descarga un fichero <b>.ps1</b> con tu código personal. Al ejecutarlo (clic derecho → «Ejecutar con PowerShell») crea una tarea de Windows <b>tuya, sin administrador</b>
-                    que lee tus certificados (<code>Cert:\CurrentUser\My</code>) al iniciar sesión y cada día, y cada pocos minutos comprueba si has pulsado «Escanear mi PC ahora». Solo se suben nombre, CIF/NIF, alias y fecha de caducidad; nunca la clave privada.
-                    Windows puede mostrar SmartScreen: «Más información → Ejecutar de todas formas». Para quitarlo: ejecutar el mismo fichero con <code>-Desinstalar</code>.</p>
-                    <button type="button" wire:click="descargarScript" class="px-3 py-1 mt-2 text-white bg-emerald-600 rounded hover:bg-emerald-700">⬇ Descargar el instalador</button>
-                </div>
             </div>
 
             @if ($contradicciones)
@@ -226,5 +268,6 @@
         </div>
         </div>
 
+        @endif
     </div>
 </div>
