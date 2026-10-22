@@ -56,10 +56,9 @@ return [
     'procesos' => [
         'contabilidad.procesos' => ['prefijo' => 'proceso.fiq.', 'fuente' => 'fiq'],
         'contabilidad.procesosmensuales' => ['prefijo' => 'proceso.pm.', 'lista' => [
-            'petdocimpuestos' => 'Pet. Documentación Impuestos',
             'certificados' => 'Certificados por caducar',
-            'revisionmayor' => 'Revisión del mayor',
             'limpieza' => 'Limpieza de OneDrive',
+            'whatsapp' => 'Importar WhatsApp de clientes',
             'prefacturacion' => 'Prefacturación',
         ]],
     ],
