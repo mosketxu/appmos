@@ -76,4 +76,30 @@ class ProcesosMensualesUsuariosTest extends TestCase
         $marta->givePermissionTo('proceso.pm.limpieza');
         Livewire::actingAs($marta->fresh())->test(ProcesosMensuales::class)->assertSee('Limpieza de OneDrive');
     }
+
+    public function test_en_un_proceso_por_usuario_cada_uno_ve_solo_sus_checks(): void
+    {
+        config(['auth.defaults.guard' => 'sanctum']);
+        Permission::findOrCreate('contabilidad.procesosmensuales', 'web');
+        Role::findOrCreate('Suma', 'web')->givePermissionTo('contabilidad.procesosmensuales');
+        $pid = DB::table('seguimiento_procesos')->insertGetId([
+            'clave' => 'otro', 'nombre' => 'Por usuario', 'ambito' => 'general', 'ejecucion' => 'web', 'orden' => 1, 'activo' => true,
+            'por_usuario' => true, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $alex = User::factory()->create(['activo' => true]);
+        $marta = User::factory()->create(['activo' => true]);
+        $alex->assignRole('Suma');
+        $marta->assignRole('Suma');
+        $mes = now()->format('Y-m');
+
+        Livewire::actingAs($alex)->test(ProcesosMensuales::class)->call('marcar', $pid, $mes);
+
+        $deMarta = Livewire::actingAs($marta)->test(ProcesosMensuales::class)->viewData('estado');
+        $this->assertArrayNotHasKey($pid, $deMarta, 'Marta no ve lo que marcó Alex');
+        $deAlex = Livewire::actingAs($alex)->test(ProcesosMensuales::class)->viewData('estado');
+        $this->assertSame('ok', $deAlex[$pid][0][$mes]);
+
+        Livewire::actingAs($marta)->test(ProcesosMensuales::class)->call('marcar', $pid, $mes);
+        $this->assertSame(2, DB::table('seguimiento_marcas')->where('proceso_id', $pid)->count(), 'cada uno su propia marca');
+    }
 }

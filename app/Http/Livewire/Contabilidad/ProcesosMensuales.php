@@ -157,12 +157,13 @@ class ProcesosMensuales extends Component
             }
             return;
         }
-        $q = DB::table('seguimiento_marcas')->where(['proceso_id' => $proceso, 'entidad_id' => $entidad, 'periodo' => $periodo]);
+        $dueno = $p->por_usuario ? (int) auth()->id() : 0;   // en los procesos por usuario cada uno tiene sus checks
+        $q = DB::table('seguimiento_marcas')->where(['proceso_id' => $proceso, 'entidad_id' => $entidad, 'periodo' => $periodo, 'propietario_id' => $dueno]);
         $actual = $q->value('estado');
         if ($actual === 'na') {
             $q->delete();
         } elseif ($actual === null) {
-            DB::table('seguimiento_marcas')->insert(['proceso_id' => $proceso, 'entidad_id' => $entidad, 'periodo' => $periodo,
+            DB::table('seguimiento_marcas')->insert(['proceso_id' => $proceso, 'entidad_id' => $entidad, 'periodo' => $periodo, 'propietario_id' => $dueno,
                 'estado' => 'ok', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
         } else {
             $q->update(['estado' => 'na', 'user_id' => auth()->id(), 'updated_at' => now()]);
@@ -274,7 +275,7 @@ class ProcesosMensuales extends Component
 
         // estado[proceso][entidad][periodo] = ok|proc|na
         $estado = [];
-        foreach (DB::table('seguimiento_marcas')->whereIn('periodo', $meses)->get() as $m) {
+        foreach (DB::table('seguimiento_marcas')->whereIn('periodo', $meses)->whereIn('propietario_id', [0, (int) auth()->id()])->get() as $m) {
             $estado[$m->proceso_id][$m->entidad_id][$m->periodo] = $m->estado;
         }
         foreach ($procesos->where('auto', 'petdocimpuestos') as $p) {

@@ -279,7 +279,7 @@ class Certificados extends Component
                 'texto' => $d['texto'] ?? null, 'filas' => $d['filas'] ?? null, 'created_at' => now(), 'updated_at' => now()]);
         }
         if ($proceso = DB::table('seguimiento_procesos')->where('clave', 'certificados')->value('id')) {
-            DB::table('seguimiento_marcas')->updateOrInsert(['proceso_id' => $proceso, 'entidad_id' => 0, 'periodo' => $d['periodo']],
+            DB::table('seguimiento_marcas')->updateOrInsert(['proceso_id' => $proceso, 'entidad_id' => 0, 'periodo' => $d['periodo'], 'propietario_id' => (int) $userId],
                 ['estado' => 'ok', 'user_id' => $userId, 'updated_at' => now(), 'created_at' => now()]);
         }
     }
