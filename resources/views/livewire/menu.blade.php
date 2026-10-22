@@ -61,10 +61,6 @@
                             Impuestos
                         </x-jet-nav-link>
                     @endif
-                    @can('todo.ver')
-                    <a href="{{ route('todo', ['nueva' => 'mejora']) }}" class="inline-flex items-center px-1 pt-1 text-sm font-medium leading-5 text-gray-500 border-b-2 border-transparent hover:text-gray-700"
-                       title="Pide una mejora o cuenta qué no te funciona: queda como tarea del TO-DO para Alex">💡 Pedir mejora</a>
-                    @endcan
                     @if ($rutaContabilidad)
                         <x-jet-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*') && ! request()->routeIs('contabilidad.is')">
                             {{ __('Contabilidad') }}
@@ -222,11 +218,6 @@
                     Impuestos
                 </x-jet-responsive-nav-link>
             @endif
-            @can('todo.ver')
-            <x-jet-responsive-nav-link href="{{ route('todo', ['nueva' => 'mejora']) }}">
-                💡 Pedir mejora
-            </x-jet-responsive-nav-link>
-            @endcan
             @if ($rutaContabilidad)
                 <x-jet-responsive-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*') && ! request()->routeIs('contabilidad.is')">
                     {{ __('Contabilidad') }}

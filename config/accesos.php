@@ -30,7 +30,7 @@ return [
             'facturacion.editar' => 'Verifactu: crear, modificar y borrar facturas y conceptos',
         ],
         'TO-DO' => [
-            'todo.ver' => 'TO-DO: ver y usar la pestaña de tareas (también «Pedir mejora»)',
+            'todo.ver' => 'TO-DO: ver y usar Tareas y Pedir mejora (cada uno solo ve las suyas; Alex ve todas las mejoras)',
         ],
         'Impuestos' => [
             'impuestos.ver' => 'Pestaña Impuestos: Seguimiento, IVA M303, IRPF M111, M349, M216 e Intrastat (ver y marcar los suyos; Admin y Suma ven todos)',

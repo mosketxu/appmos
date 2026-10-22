@@ -31,6 +31,8 @@ class Prefacturacion extends Component
     public bool $fSuplido = false;
     public string $motivoBase = '';
     public string $proponerMotivo = '';
+    public string $motivoParecido = '';   // motivo habitual muy parecido al recién guardado (para no duplicar ni arrastrar erratas)
+    public ?int $ultimaId = null;          // línea recién guardada
     public bool $gestionarMotivos = false;
     public $fAdjunto = null;
     public string $aviso = '';
@@ -77,17 +79,64 @@ class Prefacturacion extends Component
         $this->motivoBase = '';
     }
 
+    /** Texto sin mayúsculas, acentos, signos ni espacios de más: para comparar motivos aunque cambie la escritura. */
+    protected function normalizar(string $t): string
+    {
+        $t = mb_strtolower(trim($t));
+        $t = strtr($t, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'à' => 'a', 'è' => 'e', 'ò' => 'o', 'ç' => 'c', 'ñ' => 'n']);
+
+        return trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]/', ' ', $t)));
+    }
+
+    /** Motivo habitual que se parece mucho al dado (misma frase con otra grafía, errata o una letra de más/menos), o null. */
+    public function buscarParecido(string $motivo): ?string
+    {
+        $n = $this->normalizar($motivo);
+        if ($n === '') {
+            return null;
+        }
+        $mejor = null;
+        $mejorDist = PHP_INT_MAX;
+        foreach (DB::table('prefactura_motivos')->pluck('texto') as $t) {
+            $m = $this->normalizar($t);
+            if ($m === $n) {
+                return $t;
+            }
+            $max = max(strlen($n), strlen($m));
+            if ($max < 4 || $max > 250) {
+                continue;
+            }
+            $d = levenshtein($n, $m);
+            similar_text($n, $m, $pct);
+            if (($d <= max(1, (int) floor($max * 0.2)) || $pct >= 85) && $d < $mejorDist) {
+                $mejor = $t;
+                $mejorDist = $d;
+            }
+        }
+
+        return $mejor;
+    }
+
+    /** Sustituye el motivo de la línea recién guardada por el habitual parecido (corrige errata o duplicado). */
+    public function usarMotivoParecido(): void
+    {
+        if ($this->permitido() && $this->ultimaId && $this->motivoParecido !== '') {
+            DB::table('prefacturas')->where('id', $this->ultimaId)->update(['motivo' => $this->motivoParecido, 'updated_at' => now()]);
+        }
+        $this->proponerMotivo = $this->motivoParecido = '';
+    }
+
     public function guardarMotivoBase(): void
     {
         if ($this->permitido() && trim($this->proponerMotivo) !== '') {
             DB::table('prefactura_motivos')->insertOrIgnore(['texto' => mb_substr(trim($this->proponerMotivo), 0, 255), 'created_at' => now(), 'updated_at' => now()]);
         }
-        $this->proponerMotivo = '';
+        $this->proponerMotivo = $this->motivoParecido = '';
     }
 
     public function descartarMotivoBase(): void
     {
-        $this->proponerMotivo = '';
+        $this->proponerMotivo = $this->motivoParecido = '';
     }
 
     public function quitarMotivoBase(int $id): void
@@ -154,11 +203,13 @@ class Prefacturacion extends Component
             }
             DB::table('prefacturas')->where('id', $this->editando)->update($datos);
         } else {
-            DB::table('prefacturas')->insert($datos + ['user_id' => auth()->id(), 'created_at' => now()]);
+            $this->ultimaId = DB::table('prefacturas')->insertGetId($datos + ['user_id' => auth()->id(), 'created_at' => now()]);
         }
+        $this->ultimaId ??= $this->editando ?: null;
         $this->periodo = $this->fPeriodo;
         $motivo = trim($this->fMotivo);
         $this->proponerMotivo = mb_strlen($motivo) <= 255 && ! DB::table('prefactura_motivos')->where('texto', $motivo)->exists() ? $motivo : '';
+        $this->motivoParecido = $this->proponerMotivo !== '' ? (string) $this->buscarParecido($this->proponerMotivo) : '';
         $this->cancelar();
     }
 

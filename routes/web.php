@@ -53,6 +53,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         }
         return view('todo.index');
     })->name('todo')->middleware('can:todo.ver');
+    Route::get('/todo/mejoras', fn () => view('todo.mejoras'))->name('todo.mejoras')->middleware('can:todo.ver');
 
     // Impuestos (pestaña del TO-DO): qué tiene pendiente cada cliente; datos en la BD de Appmos (en un PC redirige a la web)
     Route::get('/impuestos', function () {

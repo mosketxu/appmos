@@ -31,4 +31,22 @@ class PermisosTodoImpuestosTest extends TestCase
         $this->assertTrue($u->fresh()->can('proceso.imp.m111'), 'sin permiso propio vale el de la pestaña');
         $this->actingAs($u->fresh())->get(route('impuestos.m349'))->assertForbidden();
     }
+
+    public function test_pedir_mejora_cada_uno_ve_las_suyas_y_el_gestor_todas(): void
+    {
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        Permission::findOrCreate('todo.ver', 'web');
+        $jefe = User::factory()->create(['activo' => true, 'email' => 'jefe@example.test']);
+        $ana = User::factory()->create(['activo' => true]);
+        $bea = User::factory()->create(['activo' => true]);
+        foreach ([$jefe, $ana, $bea] as $u) {
+            $u->givePermissionTo('todo.ver');
+        }
+        \App\Models\TodoTarea::create(['titulo' => 'Mejora: botón de Ana', 'creador_id' => $ana->id, 'estado' => 'pendiente']);
+        \App\Models\TodoTarea::create(['titulo' => 'Mejora: botón de Bea', 'creador_id' => $bea->id, 'estado' => 'pendiente']);
+        \App\Models\TodoTarea::create(['titulo' => 'Otra cosa de Ana', 'creador_id' => $ana->id, 'estado' => 'pendiente']);
+
+        $this->actingAs($ana)->get(route('todo.mejoras'))->assertOk()->assertSee('botón de Ana')->assertDontSee('botón de Bea')->assertDontSee('Otra cosa');
+        $this->actingAs($jefe)->get(route('todo.mejoras'))->assertOk()->assertSee('botón de Ana')->assertSee('botón de Bea');
+    }
 }

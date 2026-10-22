@@ -44,4 +44,26 @@ class PrefacturacionMotivosTest extends TestCase
             ->assertSet('fMotivo', 'Cliente X: Tasas del registro')
             ->assertSet('motivoBase', '');
     }
+
+    public function test_un_motivo_con_errata_se_propone_corregirlo_con_el_habitual(): void
+    {
+        config(['auth.defaults.guard' => 'sanctum']);
+        Permission::findOrCreate('contabilidad.procesosmensuales', 'web');
+        Role::findOrCreate('Suma', 'web')->givePermissionTo('contabilidad.procesosmensuales');
+        $u = User::factory()->create(['activo' => true]);
+        $u->assignRole('Suma');
+        DB::table('prefactura_motivos')->insert(['texto' => 'Factura FNMT', 'created_at' => now(), 'updated_at' => now()]);
+
+        $c = Livewire::actingAs($u)->test(Prefacturacion::class)->call('editar')
+            ->set('fEntidad', '1')->set('fImporte', '10')->set('fMotivo', 'factura fnmt ')
+            ->call('guardar')->assertSet('motivoParecido', 'Factura FNMT');
+        $c->call('usarMotivoParecido')->assertSet('proponerMotivo', '');
+        $this->assertDatabaseHas('prefacturas', ['motivo' => 'Factura FNMT']);
+
+        $c2 = Livewire::actingAs($u)->test(Prefacturacion::class)->call('editar')
+            ->set('fEntidad', '1')->set('fImporte', '10')->set('fMotivo', 'Fcatura FNMT')->call('guardar')
+            ->assertSet('motivoParecido', 'Factura FNMT');
+        $c2->call('editar')->set('fEntidad', '1')->set('fImporte', '5')->set('fMotivo', 'Tasas del registro mercantil')->call('guardar')
+            ->assertSet('motivoParecido', '')->assertSet('proponerMotivo', 'Tasas del registro mercantil');
+    }
 }

@@ -16,10 +16,17 @@
     <p class="text-sm text-gray-500">Periodo = mes en que hay que facturarlo. Clic en el estado para pasar de pendiente a facturado.</p>
 
     @if ($proponerMotivo !== '' && $puede)
-        <div class="flex flex-wrap items-center gap-2 p-2 text-base bg-yellow-50 border border-yellow-300 rounded-lg">
-            <span>¿Añadir «<b>{{ $proponerMotivo }}</b>» a los motivos habituales para rellenar más rápido la próxima vez?</span>
-            <button type="button" wire:click="guardarMotivoBase" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Sí, añadir</button>
-            <button type="button" wire:click="descartarMotivoBase" class="px-3 py-1 bg-white border border-gray-300 rounded-md hover:bg-gray-50">No</button>
+        <div class="flex flex-wrap items-center gap-2 p-3 text-base bg-yellow-50 border border-yellow-300 rounded-lg">
+            @if ($motivoParecido !== '')
+                <span>El motivo «<b>{{ $proponerMotivo }}</b>» se parece mucho a uno habitual: «<b>{{ $motivoParecido }}</b>». ¿Usamos ese para no duplicar ni arrastrar erratas?</span>
+                <button type="button" wire:click="usarMotivoParecido" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Sí, usar «{{ \Illuminate\Support\Str::limit($motivoParecido, 30) }}»</button>
+                <button type="button" wire:click="guardarMotivoBase" class="px-3 py-1 bg-white border border-gray-300 rounded-md hover:bg-gray-50">No, añadirlo como nuevo</button>
+                <button type="button" wire:click="descartarMotivoBase" class="px-3 py-1 bg-white border border-gray-300 rounded-md hover:bg-gray-50">Dejarlo como está</button>
+            @else
+                <span>¿Añadir «<b>{{ $proponerMotivo }}</b>» a los motivos habituales para rellenar más rápido la próxima vez?</span>
+                <button type="button" wire:click="guardarMotivoBase" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Sí, añadir</button>
+                <button type="button" wire:click="descartarMotivoBase" class="px-3 py-1 bg-white border border-gray-300 rounded-md hover:bg-gray-50">No</button>
+            @endif
         </div>
     @endif
 
