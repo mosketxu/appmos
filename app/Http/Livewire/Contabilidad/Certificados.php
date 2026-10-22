@@ -314,7 +314,7 @@ class Certificados extends Component
             return;
         }
         $this->salida = '🛰 Escaneando tu PC… Si el navegador pregunta si abre «Appmos certificados», di que sí (y marca «permitir siempre»).';
-        $this->dispatch('lanzar-escaner');   // el navegador abre appmos-certificados://, que lanza el escáner del PC
+        // El navegador abre appmos-certificados:// desde el propio enlace del botón (con el clic del usuario: si se hace después, Edge puede bloquearlo)
     }
 
     /** Mientras tu PC no responde, mira cada pocos segundos si ya ha subido el escaneo. */
@@ -524,6 +524,8 @@ class Certificados extends Component
             // Recuadro central «escaneando…» mientras se espera (hasta 60 s al PC propio, 2 min a los trabajadores: si no contestan, no se bloquea la pantalla)
             'esperandoMio' => (bool) ($miEscaneo = DB::table('certificados_escaneos')->where('user_id', auth()->id())->first())
                 && $miEscaneo->solicitado_at && \Carbon\Carbon::parse($miEscaneo->solicitado_at)->gt(now()->subSeconds(60)),
+            // pedido hace más de 60 s y el PC no ha contestado: el botón vuelve a su estado normal y se avisa
+            'sinRespuesta' => $miEscaneo && $miEscaneo->solicitado_at && \Carbon\Carbon::parse($miEscaneo->solicitado_at)->lte(now()->subSeconds(60)),
             'activasRecientes' => $cola && DB::table('tareas')->where('proceso', 'certificados.escanear')->whereIn('estado', ['pendiente', 'en_curso'])->where('created_at', '>=', now()->subSeconds(120))->exists(),
             'miEscaneo' => $miEscaneo,
             'verTodos' => CertificadosLista::verTodos(auth()->user()),

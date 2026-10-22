@@ -52,13 +52,16 @@
         </aside>
         <div class="space-y-4 cm-cont">
         {{-- Escanear el PC del propio usuario: lo único que ven los usuarios que no son de los PCs trabajadores --}}
-        <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" x-data x-on:lanzar-escaner.window="window.location.href = 'appmos-certificados://escanear'" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.3s="actualizarMio" @endif>
+        <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.3s="actualizarMio" @endif>
             <div class="flex flex-wrap items-center gap-2">
                 @if ($miEscaneo)
-                    <button type="button" wire:click="pedirMiEscaneo"
-                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">{{ $miEscaneo->solicitado_at ? '⏳ escaneando… (pulsa para repetir)' : '💻 Escanear mi PC ahora' }}</button>
+                    <a href="appmos-certificados://escanear" wire:click="pedirMiEscaneo" role="button" style="cursor:pointer;text-decoration:none"
+                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">{{ $esperandoMio ? '⏳ escaneando… (pulsa para repetir)' : '💻 Escanear mi PC ahora' }}</a>
                     <span class="text-xs text-gray-700">Tu PC{{ $miEscaneo->equipo ? ' ('.$miEscaneo->equipo.')' : '' }}: último escaneo {{ str_replace('T', ' ', $miEscaneo->escaneado) }}</span>
                     <button type="button" wire:click="abrirInstalar" class="text-xs text-indigo-600 underline">Reinstalar / desinstalar</button>
+                    @if ($sinRespuesta)
+                        <div class="w-full mt-1 text-xs" style="color:#b91c1c">⚠ Tu PC no ha contestado en 1 minuto. Mira si el navegador está esperando que aceptes abrir «Appmos certificados» (aviso arriba, junto a la barra de direcciones) y vuelve a pulsar. Si sigue igual, usa «Reinstalar».</div>
+                    @endif
                 @else
                     <button type="button" wire:click="abrirInstalar" class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">💻 Escanear mi PC</button>
                     <span class="text-xs text-gray-700">La primera vez hay que instalar una pequeña tarea en tu PC; te lo explico paso a paso.</span>

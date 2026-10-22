@@ -216,7 +216,10 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         $t = \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class);
         $this->assertTrue($t->viewData('esperandoMio'));
         $t->assertSee('Escaneando los certificados de tu PC');
+        $t->assertSee('href="appmos-certificados://escanear"', false)->assertDontSee('no ha contestado');
         $this->travel(61)->seconds();
-        $this->assertFalse(\Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->viewData('esperandoMio'));   // no se bloquea la pantalla si el PC no contesta
+        $t2 = \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class);
+        $this->assertFalse($t2->viewData('esperandoMio'));
+        $t2->assertSee('Tu PC no ha contestado en 1 minuto')->assertDontSee('escaneando… (pulsa para repetir)');   // no se bloquea la pantalla si el PC no contesta
     }
 }
