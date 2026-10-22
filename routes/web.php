@@ -52,7 +52,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
             return redirect()->away(config('contabilidad.todo_url').(request('t') ? '?t='.(int) request('t') : ''));
         }
         return view('todo.index');
-    })->name('todo');
+    })->name('todo')->middleware('can:todo.ver');
 
     // Impuestos (pestaña del TO-DO): qué tiene pendiente cada cliente; datos en la BD de Appmos (en un PC redirige a la web)
     Route::get('/impuestos', function () {
@@ -60,26 +60,26 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
             return redirect()->away(preg_replace('#/todo$#', '/impuestos', rtrim(config('contabilidad.todo_url'), '/')));
         }
         return view('impuestos.index');
-    })->name('impuestos')->middleware('can:impuestos.ver');
-    Route::get('/impuestos/libro-iva', function () {return view('impuestos.libro-iva');})->name('impuestos.libro-iva')->middleware('can:impuestos.ver');
+    })->name('impuestos')->middleware(['can:impuestos.ver', 'can:proceso.imp.seguimiento']);
+    Route::get('/impuestos/libro-iva', function () {return view('impuestos.libro-iva');})->name('impuestos.libro-iva')->middleware(['can:impuestos.ver', 'can:proceso.imp.iva']);
     // Intrastat (10-oct-2026): CSV de partidas para la Sede de la AEAT, por cliente (cada uno con su formato de ficheros)
-    Route::get('/impuestos/intrastat', function () {return view('impuestos.intrastat');})->name('impuestos.intrastat')->middleware('can:impuestos.ver');
-    Route::get('/impuestos/m111', function () {return view('impuestos.m111');})->name('impuestos.m111')->middleware('can:impuestos.ver');
-    Route::get('/impuestos/m349', function () {return view('impuestos.m349');})->name('impuestos.m349')->middleware('can:impuestos.ver');
-    Route::get('/impuestos/m216', function () {return view('impuestos.m216');})->name('impuestos.m216')->middleware('can:impuestos.ver');
+    Route::get('/impuestos/intrastat', function () {return view('impuestos.intrastat');})->name('impuestos.intrastat')->middleware(['can:impuestos.ver', 'can:proceso.imp.intrastat']);
+    Route::get('/impuestos/m111', function () {return view('impuestos.m111');})->name('impuestos.m111')->middleware(['can:impuestos.ver', 'can:proceso.imp.m111']);
+    Route::get('/impuestos/m349', function () {return view('impuestos.m349');})->name('impuestos.m349')->middleware(['can:impuestos.ver', 'can:proceso.imp.m349']);
+    Route::get('/impuestos/m216', function () {return view('impuestos.m216');})->name('impuestos.m216')->middleware(['can:impuestos.ver', 'can:proceso.imp.m216']);
     Route::get('/impuestos/intrastat/descargar/{cliente}/{periodo}/{nombre}', function (string $cliente, string $periodo, string $nombre) {
         abort_unless(preg_match('/^[a-z0-9_]+$/', $cliente) && preg_match('/^\d{4}-\d{2}$/', $periodo), 404);
         $ruta = rtrim(config('contabilidad.intrastat_datos') ?: storage_path('app/intrastat'), '/').'/'.$cliente.'/'.$periodo.'/salida/'.basename($nombre);
         abort_unless(is_file($ruta), 404);
         return response()->download($ruta, basename($ruta));
-    })->name('impuestos.intrastat.descargar')->middleware('can:impuestos.ver');
+    })->name('impuestos.intrastat.descargar')->middleware(['can:impuestos.ver', 'can:proceso.imp.intrastat']);
     // Pago a cuenta (modelo 202): fichero .202 para la AEAT. Como el IS: se usa desde la web (en un PC redirige)
     Route::get('/impuestos/pago-cuenta', function () {
         if (config('contabilidad.is_url') && ! config('contabilidad.is_ejecucion')) {
             return redirect()->away(preg_replace('#/contabilidad/is/?$#', '/impuestos/pago-cuenta', rtrim(config('contabilidad.is_url'), '/')));
         }
         return view('impuestos.pago-cuenta');
-    })->name('impuestos.pago-cuenta')->middleware('can:contabilidad.is');
+    })->name('impuestos.pago-cuenta')->middleware(['can:contabilidad.is', 'can:proceso.is.m202']);
     Route::get('/impuestos/adjunto/{comentario}', [\App\Http\Controllers\ImpuestosAdjuntoController::class, 'ver'])->name('impuestos.adjunto')->middleware('can:impuestos.ver');
     Route::get('/impuestos/documento/{documento}', [\App\Http\Controllers\ImpuestosDocumentoController::class, 'ver'])->name('impuestos.documento')->middleware('can:impuestos.ver');
 
@@ -130,7 +130,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
             return redirect()->away(config('contabilidad.is_url'));
         }
         return view('contabilidad.is');
-    })->name('contabilidad.is')->middleware('can:contabilidad.is');
+    })->name('contabilidad.is')->middleware(['can:contabilidad.is', 'can:proceso.is.m200']);
 
     // Contabilidad (Neteges): como Bancos pero con más ficheros de consulta (Ventas...). Se ejecuta en local (ejecucion_local)
     // Fichero que un PC trabajador subió a Appmos para descargarlo (URL firmada que crea la pantalla, trait EjecutaEnPcs)

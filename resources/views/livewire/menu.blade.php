@@ -14,7 +14,11 @@
 @endphp
 @php
     // Pestaña Impuestos (9-oct-2026): primera subpestaña a la que tiene acceso
-    $rutaImpuestos = auth()->user()->can('impuestos.ver') ? 'impuestos' : (auth()->user()->can('contabilidad.is') ? 'contabilidad.is' : null);
+    $rutaImpuestos = collect([
+        'proceso.imp.seguimiento' => 'impuestos', 'proceso.imp.iva' => 'impuestos.libro-iva', 'proceso.imp.m111' => 'impuestos.m111',
+        'proceso.is.m200' => 'contabilidad.is', 'proceso.is.m202' => 'impuestos.pago-cuenta', 'proceso.imp.m349' => 'impuestos.m349',
+        'proceso.imp.m216' => 'impuestos.m216', 'proceso.imp.intrastat' => 'impuestos.intrastat',
+    ])->first(fn ($ruta, $permiso) => auth()->user()->can($permiso));
 @endphp
 <nav x-data="{ open: false }" class="relative bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
@@ -47,16 +51,20 @@
                             {{ __('Entidades') }}
                         </x-jet-nav-link>
                     @endcan
+                    @can('todo.ver')
                     <x-jet-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
                         TO-DO
                     </x-jet-nav-link>
+                    @endcan
                     @if ($rutaImpuestos)
                         <x-jet-nav-link href="{{ route($rutaImpuestos) }}" :active="request()->routeIs('impuestos', 'impuestos.*', 'contabilidad.is')">
                             Impuestos
                         </x-jet-nav-link>
                     @endif
+                    @can('todo.ver')
                     <a href="{{ route('todo', ['nueva' => 'mejora']) }}" class="inline-flex items-center px-1 pt-1 text-sm font-medium leading-5 text-gray-500 border-b-2 border-transparent hover:text-gray-700"
                        title="Pide una mejora o cuenta qué no te funciona: queda como tarea del TO-DO para Alex">💡 Pedir mejora</a>
+                    @endcan
                     @if ($rutaContabilidad)
                         <x-jet-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*') && ! request()->routeIs('contabilidad.is')">
                             {{ __('Contabilidad') }}
@@ -83,7 +91,7 @@
                             <x-slot name="content">
                                 <div class="w-36">
                                     <x-jet-dropdown-link href="{{ route('facturacion.index') }}" class="text-center">
-                                        {{ __('Facturación') }}
+                                        Verifactu
                                     </x-jet-dropdown-link>
                                     <x-jet-dropdown-link href="{{ route('facturacion.prefacturas') }}"  class="text-center">
                                         {{ __('Pre-Facturación') }}
@@ -204,17 +212,21 @@
                     {{ __('Entidades') }}
                 </x-jet-responsive-nav-link>
             @endcan
+            @can('todo.ver')
             <x-jet-responsive-nav-link href="{{ route('todo') }}" :active="request()->routeIs('todo')">
                 TO-DO
             </x-jet-responsive-nav-link>
+            @endcan
             @if ($rutaImpuestos)
                 <x-jet-responsive-nav-link href="{{ route($rutaImpuestos) }}" :active="request()->routeIs('impuestos', 'impuestos.*', 'contabilidad.is')">
                     Impuestos
                 </x-jet-responsive-nav-link>
             @endif
+            @can('todo.ver')
             <x-jet-responsive-nav-link href="{{ route('todo', ['nueva' => 'mejora']) }}">
                 💡 Pedir mejora
             </x-jet-responsive-nav-link>
+            @endcan
             @if ($rutaContabilidad)
                 <x-jet-responsive-nav-link href="{{ route($rutaContabilidad) }}" :active="request()->routeIs('contabilidad.*') && ! request()->routeIs('contabilidad.is')">
                     {{ __('Contabilidad') }}
@@ -227,7 +239,7 @@
             @endrole
             {{-- Menú Facturación oculto a petición
             <x-jet-responsive-nav-link href="{{ route('facturacion.index') }}" :active="request()->routeIs('facturacion.index')">
-                {{ __('Facturación') }}
+                Verifactu
             </x-jet-responsive-nav-link>
             --}}
         </div>

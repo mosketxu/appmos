@@ -116,8 +116,10 @@
                         <td class="px-3 py-2" style="white-space:pre-line; min-width:320px; width:40%">{{ ($f->suplido ?? false) ? 'Suplido: ' : '' }}{{ $f->motivo }}</td>
                         <td class="px-3 py-2" style="max-width:250px">
                             @if ($f->adjunto_ruta)
-                                <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline" title="{{ $f->adjunto_nombre }}" style="font-size:.72rem; display:inline-block; max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle">📎 {{ $f->adjunto_nombre }}</button>
-                                @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="ml-1 text-gray-400 hover:text-red-600">✕</button>@endif
+                                <div style="display:flex; align-items:center; gap:.4rem; flex-wrap:nowrap">
+                                    <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline" title="{{ $f->adjunto_nombre }}" style="font-size:.72rem; flex:1 1 auto; min-width:0; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left">📎 {{ $f->adjunto_nombre }}</button>
+                                    @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="text-red-600 hover:text-red-800" style="flex:none" title="Quitar el adjunto">🗑</button>@endif
+                                </div>
                             @endif
                         </td>
                         <td class="px-3 py-2">

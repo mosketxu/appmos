@@ -27,7 +27,7 @@ return new class extends Migration
         }
         if (Schema::hasTable('seguimiento_procesos') && ! DB::table('seguimiento_procesos')->where('clave', 'prefacturacion')->exists()) {
             DB::table('seguimiento_procesos')->insert([
-                'clave' => 'prefacturacion', 'nombre' => 'Prefacturación', 'ambito' => 'general', 'ejecucion' => 'web',
+                'clave' => 'prefacturacion', 'nombre' => 'Notas de cargo', 'ambito' => 'general', 'ejecucion' => 'web',
                 'detalle' => 'Costes que se preparan cada mes para facturar después en SAGE: importe, periodo en que se factura, motivo y, si hay, el albarán o factura adjunto.',
                 'orden' => (int) DB::table('seguimiento_procesos')->max('orden') + 1, 'activo' => true,
                 'created_at' => now(), 'updated_at' => now(),

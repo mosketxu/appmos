@@ -10,7 +10,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 /**
- * Prefacturación (21-oct-2026, tarea #74; Proc.Mensuales): costes que Marta prepara cada mes para facturar después en SAGE.
+ * Notas de cargo (antes Prefacturación; 21-oct-2026, tarea #74; Proc.Mensuales): costes que Marta prepara cada mes para facturar después en SAGE.
  * Cada línea: cliente (entidad o texto libre), importe, periodo en que se factura (mes), motivo, adjunto opcional (albarán/factura)
  * y estado pendiente/facturado. Tabla prefacturas; adjuntos en storage/app/prefacturas.
  */

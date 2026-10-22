@@ -3,14 +3,14 @@
 @php
     // [permiso, ruta, texto, clave de $activa]
     $pestanas = [
-        ['impuestos.ver', 'impuestos', 'Seguimiento de impuestos', 'seguimiento'],
-        ['impuestos.ver', 'impuestos.libro-iva', 'IVA M303', 'iva'],
-        ['impuestos.ver', 'impuestos.m111', 'IRPF M111', 'm111'],
-        ['contabilidad.is', 'contabilidad.is', 'IS M200', 'is'],
-        ['contabilidad.is', 'impuestos.pago-cuenta', 'Pago Cuenta M202', 'pago202'],
-        ['impuestos.ver', 'impuestos.m349', 'M349', 'm349'],
-        ['impuestos.ver', 'impuestos.m216', 'M216', 'm216'],
-        ['impuestos.ver', 'impuestos.intrastat', 'Intrastat', 'intrastat'],
+        ['proceso.imp.seguimiento', 'impuestos', 'Seguimiento de impuestos', 'seguimiento'],
+        ['proceso.imp.iva', 'impuestos.libro-iva', 'IVA M303', 'iva'],
+        ['proceso.imp.m111', 'impuestos.m111', 'IRPF M111', 'm111'],
+        ['proceso.is.m200', 'contabilidad.is', 'IS M200', 'is'],
+        ['proceso.is.m202', 'impuestos.pago-cuenta', 'Pago Cuenta M202', 'pago202'],
+        ['proceso.imp.m349', 'impuestos.m349', 'M349', 'm349'],
+        ['proceso.imp.m216', 'impuestos.m216', 'M216', 'm216'],
+        ['proceso.imp.intrastat', 'impuestos.intrastat', 'Intrastat', 'intrastat'],
     ];
 @endphp
 <style>

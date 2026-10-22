@@ -17,7 +17,11 @@ class TodoTest extends TestCase
 
     protected function usuario(string $nombre): User
     {
-        return User::factory()->create(['name' => $nombre, 'email' => strtolower($nombre).'@sumaempresa.com', 'activo' => true]);
+        $u = User::factory()->create(['name' => $nombre, 'email' => strtolower($nombre).'@sumaempresa.com', 'activo' => true]);
+        \Spatie\Permission\Models\Permission::findOrCreate('todo.ver', 'web');
+        $u->givePermissionTo('todo.ver');   // el TO-DO tiene permiso propio (22-oct-2026)
+
+        return $u;
     }
 
     public function test_crear_tarea_asignada_y_comentar(): void

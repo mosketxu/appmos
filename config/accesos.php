@@ -25,9 +25,12 @@ return [
             'entidades.todas' => 'Ver TODAS las entidades (si no, solo las suyas)',
             'entidades.editar' => 'Crear, modificar y borrar entidades, contactos y PU',
         ],
-        'Facturación' => [
-            'facturacion.ver' => 'Ver facturas, prefacturas y conceptos',
-            'facturacion.editar' => 'Crear, modificar y borrar facturas, prefacturas y conceptos',
+        'Verifactu' => [
+            'facturacion.ver' => 'Verifactu: ver facturas y conceptos (sin activar todavía)',
+            'facturacion.editar' => 'Verifactu: crear, modificar y borrar facturas y conceptos',
+        ],
+        'TO-DO' => [
+            'todo.ver' => 'TO-DO: ver y usar la pestaña de tareas (también «Pedir mejora»)',
         ],
         'Impuestos' => [
             'impuestos.ver' => 'Pestaña Impuestos: Seguimiento, IVA M303, IRPF M111, M349, M216 e Intrastat (ver y marcar los suyos; Admin y Suma ven todos)',
@@ -55,11 +58,24 @@ return [
     */
     'procesos' => [
         'contabilidad.procesos' => ['prefijo' => 'proceso.fiq.', 'fuente' => 'fiq'],
+        // Subpestañas de Impuestos (22-oct-2026): un permiso por impuesto; el global (impuestos.ver / contabilidad.is) los da todos.
+        'impuestos.ver' => ['prefijo' => 'proceso.imp.', 'lista' => [
+            'seguimiento' => 'Seguimiento de impuestos',
+            'iva' => 'IVA M303 (libros de IVA)',
+            'm111' => 'IRPF M111',
+            'm349' => 'M349',
+            'm216' => 'M216',
+            'intrastat' => 'Intrastat',
+        ]],
+        'contabilidad.is' => ['prefijo' => 'proceso.is.', 'lista' => [
+            'm200' => 'IS M200',
+            'm202' => 'Pago Cuenta M202',
+        ]],
         'contabilidad.procesosmensuales' => ['prefijo' => 'proceso.pm.', 'lista' => [
             'certificados' => 'Certificados por caducar',
             'limpieza' => 'Limpieza de OneDrive',
             'whatsapp' => 'Importar WhatsApp de clientes',
-            'prefacturacion' => 'Prefacturación',
+            'prefacturacion' => 'Notas de cargo',
         ]],
     ],
 
