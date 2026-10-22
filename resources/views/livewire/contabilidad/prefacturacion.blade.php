@@ -109,8 +109,8 @@
                     <th class="px-3 py-2">Se factura</th>
                     <th class="px-3 py-2">Motivo</th>
                     <th class="px-3 py-2">Adjunto</th>
-                    <th class="px-3 py-2" style="background:#e5e7eb; border-left:2px solid #9ca3af">Estado</th>
-                    <th class="px-3 py-2" style="background:#e5e7eb"></th>
+                    <th class="px-3 py-2">Estado</th>
+                    <th class="px-3 py-2"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -123,17 +123,17 @@
                         <td class="px-3 py-2" style="white-space:pre-line; min-width:320px; width:40%">{{ ($f->suplido ?? false) ? 'Suplido: ' : '' }}{{ $f->motivo }}</td>
                         <td class="px-3 py-2" style="max-width:250px">
                             @if ($f->adjunto_ruta)
-                                <div style="display:flex; align-items:center; gap:.4rem; flex-wrap:nowrap">
-                                    <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline" title="{{ $f->adjunto_nombre }}" style="font-size:.72rem; flex:1 1 auto; min-width:0; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left">📎 {{ $f->adjunto_nombre }}</button>
-                                    @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="text-gray-500 hover:text-red-600" style="flex:none; font-size:1rem; line-height:1" title="Quitar el adjunto">✕</button>@endif
+                                <div style="display:inline-flex; align-items:center; gap:.35rem; max-width:100%; background:#e5e7eb; border-radius:999px; padding:2px 10px">
+                                    <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline" title="{{ $f->adjunto_nombre }}" style="font-size:.72rem; min-width:0; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left">📎 {{ $f->adjunto_nombre }}</button>
+                                    @if ($puede)<button type="button" wire:click="quitarAdjunto({{ $f->id }})" wire:confirm="¿Quitar el adjunto?" class="text-gray-500 hover:text-red-600" style="flex:none; font-size:.8rem; line-height:1" title="Quitar el adjunto (no borra la línea)">🗑</button>@endif
                                 </div>
                             @endif
                         </td>
-                        <td class="px-3 py-2" style="background:#f3f4f6; border-left:2px solid #9ca3af">
+                        <td class="px-3 py-2">
                             <button type="button" @if ($puede) wire:click="alternarEstado({{ $f->id }})" @endif
                                 class="px-2 border rounded {{ $f->estado === 'facturado' ? 'bg-green-500 border-green-600 text-white' : 'bg-yellow-300 border-yellow-500 text-yellow-900' }}">{{ $f->estado === 'facturado' ? 'Facturado' : 'Pendiente' }}</button>
                         </td>
-                        <td class="px-3 py-2 whitespace-nowrap" style="background:#f3f4f6">
+                        <td class="px-3 py-2 whitespace-nowrap">
                             @if ($puede)
                                 <button type="button" wire:click="editar({{ $f->id }})" class="text-gray-500 hover:text-gray-800" title="Editar">✎</button>
                                 <button type="button" wire:click="borrar({{ $f->id }})" wire:confirm="¿Borrar esta línea?" class="ml-1 text-gray-500 hover:text-red-600" title="Borrar">🗑</button>
