@@ -89,7 +89,8 @@ class CertificadosEscaneoUsuarioTest extends TestCase
             ->call('cerrarInstalar')->assertDontSee('Pulsar aquí para descargar');
         DB::table('certificados_escaneos')->insert(['pc' => 'PC de x', 'escaneado' => '2026-10-22T10:00', 'certs' => json_encode([$this->cert()]), 'user_id' => $u->id, 'created_at' => now(), 'updated_at' => now()]);
         \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class)
-            ->assertSee('Certificados encontrados en tu PC: 1')->assertSee('EMPRESA PRUEBA');
+            ->assertSee('Certificados encontrados en tu PC: 1')->assertSee('EMPRESA PRUEBA')->assertSee('Descargar mi lista')->assertSee('Copiar')
+            ->call('descargarMiLista')->assertFileDownloaded(filename: 'mis-certificados-'.now()->format('Y-m-d').'.csv', content: "\xEF\xBB\xBFCertificado;CIF/NIF;Caduca\n\"EMPRESA PRUEBA\";B12345678;".now()->addDays(20)->format('d/m/Y')."\n");
     }
 
     public function test_marta_ve_la_pantalla_completa(): void

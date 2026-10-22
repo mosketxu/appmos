@@ -204,6 +204,33 @@ class Certificados extends Component
         }, 'Instalar-escaner-certificados.cmd', ['Content-Type' => 'text/plain; charset=utf-8']);
     }
 
+    /** Certificados del último escaneo del PC del usuario, por fecha de caducidad: [nombre, cif, caduca (d/m/Y), caduca (Y-m-d)]. */
+    public function misCertificados(): array
+    {
+        $e = DB::table('certificados_escaneos')->where('user_id', auth()->id())->first();
+        $l = collect(json_decode((string) ($e->certs ?? '[]'), true) ?: [])->sortBy('caduca')->map(fn ($c) => [
+            'nombre' => $c['nombre'], 'cif' => preg_replace('/^(emp|per):/', '', (string) ($c['clave'] ?? '')),
+            'caduca' => \Carbon\Carbon::parse($c['caduca'])->format('d/m/Y'), 'iso' => $c['caduca']]);
+
+        return $l->values()->all();
+    }
+
+    /** Descarga la lista del usuario en CSV (separador «;» y BOM para que Excel en español lo abra bien). */
+    public function descargarMiLista()
+    {
+        $filas = $this->misCertificados();
+
+        return response()->streamDownload(function () use ($filas) {
+            $f = fopen('php://output', 'w');
+            fwrite($f, "\xEF\xBB\xBF");
+            fputcsv($f, ['Certificado', 'CIF/NIF', 'Caduca'], ';');
+            foreach ($filas as $c) {
+                fputcsv($f, [$c['nombre'], $c['cif'], $c['caduca']], ';');
+            }
+            fclose($f);
+        }, 'mis-certificados-'.now()->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=utf-8']);
+    }
+
     /** «Escanear mi PC ahora»: la tarea de Windows del usuario lo recoge en unos minutos. */
     public function pedirMiEscaneo(): void
     {

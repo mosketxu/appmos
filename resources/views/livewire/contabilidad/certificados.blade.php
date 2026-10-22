@@ -37,12 +37,23 @@
                 @endif
             </div>
             @if ($miEscaneo)
-                @php $misCerts = json_decode($miEscaneo->certs, true) ?: []; @endphp
+                @php
+                    $misCerts = $this->misCertificados();
+                    $textoCopia = collect($misCerts)->map(fn ($c) => $c['nombre'].' · '.$c['cif'].' · caduca '.$c['caduca'])->implode("\n");
+                @endphp
                 <div class="mt-2 text-xs text-gray-700">
                     <b>Certificados encontrados en tu PC: {{ count($misCerts) }}</b>
                     @foreach ($misCerts as $mc)
-                        <div>· {{ $mc['nombre'] }} — caduca {{ \Carbon\Carbon::parse($mc['caduca'])->format('d/m/Y') }}</div>
+                        <div>· {{ $mc['nombre'] }} — {{ $mc['cif'] }} — caduca {{ $mc['caduca'] }}</div>
                     @endforeach
+                    @if (count($misCerts))
+                        <div class="flex flex-wrap items-center gap-2 mt-2" x-data="{ copiado: false }">
+                            <button type="button" wire:click="descargarMiLista" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100">⬇ Descargar mi lista</button>
+                            <button type="button" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                                x-on:click='navigator.clipboard.writeText(@js($textoCopia)).then(() => { copiado = true; setTimeout(() => copiado = false, 2500) })'>📋 Copiar</button>
+                            <span x-show="copiado" style="display:none" class="text-emerald-700">✓ Copiado</span>
+                        </div>
+                    @endif
                 </div>
             @endif
         </div>
