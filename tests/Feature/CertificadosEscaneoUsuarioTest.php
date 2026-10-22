@@ -223,4 +223,23 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         $this->assertFalse($t2->viewData('esperandoMio'));
         $t2->assertSee('Tu PC no ha contestado en 1 minuto')->assertDontSee('escaneando… (pulsa para repetir)');   // no se bloquea la pantalla si el PC no contesta
     }
+
+    public function test_el_boton_de_marta_pide_tambien_el_escaneo_de_los_trabajadores(): void
+    {
+        config(['contabilidad.ejecucion_local' => false]);
+        foreach (['tareas', 'trabajadores'] as $t) {
+            $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable($t), "falta la tabla $t en el entorno de test");
+        }
+        DB::table('trabajadores')->insert(['nombre' => 'PCPRUEBA', 'token_hash' => 'x', 'activo' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $marta = $this->usuario('marta.ruiz@sumaempresa.com');
+        DB::table('certificados_escaneos')->insert(['pc' => 'PC de x', 'escaneado' => '2026-10-22T10:00', 'user_id' => $marta->id, 'certs' => '[]', 'created_at' => now(), 'updated_at' => now()]);
+        \Livewire\Livewire::actingAs($marta)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->call('pedirMiEscaneo');
+        $this->assertSame(1, DB::table('tareas')->where('proceso', 'certificados.escanear')->where('destino', 'PCPRUEBA')->count());
+
+        // un usuario normal solo escanea su PC
+        $otro = $this->usuario();
+        DB::table('certificados_escaneos')->insert(['pc' => 'PC de y', 'escaneado' => '2026-10-22T10:00', 'user_id' => $otro->id, 'certs' => '[]', 'created_at' => now(), 'updated_at' => now()]);
+        \Livewire\Livewire::actingAs($otro)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->call('pedirMiEscaneo');
+        $this->assertSame(1, DB::table('tareas')->where('proceso', 'certificados.escanear')->count());
+    }
 }

@@ -309,11 +309,17 @@ class Certificados extends Component
     public function pedirMiEscaneo(): void
     {
         $n = DB::table('certificados_escaneos')->where('user_id', auth()->id())->update(['solicitado_at' => now()]);
+        // Quien ve todo (Admin/Marta): el mismo botón pide también el escaneo de los PCs trabajadores y recalcula la lista del Paso 1
+        $aviso = '';
+        if (CertificadosLista::verTodos(auth()->user())) {
+            $this->pedirEscaneoPCs();
+            $aviso = ' '.$this->salida;
+        }
         if (! $n) {
-            $this->salida = '⚠ Todavía no has instalado el escáner en tu PC: descarga el fichero e instálalo.';
+            $this->salida = '⚠ Todavía no has instalado el escáner en tu PC: descarga el fichero e instálalo.'.$aviso;
             return;
         }
-        $this->salida = '🛰 Escaneando tu PC… Si el navegador pregunta si abre «Appmos certificados», di que sí (y marca «permitir siempre»).';
+        $this->salida = '🛰 Escaneando tu PC… Si el navegador pregunta si abre «Appmos certificados», di que sí (y marca «permitir siempre»).'.$aviso;
         // El navegador abre appmos-certificados:// desde el propio enlace del botón (con el clic del usuario: si se hace después, Edge puede bloquearlo)
     }
 
