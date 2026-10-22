@@ -29,6 +29,9 @@ class Prefacturacion extends Component
     public string $fMotivo = '';
     public string $fRecurrencia = 'puntual';
     public bool $fSuplido = false;
+    public string $motivoBase = '';
+    public string $proponerMotivo = '';
+    public bool $gestionarMotivos = false;
     public $fAdjunto = null;
     public string $aviso = '';
 
@@ -62,6 +65,35 @@ class Prefacturacion extends Component
             $this->fMotivo = $p->motivo;
             $this->fRecurrencia = $p->recurrencia ?? 'puntual';
             $this->fSuplido = (bool) ($p->suplido ?? false);
+        }
+    }
+
+    /** Elegir un motivo habitual lo escribe en el cuadro (o lo añade a lo que ya haya): es una ayuda, se puede completar. */
+    public function updatedMotivoBase(string $id): void
+    {
+        if ($id !== '' && ($texto = DB::table('prefactura_motivos')->where('id', (int) $id)->value('texto'))) {
+            $this->fMotivo = trim($this->fMotivo) === '' ? $texto : rtrim($this->fMotivo).' '.$texto;
+        }
+        $this->motivoBase = '';
+    }
+
+    public function guardarMotivoBase(): void
+    {
+        if ($this->permitido() && trim($this->proponerMotivo) !== '') {
+            DB::table('prefactura_motivos')->insertOrIgnore(['texto' => mb_substr(trim($this->proponerMotivo), 0, 255), 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $this->proponerMotivo = '';
+    }
+
+    public function descartarMotivoBase(): void
+    {
+        $this->proponerMotivo = '';
+    }
+
+    public function quitarMotivoBase(int $id): void
+    {
+        if ($this->permitido()) {
+            DB::table('prefactura_motivos')->where('id', $id)->delete();
         }
     }
 
@@ -125,6 +157,8 @@ class Prefacturacion extends Component
             DB::table('prefacturas')->insert($datos + ['user_id' => auth()->id(), 'created_at' => now()]);
         }
         $this->periodo = $this->fPeriodo;
+        $motivo = trim($this->fMotivo);
+        $this->proponerMotivo = mb_strlen($motivo) <= 255 && ! DB::table('prefactura_motivos')->where('texto', $motivo)->exists() ? $motivo : '';
         $this->cancelar();
     }
 
@@ -191,6 +225,7 @@ class Prefacturacion extends Component
             'totalFacturado' => $todas->where('estado', 'facturado')->sum('importe'),
             'puede' => $this->permitido(),
             'mesesAnio' => $this->mesesDelAnio(),
+            'motivosBase' => DB::table('prefactura_motivos')->orderBy('texto')->pluck('texto', 'id'),
         ]);
     }
 }
