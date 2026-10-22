@@ -7,7 +7,7 @@
         <div class="flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-semibold text-gray-900">🔐 Certificados por caducar</h1>
             <span class="px-2 py-0.5 text-xs font-semibold text-indigo-900 bg-indigo-100 rounded">🌐 web + 💻 local · el escaneo lo hace cada PC</span>
-            <a href="{{ route('contabilidad.procesos-mensuales') }}" class="text-sm text-indigo-600 underline">← Procesos mensuales</a>
+            <a href="{{ route('contabilidad.procesos-mensuales') }}" class="px-3 py-1.5 text-sm font-medium text-indigo-700 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50">← Volver a Procesos mensuales</a>
         </div>
         @endunless
 
@@ -16,6 +16,16 @@
             .cm-caja { background:#fff; border-radius:.75rem; max-width:34rem; width:100%; max-height:92vh; overflow:auto; padding:1.5rem; box-shadow:0 20px 50px rgba(0,0,0,.3) }
             .cm-paso { display:flex; gap:.75rem; align-items:flex-start; margin-top:.9rem }
             .cm-num { flex:none; width:1.75rem; height:1.75rem; border-radius:9999px; background:#4f46e5; color:#fff; font-weight:600; display:flex; align-items:center; justify-content:center }
+            .cm-grid { display:grid; gap:1rem; align-items:start }
+            .cm-rojo { background:#fecaca } .cm-amarillo { background:#fef08a }
+            .cm-pag { display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap }
+            .cm-lat { flex:0 0 15rem; max-width:100% }
+            .cm-cont { flex:1 1 0; min-width:min(100%, 640px) }
+            .cm-mes { display:flex; justify-content:space-between; width:100%; padding:.35rem .6rem; margin-top:.25rem; border-radius:.375rem; font-size:.85rem; text-align:left }
+            .cm-mes span { font-weight:600 }
+            .cm-mes:hover { filter:brightness(.96) } .cm-cero { opacity:.55 }
+            .cm-sel { outline:2px solid #4f46e5; font-weight:600 }
+            @media (min-width:1500px) { .cm-grid { grid-template-columns:1fr 1fr } }
             .cm-btn { display:inline-block; padding:.45rem .9rem; border-radius:.375rem; color:#fff; font-size:.875rem; cursor:pointer }
         </style>
 
@@ -23,6 +33,17 @@
             <div class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md whitespace-pre-line">{{ $salida }}</div>
         @endif
 
+        <div class="cm-pag">
+        <aside class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm cm-lat">
+            <h2 class="font-semibold text-gray-900">Caducidad por mes</h2>
+            <div class="mt-1 text-xs text-gray-500"><span class="px-2 cm-rojo">&nbsp;</span> este mes y el próximo · <span class="px-2 cm-amarillo">&nbsp;</span> 3.º y 4.º mes</div>
+            <button type="button" wire:click="elegirMes('todos')" class="cm-mes {{ $mesSel === 'todos' ? 'cm-sel' : '' }}" style="background:#f3f4f6">Todos <span>{{ count($todosCerts) }}</span></button>
+            @foreach ($resumenMeses as $m)
+                <button type="button" wire:click="elegirMes('{{ $m['clave'] }}')" wire:key="mes-{{ $m['clave'] }}"
+                    class="cm-mes {{ $m['color'] ? 'cm-'.$m['color'] : '' }} {{ $mesSel === $m['clave'] ? 'cm-sel' : '' }} {{ $m['n'] ? '' : 'cm-cero' }}">{{ $m['etiqueta'] }} <span>{{ $m['n'] }}</span></button>
+            @endforeach
+        </aside>
+        <div class="space-y-4 cm-cont">
         {{-- Escanear el PC del propio usuario: lo único que ven los usuarios que no son de los PCs trabajadores --}}
         <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" x-data x-on:lanzar-escaner.window="window.location.href = 'appmos-certificados://escanear'" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.3s="actualizarMio" @endif>
             <div class="flex flex-wrap items-center gap-2">
@@ -43,9 +64,6 @@
                 @endphp
                 <div class="mt-2 text-xs text-gray-700">
                     <b>Certificados encontrados en tu PC: {{ count($misCerts) }}</b>
-                    @foreach ($misCerts as $mc)
-                        <div>· {{ $mc['nombre'] }} — {{ $mc['cif'] }} — caduca {{ $mc['caduca'] }}</div>
-                    @endforeach
                     @if (count($misCerts))
                         <div class="flex flex-wrap items-center gap-2 mt-2" x-data="{ copiado: false }">
                             <button type="button" wire:click="descargarMiLista" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100">⬇ Descargar mi lista</button>
@@ -89,6 +107,29 @@
             </div>
         @endif
 
+        {{-- Certificados del mes elegido a la izquierda --}}
+        <div class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <h2 class="font-semibold text-gray-900">{{ $tituloDetalle }} <span class="text-xs font-normal text-gray-500">({{ count($detalle) }}, por fecha de caducidad)</span></h2>
+            @if ($mesSel === 'todos')
+                <div class="mt-1 text-xs text-gray-600">Gris: ya renovado (hay uno más nuevo de la misma empresa o persona). Rojo y amarillo, como en los meses de la izquierda.</div>
+            @endif
+            <table class="w-full mt-2 text-sm">
+                <thead><tr class="text-left text-gray-500"><th class="px-2 py-1">Caduca</th><th class="px-2">Certificado</th><th class="px-2">CIF/NIF</th><th class="px-2">Instalado en</th></tr></thead>
+                <tbody>
+                    @forelse ($detalle as $tc)
+                        <tr class="{{ $tc['color'] ? 'cm-'.$tc['color'] : '' }}" @if ($tc['renovado']) style="color:#9ca3af" title="Ya hay uno más nuevo de la misma empresa/persona" @endif>
+                            <td class="px-2 py-1 whitespace-nowrap">{{ \Carbon\Carbon::parse($tc['caduca'])->format('d/m/Y') }}@if (! $tc['renovado'] && $tc['caduca'] < now()->format('Y-m-d')) <b class="text-xs">caducado</b>@endif</td>
+                            <td class="px-2">{{ $tc['nombre'] }}@if ($tc['alias']) <span class="text-gray-500">({{ $tc['alias'] }})</span>@endif @if ($tc['renovado']) <span class="text-xs">renovado</span>@endif</td>
+                            <td class="px-2">{{ $tc['cif'] }}</td>
+                            <td class="px-2">{{ implode(' + ', $tc['pcs']) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="px-2 py-3 text-gray-500">{{ $mesSel === 'todos' ? 'Todavía no hay certificados escaneados.' : 'No hay certificados pendientes en este mes.' }}</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
         @if ($verTodos)
         @if ($enLocal)
             <div class="px-4 py-2 text-sm border rounded-md text-emerald-900 border-emerald-200 bg-emerald-50">
@@ -119,7 +160,7 @@
         @endif
 
         {{-- PASOS 1 y 2, lado a lado --}}
-        <div class="grid items-start gap-4 xl:grid-cols-2">
+        <div class="cm-grid">
         {{-- PASO 1 --}}
         <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm xl:col-start-1 xl:row-start-1">
             <div x-data="{ info: false }">
@@ -281,5 +322,7 @@
         </div>
 
         @endif
+        </div>
+        </div>
     </div>
 </div>

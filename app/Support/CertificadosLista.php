@@ -48,6 +48,54 @@ class CertificadosLista
         return $r;
     }
 
+    public static function nombrePc(string $pc): string
+    {
+        return ['ALEXMINIPC' => 'AlexMiniPC', 'PORTALEXOMEN' => 'PortalExomen', 'MINISERV' => 'miniServ'][$pc] ?? $pc;
+    }
+
+    /**
+     * Color de un certificado según su caducidad, por meses naturales: 'rojo' = ya caducado, este mes o el próximo;
+     * 'amarillo' = el tercer o el cuarto mes contando el actual; '' = el resto.
+     */
+    public static function color(string $caduca): string
+    {
+        $hoy = now();
+        $c = \Carbon\Carbon::parse($caduca);
+        $meses = ($c->year - $hoy->year) * 12 + ($c->month - $hoy->month);
+
+        return $meses <= 1 ? 'rojo' : ($meses <= 3 ? 'amarillo' : '');
+    }
+
+    /**
+     * Todos los certificados de los escaneos, sin límite de fecha y por fecha de caducidad. Cada certificado (misma huella)
+     * sale una vez con los PCs donde está instalado. Los que ya tienen uno posterior de la misma clave (renovados) salen sin color.
+     * [['nombre','alias','cif','caduca','pcs'=>[...],'color','renovado'], ...]
+     */
+    public static function todos(array $escaneos): array
+    {
+        $porHuella = [];
+        $maxClave = [];
+        foreach ($escaneos as $pc => $e) {
+            foreach ($e['certs'] as $c) {
+                $h = $c['huella'];
+                $porHuella[$h] ??= $c + ['pcs' => []];
+                $porHuella[$h]['pcs'][] = self::nombrePc($pc);
+                $maxClave[$c['clave']] = max($maxClave[$c['clave']] ?? '', $c['caduca']);
+            }
+        }
+        $r = [];
+        foreach ($porHuella as $c) {
+            $renovado = $c['caduca'] < $maxClave[$c['clave']];
+            $pcs = array_values(array_unique($c['pcs']));
+            sort($pcs);
+            $r[] = ['nombre' => $c['nombre'], 'alias' => $c['alias'] ?? '', 'cif' => preg_replace('/^(emp|per):/', '', $c['clave']), 'caduca' => $c['caduca'],
+                'pcs' => $pcs, 'renovado' => $renovado, 'color' => $renovado ? '' : self::color($c['caduca'])];
+        }
+        usort($r, fn ($a, $b) => [$a['caduca'], $a['nombre']] <=> [$b['caduca'], $b['nombre']]);
+
+        return $r;
+    }
+
     public static function calcular(array $escaneos, int $meses = 3): array
     {
         $hoy = now()->format('Y-m-d');

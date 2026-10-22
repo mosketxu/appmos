@@ -168,6 +168,46 @@ class Certificados extends Component
 
     public bool $modalInstalar = false;
 
+    /** Mes elegido a la izquierda: 'todos', 'caducados' (meses anteriores al actual) o 'AAAA-MM'. */
+    public string $mesSel = 'todos';
+
+    public function elegirMes(string $m): void
+    {
+        $this->mesSel = preg_match('/^(todos|caducados|\d{4}-\d{2})$/', $m) ? $m : 'todos';
+    }
+
+    /** Resumen por mes y detalle del mes elegido a partir de todos los certificados: [resumen, detalle, título]. */
+    protected function porMeses(array $todos): array
+    {
+        $pend = array_values(array_filter($todos, fn ($c) => ! $c['renovado']));   // los renovados ya no están pendientes
+        $ini = now()->startOfMonth();
+        $iniTxt = $ini->format('Y-m-d');
+        $ultimo = $ini->copy()->addMonths(12);
+        if ($pend) {
+            $max = \Carbon\Carbon::parse(max(array_column($pend, 'caduca')))->startOfMonth();
+            $ultimo = $max->gt($ultimo) ? $max : $ultimo;
+        }
+        $resumen = [];
+        $antes = count(array_filter($pend, fn ($c) => $c['caduca'] < $iniTxt));
+        if ($antes) {
+            $resumen[] = ['clave' => 'caducados', 'etiqueta' => 'Caducados antes de este mes', 'n' => $antes, 'color' => 'rojo'];
+        }
+        for ($m = $ini->copy(); $m->lte($ultimo); $m->addMonth()) {
+            $k = $m->format('Y-m');
+            $resumen[] = ['clave' => $k, 'etiqueta' => ucfirst($m->locale('es')->translatedFormat('F Y')), 'n' => count(array_filter($pend, fn ($c) => substr($c['caduca'], 0, 7) === $k)),
+                'color' => CertificadosLista::color($m->format('Y-m-d'))];
+        }
+        if ($this->mesSel === 'todos') {
+            return [$resumen, $todos, 'Todos los certificados'];
+        }
+        if ($this->mesSel === 'caducados') {
+            return [$resumen, array_values(array_filter($pend, fn ($c) => $c['caduca'] < $iniTxt)), 'Caducados antes de este mes'];
+        }
+
+        return [$resumen, array_values(array_filter($pend, fn ($c) => substr($c['caduca'], 0, 7) === $this->mesSel)),
+            'Caducan en '.\Carbon\Carbon::parse($this->mesSel.'-01')->locale('es')->translatedFormat('F \d\e Y')];
+    }
+
     public function abrirInstalar(): void
     {
         $this->modalInstalar = true;
@@ -210,7 +250,7 @@ class Certificados extends Component
         $e = DB::table('certificados_escaneos')->where('user_id', auth()->id())->first();
         $l = collect(json_decode((string) ($e->certs ?? '[]'), true) ?: [])->sortBy('caduca')->map(fn ($c) => [
             'nombre' => $c['nombre'], 'cif' => preg_replace('/^(emp|per):/', '', (string) ($c['clave'] ?? '')),
-            'caduca' => \Carbon\Carbon::parse($c['caduca'])->format('d/m/Y'), 'iso' => $c['caduca']]);
+            'caduca' => \Carbon\Carbon::parse($c['caduca'])->format('d/m/Y'), 'iso' => $c['caduca'], 'color' => CertificadosLista::color($c['caduca'])]);
 
         return $l->values()->all();
     }
@@ -480,6 +520,8 @@ class Certificados extends Component
     public function render()
     {
         $cola = Schema::hasTable('trabajadores') && Schema::hasTable('tareas');   // hasta que se haga la migración
+        $porMeses = $this->porMeses(CertificadosLista::todos(CertificadosLista::escaneos(CertificadosLista::verTodos(auth()->user()) ? null : (int) auth()->id())));
+
         return view('livewire.contabilidad.certificados', [
             'vistaPrevia' => $this->viendoEnvio ? ($this->verEnvio ? (string) DB::table('certificados_envios')->where('id', $this->verEnvio)->value('texto') : '') : $this->texto(),
             'envios' => DB::table('certificados_envios')->where('periodo', 'like', $this->anio.'-%')->orderBy('enviado_at')->get()->groupBy('periodo'),
@@ -487,6 +529,8 @@ class Certificados extends Component
             'graphOk' => GraphMail::configurado(),
             'miEscaneo' => DB::table('certificados_escaneos')->where('user_id', auth()->id())->first(),
             'verTodos' => CertificadosLista::verTodos(auth()->user()),
+            'todosCerts' => CertificadosLista::todos(CertificadosLista::escaneos(CertificadosLista::verTodos(auth()->user()) ? null : (int) auth()->id())),
+            'resumenMeses' => $porMeses[0], 'detalle' => $porMeses[1], 'tituloDetalle' => $porMeses[2],
             'enLocal' => (bool) config('contabilidad.ejecucion_local'),
             'pcLocal' => gethostname(),
             'trabajadores' => $cola ? DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()

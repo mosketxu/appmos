@@ -257,6 +257,11 @@ class ProcesosMensuales extends Component
     public function abrir(int $id): void
     {
         $p = DB::table('seguimiento_procesos')->find($id);
+        if ($p && $p->clave === 'certificados' && $this->visible($p)) {
+            $this->redirect(route('contabilidad.certificados'));   // pantalla entera, con «← Volver» (no modal)
+
+            return;
+        }
         $this->modal = $p && $this->visible($p) ? $id : null;
     }
 
