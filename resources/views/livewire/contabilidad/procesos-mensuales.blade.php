@@ -160,9 +160,9 @@
                 : (\Illuminate\Support\Facades\Route::has($enModal->enlace) ? route($enModal->enlace) : null)) : null;
         @endphp
         <div wire:key="modal-{{ $enModal->id }}" x-data x-on:keydown.escape.window="$wire.cerrar()"
-             style="position:fixed;inset:0;z-index:60;background:rgba(17,24,39,.55);display:flex;align-items:flex-start;justify-content:center;padding:3vh 12px;overflow-y:auto"
+             style="position:fixed;inset:0;z-index:60;background:rgba(17,24,39,.55);display:flex;padding:3vh 12px;overflow-y:auto"
              x-on:click.self="$wire.cerrar()">
-            <div class="bg-white rounded-lg shadow-xl" style="width:100%;max-width:{{ $pant ? ($pant['ancho'] ?? '1280px') : '640px' }}">
+            <div class="bg-white rounded-lg shadow-xl" style="width:100%;margin:auto;max-width:{{ $pant ? ($pant['ancho'] ?? '1280px') : '640px' }}">
                 <div class="flex items-start gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50" style="border-radius:.5rem .5rem 0 0">
                     <div class="flex-1">
                         <h2 class="text-lg font-semibold text-gray-900">{{ $pant['icono'] ?? '' }} {{ $enModal->nombre }}
