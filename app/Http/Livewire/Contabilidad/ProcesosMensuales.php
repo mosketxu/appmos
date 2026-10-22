@@ -169,15 +169,24 @@ class ProcesosMensuales extends Component
         }
     }
 
+    /** Los usuarios de cada proceso son informativos (los permisos reales están en el panel de control): solo Alex los cambia, el resto los ve. */
+    protected function puedeAsignarUsuarios(): bool
+    {
+        return \App\Support\TodoClaude::esGestor(auth()->user());
+    }
+
     public function asignar(int $proceso): void
     {
+        if (! $this->puedeAsignarUsuarios()) {
+            return;
+        }
         $this->asignando = $this->asignando === $proceso ? null : $proceso;
         $this->addUsuario = '';
     }
 
     public function updatedAddUsuario(string $valor): void
     {
-        if ($this->permitido() && $this->asignando && $valor !== '' && \App\Models\User::whereKey((int) $valor)->exists()) {
+        if ($this->puedeAsignarUsuarios() && $this->asignando && $valor !== '' && \App\Models\User::whereKey((int) $valor)->exists()) {
             DB::table('seguimiento_proceso_user')->insertOrIgnore(['proceso_id' => $this->asignando, 'user_id' => (int) $valor]);
         }
         $this->asignando = null;
@@ -186,7 +195,7 @@ class ProcesosMensuales extends Component
 
     public function quitarUsuario(int $proceso, int $user): void
     {
-        if ($this->permitido()) {
+        if ($this->puedeAsignarUsuarios()) {
             DB::table('seguimiento_proceso_user')->where('proceso_id', $proceso)->where('user_id', $user)->delete();
         }
     }
@@ -290,6 +299,7 @@ class ProcesosMensuales extends Component
             'hayCliente' => $hayCliente,
             'mesActual' => now()->format('Y-m'),
             'puede' => $this->permitido(),
+            'editaUsuarios' => $this->puedeAsignarUsuarios(),
             'filtro' => $this->buscar,
             'pantallas' => self::PROCESOS,
             'iconos' => self::ICONOS,

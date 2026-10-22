@@ -60,7 +60,7 @@
                             <th class="px-0 py-1 text-center {{ $k === $mesActual ? 'bg-indigo-100 text-indigo-800' : '' }}" style="min-width:34px">{{ $n }}</th>
                         @endforeach
                         <th class="px-2 py-1"></th>
-                        <th class="px-2 py-1" style="min-width:160px">Usuarios</th>
+                        <th class="px-2 py-1" style="min-width:160px" title="A título informativo; los permisos reales están en el panel de control">Usuarios</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -113,9 +113,9 @@
                         <td class="px-2 py-1">
                             <div class="flex flex-wrap items-center gap-1" style="max-width:260px">
                                 @foreach ($responsables[$p->id] ?? [] as $r)
-                                    <span wire:key="r-{{ $p->id }}-{{ $r->user_id }}" class="inline-flex items-center gap-1 px-2 text-xs text-indigo-800 bg-indigo-100 rounded-full" style="height:20px">{{ $r->name }}@if ($puede)<button type="button" wire:click="quitarUsuario({{ $p->id }}, {{ $r->user_id }})" class="text-indigo-400 hover:text-red-600" title="Quitar">✕</button>@endif</span>
+                                    <span wire:key="r-{{ $p->id }}-{{ $r->user_id }}" class="inline-flex items-center gap-1 px-2 text-xs text-indigo-800 bg-indigo-100 rounded-full" style="height:20px">{{ $r->name }}@if ($editaUsuarios)<button type="button" wire:click="quitarUsuario({{ $p->id }}, {{ $r->user_id }})" class="text-indigo-400 hover:text-red-600" title="Quitar">✕</button>@endif</span>
                                 @endforeach
-                                @if ($puede)
+                                @if ($editaUsuarios)
                                     <button type="button" wire:click="asignar({{ $p->id }})" class="inline-flex items-center justify-center text-xs text-gray-500 border border-gray-300 border-dashed rounded-full hover:bg-gray-100" style="width:20px;height:20px" title="Añadir usuario">＋</button>
                                 @endif
                             </div>

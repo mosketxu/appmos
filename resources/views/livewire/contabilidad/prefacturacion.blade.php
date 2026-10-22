@@ -22,31 +22,17 @@
             .pf-subir .subir-btn { width: 100%; justify-content: center; padding: .9rem 1rem; font-size: .85rem; border-style: dashed; border-width: 2px; }
         </style>
         <div class="grid gap-3 p-4 bg-white border border-indigo-200 rounded-lg md:grid-cols-6">
-            <div class="md:col-span-3">
+            <div class="md:col-span-2">
                 <label class="block mb-1 text-xs text-gray-500">Cliente</label>
                 <x-buscador-select model="fEntidad" :valor="$fEntidad" :opciones="$empresas->pluck('entidad', 'id')" ancho="100%" />
             </div>
-            <div class="md:col-span-3">
+            <div class="md:col-span-2">
                 <label class="block mb-1 text-xs text-gray-500">Periodo a facturar</label>
                 <select wire:model="fPeriodo" class="w-full text-sm border-gray-300 rounded-md">
                     @foreach ($mesesAnio as $v => $n)
                         <option value="{{ $v }}">{{ $n }}</option>
                     @endforeach
                 </select>
-            </div>
-            <div class="flex items-end gap-3 md:col-span-2">
-                <div>
-                    <label class="block mb-1 text-xs text-gray-500">Suplido</label>
-                    <div class="flex items-center justify-center" style="height:38px"><input type="checkbox" wire:model="fSuplido" class="border-gray-300 rounded" title="Marca si el importe es un suplido"></div>
-                </div>
-                <div class="flex-1">
-                    <label class="block mb-1 text-xs text-gray-500">Importe (€)</label>
-                    <input type="text" wire:model="fImporte" placeholder="0,00" class="w-full text-sm border-gray-300 rounded-md">
-                </div>
-            </div>
-            <div class="md:col-span-2">
-                <label class="block mb-1 text-xs text-gray-500">Motivo</label>
-                <input type="text" wire:model="fMotivo" class="w-full text-sm border-gray-300 rounded-md">
             </div>
             <div class="md:col-span-2">
                 <label class="block mb-1 text-xs text-gray-500">Se factura</label>
@@ -55,6 +41,20 @@
                     <option value="mensual">Todos los meses</option>
                     <option value="trimestral">Todos los trimestres</option>
                 </select>
+            </div>
+            <div class="flex items-start gap-3 md:col-span-2">
+                <div>
+                    <label class="block mb-1 text-xs text-gray-500">Suplido</label>
+                    <div class="flex items-center justify-center" style="height:38px"><input type="checkbox" wire:model="fSuplido" class="border-gray-300 rounded" title="Marca si el importe es un suplido"></div>
+                </div>
+                <div>
+                    <label class="block mb-1 text-xs text-gray-500">Importe (€)</label>
+                    <input type="text" wire:model="fImporte" placeholder="0,00" class="text-sm text-right border-gray-300 rounded-md" style="width:7.5rem">
+                </div>
+            </div>
+            <div class="md:col-span-4">
+                <label class="block mb-1 text-xs text-gray-500">Motivo</label>
+                <textarea wire:model="fMotivo" rows="2" class="w-full text-sm border-gray-300 rounded-md" style="resize:vertical; min-height:38px"></textarea>
             </div>
             <div class="pf-subir md:col-span-6">
                 <x-subir-fichero wire:model="fAdjunto" texto="Adjunto (albarán / factura): pulsa o arrastra aquí el archivo" :fichero="$fAdjunto" opcional neutro />
@@ -90,7 +90,7 @@
                         <td class="px-2 py-1">{{ ($f->suplido ?? false) ? '✓ Sí' : '' }}</td>
                         <td class="px-2 py-1 text-right whitespace-nowrap">{{ number_format($f->importe, 2, ',', '.') }} €</td>
                         <td class="px-2 py-1 whitespace-nowrap">{{ ['mensual' => 'Todos los meses', 'trimestral' => 'Todos los trimestres'][$f->recurrencia ?? ''] ?? 'Puntual' }}</td>
-                        <td class="px-2 py-1">{{ $f->motivo }}</td>
+                        <td class="px-2 py-1" style="white-space:pre-line">{{ $f->motivo }}</td>
                         <td class="px-2 py-1 whitespace-nowrap">
                             @if ($f->adjunto_ruta)
                                 <button type="button" wire:click="descargar({{ $f->id }})" class="text-indigo-700 hover:underline">📎 {{ $f->adjunto_nombre }}</button>
