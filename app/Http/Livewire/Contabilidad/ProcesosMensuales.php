@@ -249,7 +249,7 @@ class ProcesosMensuales extends Component
     /** Se ve el proceso si tiene permiso propio (proceso.pm.<clave>, panel de control) o no lo tiene definido. */
     protected function visible(object $p): bool
     {
-        $conPermiso = array_keys(config('accesos.procesos.contabilidad.procesosmensuales.lista', []));
+        $conPermiso = array_keys(config('accesos.procesos', [])['contabilidad.procesosmensuales']['lista'] ?? []);   // la clave lleva un punto: config('a.b.c') no la encuentra;
         return ! in_array($p->clave, $conPermiso, true) || auth()->user()->can('proceso.pm.'.$p->clave);
     }
 

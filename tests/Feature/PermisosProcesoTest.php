@@ -39,20 +39,20 @@ class PermisosProcesoTest extends TestCase
     public function test_sin_permiso_propio_el_proceso_vale_lo_que_su_pestana(): void
     {
         $u = $this->suma();
-        $this->assertFalse(Accesos::existe('proceso.pm.seguimiento'));
-        $this->assertTrue($u->can('proceso.pm.seguimiento'));
+        $this->assertFalse(Accesos::existe('proceso.pm.limpieza'));
+        $this->assertTrue($u->can('proceso.pm.limpieza'));
         $otro = User::factory()->create();
-        $this->assertFalse($otro->can('proceso.pm.seguimiento'));
+        $this->assertFalse($otro->can('proceso.pm.limpieza'));
     }
 
     public function test_quitar_un_proceso_a_un_rol_no_quita_los_demas_ni_la_pestana(): void
     {
         $this->actingAs($this->adminUser());
-        Livewire::test(Roles::class)->call('alternar', 'Suma', 'proceso.pm.seguimiento');
+        Livewire::test(Roles::class)->call('alternar', 'Suma', 'proceso.pm.limpieza');
         $s = $this->suma();
-        $this->assertFalse($s->can('proceso.pm.seguimiento'));
+        $this->assertFalse($s->can('proceso.pm.limpieza'));
         $this->assertTrue($s->can('proceso.pm.certificados'));
-        $this->assertTrue($s->can('proceso.pm.petdocimpuestos'));
+        $this->assertTrue($s->can('proceso.pm.prefacturacion'));
         $this->assertTrue($s->can('contabilidad.procesosmensuales'));
     }
 
@@ -63,11 +63,11 @@ class PermisosProcesoTest extends TestCase
         $c->call('alternar', 'Gestoria', 'contabilidad.procesosmensuales');
         $g = Role::findByName('Gestoria', 'web');
         $this->assertTrue($g->hasPermissionTo('contabilidad.procesosmensuales'));
-        $this->assertTrue($g->hasPermissionTo('proceso.pm.seguimiento'));
+        $this->assertTrue($g->hasPermissionTo('proceso.pm.limpieza'));
         $c->call('alternar', 'Gestoria', 'contabilidad.procesosmensuales');
         $g->refresh();
         $this->assertFalse($g->hasPermissionTo('contabilidad.procesosmensuales'));
-        $this->assertFalse($g->hasPermissionTo('proceso.pm.seguimiento'));
+        $this->assertFalse($g->hasPermissionTo('proceso.pm.limpieza'));
     }
 
     public function test_acceso_usuario_por_usuario_es_un_permiso_directo_y_no_toca_lo_del_rol(): void
@@ -86,16 +86,16 @@ class PermisosProcesoTest extends TestCase
         $otro = $this->suma();
         $c->call('alternarUsuario', $s->id, 'contabilidad.procesosmensuales');
         $this->assertFalse($s->fresh()->can('contabilidad.procesosmensuales'));
-        $this->assertFalse($s->fresh()->can('proceso.pm.seguimiento'), 'la pestaña se lleva sus procesos');
+        $this->assertFalse($s->fresh()->can('proceso.pm.limpieza'), 'la pestaña se lleva sus procesos');
         $this->assertTrue($otro->fresh()->can('contabilidad.procesosmensuales'));
         $this->assertTrue(Role::findByName('Suma', 'web')->hasPermissionTo('contabilidad.procesosmensuales'));
         $c->call('alternarUsuario', $s->id, 'contabilidad.procesosmensuales');
         $this->assertTrue($s->fresh()->can('contabilidad.procesosmensuales'));
-        $this->assertTrue($s->fresh()->can('proceso.pm.seguimiento'));
+        $this->assertTrue($s->fresh()->can('proceso.pm.limpieza'));
         // un solo proceso
         $c->call('alternarUsuario', $s->id, 'proceso.pm.certificados');
         $this->assertFalse($s->fresh()->can('proceso.pm.certificados'));
-        $this->assertTrue($s->fresh()->can('proceso.pm.seguimiento'));
+        $this->assertTrue($s->fresh()->can('proceso.pm.limpieza'));
         $h = $c->html();
         $this->assertStringContainsString('Denegado a esta persona aunque su rol lo da', $h);
     }
@@ -107,19 +107,19 @@ class PermisosProcesoTest extends TestCase
         $u->assignRole('Gestoria');
         $c = Livewire::test(Usuarios::class)->call('editar', $u->id)
             ->assertSee('Acceso a pestañas y procesos')->assertSee('Certificados por caducar')->assertSee('Acceso a entidades');
-        $c->call('marcarPestana', 'contabilidad.procesosmensuales', true)->set('permisosExtra', array_values(array_diff($c->get('permisosExtra'), ['proceso.pm.seguimiento'])))
+        $c->call('marcarPestana', 'contabilidad.procesosmensuales', true)->set('permisosExtra', array_values(array_diff($c->get('permisosExtra'), ['proceso.pm.limpieza'])))
             ->call('guardar');
         $u->refresh();
         $this->assertTrue($u->hasDirectPermission('contabilidad.procesosmensuales'));
         $this->assertTrue($u->hasDirectPermission('proceso.pm.certificados'));
-        $this->assertFalse($u->hasDirectPermission('proceso.pm.seguimiento'));
+        $this->assertFalse($u->hasDirectPermission('proceso.pm.limpieza'));
     }
 
     public function test_la_pantalla_de_roles_ordena_por_bloques_con_roles_y_usuarios_juntos(): void
     {
         $this->actingAs($this->adminUser());
         // roles y usuarios en la misma tabla, con una barra entre ambos
-        $h = Livewire::test(Roles::class)->assertSee('Contabilidad')->assertSee('Seguimiento (checklist mensual)')->html();
+        $h = Livewire::test(Roles::class)->assertSee('Contabilidad')->assertSee('Procesos mensuales')->html();
         $this->assertStringContainsString('border-left:2px solid #9ca3af', $h);
         $this->assertStringContainsString('Gestoria', $h);
     }
@@ -162,7 +162,7 @@ class PermisosProcesoTest extends TestCase
         $g = Role::findByName('Gestoria', 'web')->fresh();
         $this->assertTrue($g->hasPermissionTo('contabilidad.procesosmensuales'));
         $this->assertTrue($g->hasPermissionTo('entidades.ver'));
-        $this->assertTrue($g->hasPermissionTo('proceso.pm.seguimiento'));
+        $this->assertTrue($g->hasPermissionTo('proceso.pm.limpieza'));
         $c->call('marcarColumnaRol', 'Gestoria');
         $this->assertCount(0, Role::findByName('Gestoria', 'web')->fresh()->permissions);
         // usuario con rol Suma: marcar todo da lo que le falta como directo; desmarcar todo le deniega lo del rol y quita lo directo

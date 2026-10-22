@@ -57,4 +57,23 @@ class ProcesosMensualesUsuariosTest extends TestCase
         Livewire::actingAs($marta)->test(ProcesosMensuales::class)->call('quitarUsuario', $pid, $marta->id);
         $this->assertDatabaseHas('seguimiento_proceso_user', ['proceso_id' => $pid, 'user_id' => $marta->id]);
     }
+
+    public function test_un_proceso_con_permiso_propio_solo_lo_ve_quien_lo_tiene(): void
+    {
+        config(['auth.defaults.guard' => 'sanctum']);
+        Permission::findOrCreate('contabilidad.procesosmensuales', 'web');
+        Permission::findOrCreate('proceso.pm.limpieza', 'web');
+        Role::findOrCreate('Suma', 'web')->givePermissionTo('contabilidad.procesosmensuales');
+        DB::table('seguimiento_procesos')->updateOrInsert(['clave' => 'limpieza'], [
+            'nombre' => 'Limpieza de OneDrive', 'ambito' => 'general', 'ejecucion' => 'web', 'orden' => 5, 'activo' => true,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $marta = User::factory()->create(['activo' => true]);
+        $marta->assignRole('Suma');
+
+        Livewire::actingAs($marta)->test(ProcesosMensuales::class)->assertDontSee('Limpieza de OneDrive');
+
+        $marta->givePermissionTo('proceso.pm.limpieza');
+        Livewire::actingAs($marta->fresh())->test(ProcesosMensuales::class)->assertSee('Limpieza de OneDrive');
+    }
 }

@@ -30,7 +30,8 @@ return [
             'facturacion.editar' => 'Crear, modificar y borrar facturas, prefacturas y conceptos',
         ],
         'Impuestos' => [
-            'impuestos.ver' => 'Impuestos (TO-DO): ver y marcar los suyos (Admin y Suma pueden ver todos)',
+            'impuestos.ver' => 'Pestaña Impuestos: Seguimiento, IVA M303, IRPF M111, M349, M216 e Intrastat (ver y marcar los suyos; Admin y Suma ven todos)',
+            'contabilidad.is' => 'IS M200 y Pago Cuenta M202 (subpestañas de Impuestos)',
         ],
         'Contabilidad' => [
             'contabilidad.procesos' => 'Procesos FIQ',
@@ -38,7 +39,6 @@ return [
             'contabilidad.durcal' => 'Durcal',
             'contabilidad.bancos' => 'Bancos',
             'contabilidad.facturasocr' => 'Facturas OCR',
-            'contabilidad.is' => 'Impuesto sobre Sociedades (modelo 200)',
             'contabilidad.neteges' => 'Neteges',
             'contabilidad.leoybra' => 'LeoyBra',
             'contabilidad.whatsapp' => 'WhatsApp (chats de clientes)',
