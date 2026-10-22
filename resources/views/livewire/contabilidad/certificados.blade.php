@@ -165,7 +165,7 @@
             <div class="px-4 py-2 text-sm text-indigo-900 border border-indigo-200 rounded-md bg-indigo-50">
                 🌐 Estás en la web: ves la última lista escaneada, puedes editarla y enviarla.
                 @if (count($trabajadores))
-                    Con «Escanear y preparar la lista» cada PC encendido escanea sus certificados solo y la lista se calcula al terminar.
+                    Con «Escanear mi PC ahora» (arriba) se escanea tu PC y cada PC trabajador encendido, y la lista se calcula al terminar.
                 @else
                     Para refrescar los certificados, pulsa el botón de escanear en el Appmos de AlexMiniPC y de PortalExomen (se suben aquí solos).
                 @endif
@@ -178,21 +178,18 @@
         <div class="p-4 space-y-3 bg-white border border-gray-200 rounded-lg shadow-sm xl:col-start-1 xl:row-start-1">
             <div x-data="{ info: false }">
                 <div class="flex items-center gap-x-1">
-                    <h2 class="font-semibold text-gray-900">Paso 1 · Escanear y preparar la lista</h2>
+                    <h2 class="font-semibold text-gray-900">Paso 1 · Lista de certificados a enviar</h2>
                     <button type="button" x-on:click="info = !info" class="text-indigo-500 hover:text-indigo-700" title="Detalle">ⓘ</button>
                 </div>
                 <p x-show="info" style="display:none" x-on:click.outside="info = false" class="p-2 mt-1 text-xs text-gray-500 border border-gray-200 rounded bg-gray-50">
-                    «Escanear y preparar la lista» hace todo de una vez: cada PC lee sus certificados (desde la web, los dos solos; en local, solo este PC) y la lista se calcula sola al terminar.
+                    El botón «Escanear mi PC ahora» de arriba hace todo de una vez: escanea tu PC y pide a cada PC trabajador que escanee el suyo; la lista se calcula sola al terminar.
                     Se cruzan los dos PCs: los ya renovados en cualquiera de los dos salen de la lista, y si el nuevo está solo en uno de los PCs se avisa abajo (instálalo en el otro).
                 </p>
             </div>
             @php $porCola = ! $enLocal && count($trabajadores); @endphp
             <div class="flex flex-wrap items-center gap-2" @if ($porCola && ($hayActivas || $habiaActivas)) wire:poll.3s="actualizarCola" @endif>
                 @if ($porCola)
-                    <button type="button" wire:click="pedirEscaneoPCs" wire:loading.attr="disabled" wire:target="pedirEscaneoPCs" @disabled($hayActivas)
-                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">
-                        <span wire:loading.remove wire:target="pedirEscaneoPCs">{{ $hayActivas ? '⏳ escaneando…' : '🔎 Escanear y preparar la lista' }}</span><span wire:loading wire:target="pedirEscaneoPCs">⏳ pidiendo…</span>
-                    </button>
+                    @if ($hayActivas) <span class="text-sm text-gray-700">⏳ escaneando los PCs…</span> @endif
                 @elseif ($enLocal)
                     <button type="button" wire:click="escanear" wire:loading.attr="disabled" wire:target="escanear"
                         class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">
