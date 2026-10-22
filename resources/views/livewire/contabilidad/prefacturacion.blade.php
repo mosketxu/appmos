@@ -17,17 +17,14 @@
 
     @if ($editando !== null)
         <div class="grid gap-2 p-3 bg-white border border-indigo-200 rounded-lg md:grid-cols-4">
-            <select wire:model="fEntidad" class="text-sm border-gray-300 rounded-md md:col-span-4">
-                <option value="">— Elige el cliente —</option>
-                @foreach ($empresas as $e)
-                    <option value="{{ $e->id }}">{{ $e->entidad }}</option>
-                @endforeach
-            </select>
+            <div class="md:col-span-4">
+                <x-buscador-select model="fEntidad" :valor="$fEntidad" :opciones="$empresas->pluck('entidad', 'id')" ancho="28rem" />
+            </div>
             <input type="text" wire:model="fImporte" placeholder="Importe (€)" class="text-sm border-gray-300 rounded-md">
             <input type="month" wire:model="fPeriodo" class="text-sm border-gray-300 rounded-md" title="Periodo en que se factura">
             <input type="text" wire:model="fMotivo" placeholder="Motivo" class="text-sm border-gray-300 rounded-md md:col-span-2">
             <div class="flex flex-wrap items-center gap-2 md:col-span-4">
-                <input type="file" wire:model="fAdjunto" class="text-xs">
+                <x-subir-fichero wire:model="fAdjunto" texto="Adjunto (albarán / factura)" :fichero="$fAdjunto" opcional neutro />
                 <span wire:loading wire:target="fAdjunto" class="text-xs text-gray-500">Subiendo…</span>
                 @error('fAdjunto') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 <button type="button" wire:click="guardar" wire:loading.attr="disabled" wire:target="fAdjunto,guardar" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Guardar</button>
