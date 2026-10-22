@@ -21,7 +21,7 @@
             .cm-pag { display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap }
             .cm-lat { flex:0 0 15rem; max-width:100% }
             .cm-cont { flex:1 1 0; min-width:min(100%, 640px) }
-            .cm-mes { display:flex; justify-content:space-between; width:100%; padding:.35rem .6rem; margin-top:.25rem; border-radius:.375rem; font-size:.85rem; text-align:left }
+            .cm-mes { cursor:pointer; display:flex; justify-content:space-between; width:100%; padding:.35rem .6rem; margin-top:.25rem; border-radius:.375rem; font-size:.85rem; text-align:left }
             .cm-mes span { font-weight:600 }
             .cm-mes:hover { filter:brightness(.96) } .cm-cero { opacity:.55 }
             .cm-sel { outline:2px solid #4f46e5; font-weight:600 }
@@ -36,6 +36,7 @@
         <div class="cm-pag">
         <aside class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm cm-lat">
             <h2 class="font-semibold text-gray-900">Caducidad por mes</h2>
+            <div class="mt-1 text-xs font-medium text-indigo-700">👇 Pulsa un mes para ver sus certificados a la derecha</div>
             <div class="mt-1 text-xs text-gray-500"><span class="px-2 cm-rojo">&nbsp;</span> este mes y el próximo · <span class="px-2 cm-amarillo">&nbsp;</span> 3.º y 4.º mes</div>
             <button type="button" wire:click="elegirMes('todos')" class="cm-mes {{ $mesSel === 'todos' ? 'cm-sel' : '' }}" style="background:#f3f4f6">Todos <span>{{ count($todosCerts) }}</span></button>
             @foreach ($resumenMeses as $m)
@@ -109,22 +110,37 @@
 
         {{-- Certificados del mes elegido a la izquierda --}}
         <div class="p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-            <h2 class="font-semibold text-gray-900">{{ $tituloDetalle }} <span class="text-xs font-normal text-gray-500">({{ count($detalle) }}, por fecha de caducidad)</span></h2>
+            <h2 class="font-semibold text-gray-900">{{ $tituloDetalle }} <span class="text-xs font-normal text-gray-500">({{ count($detalle) }}{{ $mesSel === 'todos' ? '' : ', por fecha de caducidad' }})</span></h2>
+            @if ($nOcultos)
+                <div class="mt-1 text-xs"><button type="button" wire:click="$toggle('verOcultos')" class="text-indigo-700 underline" style="color:#4338ca">{{ $verOcultos ? 'Ocultar de nuevo los vistos' : 'Hay '.$nOcultos.' marcado(s) como visto: mostrarlos' }}</button></div>
+            @endif
             @if ($mesSel === 'todos')
-                <div class="mt-1 text-xs text-gray-600">Gris: ya renovado (hay uno más nuevo de la misma empresa o persona). Rojo y amarillo, como en los meses de la izquierda.</div>
+                <div class="mt-1 text-xs text-gray-600">Ordenados por urgencia: primero los que hay que renovar ya, después los próximos y al final los que no tienen prisa.</div>
             @endif
             <table class="w-full mt-2 text-sm">
-                <thead><tr class="text-left text-gray-500"><th class="px-2 py-1">Caduca</th><th class="px-2">Certificado</th><th class="px-2">CIF/NIF</th><th class="px-2">Instalado en</th></tr></thead>
+                <thead><tr class="text-left text-gray-500"><th class="px-2 py-1">Caduca</th><th class="px-2">Certificado</th><th class="px-2">CIF/NIF</th><th class="px-2">Instalado en</th><th></th></tr></thead>
                 <tbody>
-                    @forelse ($detalle as $tc)
-                        <tr class="{{ $tc['color'] ? 'cm-'.$tc['color'] : '' }}" @if ($tc['renovado']) style="color:#9ca3af" title="Ya hay uno más nuevo de la misma empresa/persona" @endif>
-                            <td class="px-2 py-1 whitespace-nowrap">{{ \Carbon\Carbon::parse($tc['caduca'])->format('d/m/Y') }}@if (! $tc['renovado'] && $tc['caduca'] < now()->format('Y-m-d')) <b class="text-xs">caducado</b>@endif</td>
-                            <td class="px-2">{{ $tc['nombre'] }}@if ($tc['alias']) <span class="text-gray-500">({{ $tc['alias'] }})</span>@endif @if ($tc['renovado']) <span class="text-xs">renovado</span>@endif</td>
-                            <td class="px-2">{{ $tc['cif'] }}</td>
-                            <td class="px-2">{{ implode(' + ', $tc['pcs']) }}</td>
-                        </tr>
+                    @forelse ($grupos as $g)
+                        @if ($g['titulo'])
+                            <tr><td colspan="5" class="px-2 pt-3 pb-1 text-xs font-semibold tracking-wide text-gray-700 uppercase" style="border-bottom:1px solid #d1d5db">{{ $g['titulo'] }} ({{ count($g['filas']) }})</td></tr>
+                        @endif
+                        @foreach ($g['filas'] as $tc)
+                            <tr class="{{ $tc['color'] ? 'cm-'.$tc['color'] : '' }}" @if ($tc['renovado']) style="color:#9ca3af" title="Ya hay uno más nuevo de la misma empresa/persona" @endif>
+                                <td class="px-2 py-1 whitespace-nowrap">{{ \Carbon\Carbon::parse($tc['caduca'])->format('d/m/Y') }}@if (! $tc['renovado'] && $tc['caduca'] < now()->format('Y-m-d')) <b class="text-xs">caducado</b>@endif</td>
+                                <td class="px-2">{{ $tc['nombre'] }}@if ($tc['alias']) <span class="text-gray-500">({{ $tc['alias'] }})</span>@endif @if ($tc['renovado']) <span class="text-xs">renovado</span>@endif</td>
+                                <td class="px-2">{{ $tc['cif'] }}</td>
+                                <td class="px-2">{{ implode(' + ', $tc['pcs']) }}</td>
+                                <td class="px-2 text-right whitespace-nowrap">
+                                    @if ($tc['visto'])
+                                        <button type="button" wire:click="deshacerVisto('{{ $tc['huella'] }}')" class="text-xs text-indigo-700 underline" style="color:#4338ca">↩ Volver a mostrar</button>
+                                    @elseif (! $tc['renovado'] && $tc['caduca'] < now()->format('Y-m-d'))
+                                        <button type="button" wire:click="marcarVisto('{{ $tc['huella'] }}')" title="Ya lo sé: no me interesa seguir viéndolo" class="px-2 py-0.5 text-xs bg-white border border-gray-400 rounded hover:bg-gray-100" style="color:#374151">👁 Visto</button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
                     @empty
-                        <tr><td colspan="4" class="px-2 py-3 text-gray-500">{{ $mesSel === 'todos' ? 'Todavía no hay certificados escaneados.' : 'No hay certificados pendientes en este mes.' }}</td></tr>
+                        <tr><td colspan="5" class="px-2 py-3 text-gray-500">{{ $mesSel === 'todos' ? 'Todavía no hay certificados escaneados.' : 'No hay certificados pendientes en este mes.' }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

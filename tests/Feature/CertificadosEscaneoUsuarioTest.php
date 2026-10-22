@@ -146,6 +146,11 @@ class CertificadosEscaneoUsuarioTest extends TestCase
             ->assertSee('CERT NOVIEMBRE')->assertSee('CERT LEJANO')                    // «Todos» los enseña
             ->call('elegirMes', '2026-11')->assertSee('Caducan en noviembre de 2026');
         $this->assertSame(['CERT NOVIEMBRE'], array_column($t->viewData('detalle'), 'nombre'));   // (el botón Copiar lleva todos en un atributo: no sirve assertDontSee)
+        $t->call('elegirMes', 'todos');
+        $grupos = $t->viewData('grupos');   // urgentes (viejo, noviembre) → sin prisa (febrero, lejano); sin próximos ni renovados: grupos vacíos no salen
+        $this->assertCount(2, $grupos);
+        $this->assertSame(['CERT VIEJO', 'CERT NOVIEMBRE'], array_column($grupos[0]['filas'], 'nombre'));
+        $this->assertSame(['CERT FEBRERO', 'CERT LEJANO'], array_column($grupos[1]['filas'], 'nombre'));
         $t->call('elegirMes', 'caducados');
         $this->assertSame(['CERT VIEJO'], array_column($t->viewData('detalle'), 'nombre'));
         $t->call('elegirMes', '2026-12')->assertSee('No hay certificados pendientes en este mes.')
@@ -158,5 +163,44 @@ class CertificadosEscaneoUsuarioTest extends TestCase
     {
         $src = file_get_contents(base_path('app/Http/Livewire/Contabilidad/ProcesosMensuales.php'));
         $this->assertStringContainsString("route('contabilidad.certificados')", $src);
+    }
+
+    public function test_escaneo_de_usuario_hecho_en_un_trabajador_sale_con_el_nombre_del_trabajador(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22'));
+        $this->assertSame('AlexMiniPC', CertificadosLista::etiquetaPc('PC de Alex', 'ALEXMINIPC'));
+        $this->assertSame('PC de Marta', CertificadosLista::etiquetaPc('PC de Marta', 'MINIMARTAPC'));
+        $this->assertSame('PC de Marta', CertificadosLista::etiquetaPc('PC de Marta', null));
+        $c = ['clave' => 'emp:B1', 'nombre' => 'Uno', 'alias' => '', 'caduca' => '2026-11-05', 'huella' => 'H1'];
+        $lista = CertificadosLista::todos([
+            'ALEXMINIPC' => ['escaneado' => 'x', 'certs' => [$c]],
+            'PC de Alex' => ['escaneado' => 'x', 'certs' => [$c], 'equipo' => 'ALEXMINIPC'],
+        ]);
+        $this->assertSame(['AlexMiniPC'], $lista[0]['pcs']);   // un solo PC, no «AlexMiniPC + PC de Alex»
+    }
+
+    public function test_marcar_visto_oculta_un_caducado_solo_a_ese_usuario_y_se_puede_deshacer(): void
+    {
+        config(['contabilidad.ejecucion_local' => false]);
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-22'));
+        $u = $this->usuario();
+        $c = fn ($clave, $nombre, $caduca, $huella) => ['clave' => $clave, 'nombre' => $nombre, 'alias' => '', 'caduca' => $caduca, 'huella' => $huella];
+        DB::table('certificados_escaneos')->insert(['pc' => 'PC de x', 'escaneado' => '2026-10-22T10:00', 'user_id' => $u->id, 'created_at' => now(), 'updated_at' => now(),
+            'certs' => json_encode([$c('emp:B3', 'CERT VIEJO', '2026-08-01', 'H3'), $c('emp:B1', 'CERT NOVIEMBRE', '2026-11-05', 'H1')])]);
+        $t = \Livewire\Livewire::actingAs($u)->test(\App\Http\Livewire\Contabilidad\Certificados::class);
+        $this->assertCount(2, $t->viewData('todosCerts'));
+        $t->call('marcarVisto', 'H3');
+        $this->assertSame(['CERT NOVIEMBRE'], array_column($t->viewData('todosCerts'), 'nombre'));
+        $this->assertSame(1, $t->viewData('nOcultos'));
+        $this->assertSame(0, array_sum(array_column(array_filter($t->viewData('resumenMeses'), fn ($m) => $m['clave'] === 'caducados'), 'n')));
+        $t->set('verOcultos', true);
+        $this->assertCount(2, $t->viewData('todosCerts'));
+        $t->call('deshacerVisto', 'H3')->set('verOcultos', false);
+        $this->assertCount(2, $t->viewData('todosCerts'));
+        // otro usuario no se ve afectado por lo que marcó el primero
+        $t->call('marcarVisto', 'H3');
+        $otro = $this->usuario('otro@example.com');
+        DB::table('certificados_escaneos')->insert(['pc' => 'PC de y', 'escaneado' => '2026-10-22T10:00', 'user_id' => $otro->id, 'created_at' => now(), 'updated_at' => now(), 'certs' => json_encode([$c('emp:B3', 'CERT VIEJO', '2026-08-01', 'H3')])]);
+        $this->assertCount(1, \Livewire\Livewire::actingAs($otro)->test(\App\Http\Livewire\Contabilidad\Certificados::class)->viewData('todosCerts'));
     }
 }

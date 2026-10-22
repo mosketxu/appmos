@@ -168,12 +168,43 @@ class Certificados extends Component
 
     public bool $modalInstalar = false;
 
+    /** Enseñar también los certificados que ya se han marcado como vistos. */
+    public bool $verOcultos = false;
+
+    /** «Visto, no me interesa seguir viéndolo»: solo para certificados ya caducados; es por usuario y no toca el correo mensual. */
+    public function marcarVisto(string $huella): void
+    {
+        DB::table('certificados_vistos')->updateOrInsert(['user_id' => auth()->id(), 'huella' => $huella], ['updated_at' => now(), 'created_at' => now()]);
+    }
+
+    public function deshacerVisto(string $huella): void
+    {
+        DB::table('certificados_vistos')->where('user_id', auth()->id())->where('huella', $huella)->delete();
+    }
+
     /** Mes elegido a la izquierda: 'todos', 'caducados' (meses anteriores al actual) o 'AAAA-MM'. */
     public string $mesSel = 'todos';
 
     public function elegirMes(string $m): void
     {
         $this->mesSel = preg_match('/^(todos|caducados|\d{4}-\d{2})$/', $m) ? $m : 'todos';
+    }
+
+    /** En «Todos»: urgentes arriba, luego los próximos, luego los que no tienen prisa y al final los ya renovados. */
+    protected function agrupar(array $filas): array
+    {
+        if ($this->mesSel !== 'todos') {
+            return $filas ? [['titulo' => null, 'filas' => $filas]] : [];
+        }
+        $pend = fn ($c) => ! $c['renovado'];
+        $g = [
+            ['titulo' => '🔴 Urgentes: caducados, este mes o el próximo', 'filas' => array_values(array_filter($filas, fn ($c) => $pend($c) && $c['color'] === 'rojo'))],
+            ['titulo' => '🟡 Próximos: caducan dentro de 3 o 4 meses', 'filas' => array_values(array_filter($filas, fn ($c) => $pend($c) && $c['color'] === 'amarillo'))],
+            ['titulo' => 'Sin prisa: caducan más adelante', 'filas' => array_values(array_filter($filas, fn ($c) => $pend($c) && $c['color'] === ''))],
+            ['titulo' => 'Ya renovados (hay uno más nuevo de la misma empresa o persona; no hay que hacer nada)', 'filas' => array_values(array_filter($filas, fn ($c) => $c['renovado']))],
+        ];
+
+        return array_values(array_filter($g, fn ($x) => $x['filas']));
     }
 
     /** Resumen por mes y detalle del mes elegido a partir de todos los certificados: [resumen, detalle, título]. */
@@ -520,7 +551,14 @@ class Certificados extends Component
     public function render()
     {
         $cola = Schema::hasTable('trabajadores') && Schema::hasTable('tareas');   // hasta que se haga la migración
-        $porMeses = $this->porMeses(CertificadosLista::todos(CertificadosLista::escaneos(CertificadosLista::verTodos(auth()->user()) ? null : (int) auth()->id())));
+        $todos = CertificadosLista::todos(CertificadosLista::escaneos(CertificadosLista::verTodos(auth()->user()) ? null : (int) auth()->id()));
+        $vistos = DB::table('certificados_vistos')->where('user_id', auth()->id())->pluck('huella')->all();
+        $nOcultos = count(array_filter($todos, fn ($c) => in_array($c['huella'], $vistos, true)));
+        $todos = array_map(fn ($c) => $c + ['visto' => in_array($c['huella'], $vistos, true)], $todos);
+        if (! $this->verOcultos) {
+            $todos = array_values(array_filter($todos, fn ($c) => ! $c['visto']));
+        }
+        $porMeses = $this->porMeses($todos);
 
         return view('livewire.contabilidad.certificados', [
             'vistaPrevia' => $this->viendoEnvio ? ($this->verEnvio ? (string) DB::table('certificados_envios')->where('id', $this->verEnvio)->value('texto') : '') : $this->texto(),
@@ -529,8 +567,8 @@ class Certificados extends Component
             'graphOk' => GraphMail::configurado(),
             'miEscaneo' => DB::table('certificados_escaneos')->where('user_id', auth()->id())->first(),
             'verTodos' => CertificadosLista::verTodos(auth()->user()),
-            'todosCerts' => CertificadosLista::todos(CertificadosLista::escaneos(CertificadosLista::verTodos(auth()->user()) ? null : (int) auth()->id())),
-            'resumenMeses' => $porMeses[0], 'detalle' => $porMeses[1], 'tituloDetalle' => $porMeses[2],
+            'todosCerts' => $todos, 'nOcultos' => $nOcultos,
+            'resumenMeses' => $porMeses[0], 'detalle' => $porMeses[1], 'tituloDetalle' => $porMeses[2], 'grupos' => $this->agrupar($porMeses[1]),
             'enLocal' => (bool) config('contabilidad.ejecucion_local'),
             'pcLocal' => gethostname(),
             'trabajadores' => $cola ? DB::table('trabajadores')->where('activo', true)->orderBy('nombre')->get()

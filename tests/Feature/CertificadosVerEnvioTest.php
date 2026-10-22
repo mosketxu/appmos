@@ -18,6 +18,7 @@ class CertificadosVerEnvioTest extends TestCase
         Schema::create('users', function ($t) {
             $t->id(); $t->string('name')->nullable(); $t->string('email')->nullable(); $t->string('password')->nullable(); $t->timestamps();
         });
+        (require base_path('database/migrations/2026_10_22_160000_create_certificados_vistos_table.php'))->up();
         $this->actingAs(\App\Models\User::forceCreate(['name' => 'Marta', 'email' => 'marta.ruiz@sumaempresa.com', 'password' => 'x']));   // ve la pantalla completa
         Schema::create('certificados_escaneos', function ($t) {
             $t->id(); $t->string('pc')->unique(); $t->string('escaneado'); $t->longText('certs'); $t->timestamps();

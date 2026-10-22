@@ -23,7 +23,7 @@ class CertificadosLista
         $r = [];
         if ($soloUser !== null) {
             foreach (DB::table('certificados_escaneos')->where('user_id', $soloUser)->get() as $e) {
-                $r[$e->pc] = ['escaneado' => $e->escaneado, 'certs' => json_decode($e->certs, true) ?: []];
+                $r[$e->pc] = ['escaneado' => $e->escaneado, 'certs' => json_decode($e->certs, true) ?: [], 'equipo' => $e->equipo];
             }
             return $r;
         }
@@ -43,7 +43,7 @@ class CertificadosLista
             }
         }
         foreach (DB::table('certificados_escaneos')->get() as $e) {
-            $r[$e->pc] = ['escaneado' => $e->escaneado, 'certs' => json_decode($e->certs, true) ?: []];
+            $r[$e->pc] = ['escaneado' => $e->escaneado, 'certs' => json_decode($e->certs, true) ?: [], 'equipo' => $e->equipo];
         }
         return $r;
     }
@@ -51,6 +51,17 @@ class CertificadosLista
     public static function nombrePc(string $pc): string
     {
         return ['ALEXMINIPC' => 'AlexMiniPC', 'PORTALEXOMEN' => 'PortalExomen', 'MINISERV' => 'miniServ'][$pc] ?? $pc;
+    }
+
+    /**
+     * Nombre con el que se enseña dónde está un certificado. Si el escaneo lo hizo un usuario con «Escanear mi PC» desde uno de
+     * los PCs trabajadores, sale con el nombre del trabajador (no «PC de <usuario>») para no contar el mismo PC dos veces.
+     */
+    public static function etiquetaPc(string $pc, ?string $equipo): string
+    {
+        $porEquipo = $equipo ? self::nombrePc(strtoupper($equipo)) : null;
+
+        return $porEquipo && $porEquipo !== strtoupper($equipo) ? $porEquipo : self::nombrePc($pc);
     }
 
     /**
@@ -79,7 +90,7 @@ class CertificadosLista
             foreach ($e['certs'] as $c) {
                 $h = $c['huella'];
                 $porHuella[$h] ??= $c + ['pcs' => []];
-                $porHuella[$h]['pcs'][] = self::nombrePc($pc);
+                $porHuella[$h]['pcs'][] = self::etiquetaPc($pc, $e['equipo'] ?? null);
                 $maxClave[$c['clave']] = max($maxClave[$c['clave']] ?? '', $c['caduca']);
             }
         }
@@ -88,7 +99,7 @@ class CertificadosLista
             $renovado = $c['caduca'] < $maxClave[$c['clave']];
             $pcs = array_values(array_unique($c['pcs']));
             sort($pcs);
-            $r[] = ['nombre' => $c['nombre'], 'alias' => $c['alias'] ?? '', 'cif' => preg_replace('/^(emp|per):/', '', $c['clave']), 'caduca' => $c['caduca'],
+            $r[] = ['huella' => $c['huella'], 'nombre' => $c['nombre'], 'alias' => $c['alias'] ?? '', 'cif' => preg_replace('/^(emp|per):/', '', $c['clave']), 'caduca' => $c['caduca'],
                 'pcs' => $pcs, 'renovado' => $renovado, 'color' => $renovado ? '' : self::color($c['caduca'])];
         }
         usort($r, fn ($a, $b) => [$a['caduca'], $a['nombre']] <=> [$b['caduca'], $b['nombre']]);
@@ -103,7 +114,7 @@ class CertificadosLista
         $porClave = [];
         foreach ($escaneos as $pc => $e) {
             foreach ($e['certs'] as $c) {
-                $c['pc'] = $pc;
+                $c['pc'] = self::etiquetaPc($pc, $e['equipo'] ?? null);
                 $porClave[$c['clave']][] = $c;
             }
         }
