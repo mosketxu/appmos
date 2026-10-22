@@ -25,6 +25,8 @@
             .cm-mes span { font-weight:600 }
             .cm-mes, .cm-caja { color:#111827 }
             /* modo oscuro (la página se invierte con un filtro): sin color explícito, campos y botones salían negro sobre negro */
+            html.dark .cm-pag :is(.text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700, .text-gray-800, .text-gray-900), html.dark .cm-pag :is(th, td, label, li) { color:#111827 !important }
+            html.dark .cm-pag .cm-cero { opacity:.8 }
             html.dark .cm-pag :is(input, select, textarea):not([type=checkbox]):not([type=radio]), html.dark .cm-caja :is(input, select, textarea) { background-color:#e5e7eb; color:#111827 }
             .cm-mes:hover { filter:brightness(.96) } .cm-cero { opacity:.55 }
             .cm-sel { outline:2px solid #4f46e5; font-weight:600 }
