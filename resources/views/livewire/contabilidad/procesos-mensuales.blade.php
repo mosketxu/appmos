@@ -74,7 +74,7 @@
                                     <span class="shrink-0" style="width:12px"></span>
                                 @endif
                                 <button type="button" wire:click="abrir({{ $p->id }})" class="font-medium text-left text-indigo-700 hover:underline" title="{{ $p->detalle }}">
-                                    {{ $pantallas[$p->clave]['icono'] ?? '' }} {{ $p->nombre }}
+                                    {{ $pantallas[$p->clave]['icono'] ?? ($iconos[$p->clave] ?? '') }} {{ $p->nombre }}
                                 </button>
                                 @if ($p->ejecucion !== 'web')
                                     <span title="{{ $p->ejecucion === 'ambos' ? 'Se puede lanzar en la web y en local' : 'Se ejecuta en local (desde un PC)' }}" class="shrink-0">{{ $p->ejecucion === 'ambos' ? '🌐💻' : '💻' }}</span>

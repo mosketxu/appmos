@@ -31,6 +31,9 @@ class ProcesosMensuales extends Component
         'prefacturacion' => ['icono' => '🧾', 'componente' => 'contabilidad.prefacturacion', 'parametros' => [], 'ancho' => '1000px'],
     ];
 
+    /** Icono de los procesos que no tienen pantalla propia (los de PROCESOS ya llevan el suyo). */
+    public const ICONOS = ['whatsapp' => '💬'];
+
     /** Orden en que pasa el ciclo de impuestos con cada clic (ids de la tabla ciclos; lo usa Entidades). */
     public const ORDEN_CICLOS = [1, 3, 12, 20, 0];
 
@@ -260,6 +263,7 @@ class ProcesosMensuales extends Component
             'puede' => $this->permitido(),
             'filtro' => $this->buscar,
             'pantallas' => self::PROCESOS,
+            'iconos' => self::ICONOS,
             'enModal' => $this->modal ? $procesos->firstWhere('id', $this->modal) : null,
         ]);
     }
