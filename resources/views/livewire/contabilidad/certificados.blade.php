@@ -24,11 +24,11 @@
         @endif
 
         {{-- Escanear el PC del propio usuario: lo único que ven los usuarios que no son de los PCs trabajadores --}}
-        <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.4s="actualizarMio" @endif>
+        <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" x-data x-on:lanzar-escaner.window="window.location.href = 'appmos-certificados://escanear'" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.3s="actualizarMio" @endif>
             <div class="flex flex-wrap items-center gap-2">
                 @if ($miEscaneo)
-                    <button type="button" wire:click="pedirMiEscaneo" @disabled($miEscaneo->solicitado_at)
-                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">{{ $miEscaneo->solicitado_at ? '⏳ esperando a tu PC…' : '💻 Escanear mi PC ahora' }}</button>
+                    <button type="button" wire:click="pedirMiEscaneo"
+                        class="px-3 py-1.5 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">{{ $miEscaneo->solicitado_at ? '⏳ escaneando… (pulsa para repetir)' : '💻 Escanear mi PC ahora' }}</button>
                     <span class="text-xs text-gray-700">Tu PC{{ $miEscaneo->equipo ? ' ('.$miEscaneo->equipo.')' : '' }}: último escaneo {{ str_replace('T', ' ', $miEscaneo->escaneado) }}</span>
                     <button type="button" wire:click="abrirInstalar" class="text-xs text-indigo-600 underline">Reinstalar / desinstalar</button>
                 @else
@@ -67,10 +67,10 @@
                         Si Windows avisa de que el fichero no es conocido, pulsa <b>«Más información»</b> y luego <b>«Ejecutar de todas formas»</b>.
                     </div></div>
                     <div class="cm-paso"><span class="cm-num">4</span><div class="text-sm text-gray-800">
-                        Cuando la ventana diga <b>«Listo»</b>, ciérrala. Esta pantalla se actualizará sola en cuanto tu PC envíe el primer escaneo.
+                        Cuando la ventana diga <b>«LISTO»</b>, pulsa Intro para cerrarla. Esta pantalla se actualizará sola. Desde ahora, cada vez que pulses «Escanear mi PC ahora» el navegador puede preguntar si abre «Appmos certificados»: di que sí y marca «permitir siempre».
                     </div></div>
 
-                    <p class="p-2 mt-4 text-xs text-gray-600 rounded bg-gray-50">🔒 Solo se envía el nombre, el CIF/NIF y la fecha de caducidad de tus certificados; nunca la clave privada.
+                    <p class="p-2 mt-4 text-xs text-gray-600 rounded bg-gray-50">🔒 No queda nada funcionando en segundo plano: el escáner solo se lanza cuando pulsas el botón. Solo se envía el nombre, el CIF/NIF y la fecha de caducidad de tus certificados; nunca la clave privada.
                         Para quitarlo del PC: ejecuta el mismo fichero con <code>-Desinstalar</code>.</p>
                     <div class="mt-3 text-right"><button type="button" wire:click="cerrarInstalar" class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">Cerrar</button></div>
                 </div>

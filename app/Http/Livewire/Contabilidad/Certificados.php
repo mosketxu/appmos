@@ -208,8 +208,12 @@ class Certificados extends Component
     public function pedirMiEscaneo(): void
     {
         $n = DB::table('certificados_escaneos')->where('user_id', auth()->id())->update(['solicitado_at' => now()]);
-        $this->salida = $n ? '🛰 Escaneo de tu PC pedido: se hará en unos segundos (tu PC debe estar encendido) y la lista se actualizará sola.'
-            : '⚠ Todavía no has instalado el escáner en tu PC: descarga el fichero e instálalo.';
+        if (! $n) {
+            $this->salida = '⚠ Todavía no has instalado el escáner en tu PC: descarga el fichero e instálalo.';
+            return;
+        }
+        $this->salida = '🛰 Escaneando tu PC… Si el navegador pregunta si abre «Appmos certificados», di que sí (y marca «permitir siempre»).';
+        $this->dispatch('lanzar-escaner');   // el navegador abre appmos-certificados://, que lanza el escáner del PC
     }
 
     /** Mientras tu PC no responde, mira cada pocos segundos si ya ha subido el escaneo. */

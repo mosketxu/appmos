@@ -75,6 +75,8 @@ class CertificadosEscaneoUsuarioTest extends TestCase
         $this->assertStringContainsString("'https://appmos.example/api/certificados/usuario'", $ps);
         $this->assertStringNotContainsString('__URL__', $ps);
         $this->assertStringContainsString('-Desinstalar', $ps);
+        $this->assertStringContainsString('appmos-certificados', $ps);
+        $this->assertStringNotContainsString('Register-ScheduledTask', $ps);   // nada en segundo plano
     }
 
     public function test_un_usuario_normal_solo_ve_el_boton_y_el_modal_por_pasos(): void
