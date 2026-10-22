@@ -16,7 +16,7 @@
         <!-- Scripts -->
         <script src="{{ mix('js/app.js') }}" defer></script>
             {{-- Modo oscuro (Automático / Claro / Oscuro): antes de pintar, para que no parpadee --}}
-        <link rel="stylesheet" href="{{ asset('css/tema-oscuro.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/tema-oscuro.css').'?v='.filemtime(public_path('css/tema-oscuro.css')) }}">
         <script src="{{ asset('js/tema.js') }}"></script>
     </head>
     <body>

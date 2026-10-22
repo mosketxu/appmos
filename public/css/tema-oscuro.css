@@ -11,3 +11,5 @@ html.dark [data-sin-tema] { filter: invert(1) hue-rotate(180deg); }
 html.dark img img { filter: none; }
 /* barras de desplazamiento y selección coherentes con el tema */
 html.dark { color-scheme: dark; }
+/* campos de texto: sin color explícito salían negro sobre negro (el fondo blanco se invierte y el texto claro del color-scheme también) */
+html.dark :is(input, textarea):not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=submit]):not([type=button]):not([type=image]) { background-color: #e5e7eb; color: #111827; }

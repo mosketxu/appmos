@@ -1,3 +1,5 @@
+<div>
+    @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
 <div class="p-4 max-w-4xl">
     <div class="flex flex-wrap items-center gap-3 mb-3">
         <h1 class="text-lg font-semibold text-gray-800">Formación</h1>
@@ -54,4 +56,5 @@
             <li class="p-4 text-sm text-center text-gray-500 bg-white border rounded">Aún no hay temas.</li>
         @endforelse
     </ul>
+</div>
 </div>
