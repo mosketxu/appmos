@@ -17,13 +17,12 @@
 
     @if ($editando !== null)
         <div class="grid gap-2 p-3 bg-white border border-indigo-200 rounded-lg md:grid-cols-4">
-            <select wire:model="fEntidad" class="text-sm border-gray-300 rounded-md md:col-span-2">
-                <option value="">— Cliente (o escríbelo al lado) —</option>
+            <select wire:model="fEntidad" class="text-sm border-gray-300 rounded-md md:col-span-4">
+                <option value="">— Elige el cliente —</option>
                 @foreach ($empresas as $e)
                     <option value="{{ $e->id }}">{{ $e->entidad }}</option>
                 @endforeach
             </select>
-            <input type="text" wire:model="fCliente" placeholder="Cliente (si no está en la lista)" class="text-sm border-gray-300 rounded-md md:col-span-2">
             <input type="text" wire:model="fImporte" placeholder="Importe (€)" class="text-sm border-gray-300 rounded-md">
             <input type="month" wire:model="fPeriodo" class="text-sm border-gray-300 rounded-md" title="Periodo en que se factura">
             <input type="text" wire:model="fMotivo" placeholder="Motivo" class="text-sm border-gray-300 rounded-md md:col-span-2">

@@ -72,6 +72,11 @@ class Prefacturacion extends Component
         if (! $this->permitido()) {
             return;
         }
+        if ($this->fEntidad === '') {
+            $this->aviso = '⚠️ Elige el cliente de la lista.';
+
+            return;
+        }
         $importe = trim(str_replace([' ', '€'], '', $this->fImporte));
         if (str_contains($importe, ',')) {
             $importe = str_replace(',', '.', str_replace('.', '', $importe)); // 1.234,56 → 1234.56
