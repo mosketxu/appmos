@@ -21,6 +21,13 @@ class CertificadosScript
 # Para quitarlo: powershell -ExecutionPolicy Bypass -File "Instalar-escaner-certificados.ps1" -Desinstalar
 param([switch]$Desinstalar)
 $ErrorActionPreference = 'Stop'
+# La ventana no se cierra sola: se queda hasta que se pulse Intro (así se puede leer el resultado o el error)
+trap {
+    Write-Host ''
+    Write-Host ('ERROR: ' + $_.Exception.Message) -ForegroundColor Red
+    Read-Host 'Pulsa Intro para cerrar esta ventana'
+    exit 1
+}
 $dir = Join-Path $env:LOCALAPPDATA 'AppmosCertificados'
 $tarea = 'AppmosCertificados'
 
@@ -28,6 +35,7 @@ if ($Desinstalar) {
     Unregister-ScheduledTask -TaskName $tarea -Confirm:$false -ErrorAction SilentlyContinue
     Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host 'Desinstalado: ya no se escanean los certificados de este PC.'
+    Read-Host 'Pulsa Intro para cerrar esta ventana'
     exit
 }
 
@@ -72,9 +80,12 @@ try {
     Register-ScheduledTask -TaskName $tarea -Action $accion -Trigger @($alIniciar, $cada5) -Settings $ajustes -Force | Out-Null
 } catch {
     Write-Host ('No se ha podido crear la tarea programada: ' + $_.Exception.Message) -ForegroundColor Red
+    Read-Host 'Pulsa Intro para cerrar esta ventana'
     exit 1
 }
 Start-ScheduledTask -TaskName $tarea
-Write-Host 'Listo. Este PC escaneará sus certificados al iniciar sesión, cada día y cuando lo pidas desde Appmos.'
+Write-Host ''
+Write-Host 'LISTO. Este PC escaneará sus certificados al iniciar sesión, cada día y cuando lo pidas desde Appmos.' -ForegroundColor Green
+Read-Host 'Pulsa Intro para cerrar esta ventana'
 PS;
 }
