@@ -208,7 +208,7 @@ class Certificados extends Component
     public function pedirMiEscaneo(): void
     {
         $n = DB::table('certificados_escaneos')->where('user_id', auth()->id())->update(['solicitado_at' => now()]);
-        $this->salida = $n ? '🛰 Escaneo de tu PC pedido: se hará en unos minutos (tu PC debe estar encendido) y la lista se actualizará sola.'
+        $this->salida = $n ? '🛰 Escaneo de tu PC pedido: se hará en unos segundos (tu PC debe estar encendido) y la lista se actualizará sola.'
             : '⚠ Todavía no has instalado el escáner en tu PC: descarga el fichero e instálalo.';
     }
 

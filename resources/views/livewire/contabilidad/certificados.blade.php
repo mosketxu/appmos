@@ -24,7 +24,7 @@
         @endif
 
         {{-- Escanear el PC del propio usuario: lo único que ven los usuarios que no son de los PCs trabajadores --}}
-        <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.10s="actualizarMio" @endif>
+        <div class="p-3 text-sm border border-gray-200 rounded-md bg-gray-50" @if ($miEscaneo && $miEscaneo->solicitado_at) wire:poll.4s="actualizarMio" @endif>
             <div class="flex flex-wrap items-center gap-2">
                 @if ($miEscaneo)
                     <button type="button" wire:click="pedirMiEscaneo" @disabled($miEscaneo->solicitado_at)
