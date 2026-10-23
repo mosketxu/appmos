@@ -56,8 +56,12 @@
                 @else
                     <span class="mt-0.5">{{ $t->estado === 'explicado' ? '✅' : '⬜' }}</span>
                 @endif
-                <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-800 {{ $t->estado === 'explicado' ? 'line-through' : '' }}">{{ $t->titulo }}</div>
+                <div class="flex-1 min-w-0" x-data="{ abierto: {{ $archivoSel && $misArchivos->contains('id', $archivoSel) ? 'true' : 'false' }} }">
+                    <button type="button" x-on:click="abierto = ! abierto" class="flex items-center w-full gap-1 text-left font-medium text-gray-800 {{ $t->estado === 'explicado' ? 'line-through' : '' }}" x-bind:aria-expanded="abierto">
+                        <span class="text-xs text-gray-500" x-text="abierto ? '▼' : '▶'"></span><span>{{ $t->titulo }}</span>
+                        @if ($misArchivos->count())<span class="text-xs font-normal text-gray-400 no-underline">📎 {{ $misArchivos->count() }}</span>@endif
+                    </button>
+                    <div x-show="abierto" x-cloak>
                     @if ($t->descripcion)
                         <div class="text-sm text-gray-600 whitespace-pre-line">{{ $t->descripcion }}</div>
                     @endif
@@ -79,6 +83,7 @@
                             @endif
                         </div>
                     @endif
+                    </div>
                 </div>
                 @if ($puedeEditar)
                     <div class="flex gap-1 text-sm text-gray-500">
