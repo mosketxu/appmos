@@ -3,13 +3,25 @@
 namespace App\Http\Livewire;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Formación (22-oct-2026): listado de cosas que Alex quiere explicar a sus compañeros. Ven todos; edita quien tenga formacion.editar.
  */
 class Formacion extends Component
 {
+    use WithFileUploads;
+
+    /** Archivos que se acaban de elegir o arrastrar, y el tema al que van. */
+    public array $subidas = [];
+    public ?int $temaSubida = null;
+    /** Archivo que se ve a la derecha. */
+    public ?int $archivoSel = null;
+    public string $errorArchivos = '';
+
     public string $titulo = '';
     public string $descripcion = '';
     public ?int $editando = null;
@@ -88,9 +100,59 @@ class Formacion extends Component
         }
     }
 
+    /** Se llama sola al elegir o arrastrar archivos: los guarda en el tema y enseña el último a la derecha. */
+    public function updatedSubidas(): void
+    {
+        $this->autorizar(true);
+        $this->errorArchivos = '';
+        $tema = $this->temaSubida;
+        if (! $tema || ! DB::table('formacion_temas')->where('id', $tema)->exists()) {
+            $this->subidas = [];
+            $this->errorArchivos = 'No sé a qué tema van los archivos: arrástralos sobre un tema o usa su botón «Añadir archivos».';
+            return;
+        }
+        $n = 0;
+        foreach ($this->subidas as $f) {
+            if ($f->getSize() > 51200 * 1024) {
+                $this->errorArchivos = 'Hay archivos de más de 50 MB y no se han subido.';
+                continue;
+            }
+            $nombre = basename(str_replace('\\', '/', $f->getClientOriginalName())) ?: 'archivo';
+            $ext = preg_replace('/[^a-z0-9]/', '', strtolower(pathinfo($nombre, PATHINFO_EXTENSION)));
+            $ruta = $f->storeAs("formacion/{$tema}", Str::random(24).($ext ? ".{$ext}" : ''), 'local');
+            $this->archivoSel = DB::table('formacion_archivos')->insertGetId([
+                'tema_id' => $tema, 'nombre' => $nombre, 'ruta' => $ruta, 'extension' => substr($ext, 0, 12), 'tamano' => $f->getSize(),
+                'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $n++;
+        }
+        $this->subidas = [];
+    }
+
+    public function seleccionar(int $id): void
+    {
+        $this->autorizar();
+        $this->archivoSel = $this->archivoSel === $id ? null : $id;
+    }
+
+    public function quitarArchivo(int $id): void
+    {
+        $this->autorizar(true);
+        if ($a = DB::table('formacion_archivos')->find($id)) {
+            Storage::disk('local')->delete($a->ruta);
+            DB::table('formacion_archivos')->where('id', $id)->delete();
+        }
+        if ($this->archivoSel === $id) {
+            $this->archivoSel = null;
+        }
+    }
+
     public function borrar(int $id): void
     {
         $this->autorizar(true);
+        foreach (DB::table('formacion_archivos')->where('tema_id', $id)->get() as $a) {
+            $this->quitarArchivo($a->id);
+        }
         DB::table('formacion_temas')->where('id', $id)->delete();
         if ($this->editando === $id) {
             $this->cancelar();
@@ -105,7 +167,11 @@ class Formacion extends Component
         if (in_array($this->filtro, ['pendiente', 'explicado'], true)) {
             $q->where('estado', $this->filtro);
         }
+        $archivos = DB::table('formacion_archivos')->orderBy('id')->get()->groupBy('tema_id');
+
         return view('livewire.formacion', [
+            'archivos' => $archivos,
+            'actual' => $this->archivoSel ? DB::table('formacion_archivos')->find($this->archivoSel) : null,
             'temas' => $q->get(),
             'total' => $total,
             'explicados' => $explicados,
