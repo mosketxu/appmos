@@ -23,20 +23,23 @@
                     class="px-3 py-1 rounded border {{ $filtro === $k ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100' }}">{{ $txt }}</button>
             @endforeach
         </div>
+        @if ($puedeEditar && ! $formulario)
+            <button type="button" wire:click="nuevo" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">＋ Nuevo</button>
+        @endif
     </div>
 
     @if ($puedeEditar)
+        @if ($formulario)
         <form wire:submit.prevent="guardar" class="p-3 mb-4 bg-white border rounded">
             <div class="relative"><input type="text" wire:model="titulo" placeholder="Tema a explicar" class="w-full text-sm border-gray-300 rounded" style="padding-right:3rem"><x-boton-dictado /></div>
             @error('titulo') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
             <div class="relative mt-2"><textarea wire:model="descripcion" rows="2" placeholder="Notas (opcional): qué contar, para quién, material…" class="w-full text-sm border-gray-300 rounded" style="padding-right:3rem"></textarea><x-boton-dictado /></div>
             <div class="flex gap-2 mt-2">
                 <button type="submit" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">{{ $editando ? 'Guardar cambios' : 'Añadir' }}</button>
-                @if ($editando)
-                    <button type="button" wire:click="cancelar" class="px-3 py-1 text-sm text-gray-600 bg-white border rounded hover:bg-gray-100">Cancelar</button>
-                @endif
+                <button type="button" wire:click="cancelar" class="px-3 py-1 text-sm text-gray-600 bg-white border rounded hover:bg-gray-100">Cancelar</button>
             </div>
         </form>
+        @endif
         <div wire:loading wire:target="subidas" class="px-3 py-2 mb-2 text-sm text-indigo-900 border border-indigo-200 rounded bg-indigo-50">⏳ Subiendo archivos…</div>
         @if ($errorArchivos)
             <div class="px-3 py-2 mb-2 text-sm text-red-700 border border-red-200 rounded bg-red-50">{{ $errorArchivos }}</div>

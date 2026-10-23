@@ -25,6 +25,8 @@ class Formacion extends Component
     public string $titulo = '';
     public string $descripcion = '';
     public ?int $editando = null;
+    /** El formulario solo se ve al pulsar «Nuevo» o al editar un tema. */
+    public bool $formulario = false;
     public string $filtro = 'todos'; // todos | pendiente | explicado
 
     public function hydrate(): void
@@ -55,11 +57,19 @@ class Formacion extends Component
         $this->cancelar();
     }
 
+    public function nuevo(): void
+    {
+        $this->autorizar(true);
+        $this->cancelar();
+        $this->formulario = true;
+    }
+
     public function editar(int $id): void
     {
         $this->autorizar(true);
         if ($t = DB::table('formacion_temas')->find($id)) {
             $this->editando = $id;
+            $this->formulario = true;
             $this->titulo = $t->titulo;
             $this->descripcion = (string) $t->descripcion;
         }
@@ -67,7 +77,7 @@ class Formacion extends Component
 
     public function cancelar(): void
     {
-        $this->reset('titulo', 'descripcion', 'editando');
+        $this->reset('titulo', 'descripcion', 'editando', 'formulario');
         $this->resetValidation();
     }
 
