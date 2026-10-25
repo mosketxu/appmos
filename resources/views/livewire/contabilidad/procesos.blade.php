@@ -275,7 +275,7 @@
                                     @if ($id === 'adyen_batch')
                                         {{-- 25-oct-2026: los settlement detail de Adyen, tal como bajan (varios a la vez); el botón «Ejecutar» los procesa --}}
                                         <div class="flex items-center text-xs text-gray-600 gap-x-2 whitespace-nowrap">
-                                            <x-subir-fichero wire:model="adyenBatchFicheros" multiple accept=".xlsx" texto="Settlement de Adyen""
+                                            <x-subir-fichero wire:model="adyenBatchFicheros" multiple accept=".xlsx" texto="Settlement de Adyen"
                                                 title="Los settlement_detail_report_batch_NNN.xlsx tal como bajan de Adyen (Reports › Settlement details), sin tocar. Se pueden elegir o arrastrar varios (uno o varios batches a la vez)." />
                                             @if (count(array_filter((array) $adyenBatchFicheros)))
                                                 <span class="text-green-700">✓ {{ count(array_filter((array) $adyenBatchFicheros)) }} fichero(s) listos</span>
