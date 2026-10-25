@@ -283,6 +283,7 @@
                                             @else
                                                 <span class="text-gray-500">Falta subir los ficheros de Adyen.</span>
                                             @endif
+                                            <button type="button" wire:click="abrirHistorial('Adyen')" class="px-2 py-0.5 text-xs text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 whitespace-nowrap" title="Lo que salió de las ejecuciones anteriores de este proceso, con filtro por fechas">📋 Resultados anteriores</button>
                                         </div>
                                     @endif
                                     @if (in_array($id, ['monthly_sales', 'anaplan'], true))

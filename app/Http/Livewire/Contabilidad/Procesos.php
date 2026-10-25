@@ -606,9 +606,10 @@ class Procesos extends Component
         $this->resultadoModalTitulo = '';
     }
 
-    public function abrirHistorial(): void
+    public function abrirHistorial(string $texto = ''): void
     {
         $this->histAbierto = true;
+        $this->histTexto = $texto;
         if ($this->histDesde === '') {
             $this->histDesde = now()->subDays(30)->format('Y-m-d');
         }
