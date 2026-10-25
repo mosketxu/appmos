@@ -191,7 +191,7 @@ class FicherosBase
         foreach (['xl/sharedStrings.xml', 'xl/worksheets/sheet.xml', 'xl/worksheets/sheet1.xml'] as $n) {
             $st = $zip->getStream($n);
             if ($st) {
-                $txt .= (string) fread($st, $bytes);
+                $txt .= (string) stream_get_contents($st, $bytes);   // fread en un zip devuelve ~8 KB: las cabeceras de SAGE (hoja sin sharedStrings) quedaban fuera
                 fclose($st);
             }
         }
