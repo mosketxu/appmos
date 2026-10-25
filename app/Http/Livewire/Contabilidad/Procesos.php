@@ -34,6 +34,9 @@ class Procesos extends Component
     public $adyenSettlement = null;
     /** Batches Adyen (25-oct-2026): los settlement_detail_report_batch_NNN.xlsx tal como bajan de Adyen (uno o varios). */
     public $adyenBatchFicheros = [];
+    /** Resultado de «Batches Adyen» en una ventana (25-oct-2026, Alex): el texto de la ejecución y si fue bien. */
+    public string $resultadoModal = '';
+    public bool $resultadoModalOk = true;
     /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
     public $laboralFichero = null;
     /**
@@ -589,6 +592,11 @@ class Procesos extends Component
         if (! empty($ids)) {
             $this->salida .= "\n🚫 Subida a Anaplan cancelada (tarea #".implode(', #', $ids).'): el PC la corta en unos segundos.';
         }
+    }
+
+    public function cerrarResultadoModal(): void
+    {
+        $this->resultadoModal = '';
     }
 
     public function limpiarSalida(): void
@@ -1505,6 +1513,10 @@ class Procesos extends Component
     {
         $ok = ! in_array(false, $oks, true);
         $this->postSys($ctx, $oks);
+        if (($ctx['id'] ?? '') === 'adyen_batch') {
+            $this->resultadoModal = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', substr($this->salida, $desde)));
+            $this->resultadoModalOk = $ok;
+        }
         if (($ctx['id'] ?? '') === 'laboral') {
             $this->postStaffLaboral($ctx, $desde);
         }

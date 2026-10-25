@@ -38,6 +38,19 @@
 
     @include('livewire._ficheros_base', ['eid' => (int) config('contabilidad.fiq_entidad'), 'clave' => 'fiq'])
 
+    @if ($resultadoModal !== '')
+        {{-- Resultado de «Batches Adyen» (25-oct-2026): lo que ha hecho el proceso, en una ventana --}}
+        <div class="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="cerrarResultadoModal">
+            <div class="w-full p-5 space-y-3 bg-white rounded-lg shadow-xl" style="max-width:56rem; border-top:6px solid {{ $resultadoModalOk ? '#16a34a' : '#dc2626' }}">
+                <h2 class="text-lg font-semibold text-gray-900">{{ $resultadoModalOk ? '✅ Batches Adyen: terminado' : '⚠️ Batches Adyen: ha habido un problema' }}</h2>
+                <pre class="p-3 overflow-auto text-xs whitespace-pre-wrap bg-gray-900 rounded text-green-400" style="max-height:65vh">{{ $resultadoModal }}</pre>
+                <div class="flex justify-end">
+                    <x-button.secondary wire:click="cerrarResultadoModal">Cerrar</x-button.secondary>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if ($staffAbierto && $staff)
         {{-- Anaplan · personal: propuesta nómina ↔ empleado de Anaplan (16-oct-2026). Amarillo = pareja nueva (no está en el histórico). --}}
         <div class="fixed inset-0 z-40 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="$set('staffAbierto', false)">
