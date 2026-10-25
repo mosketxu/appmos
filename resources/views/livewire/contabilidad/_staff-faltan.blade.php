@@ -9,5 +9,5 @@
         <div style="margin-top:.2rem;color:#991b1b">👉 Créalos en Anaplan («Input Staff Data for AC») y escribe su nombre en ANAPLAN · personal → «✎ Nombres».</div>
     </div>
 @elseif (! empty($sd['tiendas']))
-    <span class="text-xs text-green-700">✓ {{ collect($sd['tiendas'])->flatten(1)->count() }} empleados del mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} con nombre de Anaplan (Laboral del {{ $sd['cuando'] ?? '' }})</span>
+    <span class="text-xs text-green-700 whitespace-nowrap" title="{{ collect($sd['tiendas'])->flatten(1)->count() }} empleados del mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} con nombre de Anaplan (Laboral del {{ $sd['cuando'] ?? '' }})">✓ {{ collect($sd['tiendas'])->flatten(1)->count() }} empleados con nombre de Anaplan <span class="text-indigo-500 cursor-help">ⓘ</span></span>
 @endif

@@ -260,10 +260,10 @@
                                         {{-- 17-oct-2026: los nombres de Anaplan del personal salen de aquí (Alex: «este proceso va unido a Entrar nóminas») --}}
                                         @php $sinNomL = $this->staffSinNombreMes; @endphp
                                         @if (! empty($this->staffDatosMes['tiendas']))
-                                            <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium {{ $sinNomL ? 'text-white bg-red-600 border-red-600 hover:bg-red-700' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50' }} border rounded shadow-sm disabled:opacity-50"
+                                            <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium whitespace-nowrap {{ $sinNomL ? 'text-white bg-red-600 border-red-600 hover:bg-red-700' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50' }} border rounded shadow-sm disabled:opacity-50"
                                                 wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
-                                                title="Empleados de la nómina del mes con su nombre en Anaplan; escribe el de los que falten. Luego «⬆ Subir a Anaplan» en ANAPLAN · personal (o en la propia ventana).">
-                                                ✎ Nombres Anaplan{{ $sinNomL ? ' ('.count($sinNomL).' faltan)' : '' }}
+                                                title="Nombres de Anaplan: empleados de la nómina del mes con su nombre en Anaplan; escribe el de los que falten. Luego «⬆ Subir a Anaplan» en ANAPLAN · personal (o en la propia ventana).">
+                                                ✎ Nombres{{ $sinNomL ? ' ('.count($sinNomL).' faltan)' : '' }}
                                             </button>
                                         @endif
                                         @include('livewire.contabilidad._staff-faltan')
