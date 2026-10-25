@@ -37,6 +37,12 @@ class Procesos extends Component
     /** Resultado de «Batches Adyen» en una ventana (25-oct-2026, Alex): el texto de la ejecución y si fue bien. */
     public string $resultadoModal = '';
     public bool $resultadoModalOk = true;
+    public string $resultadoModalTitulo = '';
+    /** Historial de resultados de los procesos (25-oct-2026): ventana con filtro por fechas. */
+    public bool $histAbierto = false;
+    public string $histDesde = '';
+    public string $histHasta = '';
+    public string $histTexto = '';
     /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
     public $laboralFichero = null;
     /**
@@ -597,6 +603,66 @@ class Procesos extends Component
     public function cerrarResultadoModal(): void
     {
         $this->resultadoModal = '';
+        $this->resultadoModalTitulo = '';
+    }
+
+    public function abrirHistorial(): void
+    {
+        $this->histAbierto = true;
+        if ($this->histDesde === '') {
+            $this->histDesde = now()->subDays(30)->format('Y-m-d');
+        }
+    }
+
+    /** Tareas de Procesos FIQ ya hechas, más recientes primero, entre las fechas elegidas (y que contengan el texto, si se escribe uno). */
+    public function historialTareas(): array
+    {
+        if (! $this->histAbierto) {
+            return [];
+        }
+        $q = DB::table('tareas')->whereIn('proceso', ['pc.script'])->where('parametros', 'like', '%"grupo":"fiq"%')->whereIn('estado', ['ok', 'error', 'cancelada'])
+            ->orderByDesc('id')->limit(300);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->histDesde)) {
+            $q->where('created_at', '>=', $this->histDesde.' 00:00:00');
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->histHasta)) {
+            $q->where('created_at', '<=', $this->histHasta.' 23:59:59');
+        }
+        $out = [];
+        foreach ($q->get(['id', 'estado', 'created_at', 'terminada_at', 'web', 'resultado']) as $t) {
+            $web = json_decode((string) $t->web, true) ?: [];
+            $res = json_decode((string) $t->resultado, true) ?: [];
+            $etq = implode(' + ', $web['etiquetas'] ?? []) ?: 'Proceso';
+            if ($this->histTexto !== '' && stripos($etq, $this->histTexto) === false) {
+                continue;
+            }
+            $out[] = ['id' => $t->id, 'fecha' => \Carbon\Carbon::parse($t->created_at)->format('d/m/Y H:i'), 'etiqueta' => $etq,
+                'estado' => $t->estado, 'pc' => $res['pc'] ?? '', 'con_salida' => ! empty($res['pasos'])];
+        }
+
+        return $out;
+    }
+
+    public function verResultadoTarea(int $id): void
+    {
+        $t = DB::table('tareas')->where('id', $id)->where('parametros', 'like', '%"grupo":"fiq"%')->first(['id', 'estado', 'created_at', 'web', 'resultado', 'log']);
+        if (! $t) {
+            return;
+        }
+        $web = json_decode((string) $t->web, true) ?: [];
+        $res = json_decode((string) $t->resultado, true) ?: [];
+        $etiquetas = $web['etiquetas'] ?? [];
+        $txt = '';
+        foreach ((array) ($res['pasos'] ?? []) as $i => $paso) {
+            $txt .= ($txt !== '' ? "\n\n" : '').'===== '.($etiquetas[$i] ?? ($paso['script'] ?? 'Proceso')).(! empty($res['pc']) ? ' · en '.$res['pc'] : '')." =====\n"
+                .trim(preg_replace(['/^RESULT_FILE:.*(\r?\n)?/m', '/^RESUMEN_WEB:\s*/m'], '', (string) ($paso['salida'] ?? '')));
+            if (empty($paso['ok'])) {
+                $txt .= "\n\n⚠️ Terminó con código de salida ".($paso['codigo'] ?? '?').'.';
+            }
+        }
+        $this->resultadoModal = $txt !== '' ? $txt : '(sin salida guardada) '.trim((string) $t->log);
+        $this->resultadoModalOk = $t->estado === 'ok';
+        $this->resultadoModalTitulo = '#'.$t->id.' · '.\Carbon\Carbon::parse($t->created_at)->format('d/m/Y H:i').' · '.(implode(' + ', $etiquetas) ?: 'Proceso');
     }
 
     public function limpiarSalida(): void

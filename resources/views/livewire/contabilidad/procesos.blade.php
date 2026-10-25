@@ -31,6 +31,7 @@
                 <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
             @endforeach
         </select>
+        <button type="button" wire:click="abrirHistorial" class="px-2 py-1 text-sm font-normal text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50" title="Lo que ha salido de cada proceso ejecutado, con filtro por fechas">📋 Resultados anteriores</button>
         {{-- 17-oct-2026: quitados los saltos «Rentas Variables · Cash in store · Pagos fin de mes»: los tres son filas del checklist --}}
     </h1>
 
@@ -38,11 +39,48 @@
 
     @include('livewire._ficheros_base', ['eid' => (int) config('contabilidad.fiq_entidad'), 'clave' => 'fiq'])
 
+    @if ($histAbierto)
+        {{-- Historial de resultados de los procesos (25-oct-2026): filtro por fechas; «Ver» abre la salida de esa ejecución --}}
+        <div class="fixed inset-0 z-40 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="$set('histAbierto', false)">
+            <div class="w-full p-5 space-y-3 bg-white rounded-lg shadow-xl" style="max-width:60rem">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-lg font-semibold text-gray-900">📋 Resultados de los procesos</h2>
+                    <x-button.secondary wire:click="$set('histAbierto', false)">Cerrar</x-button.secondary>
+                </div>
+                <div class="flex flex-wrap items-end gap-3 text-sm text-gray-700">
+                    <label>Desde <input type="date" wire:model.live="histDesde" class="block text-sm border-gray-300 rounded-md"></label>
+                    <label>Hasta <input type="date" wire:model.live="histHasta" class="block text-sm border-gray-300 rounded-md"></label>
+                    <label>Proceso <input type="text" wire:model.live.debounce.400ms="histTexto" placeholder="p. ej. Adyen" class="block text-sm border-gray-300 rounded-md"></label>
+                </div>
+                @php $filasHist = $this->historialTareas(); @endphp
+                <div class="overflow-auto border rounded" style="max-height:60vh">
+                    <table class="min-w-full text-sm">
+                        <thead class="sticky top-0 text-left text-gray-500 bg-gray-50"><tr><th class="px-2 py-1">Fecha</th><th class="px-2 py-1">Proceso</th><th class="px-2 py-1">PC</th><th class="px-2 py-1">Resultado</th><th></th></tr></thead>
+                        <tbody>
+                            @forelse ($filasHist as $h)
+                                <tr class="border-t">
+                                    <td class="px-2 py-1 whitespace-nowrap">{{ $h['fecha'] }}</td>
+                                    <td class="px-2 py-1">{{ $h['etiqueta'] }}</td>
+                                    <td class="px-2 py-1 text-gray-500">{{ $h['pc'] }}</td>
+                                    <td class="px-2 py-1 whitespace-nowrap">{{ $h['estado'] === 'ok' ? '✅ bien' : ($h['estado'] === 'cancelada' ? '🚫 cancelada' : '⚠️ con problema') }}</td>
+                                    <td class="px-2 py-1 text-right"><button type="button" wire:click="verResultadoTarea({{ $h['id'] }})" class="text-indigo-600 hover:underline">Ver</button></td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="5" class="px-2 py-3 text-gray-500">No hay ejecuciones en esas fechas.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-gray-500">Salen las últimas 300 ejecuciones de Procesos FIQ; los procesos automáticos (Fiscal Report, UBS…) no están aquí.</p>
+            </div>
+        </div>
+    @endif
+
     @if ($resultadoModal !== '')
         {{-- Resultado de «Batches Adyen» (25-oct-2026): lo que ha hecho el proceso, en una ventana --}}
         <div class="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="cerrarResultadoModal">
             <div class="w-full p-5 space-y-3 bg-white rounded-lg shadow-xl" style="max-width:56rem; border-top:6px solid {{ $resultadoModalOk ? '#16a34a' : '#dc2626' }}">
-                <h2 class="text-lg font-semibold text-gray-900">{{ $resultadoModalOk ? '✅ Batches Adyen: terminado' : '⚠️ Batches Adyen: ha habido un problema' }}</h2>
+                <h2 class="text-lg font-semibold text-gray-900">{{ $resultadoModalTitulo !== '' ? ($resultadoModalOk ? '✅ ' : '⚠️ ').$resultadoModalTitulo : ($resultadoModalOk ? '✅ Batches Adyen: terminado' : '⚠️ Batches Adyen: ha habido un problema') }}</h2>
                 <pre class="p-3 overflow-auto text-xs whitespace-pre-wrap bg-gray-900 rounded text-green-400" style="max-height:65vh">{{ $resultadoModal }}</pre>
                 <div class="flex justify-end">
                     <x-button.secondary wire:click="cerrarResultadoModal">Cerrar</x-button.secondary>
