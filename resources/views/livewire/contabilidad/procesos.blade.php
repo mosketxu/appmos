@@ -274,16 +274,16 @@
                                     @endif
                                     @if ($id === 'adyen_batch')
                                         {{-- 25-oct-2026: los settlement detail de Adyen, tal como bajan (varios a la vez); el botón «Ejecutar» los procesa --}}
-                                        <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1">
-                                            <x-subir-fichero wire:model="adyenBatchFicheros" multiple accept=".xlsx" texto="Settlement de Adyen (uno o varios)"
-                                                title="Los settlement_detail_report_batch_NNN.xlsx tal como bajan de Adyen (Reports › Settlement details), sin tocar. Se pueden elegir o arrastrar varios." />
+                                        <div class="flex items-center text-xs text-gray-600 gap-x-2 whitespace-nowrap">
+                                            <x-subir-fichero wire:model="adyenBatchFicheros" multiple accept=".xlsx" texto="Settlement de Adyen""
+                                                title="Los settlement_detail_report_batch_NNN.xlsx tal como bajan de Adyen (Reports › Settlement details), sin tocar. Se pueden elegir o arrastrar varios (uno o varios batches a la vez)." />
                                             @if (count(array_filter((array) $adyenBatchFicheros)))
                                                 <span class="text-green-700">✓ {{ count(array_filter((array) $adyenBatchFicheros)) }} fichero(s) listos</span>
                                                 <button type="button" wire:click="$set('adyenBatchFicheros', [])" class="text-gray-500 underline">quitar</button>
                                             @else
-                                                <span class="text-gray-500">Falta subir los ficheros de Adyen.</span>
+                                                <span class="text-gray-500">Falta subir ficheros</span>
                                             @endif
-                                            <button type="button" wire:click="abrirHistorial('Adyen')" class="px-2 py-0.5 text-xs text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 whitespace-nowrap" title="Lo que salió de las ejecuciones anteriores de este proceso, con filtro por fechas">📋 Resultados anteriores</button>
+                                            <button type="button" wire:click="abrirHistorial('Adyen')" class="px-2 py-0.5 text-xs text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 whitespace-nowrap" title="Resultados anteriores: lo que salió de las ejecuciones previas de este proceso, con filtro por fechas">📋 Resultados</button>
                                         </div>
                                     @endif
                                     @if (in_array($id, ['monthly_sales', 'anaplan'], true))
