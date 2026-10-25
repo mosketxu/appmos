@@ -1,6 +1,6 @@
 {{-- Subida de ficheros base de SAGE desde cualquier pantalla (FicherosBaseSubida, 19-oct-2026). --}}
 <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 16px;margin-bottom:12px">
-    <details @if ($abierto) open @endif>
+    <details x-data="{ o: @js((bool) $abierto) }" :open="o" @toggle="o = $el.open">
         <summary style="cursor:pointer;font-weight:600;color:#111827">📂 Ficheros base de SAGE de esta empresa
             <span class="text-xs font-normal text-gray-500">— los subes aquí y los usan todos los procesos (mayor, proveedores, plan de cuentas…)</span></summary>
         @if ($error)<div class="text-sm" style="color:#b91c1c;margin-top:6px">⛔ {{ $error }}</div>@endif
