@@ -221,6 +221,19 @@
                                         <x-subir-fichero wire:model="adyenSettlement" accept=".xlsx" :fichero="$adyenSettlement" opcional texto="Settlement"
                                             title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes." />
                                     @endif
+                                    @if ($id === 'adyen_batch')
+                                        {{-- 25-oct-2026: los settlement detail de Adyen, tal como bajan (varios a la vez); el botón «Ejecutar» los procesa --}}
+                                        <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1">
+                                            <x-subir-fichero wire:model="adyenBatchFicheros" multiple accept=".xlsx" texto="Settlement de Adyen (uno o varios)"
+                                                title="Los settlement_detail_report_batch_NNN.xlsx tal como bajan de Adyen (Reports › Settlement details), sin tocar. Se pueden elegir o arrastrar varios." />
+                                            @if (count(array_filter((array) $adyenBatchFicheros)))
+                                                <span class="text-green-700">✓ {{ count(array_filter((array) $adyenBatchFicheros)) }} fichero(s) listos</span>
+                                                <button type="button" wire:click="$set('adyenBatchFicheros', [])" class="text-gray-500 underline">quitar</button>
+                                            @else
+                                                <span class="text-gray-500">Falta subir los ficheros de Adyen.</span>
+                                            @endif
+                                        </div>
+                                    @endif
                                     @if (in_array($id, ['monthly_sales', 'anaplan'], true))
                                         @php $mmSel = str_pad($mes, 2, '0', STR_PAD_LEFT); $ent = $this->entradas[$id] ?? null; @endphp
                                         {{-- 17-oct-2026 (Alex, para toda la web): el estado va a la derecha del botón si cabe; si no, debajo --}}

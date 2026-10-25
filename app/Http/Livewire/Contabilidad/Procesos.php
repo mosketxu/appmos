@@ -32,6 +32,8 @@ class Procesos extends Component
 
     /** Adyen: settlement elegido a mano (opcional; si no, el script lo busca en la carpeta del mes). */
     public $adyenSettlement = null;
+    /** Batches Adyen (25-oct-2026): los settlement_detail_report_batch_NNN.xlsx tal como bajan de Adyen (uno o varios). */
+    public $adyenBatchFicheros = [];
     /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
     public $laboralFichero = null;
     /**
@@ -374,6 +376,16 @@ class Procesos extends Component
                 'script' => 'adyenReparto.js',
                 'soportaReal' => true,
                 'ayuda' => 'Lee la factura de Adyen y reparte el coste entre las tiendas a partir del reporte de la web de Adyen.',
+            ],
+            // 2026-10-25: settlement detail de Adyen (un fichero por batch) -> Bat MM DD importe N.xlsx + pestaña Batch de Totals Batch Adyen.xlsx
+            // (conciliación de Adyen). Escribe con Excel por COM (el PC tiene que tener Excel) y refresca las dinámicas.
+            'adyen_batch' => [
+                'label' => 'Batches Adyen',
+                'script' => 'AdyenBatch/adyenBatch.py',
+                'python' => true,
+                'soportaReal' => true,
+                'timeout' => 1500,
+                'ayuda' => 'Pasa los settlement de Adyen a Bat MM DD importe N.xlsx y los añade a Totals Batch Adyen.xlsx.',
             ],
         ];
     }
@@ -809,6 +821,28 @@ class Procesos extends Component
                 $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--settlement', $f->getRealPath()]);
             }
         }
+        if ($id === 'adyen_batch') {
+            $fs = array_values(array_filter((array) $this->adyenBatchFicheros));
+            if (! $fs) {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ Sube primero los ficheros de Adyen (settlement_detail_report_batch_NNN.xlsx).');
+                return;
+            }
+            foreach ($fs as $f) {
+                if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                    $this->dispatch('proceso-terminado', mensaje: '⚠️ «'.$f->getClientOriginalName().'» no es un .xlsx: sube los settlement tal como los baja Adyen.');
+                    return;
+                }
+            }
+            $pasos[0]['args'][] = '--ficheros';
+            foreach ($fs as $i => $f) {
+                if ($this->remoto()) {
+                    $pasos[0]['args'][] = '{E'.$i.'}';
+                    $opc['entradas'][] = ['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/adyen_batch_in'];
+                } else {
+                    $pasos[0]['args'][] = $f->getRealPath();
+                }
+            }
+        }
         if (in_array($id, ['monthly_sales', 'anaplan'], true) && ! $this->prepararSys($mm, $pasos, $opc)) {
             return;
         }
@@ -837,6 +871,9 @@ class Procesos extends Component
         $this->lanzar($pasos, $opc);
         if ($id === 'adyen') {
             $this->adyenSettlement = null;
+        }
+        if ($id === 'adyen_batch') {
+            $this->adyenBatchFicheros = [];
         }
         if ($id === 'laboral') {
             $this->laboralFichero = null;
