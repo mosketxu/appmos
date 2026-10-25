@@ -60,7 +60,10 @@ class FicherosBaseSubida extends Component
         $reglas = ['proveedores' => [['CifDni'], 'el listado de proveedores de SAGE (con CifDni y CodigoPostal)'],
             'clientes' => [['CifDni'], 'el listado de clientes de SAGE'],
             'plan' => [['Código cuenta', 'Descripción'], 'el plan de cuentas de SAGE (Código cuenta y Descripción)']];
-        if (isset($reglas[$tipo]) && ! FicherosBase::contiene($ruta, ...$reglas[$tipo][0])) {
+        // El listado de clientes de SAGE (EU_Clientes_GRID) trae «CIF/DNI»; el de proveedores, «CifDni»
+        $vale = $tipo === 'clientes' ? (FicherosBase::contiene($ruta, 'CIF/DNI') || FicherosBase::contiene($ruta, 'CifDni'))
+            : ! isset($reglas[$tipo]) || FicherosBase::contiene($ruta, ...$reglas[$tipo][0]);
+        if (! $vale) {
             $this->error = '«'.$nombre.'» no parece '.$reglas[$tipo][1].'. Súbelo igualmente desde la pantalla de Facturas OCR si estás seguro.';
             return;
         }
