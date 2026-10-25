@@ -32,6 +32,8 @@ class Procesos extends Component
 
     /** Adyen: settlement elegido a mano (opcional; si no, el script lo busca en la carpeta del mes). */
     public $adyenSettlement = null;
+    /** Ya se avisó de que no hay settlement subido (el segundo «Ejecutar» sigue adelante y lo busca en la carpeta Adyen del mes). */
+    public bool $adyenAvisado = false;
     /** Batches Adyen (25-oct-2026): los settlement_detail_report_batch_NNN.xlsx tal como bajan de Adyen (uno o varios). */
     public $adyenBatchFicheros = [];
     /** Resultado de «Batches Adyen» en una ventana (25-oct-2026, Alex): el texto de la ejecución y si fue bien. */
@@ -883,6 +885,12 @@ class Procesos extends Component
             ];
         }
         $opc = ['resultados' => $id, 'post' => 'postProceso', 'ctx' => ['id' => $id, 'mes' => $this->mes]];
+        if ($id === 'adyen' && ! $this->adyenSettlement && ! $this->adyenAvisado) {
+            // 25-oct-2026 (Alex): sin settlement el reparto no hace nada. Se avisa; si ya está en la carpeta Adyen del mes, el segundo clic sigue.
+            $this->adyenAvisado = true;
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No has subido el settlement. Súbelo con el botón «Settlement». Si ya está en la carpeta Adyen del mes (settlement_report_aggregate_*.xlsx), pulsa Ejecutar otra vez.');
+            return;
+        }
         if ($id === 'adyen' && $this->adyenSettlement) {
             $f = $this->adyenSettlement;
             if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
@@ -946,6 +954,7 @@ class Procesos extends Component
         $this->lanzar($pasos, $opc);
         if ($id === 'adyen') {
             $this->adyenSettlement = null;
+            $this->adyenAvisado = false;
         }
         if ($id === 'adyen_batch') {
             $this->adyenBatchFicheros = [];

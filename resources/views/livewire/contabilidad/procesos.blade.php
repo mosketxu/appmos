@@ -269,8 +269,8 @@
                                         @include('livewire.contabilidad._staff-faltan')
                                     @endif
                                     @if ($id === 'adyen')
-                                        <x-subir-fichero wire:model="adyenSettlement" accept=".xlsx" :fichero="$adyenSettlement" opcional texto="Settlement"
-                                            title="Opcional: si no eliges ninguno, se busca settlement_report_aggregate_*.xlsx en la carpeta Adyen del mes." />
+                                        <x-subir-fichero wire:model="adyenSettlement" accept=".xlsx" :fichero="$adyenSettlement" texto="Settlement"
+                                            title="El settlement_report_aggregate_*.xlsx de Adyen. Si ya está en la carpeta Adyen del mes puedes ejecutar sin subirlo (te avisa antes)." />
                                     @endif
                                     @if ($id === 'adyen_batch')
                                         {{-- 25-oct-2026: los settlement detail de Adyen, tal como bajan (varios a la vez); el botón «Ejecutar» los procesa --}}
