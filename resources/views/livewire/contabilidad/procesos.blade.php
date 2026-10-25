@@ -326,10 +326,10 @@
                                     @endif
                                     @if ($id === 'open_items')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
-                                        <label class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1" title="Opcional: el mayor de SAGE en columnas («FIQ MAyor.xlsx» de SageLauncher). Si no eliges ninguno, se usa el más reciente entre el de SageLauncher del PC y el último subido en cualquier pantalla. Resultado: OpenItems_FIQ_CL_<hoy>.xlsx, con el cuadre por cuenta en el resumen (amarillo = no cuadra).">
+                                        <label class="flex items-center text-xs text-gray-600 gap-x-2 whitespace-nowrap" title="Opcional: el mayor de SAGE en columnas («FIQ MAyor.xlsx» de SageLauncher). Si no eliges ninguno, se usa el más reciente entre el de SageLauncher del PC y el último subido en cualquier pantalla. Resultado: OpenItems_FIQ_CL_<hoy>.xlsx, con el cuadre por cuenta en el resumen (amarillo = no cuadra).">
                                             <x-subir-fichero wire:model="openItemsMayor" accept=".xlsx" :fichero="$openItemsMayor" opcional texto="Mayor" />
                                             @if (! $openItemsMayor)
-                                                <span class="text-gray-500">Usa el de SageLauncher del PC{{ $mc ? ' o «'.$mc['nombre'].'» ('.$mc['fecha'].'), el más reciente' : '' }}</span>
+                                                <span class="text-gray-500" title="Usa el más reciente entre el de SageLauncher del PC{{ $mc ? ' y «'.$mc['nombre'].'» ('.$mc['fecha'].')' : '' }}">✓ Usa el más reciente <span class="text-indigo-500 cursor-help">ⓘ</span></span>
                                             @endif
                                         </label>
                                     @endif
