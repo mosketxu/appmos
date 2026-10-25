@@ -302,7 +302,7 @@
                                                 <div class="leading-tight" title="{{ $this->entradas['origen'] ?? '' }}{{ $sc ? "\nSyS {$mmSel} de los ficheros base: «{$sc['nombre']}», {$sc['fecha']}".($sc['origen'] ? " · {$sc['origen']}" : '') : '' }}">
                                                     @if (! $faltan)
                                                         {{-- 17-oct-2026 (Alex): en una línea y más corto; el detalle, al pasar el ratón --}}
-                                                        <span class="text-green-700">✓ Ficheros del mes {{ $mmSel }} completos</span>@if ($sc)<span class="{{ $sc['nuevo'] ? 'text-indigo-700' : 'text-gray-500' }}"> · SyS: «{{ $sc['nombre'] }}» {{ \Illuminate\Support\Str::before($sc['fecha'], ' ') }}{{ $sc['nuevo'] ? ' (nuevo: se deja en la carpeta al ejecutar)' : '' }}</span>@endif
+                                                        <span class="text-green-700 whitespace-nowrap" title="Ficheros del mes {{ $mmSel }} completos{{ $sc ? ' · SyS: «'.$sc['nombre'].'» '.\Illuminate\Support\Str::before($sc['fecha'], ' ').($sc['nuevo'] ? ' (nuevo: se deja en la carpeta al ejecutar)' : '') : '' }}">✓ Ficheros completos <span class="text-indigo-500 cursor-help">ⓘ</span></span>
                                                     @else
                                                         <span class="font-medium text-red-700">Falta para el mes {{ $mmSel }}:</span>
                                                         @foreach ($faltan as $e)
