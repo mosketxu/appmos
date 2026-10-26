@@ -38,7 +38,7 @@
             {{-- tabla pus (movil: tarjeta de 3 lineas por registro) --}}
             <div class="space-y-2 md:hidden">
                 @forelse ($pus as $pu)
-                    <div class="p-3 space-y-2 bg-white border border-gray-200 rounded-lg shadow-sm" wire:loading.class.delay="opacity-50">
+                    <div class="p-3 space-y-2 border border-gray-200 rounded-lg shadow-sm pu-tarjeta" style="background:{{ $loop->odd ? '#eef2ff' : '#ffffff' }}" wire:loading.class.delay="opacity-50">
                         <div class="flex items-start justify-between">
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Destino') }}</span>
