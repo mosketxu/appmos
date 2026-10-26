@@ -12,7 +12,8 @@
         .ent-acc, .ent-controles { display:none !important }
         .ent-abierta .ent-acc { display:block !important; width:100% !important; order:3; padding:.2rem 0 .4rem }
         .ent-abierta .ent-acc .hidden { display:inline-block !important }
-        .ent-abierta .ent-controles { display:flex !important }
+        /* 26-oct-2026 (Alex): al desplegar en móvil, sin la fila de controles y solo los botones PU y Editar */
+        .ent-abierta .ent-acc .ent-solo-pc { display:none !important }
         .ent-abierta .ent-toggle { background:#4338ca; color:#fff }
     }
 </style>
@@ -123,15 +124,15 @@
                 <div class="w-5/12 md:w-4/12 lg:w-2/12 ent-acc">
                     <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:flex-nowrap lg:space-x-3">
                         <x-icon.key href="{{ route('entidad.pu',$entidad) }}" title="Pus"/>
-                        <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos"/>
-                        <x-icon.clock-a href="{{ route('entidad.historial',$entidad) }}"  title="Historial"/>
-                        <x-icon.impuestos href="{{ route('entidad.impuestos',$entidad) }}" title="Impuestos" class="hidden sm:inline-block"/>
+                        <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos" class="ent-solo-pc"/>
+                        <x-icon.clock-a href="{{ route('entidad.historial',$entidad) }}"  title="Historial" class="ent-solo-pc"/>
+                        <x-icon.impuestos href="{{ route('entidad.impuestos',$entidad) }}" title="Impuestos" class="hidden sm:inline-block ent-solo-pc"/>
                         <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
                         {{-- Ocultos a petición: botones Prefactura y Factura
                         <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
                         <x-icon.euro-a href="{{ route('facturacion.show',$entidad)}}"  title="Facturas"/>
                         --}}
-                        <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1"/>
+                        <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1 ent-solo-pc"/>
                     </div>
                 </div>
             </div>
