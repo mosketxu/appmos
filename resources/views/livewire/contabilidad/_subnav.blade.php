@@ -10,7 +10,7 @@
     $pestanas = [
         ['contabilidad.procesosmensuales', 'contabilidad.procesos-mensuales', 'Proc.Mensuales', config('contabilidad.procesosmensuales_url')],
         ['contabilidad.procesos', 'contabilidad.procesos', 'Procesos FIQ', null],
-        ['contabilidad.facturacionpdf', 'contabilidad.facturacion-pdf', 'Facturación PDF', null],
+        ['contabilidad.facturacionpdf', 'contabilidad.facturacion-pdf', 'Acciones PDF', null],
         ['contabilidad.durcal', 'contabilidad.durcal', 'Durcal', null],
         ['contabilidad.bancos', 'contabilidad.bancos', 'Bancos', config('contabilidad.bancos_url')],
         ['contabilidad.facturasocr', 'contabilidad.facturas-ocr', 'Facturas OCR', null],

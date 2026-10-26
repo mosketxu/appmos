@@ -24,7 +24,7 @@
 
     {{-- 2026-09-29: un proceso cada vez, elegido con los botones junto al título --}}
     <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <h1 class="text-2xl font-semibold text-gray-900">Facturación PDF</h1>
+        <h1 class="text-2xl font-semibold text-gray-900">Acciones PDF</h1>
         <div class="inline-flex overflow-hidden border border-indigo-600 rounded-md">
             @foreach (['Suma' => 'Suma', 'Balerga' => 'Balerga', 'Generico' => 'Genérico'] as $clave => $texto)
                 <button type="button" wire:click="$set('proceso', '{{ $clave }}')"

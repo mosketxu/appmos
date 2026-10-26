@@ -439,7 +439,7 @@ class FacturacionPdf extends Component
             return false;
         }
 
-        $etiqueta = "Facturación PDF · {$cliente} ({$etiquetaSufijo})";
+        $etiqueta = "Acciones PDF · {$cliente} ({$etiquetaSufijo})";
         if ($this->remoto()) {
             // El PDF viaja como entrada de la tarea: el PC lo deja en <Cliente>\Entrada con nombre nuevo (el script lo archiva)
             $this->resultados[$cliente] = [];
@@ -579,7 +579,7 @@ class FacturacionPdf extends Component
 
     public function analizarGenerico(): void
     {
-        $etiqueta = 'Facturación PDF · Genérico (Analizar)';
+        $etiqueta = 'Acciones PDF · Genérico (Analizar)';
         if (! $this->genericoPermitido) {
             $this->salida .= "\n\n===== {$etiqueta} =====\n⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.";
             return;
@@ -774,7 +774,7 @@ class FacturacionPdf extends Component
         $rutaPlan = $master.'.plan.json';
         file_put_contents($rutaPlan, json_encode($plan, JSON_UNESCAPED_UNICODE));
 
-        $etiqueta = 'Facturación PDF · Genérico (Generar PDFs)';
+        $etiqueta = 'Acciones PDF · Genérico (Generar PDFs)';
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         try {
             $result = Process::path($this->genericoDir())->timeout(300)
@@ -854,7 +854,7 @@ class FacturacionPdf extends Component
 
     public function anotarCarpeta(string $texto): void
     {
-        $this->salida .= "\n\n===== Facturación PDF · Genérico (en tu carpeta) =====\n".mb_substr($texto, 0, 20000);
+        $this->salida .= "\n\n===== Acciones PDF · Genérico (en tu carpeta) =====\n".mb_substr($texto, 0, 20000);
     }
 
     /** Antes de subir los ficheros marcados de una carpeta: lote nuevo y nombre original detrás. */
@@ -901,7 +901,7 @@ class FacturacionPdf extends Component
         }
         if ($this->remoto()) {
             $this->lanzarEnCola([['script' => 'herramientas/listar_destinatarios.py', 'args' => ['--client', $cliente], 'timeout' => 60,
-                'etiqueta' => "Facturación PDF · {$cliente} · destinatarios"]],
+                'etiqueta' => "Acciones PDF · {$cliente} · destinatarios"]],
                 ['post' => 'postDestinatarios', 'ctx' => ['cliente' => $cliente, 'ini' => strlen($this->salida)]]);
             return;
         }
@@ -1023,7 +1023,7 @@ class FacturacionPdf extends Component
             return;
         }
         $args = ['--client', $cliente, '--cambios', json_encode($lista, JSON_UNESCAPED_UNICODE)];
-        $etiqueta = "Facturación PDF · {$cliente} · guardar ".count($lista).' cambio(s) en TODO';
+        $etiqueta = "Acciones PDF · {$cliente} · guardar ".count($lista).' cambio(s) en TODO';
         if ($this->remoto()) {
             $this->lanzarEnCola([['script' => 'herramientas/editar_destinatario.py', 'args' => $args, 'timeout' => 170, 'etiqueta' => $etiqueta]],
                 ['post' => 'postGuardarCambios', 'ctx' => ['cliente' => $cliente, 'enviados' => $this->cambios[$cliente]]]);

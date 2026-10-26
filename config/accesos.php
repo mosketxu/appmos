@@ -42,7 +42,7 @@ return [
         ],
         'Contabilidad' => [
             'contabilidad.procesos' => 'Procesos FIQ',
-            'contabilidad.facturacionpdf' => 'Facturación PDF',
+            'contabilidad.facturacionpdf' => 'Acciones PDF',
             'contabilidad.durcal' => 'Durcal',
             'contabilidad.bancos' => 'Bancos',
             'contabilidad.facturasocr' => 'Facturas OCR',
