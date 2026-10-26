@@ -76,7 +76,7 @@
             {{-- tabla entidades: en móvil, nombre + acciones y debajo los controles; en pantalla grande, columnas --}}
             <div class="flex w-full mt-1 text-sm bg-blue-100 rounded-t-md">
                 <div class="hidden pl-2 lg:w-10 lg:flex">{{ __('Fav') }} </div>
-                <div class="w-7/12 pl-2 md:w-4/12 lg:w-3/12 xl:w-2/12">{{ __('Entidad') }}</div>
+                <div class="w-7/12 pl-2 md:w-4/12 lg:w-3/12 xl:w-2/12" style="flex-grow:1">{{ __('Entidad') }}</div>
                 <div class="hidden xl:block xl:w-1/12">{{ __('Nif') }} </div>
                 <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Responsable') }}</div>
                 <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Otro Resp.') }}</div>
@@ -84,7 +84,7 @@
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('Facturar') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Impuestos') }}</div>
                 <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Fact.') }}</div>
-                <div class="hidden lg:w-1/12 lg:flex">{{ __('Estado') }}</div>
+                <div class="hidden lg:flex" style="width:4.5rem;flex:none">{{ __('Estado') }}</div>
                 <div class="w-5/12 md:w-4/12 lg:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
@@ -98,7 +98,7 @@
                     @endif
                 </div>
                 {{-- Nombre y NIF: clic = editar la ficha; arrastrar selecciona sin abrirla; doble clic copia el campo (x-celda-ficha) --}}
-                <x-celda-ficha :href="route('entidad.edit',$entidad)" :texto="$entidad->entidad" class="block py-2 pl-3 pr-2 truncate w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12 ent-nombre hover:text-indigo-700" />
+                <x-celda-ficha :href="route('entidad.edit',$entidad)" :texto="$entidad->entidad" class="block py-2 pl-3 pr-2 truncate w-7/12 md:w-4/12 lg:w-3/12 xl:w-2/12 ent-nombre hover:text-indigo-700" style="flex-grow:1; cursor:pointer; user-select:text" />
                 <x-celda-ficha :href="route('entidad.edit',$entidad)" :texto="$entidad->nif" class="hidden py-2 pr-2 truncate xl:block xl:w-1/12 hover:text-indigo-700" style="margin-left:0" />
                 {{-- Responsable: solo en pantalla media o grande --}}
                 <div class="items-center hidden gap-1 md:flex md:w-2/12 lg:w-1/12">
@@ -114,7 +114,7 @@
                 <div class="hidden lg:w-1/12 lg:flex">
                     <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
                 </div>
-                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
+                <div class="items-center hidden lg:flex" style="width:4.5rem;flex:none">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
                 <button type="button" class="ent-toggle" x-on:click="abierta = ! abierta" x-bind:aria-expanded="abierta" title="Acciones y estado">⋯</button>
                 <div class="w-5/12 md:w-4/12 lg:w-2/12 ent-acc">
                     <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:flex-nowrap lg:space-x-3">

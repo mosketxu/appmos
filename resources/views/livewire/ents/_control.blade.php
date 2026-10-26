@@ -36,5 +36,5 @@
     @endphp
     <{{ $tag }} @if ($puede) type="button" wire:click="alternar({{ $e->id }}, 'estado')" @endif
         title="Estado{{ $puede ? ': clic para pasar a «'.\App\Models\Entidad::ESTADOS[$sig].'» (activo → baja → inactivo → liquidada)' : '' }}"
-        style="display:inline-block;padding:1px 10px;border-radius:9999px;font-size:.75rem;font-weight:600;border:1px solid {{ $col[1] }};background:{{ $col[0] }};color:{{ $col[2] }}">{{ \App\Models\Entidad::ESTADOS[$est] ?? '—' }}</{{ $tag }}>
+        style="display:inline-block;padding:0 6px;border-radius:9999px;font-size:.7rem;font-weight:600;border:1px solid {{ $col[1] }};background:{{ $col[0] }};color:{{ $col[2] }}">{{ \App\Models\Entidad::ESTADOS[$est] ?? '—' }}</{{ $tag }}>
 @endif
