@@ -14,10 +14,10 @@
         title="Facturar: {{ $e->facturar ? 'sí' : 'no' }}{{ $puede ? ' (clic para cambiar)' : '' }}"
         class="px-1 text-sm font-bold rounded {{ $e->facturar ? 'text-green-600 hover:bg-green-50' : 'text-red-400 hover:bg-red-50' }}">{!! $e->facturar ? '&#10003;' : '&#10007;' !!}</{{ $tag }}>
 @elseif ($c === 'ciclo')
-    @php $ok = in_array((int) $e->cicloimpuesto_id, [1, 3], true); @endphp
+    @php $ok = in_array((int) $e->cicloimpuesto_id, [1, 3], true); $nc = $nombresCiclo[(int) $e->cicloimpuesto_id] ?? 'Sin definir'; @endphp
     <{{ $tag }} @if ($puede) type="button" wire:click="siguienteCiclo({{ $e->id }})" @endif
-        title="Ciclo de impuestos: {{ $nombresCiclo[(int) $e->cicloimpuesto_id] ?? 'Sin definir' }}{{ $puede ? ' (clic: pasa al siguiente)' : '' }}"
-        class="px-1 py-0.5 text-xs border rounded-md whitespace-nowrap {{ $ok ? 'text-gray-600 border-gray-300 hover:bg-gray-100' : 'text-yellow-800 border-yellow-400 bg-yellow-50' }}">@php $nc = $nombresCiclo[(int) $e->cicloimpuesto_id] ?? 'Sin definir'; @endphp{{ $nc === 'Sin definir' ? '—' : (mb_strlen($nc) > 5 ? mb_substr($nc, 0, 4).'.' : $nc) }}</{{ $tag }}>
+        title="Ciclo de impuestos: {{ $nc }}{{ $puede ? ' (clic: pasa al siguiente)' : '' }}"
+        class="px-1 py-0.5 text-xs border rounded-md whitespace-nowrap {{ $ok ? 'text-gray-600 border-gray-300 hover:bg-gray-100' : 'text-yellow-800 border-yellow-400 bg-yellow-50' }}">{{ $nc === 'Sin definir' ? '—' : (mb_strlen($nc) > 5 ? mb_substr($nc, 0, 4).'.' : $nc) }}</{{ $tag }}>
 @elseif ($c === 'responsable')
     @if ($puede)
         <select wire:change="cambiarResponsable({{ $e->id }}, $event.target.value)" title="Responsable Suma (se guarda al momento)"
