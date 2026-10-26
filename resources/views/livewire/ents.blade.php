@@ -4,6 +4,9 @@
     @media (max-width: 767px) {
         /* Móvil: solo el nombre de la entidad y un botón ⋯; al pulsarlo se despliegan acciones y estado */
         .ent-fila { flex-wrap:wrap }
+        /* 26-oct-2026 (Alex): en móvil solo el buscador; sin filtros ni «Nueva Entidad» */
+        .ent-filtro, .ent-nueva { display:none !important }
+        .ent-buscar { width:100%; flex:1 1 100% }
         .ent-nombre { flex:1 1 0; width:auto !important; min-width:0 }
         .ent-toggle { display:inline-flex; align-items:center; justify-content:center; width:2.4rem; height:2.4rem; font-size:1.4rem; line-height:1; color:#4338ca; background:#eef2ff; border:1px solid #c7d2fe; border-radius:.5rem; margin-right:.4rem }
         .ent-acc, .ent-controles { display:none !important }
@@ -35,8 +38,8 @@
 
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex flex-wrap items-center gap-2">
-                    <input type="text" wire:model.live.debounce.1000ms="search" class="py-1 border border-blue-100 rounded-lg" placeholder="Búsqueda..." autofocus/>
-                    <div class="px-1 text-xs">
+                    <input type="text" wire:model.live.debounce.1000ms="search" class="py-1 border border-blue-100 rounded-lg ent-buscar" placeholder="Búsqueda..." autofocus/>
+                    <div class="px-1 text-xs ent-filtro">
                         <label class="px-1 text-gray-600">Clientes</label>
                         <select wire:model.live="filtrocliente" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="1">Activo</option>
@@ -46,7 +49,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="px-1 text-xs">
+                    <div class="px-1 text-xs ent-filtro">
                         <label class="px-1 text-gray-600">Estado</label>
                         <select wire:model.live="filtroactivo" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -54,7 +57,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="px-1 text-xs">
+                    <div class="px-1 text-xs ent-filtro">
                         <label class="px-1 text-gray-600">Facturar</label>
                         <select wire:model.live="filtrofacturar" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="0">No</option>
@@ -62,7 +65,7 @@
                             <option value="">Todos</option>
                         </select>
                     </div>
-                    <div class="px-1 text-xs">
+                    <div class="px-1 text-xs ent-filtro">
                         <label class="px-1 text-gray-600">Responsable</label>
                         <select wire:model.live="filtroresponsable" class="py-2 text-xs text-gray-600 bg-white border-blue-300 rounded-md shadow-sm appearance-none hover:border-gray-400 focus:outline-none">
                             <option value="">Todos</option>
@@ -71,7 +74,7 @@
                         </select>
                     </div>
                 </div>
-                <x-button.button  onclick="location.href = '{{ route('entidad.nueva',$ruta) }}'" color="blue"><x-icon.plus/>{{ __('Nueva Entidad') }}</x-button.button>
+                <div class="ent-nueva"><x-button.button  onclick="location.href = '{{ route('entidad.nueva',$ruta) }}'" color="blue"><x-icon.plus/>{{ __('Nueva Entidad') }}</x-button.button></div>
             </div>
             {{-- tabla entidades: en móvil, nombre + acciones y debajo los controles; en pantalla grande, columnas --}}
             <div class="flex w-full mt-1 text-sm bg-blue-100 rounded-t-md">
