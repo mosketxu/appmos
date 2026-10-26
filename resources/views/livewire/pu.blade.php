@@ -1,4 +1,11 @@
 <div class="">
+<style>
+    /* 26-oct-2026 (Alex, «cegatos»): en móvil los valores y los campos de edición, mucho más grandes; un campo por línea */
+    .pu-valor { font-size:1.2rem; line-height:1.4; word-break:break-word }
+    @media (max-width: 767px) {
+        #destino, #url, #us, #us2, #ps, #observaciones { font-size:1.2rem; padding-top:.55rem; padding-bottom:.55rem }
+    }
+</style>
     @livewire('menu',['entidad'=>$ent,'ruta'=>$ruta,'iconos'=>false],key($ent->id))
 
     <div class="p-1 mx-2">
@@ -35,35 +42,35 @@
                         <div class="flex items-start justify-between">
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Destino') }}</span>
-                                <span class="block font-medium text-gray-700 truncate">{{ $pu->destino }}</span>
+                                <span class="block font-medium text-gray-700 pu-valor">{{ $pu->destino }}</span>
                             </div>
                             <div class="flex items-center flex-shrink-0 pt-3 ml-2 space-x-3">
                                 <x-icon.edit-a wire:click="edit({{ $pu->id }})" href="#"/>
                                 <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+                        <div class="grid grid-cols-1 gap-y-3">
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Url') }}</span>
-                                <span class="block text-xs text-gray-600 truncate">{{ $pu->url ?: '—' }}</span>
+                                <span class="block text-gray-700 pu-valor">{{ $pu->url ?: '—' }}</span>
                             </div>
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('us') }}</span>
-                                <span class="block text-xs text-gray-600 truncate">{{ $pu->us ?: '—' }}</span>
+                                <span class="block text-gray-700 pu-valor">{{ $pu->us ?: '—' }}</span>
                             </div>
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('us2') }}</span>
-                                <span class="block text-xs text-gray-600 truncate">{{ $pu->us2 ?: '—' }}</span>
+                                <span class="block text-gray-700 pu-valor">{{ $pu->us2 ?: '—' }}</span>
                             </div>
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('ps') }}</span>
-                                <span class="block text-xs text-gray-600 truncate">{{ $pu->ps ?: '—' }}</span>
+                                <span class="block text-gray-700 pu-valor">{{ $pu->ps ?: '—' }}</span>
                             </div>
                         </div>
                         @if($pu->observaciones)
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Observaciones') }}</span>
-                                <span class="block text-xs text-gray-600 truncate">{{ $pu->observaciones }}</span>
+                                <span class="block text-gray-700 pu-valor">{{ $pu->observaciones }}</span>
                             </div>
                         @endif
                     </div>
