@@ -80,10 +80,10 @@
                 <div class="hidden xl:block xl:w-1/12">{{ __('Nif') }} </div>
                 <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Responsable') }}</div>
                 <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Otro Resp.') }}</div>
-                <div class="hidden lg:w-1/12 lg:flex" title="Cliente / Proveedor / Contacto (clic para cambiar)">{{ __('Relación') }}</div>
-                <div class="hidden lg:w-1/12 lg:flex">{{ __('Facturar') }}</div>
-                <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Impuestos') }}</div>
-                <div class="hidden lg:w-1/12 lg:flex">{{ __('C.Fact.') }}</div>
+                <div class="hidden lg:flex" style="width:5.75rem;flex:none" title="Cliente / Proveedor / Contacto (clic para cambiar)">{{ __('Relación') }}</div>
+                <div class="hidden lg:flex" style="width:2.75rem;flex:none" title="Facturar">{{ __('Fact.') }}</div>
+                <div class="hidden lg:flex" style="width:4rem;flex:none" title="Ciclo de impuestos">{{ __('C.Imp.') }}</div>
+                <div class="hidden lg:flex" style="width:3.5rem;flex:none" title="Ciclo de facturación">{{ __('C.Fact.') }}</div>
                 <div class="hidden lg:flex" style="width:4.5rem;flex:none">{{ __('Estado') }}</div>
                 <div class="w-5/12 md:w-4/12 lg:w-2/12"></div>
             </div>
@@ -108,11 +108,12 @@
                     @endcan
                 </div>
                 <div class="items-center hidden md:flex md:w-2/12 lg:w-1/12">@include('livewire.ents._coresp', ['e' => $entidad, 'modo' => 'etiquetas'])</div>
-                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])</div>
-                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])</div>
-                <div class="items-center hidden lg:w-1/12 lg:flex">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])</div>
-                <div class="hidden lg:w-1/12 lg:flex">
-                    <span class="text-sm text-gray-500 ">{{$entidad->ciclofac->ciclo ?? '-'}}</span>
+                <div class="items-center hidden lg:flex" style="width:5.75rem;flex:none">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])</div>
+                <div class="items-center hidden lg:flex" style="width:2.75rem;flex:none">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])</div>
+                <div class="items-center hidden lg:flex" style="width:4rem;flex:none">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])</div>
+                <div class="hidden lg:flex" style="width:3.5rem;flex:none">
+                    @php $cf = $entidad->ciclofac->ciclo ?? '-'; @endphp
+                    <span class="text-xs text-gray-500" title="Ciclo de facturación: {{ $cf }}">{{ in_array($cf, ['No Def', '-', ''], true) ? '–' : $cf }}</span>
                 </div>
                 <div class="items-center hidden lg:flex" style="width:4.5rem;flex:none">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
                 <button type="button" class="ent-toggle" x-on:click="abierta = ! abierta" x-bind:aria-expanded="abierta" title="Acciones y estado">⋯</button>
