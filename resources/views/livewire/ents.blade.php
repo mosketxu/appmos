@@ -2,19 +2,15 @@
 <style>
     .ent-toggle { display:none }
     @media (max-width: 767px) {
-        /* Móvil: solo el nombre de la entidad y un botón ⋯; al pulsarlo se despliegan acciones y estado */
+        /* Móvil: el nombre de la entidad y los botones PU y Editar */
         .ent-fila { flex-wrap:wrap }
         /* 26-oct-2026 (Alex): en móvil solo el buscador; sin filtros ni «Nueva Entidad» */
         .ent-filtro, .ent-nueva { display:none !important }
         .ent-buscar { width:100%; flex:1 1 100% }
         .ent-nombre { flex:1 1 0; width:auto !important; min-width:0 }
-        .ent-toggle { display:inline-flex; align-items:center; justify-content:center; width:2.4rem; height:2.4rem; font-size:1.4rem; line-height:1; color:#4338ca; background:#eef2ff; border:1px solid #c7d2fe; border-radius:.5rem; margin-right:.4rem }
-        .ent-acc, .ent-controles { display:none !important }
-        .ent-abierta .ent-acc { display:block !important; width:100% !important; order:3; padding:.2rem 0 .4rem }
-        .ent-abierta .ent-acc .hidden { display:inline-block !important }
-        /* 26-oct-2026 (Alex): al desplegar en móvil, sin la fila de controles y solo los botones PU y Editar */
-        .ent-abierta .ent-acc .ent-solo-pc { display:none !important }
-        .ent-abierta .ent-toggle { background:#4338ca; color:#fff }
+        /* 26-oct-2026 (Alex): en móvil, sin botón ⋯ ni controles: el nombre y, siempre a la vista, solo PU y Editar */
+        .ent-toggle, .ent-controles, .ent-solo-pc { display:none !important }
+        .ent-acc { display:block !important; width:auto !important; flex:none }
     }
 </style>
 
