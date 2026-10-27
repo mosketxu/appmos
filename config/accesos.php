@@ -80,6 +80,7 @@ return [
             'limpieza' => 'Limpieza de OneDrive',
             'whatsapp' => 'Importar WhatsApp de clientes',
             'prefacturacion' => 'Notas de cargo',
+            'prefacturacion_mensual' => 'Prefacturación mensual (Excel de SAGE → Susana y Marta)',
         ]],
     ],
 

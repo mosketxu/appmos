@@ -28,6 +28,7 @@ class ProcesosMensuales extends Component
     public const PROCESOS = [
         'certificados' => ['icono' => '🔐', 'componente' => 'contabilidad.certificados', 'parametros' => ['embebido' => true]],
         'limpieza' => ['icono' => '🧹', 'componente' => 'contabilidad.limpieza', 'parametros' => [], 'ancho' => '720px'],
+        'prefacturacion_mensual' => ['icono' => '📑', 'componente' => 'contabilidad.prefactura-mensual', 'parametros' => [], 'ancho' => '860px'],
         'prefacturacion' => ['icono' => '🧾', 'componente' => 'contabilidad.prefacturacion', 'parametros' => [], 'ancho' => '1500px'],
     ];
 
