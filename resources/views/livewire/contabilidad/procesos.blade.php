@@ -90,6 +90,13 @@
                 <h2 class="text-lg font-semibold text-gray-900">EDENRED {{ str_pad($ea['mes'], 2, '0', STR_PAD_LEFT) }}/{{ $ea['anio'] }}: antes de generar los Recargas</h2>
                 <p class="text-xs text-gray-500">Imputación: {{ $ea['imputacion'] }}. Solo aparecen en los Recargas quienes tienen importe en la fila 95. Esto es interno: Edenred no ve las regularizaciones, solo el importe final.</p>
 
+                @if (! empty($ea['comparacion']))
+                    @php $cmp = $ea['comparacion']; @endphp
+                    <p class="p-2 text-xs text-blue-900 bg-blue-50 border border-blue-200 rounded">
+                        Se compara la <b>última versión del mes anterior</b>: {{ $cmp['ultima'] }} ({{ $cmp['version_ultima'] }})
+                        con la <b>que se usó para preparar los Recargas</b>: {{ $cmp['usada'] }} ({{ $cmp['version_usada'] }}) · origen: {{ $cmp['fuente'] }}.
+                    </p>
+                @endif
                 @foreach ($ea['avisos'] ?? [] as $av)
                     <p class="p-2 text-xs text-yellow-800 bg-yellow-50 border border-yellow-300 rounded">⚠️ {{ $av }}</p>
                 @endforeach
