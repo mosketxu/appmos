@@ -431,6 +431,37 @@
                                         <div style="margin-top:.2rem;color:#991b1b">👉 En Anaplan, LE y AC no cuadrarán por ese importe. Asigna tienda en SAGE, exporta de nuevo el SyS y vuelve a lanzar Anaplan.</div>
                                     </div>
                                 @endif
+                            @elseif ($id === 'ubs')
+                                {{-- 27-oct-2026 (Alex): el UBS es automático (miniServ); aquí se ve cuándo fue lo último y se puede lanzar a mano con un extracto. --}}
+                                @php $uu = $this->ubsUltimo; @endphp
+                                <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1">
+                                    <button type="button" class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+                                        wire:click="ejecutar('ubs')" wire:loading.attr="disabled" wire:target="ejecutar('ubs')"
+                                        wire:confirm="Esto escribe en UBS BANCOS.xlsx y crea el plugin de bancos (y te manda el correo con el resumen). ¿Seguro?"
+                                        title="Procesa el extracto elegido: lo guarda en Bancos UBS\MM, añade sus movimientos a UBS BANCOS.xlsx y crea el plugin de bancos (5720001) con lo que aún no se había contabilizado.">
+                                        <span wire:loading.remove wire:target="ejecutar('ubs')">▶ Ejecutar</span>
+                                        <span wire:loading wire:target="ejecutar('ubs')">⏳…</span>
+                                    </button>
+                                    <x-subir-fichero wire:model="ubsFichero" accept=".xlsx" :fichero="$ubsFichero" texto="Extracto UBS"
+                                        title="El Excel «FIQ UBS dd.mm - dd.mm.xlsx» que manda Luca. Normalmente se procesa solo al llegar el correo; esto es para hacerlo a mano. Puedes arrastrarlo aquí." />
+                                    @if ($uu)
+                                        @php
+                                            $uuCuando = \Illuminate\Support\Carbon::parse($uu['cuando'] ?? now())->format('d/m/Y H:i');
+                                            $uuManual = ($uu['modo'] ?? '') === 'manual';
+                                        @endphp
+                                        <span class="whitespace-nowrap" title="Extracto «{{ $uu['archivo'] ?? '' }}»: {{ $uu['filas'] ?? 0 }} movimientos, {{ $uu['nuevas'] ?? 0 }} nuevos en UBS BANCOS.xlsx">
+                                            Último: <b>{{ $uuCuando }}</b> ·
+                                            <span class="px-1 rounded" style="{{ $uuManual ? 'background:#e0e7ff;color:#3730a3' : 'background:#f3f4f6;color:#374151' }}">{{ $uuManual ? 'manual' : 'automático' }}</span>
+                                        </span>
+                                        @if (! empty($uu['plugin']))
+                                            <x-contabilidad.resultado-fichero :r="['ruta' => $uu['plugin'], 'tarea' => $uu['tarea'] ?? null, 'nombre' => $uu['plugin_nombre'] ?? '']" compacto />
+                                        @else
+                                            <span class="text-gray-400">(sin plugin: nada nuevo que contabilizar)</span>
+                                        @endif
+                                    @else
+                                        <span class="text-gray-400">Aún sin registro de la última vez</span>
+                                    @endif
+                                </div>
                             @elseif ($auto === 'tabla' && isset($botones[$id]))
                                 <div class="flex items-start gap-x-2">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"

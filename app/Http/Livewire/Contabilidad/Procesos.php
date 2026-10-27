@@ -50,6 +50,7 @@ class Procesos extends Component
      * de Carme, trabajadores nuevos) y abre una ventana; ahí se decide cada diferencia y «Generar Recargas» hace los 5 ficheros.
      */
     public $edenredFichero = null;
+    public $ubsFichero = null;   // extracto de UBS elegido a mano (27-oct-2026)
     public ?array $edenredAnalisis = null;
     public array $edenredDec = [];
     public bool $edenredAbierto = false;
@@ -423,6 +424,15 @@ class Procesos extends Component
                 'soportaReal' => true,
                 'timeout' => 900,
                 'ayuda' => 'Sube la Imputación de costes del mes: enseña las diferencias con lo que se preparó el mes anterior y los trabajadores nuevos, y deja los RecargasRestaurantCards de BCN, LRV, ROZ, MAL y MAR.',
+            ],
+            // 2026-10-27: extracto semanal de UBS. Normalmente es automático (trabajador de miniServ); aquí se puede lanzar a mano con un Excel.
+            'ubs' => [
+                'label' => 'Contabilizar UBS',
+                'script' => 'UBS/ubs.py',
+                'python' => true,
+                'soportaReal' => true,
+                'timeout' => 600,
+                'ayuda' => 'Procesa a mano un extracto de UBS: lo añade a UBS BANCOS.xlsx y crea el plugin de bancos (5720001) con lo que aún no se había contabilizado.',
             ],
         ];
     }
@@ -1120,7 +1130,26 @@ class Procesos extends Component
                 $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/edenred_in']];
             }
         }
+        if ($id === 'ubs') {
+            $f = $this->ubsFichero;
+            if (! $f) {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ Elige primero el extracto de UBS (FIQ UBS dd.mm - dd.mm.xlsx).');
+                return;
+            }
+            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ El extracto de UBS tiene que ser un .xlsx.');
+                return;
+            }
+            $pasos[0]['args'] = ['--archivo', $this->remoto() ? '{E0}' : $f->getRealPath(), '--real'];
+            $pasos[0]['etiqueta'] = 'UBS · '.$f->getClientOriginalName();
+            if ($this->remoto()) {
+                $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/ubs_in']];
+            }
+        }
         $this->lanzar($pasos, $opc);
+        if ($id === 'ubs') {
+            $this->ubsFichero = null;
+        }
         if ($id === 'adyen') {
             $this->adyenSettlement = null;
             $this->adyenAvisado = false;
@@ -1753,11 +1782,49 @@ class Procesos extends Component
         return $c ? ['nombre' => $c['nombre'], 'fecha' => date('d/m/Y H:i', $c['fecha']), 'origen' => $c['origen']] : null;
     }
 
+    /** Fin de «Contabilizar UBS» a mano: guarda lo que dijo el script (última vez, plugin) y, si el PC subió el plugin, su descarga. */
+    protected function postUbs(array $ctx, int $desde, bool $ok): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        if (! preg_match('/^UBS_JSON: (.*)$/m', $nuevo, $m)) {
+            return;
+        }
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^UBS_JSON: .*(\r?\n)?/m', '', $nuevo));
+        $d = json_decode($m[1], true);
+        if (! $ok || ! is_array($d)) {
+            return;
+        }
+        $tarea = null;
+        foreach ($this->resultados['ubs'] ?? [] as $r) {
+            if (! empty($r['tarea'])) {
+                $tarea = (int) $r['tarea'];
+            }
+        }
+        ColaTareas::guardarEstado('fiq.ubs', $d, 'Procesos FIQ');
+        ColaTareas::guardarEstado('fiq.ubs_web', ['cuando' => $d['cuando'] ?? '', 'plugin_nombre' => $d['plugin_nombre'] ?? null, 'tarea' => $tarea], 'Procesos FIQ');
+    }
+
+    /** Última vez que se procesó un extracto de UBS (automático o a mano), con la descarga del plugin si se hizo desde la web. */
+    public function getUbsUltimoProperty(): array
+    {
+        $u = (array) $this->estadoRemoto('fiq.ubs');
+        $w = (array) $this->estadoRemoto('fiq.ubs_web');
+        if ($u && ! empty($w['plugin_nombre']) && $w['plugin_nombre'] === ($u['plugin_nombre'] ?? null)) {
+            $u['tarea'] = $w['tarea'] ?? null;
+        }
+
+        return $u;
+    }
+
     /** Fin de un proceso de la tabla: si todo fue bien, marca el checklist (con envío aparte: «procesado», no «hecho»). */
     protected function postProceso(array $ctx, int $desde, array $oks): void
     {
         $ok = ! in_array(false, $oks, true);
         $this->postSys($ctx, $oks);
+        if (($ctx['id'] ?? '') === 'ubs') {
+            $this->postUbs($ctx, $desde, $ok);
+            return;   // no marca el check del mes: el extracto no es de un mes concreto
+        }
         if (($ctx['id'] ?? '') === 'adyen_batch') {
             $this->resultadoModal = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', substr($this->salida, $desde)));
             $this->resultadoModalOk = $ok;
