@@ -769,13 +769,15 @@
             <table class="w-full mt-3 text-sm text-gray-800 border border-collapse border-gray-400">
                 @foreach ($pl['filas'] as $i => [$a, $b, $c, $d])
                     <tr>
-                        <td class="px-2 py-0.5 border border-gray-400">{{ $a }}</td>
-                        <td class="px-2 py-0.5 border border-gray-400">{{ $b }}</td>
+                        <td class="px-2 py-0.5 border border-gray-400 whitespace-nowrap">{{ $a }}</td>
+                        <td class="px-2 py-0.5 border border-gray-400 whitespace-nowrap">{{ $b }}</td>
                         <td class="px-2 py-0.5 text-right border border-gray-400">{{ $c }}</td>
-                        <td class="px-2 py-0.5 border border-gray-400">
-                            <span class="text-gray-500">K</span>
-                            <input type="text" wire:model.blur="pfObs.{{ $i }}"
-                                class="w-full py-0 text-sm border-0 border-b border-gray-200 rounded-none focus:ring-0" style="min-width:160px">
+                        <td class="px-2 py-0.5 border border-gray-400" style="width:55%">
+                            <div class="flex items-center gap-x-1">
+                                <span class="text-gray-500">K</span>
+                                <input type="text" wire:model.blur="pfObs.{{ $i }}"
+                                    class="flex-1 min-w-0 px-1 py-0 text-sm border-gray-200 rounded focus:ring-0">
+                            </div>
                         </td>
                     </tr>
                 @endforeach
@@ -854,8 +856,10 @@
                                         <input type="text" wire:model.blur="pfRecFilas.{{ $i }}.2" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:70px">
                                     </td>
                                     <td class="px-1 py-0.5 border border-gray-400">
-                                        <span class="text-gray-500">K</span>
-                                        <input type="text" wire:model.blur="pfRecFilas.{{ $i }}.3" class="py-0 text-sm border-0 border-b border-gray-200 rounded-none focus:ring-0" style="min-width:150px">
+                                        <div class="flex items-center gap-x-1">
+                                            <span class="text-gray-500">K</span>
+                                            <input type="text" wire:model.blur="pfRecFilas.{{ $i }}.3" class="flex-1 min-w-0 px-1 py-0 text-sm border-gray-200 rounded focus:ring-0" style="min-width:150px">
+                                        </div>
                                     </td>
                                     <td class="px-1 py-0.5 border border-gray-400">
                                         <select wire:model.live="pfRecFilas.{{ $i }}.4" class="py-0 pl-1 pr-6 text-sm border-gray-300 rounded {{ $f[4] === 'paid' ? 'text-green-700' : 'text-red-700' }}">
