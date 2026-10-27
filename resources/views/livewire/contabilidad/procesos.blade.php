@@ -529,19 +529,16 @@
                                         {{-- 17-oct-2026 (Alex, para toda la web): el estado va a la derecha del botón si cabe; si no, debajo --}}
                                         <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
                                             <div class="flex flex-wrap items-center gap-x-2">
-                                                <x-subir-fichero wire:model="sysFichero" accept=".xlsx" :fichero="$sysFichero" opcional
+                                                <x-subir-fichero wire:model="sysFichero" accept=".xlsx" :fichero="$sysFichero"
                                                     texto="Sumas y saldos {{ $mmSel }}"
-                                                    title="Opcional: el balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera); si no lo parece, se para y te lo digo. Vale para Monthly sales y Anaplan: basta subirlo una vez. Puedes arrastrarlo aquí." />
+                                                    title="El balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera); si no lo parece, se para y te lo digo. Vale para Monthly sales y Anaplan: basta subirlo una vez. Puedes arrastrarlo aquí." />
                                                 @if ($sysFichero)<span class="text-green-700">→ SyS {{ $mmSel }}.xlsx</span>@endif
                                             </div>
                                             @if ($ent)
                                                 @php $faltan = array_filter($ent, fn ($e) => ! $e['ok'] && empty($e['opcional'])); $opc = array_filter($ent, fn ($e) => ! $e['ok'] && ! empty($e['opcional'])); @endphp
                                                 @php $sc = $this->entradas['sys_central'] ?? null; @endphp
                                                 <div class="leading-tight" title="{{ $this->entradas['origen'] ?? '' }}{{ $sc ? "\nSyS {$mmSel} de los ficheros base: «{$sc['nombre']}», {$sc['fecha']}".($sc['origen'] ? " · {$sc['origen']}" : '') : '' }}">
-                                                    @if (! $faltan)
-                                                        {{-- 17-oct-2026 (Alex): en una línea y más corto; el detalle, al pasar el ratón --}}
-                                                        <span class="text-green-700 whitespace-nowrap" title="Ficheros del mes {{ $mmSel }} completos{{ $sc ? ' · SyS: «'.$sc['nombre'].'» '.\Illuminate\Support\Str::before($sc['fecha'], ' ').($sc['nuevo'] ? ' (nuevo: se deja en la carpeta al ejecutar)' : '') : '' }}">✓ Ficheros completos <span class="text-indigo-500 cursor-help">ⓘ</span></span>
-                                                    @else
+                                                    @if ($faltan)
                                                         <span class="font-medium text-red-700">Falta para el mes {{ $mmSel }}:</span>
                                                         @foreach ($faltan as $e)
                                                             <div class="text-red-700">✗ {{ $e['que'] }} <span class="text-gray-500">({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})</span></div>
