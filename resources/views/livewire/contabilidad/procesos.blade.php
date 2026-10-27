@@ -376,7 +376,6 @@
                                         texto="Subir SyS {{ $mmSel }}"
                                         title="El balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera). Si no subes ninguno se usa el de los ficheros base. Puedes arrastrarlo aquí." />
                                     @if ($sysFichero)<span class="text-green-700">→ SyS {{ $mmSel }}.xlsx</span>@endif
-                                                                        @endif
                                     <button type="button" class="{{ $btn }}" style="{{ $verde('anaplan') }}" wire:click="ejecutar('anaplan')" wire:loading.attr="disabled" wire:target="ejecutar('anaplan')"
                                         wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
                                         title="Anaplan (sysSplit.js → anaplanConsolida.js → anaplanDesviaciones.js): separa el SyS por canal (pestaña U y una por tienda), consolida el mes en SyS {{ $anio }}.xlsx y marca las cuentas que se salen de lo normal.">
