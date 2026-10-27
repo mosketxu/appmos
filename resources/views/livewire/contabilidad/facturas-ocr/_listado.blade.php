@@ -23,7 +23,7 @@
                         <div class="p-3" style="display:flex; flex-direction:column; gap:.6rem">
                             <div class="focr-barra-fija" style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; padding:.2rem 0">
                                 <b class="text-sm">Chequeo contra el mayor</b>
-                                <input type="text" wire:model="chequeoPeriodo" wire:keydown.enter="chequearMayor" placeholder="2026-3T o 2026-09" class="focr-in" style="max-width:9rem">
+                                <input type="text" wire:model="chequeoPeriodo" wire:keydown.enter="chequearMayor" placeholder="{{ \App\Support\Anio::actual() }}-3T o {{ \App\Support\Anio::actual() }}-09" class="focr-in" style="max-width:9rem">
                                 <button type="button" wire:click="chequearMayor" wire:loading.attr="disabled" wire:target="chequearMayor" class="focr-btn b-verde" style="padding:.25rem .8rem">
                                     <span wire:loading.remove wire:target="chequearMayor">▶ Chequear</span><span wire:loading wire:target="chequearMayor">Comprobando…</span>
                                 </button>

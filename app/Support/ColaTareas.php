@@ -32,7 +32,7 @@ class ColaTareas
             abort_unless(is_int($parametros['dias'] ?? null) && $parametros['dias'] >= 0 && $parametros['dias'] <= 365 && is_bool($parametros['borrar'] ?? null), 422, 'Limpieza no válida');
         }
         if ($proceso === 'pc.prefacturacion') {
-            abort_unless(in_array($parametros['accion'] ?? null, ['generar', 'enviar'], true) && is_int($parametros['mes'] ?? null) && $parametros['mes'] >= 1 && $parametros['mes'] <= 12, 422, 'Prefacturación no válida');
+            abort_unless(in_array($parametros['accion'] ?? null, ['generar', 'enviar'], true) && is_int($parametros['mes'] ?? null) && $parametros['mes'] >= 1 && $parametros['mes'] <= 12 && (! isset($parametros['anio']) || (is_int($parametros['anio']) && $parametros['anio'] >= 2020 && $parametros['anio'] <= 2100)), 422, 'Prefacturación no válida');
         }
         if ($proceso === 'pc.whatsapp') {
             abort_unless(preg_match('/^[a-z0-9-]{1,60}$/', (string) ($parametros['clave'] ?? '')) && preg_match('/^[A-Za-z0-9 _.-]{1,60}$/', (string) ($parametros['carpeta'] ?? '')), 422, 'Chat no válido');

@@ -31,6 +31,11 @@
                 <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
             @endforeach
         </select>
+        <select wire:model.live="anio" class="text-base font-normal border-gray-300 rounded-md shadow-sm" title="Año de trabajo">
+            @foreach (\App\Support\Anio::lista() as $a)
+                <option value="{{ $a }}">{{ $a }}</option>
+            @endforeach
+        </select>
         <button type="button" wire:click="abrirHistorial" class="px-2 py-1 text-sm font-normal text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50" title="Lo que ha salido de cada proceso ejecutado, con filtro por fechas">📋 Resultados anteriores</button>
         {{-- 17-oct-2026: quitados los saltos «Rentas Variables · Cash in store · Pagos fin de mes»: los tres son filas del checklist --}}
     </h1>
@@ -154,7 +159,7 @@
         </div>
         @php
             $marcas = $this->checklistMarcas;
-            $mesSel = sprintf('2026-%02d', $mes);
+            $mesSel = sprintf('%d-%02d', $anio, $mes);
             $botones = $this->procesos;
             // Filas con «grupo» en checklist.json (17-oct-2026, Alex: «si son procesos diferentes, pon seguido varios botones»):
             // una sola fila con el nombre del grupo, un botón por proceso («boton») y un check pequeño por proceso en cada mes.
@@ -212,7 +217,7 @@
                                 <div class="flex flex-wrap items-center gap-1">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" x-on:click="$dispatch('abrir-panel', 'rentas-variables')"
                                         wire:click="ejecutarRvCalculos" wire:loading.attr="disabled" wire:target="ejecutarRvCalculos"
-                                        wire:confirm="Provisión: Cálculos de las 4 tiendas en CalculosRentasVbles2026.xlsx, mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}. Escribe sobre los ficheros reales. ¿Seguro?"
+                                        wire:confirm="Provisión: Cálculos de las 4 tiendas en CalculosRentasVbles{{ $anio }}.xlsx, mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}. Escribe sobre los ficheros reales. ¿Seguro?"
                                         title="calculosRentasVariables.js: alquiler del mes (6210000 del SyS) y ventas fiscales de CTROL_ALL por tienda">
                                         <span wire:loading.remove wire:target="ejecutarRvCalculos">▶ Provisión</span><span wire:loading wire:target="ejecutarRvCalculos">⏳…</span>
                                     </button>
@@ -323,7 +328,7 @@
                                     @endif
                                     @if ($id === 'laboral')
                                         <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" opcional texto="Imputación de costes"
-                                            title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}2026…» de versión más alta en la carpeta Laboral 2026 del mes." />
+                                            title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}{{ $anio }}…» de versión más alta en la carpeta Laboral {{ $anio }} del mes." />
                                     @endif
                                     @if ($id === 'open_items')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
@@ -338,7 +343,7 @@
                                         @php $mc = $this->cashflowMayorCentral; @endphp
                                         @php $estCf = $marcas[$mesSel]['cashflow']['estado'] ?? null; @endphp
                                         <button type="button" wire:click="enviarCashflow" wire:loading.attr="disabled" wire:target="enviarCashflow,ejecutar('cashflow')"
-                                            wire:confirm="¿Mandar YA a Plein el «Cashflow 2026 {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)"
+                                            wire:confirm="¿Mandar YA a Plein el «Cashflow {{ $anio }} {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.xlsx»? (revísalo antes)"
                                             class="inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded shadow-sm disabled:opacity-50 {{ $estCf === 'ok' ? 'text-gray-500 bg-white border-gray-300' : 'text-white bg-indigo-600 border-indigo-600 hover:bg-indigo-700' }}">
                                             <span wire:loading.remove wire:target="enviarCashflow">{{ $estCf === 'ok' ? '✉ Reenviar' : '✉ Enviar a Plein' }}</span>
                                             <span wire:loading wire:target="enviarCashflow">⏳…</span>
@@ -402,7 +407,7 @@
                                     </button>
                                     <x-subir-fichero wire:model="intrastatFichero" accept=".xlsx,.xlsm" :fichero="$intrastatFichero"
                                         texto="Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
-                                        title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.2026.xlsx». Sustituye al que hubiera procesado de este mes. Puedes arrastrarlo aquí." />
+                                        title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.{{ $anio }}.xlsx». Sustituye al que hubiera procesado de este mes. Puedes arrastrarlo aquí." />
                                     @if ($intrastatRes)
                                         <div class="flex flex-col text-xs text-gray-600">
                                             <span>
@@ -496,7 +501,7 @@
                             <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-3">
                                 <div class="flex flex-wrap gap-6 p-2 border border-gray-200 rounded">
                                     <div style="flex:1 1 420px;min-width:0">
-                                        <div class="mb-1 text-sm font-semibold text-gray-800">«{{ \Carbon\Carbon::create(2026, $mes, 1)->locale('en')->monthName }} Taxes» · importes en euros (vacío = no va en el correo)</div>
+                                        <div class="mb-1 text-sm font-semibold text-gray-800">«{{ \Carbon\Carbon::create($anio, $mes, 1)->locale('en')->monthName }} Taxes» · importes en euros (vacío = no va en el correo)</div>
                                         <table class="text-sm text-gray-800">
                                             <tr class="text-xs text-left text-gray-500"><th class="pr-2">Modelo</th><th class="pr-2">En el correo</th><th class="pr-2">Importe</th><th>Día de cargo</th></tr>
                                             @foreach (\App\Http\Livewire\Contabilidad\Procesos::CI_FILAS as $k => [$modelo, $texto])
@@ -548,7 +553,7 @@
                                         <table class="text-sm text-gray-800 border-collapse">
                                             <tr><td></td><td></td><td class="px-2 border border-gray-500"><b>BBVA DD</b></td></tr>
                                             <tr>
-                                                <td class="px-2 border border-gray-500"><b>{{ \Carbon\Carbon::create(2026, $mes, 1)->locale('en')->monthName }} 2026</b></td>
+                                                <td class="px-2 border border-gray-500"><b>{{ \Carbon\Carbon::create($anio, $mes, 1)->locale('en')->monthName }} {{ $anio }}</b></td>
                                                 <td class="px-2 border border-gray-500"><b>Amount</b></td>
                                                 <td class="px-2 border border-gray-500"><b>Payment day</b></td>
                                             </tr>
@@ -578,7 +583,7 @@
             {{-- IZQUIERDA 35%: Cálculos + Turnover (usa el "Mes" del título) --}}
             <div style="flex:0 0 35%;min-width:280px">
                 <h2 class="text-lg font-semibold text-gray-900">Rentas Variables</h2>
-                <p class="mt-1 mb-3 text-xs text-gray-500">Rellena CalculosRentasVbles2026.xlsx del mes y el fichero del turnover de BCN y MAL.</p>
+                <p class="mt-1 mb-3 text-xs text-gray-500">Rellena CalculosRentasVbles{{ $anio }}.xlsx del mes y el fichero del turnover de BCN y MAL.</p>
                 <div class="mt-1 space-y-1">
                     <label class="flex items-center text-sm text-gray-700">
                         <input type="checkbox" wire:model="rvTiendas" value="BCN" class="mr-2 border-gray-300 rounded"> Barcelona
@@ -684,7 +689,7 @@
         <h2 class="flex flex-wrap items-center text-lg font-semibold text-gray-900 gap-x-3">
             <span>Pagos fin de mes · correo a Plein</span>
             {{-- mismo mes que el del título (pedido 2026-10-01) --}}
-            <span class="text-base font-normal text-gray-600">{{ \Carbon\Carbon::create(2026, $pfMes, 1)->locale('en')->monthName }}</span>
+            <span class="text-base font-normal text-gray-600">{{ \Carbon\Carbon::create($anio, $pfMes, 1)->locale('en')->monthName }}</span>
             @if ($pfEnviado)
                 <span class="text-xs font-normal text-green-700">✓ enviado a Plein el {{ $pfEnviado }}</span>
             @endif
@@ -887,7 +892,7 @@
                                         <th class="px-2 py-0.5 border">Tienda</th>
                                         <th class="px-2 py-0.5 border">Cash (Prosegur)</th>
                                         <th class="px-2 py-0.5 border">Petty Cash</th>
-                                        <th class="px-2 py-0.5 border">Correo ({{ \Carbon\Carbon::create(2026, $mes, 1)->locale('es')->monthName }})</th>
+                                        <th class="px-2 py-0.5 border">Correo ({{ \Carbon\Carbon::create($anio, $mes, 1)->locale('es')->monthName }})</th>
                                     </tr>
                                     @foreach ($cisFilas as $t => $r)
                                         <tr wire:key="cis-{{ $t }}" class="align-top {{ $r['encontrado'] ? '' : 'bg-red-50' }}">

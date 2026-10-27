@@ -100,7 +100,7 @@ class PrefacturaMensual extends Component
             return;
         }
         $id = ColaTareas::crear('pc.prefacturacion', [
-            'accion' => 'generar', 'mes' => $this->mes,
+            'accion' => 'generar', 'mes' => $this->mes, 'anio' => \App\Support\Anio::paraMes($this->mes),
             'entrada' => ['archivo' => 'export.xlsx', 'nombre' => basename(str_replace('\\', '/', $this->excel->getClientOriginalName()))],
         ], ColaTareas::pcElegido() ?: null, auth()->id(), null, null, 'preparando');
         $dir = ColaTareas::carpetaEntradas($id);
@@ -134,7 +134,7 @@ class PrefacturaMensual extends Component
         if (! $this->puede() || ! $this->generadoOk($tareas) || $this->enCurso($tareas) || ! $this->hayPc()) {
             return;
         }
-        ColaTareas::crear('pc.prefacturacion', ['accion' => 'enviar', 'mes' => $this->mes], ColaTareas::pcElegido() ?: null, auth()->id());
+        ColaTareas::crear('pc.prefacturacion', ['accion' => 'enviar', 'mes' => $this->mes, 'anio' => \App\Support\Anio::paraMes($this->mes)], ColaTareas::pcElegido() ?: null, auth()->id());
         $this->aviso = 'Pedido a un PC: envía el correo a Susana y Marta…';
     }
 
@@ -175,7 +175,7 @@ class PrefacturaMensual extends Component
         if (! $p) {
             return;
         }
-        $periodo = sprintf('2026-%02d', $this->mes);
+        $periodo = sprintf('%d-%02d', \App\Support\Anio::paraMes($this->mes), $this->mes);
         $where = ['proceso_id' => $p->id, 'entidad_id' => 0, 'periodo' => $periodo, 'propietario_id' => 0];
         if (! DB::table('seguimiento_marcas')->where($where)->exists()) {
             DB::table('seguimiento_marcas')->insert($where + ['estado' => 'ok', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);

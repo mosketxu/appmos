@@ -21,7 +21,7 @@
          style="position:fixed;inset:0;z-index:9990;background:rgba(17,24,39,.55);display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;overflow:auto">
         <div class="bg-white rounded-lg shadow-xl" style="width:100%;max-width:62rem">
             <div class="flex flex-wrap items-center px-4 py-3 border-b border-gray-200 gap-x-3 gap-y-2">
-                <h2 class="text-lg font-semibold text-gray-900">Fiscal Report y Cashier · {{ $mm }}/2026</h2>
+                <h2 class="text-lg font-semibold text-gray-900">Fiscal Report y Cashier · {{ $mm }}/{{ substr($fiscalDiasMes, 0, 4) }}</h2>
                 <span class="text-xs text-gray-500">{{ $fd ? 'estado de las '.\Carbon\Carbon::parse($fd['generado'])->format('H:i d/m') : 'sin estado todavía (se ha pedido a miniServ)…' }}</span>
                 <span class="flex-1"></span>
                 <button type="button" wire:click="alternarChecklist('fiscal_report', '{{ $fiscalDiasMes }}')" class="{{ $boton }}" title="El check del mes en el checklist">{{ $marcaMes ? '↺ Quitar el ✓ del mes' : '✓ Marcar mes completo' }}</button>

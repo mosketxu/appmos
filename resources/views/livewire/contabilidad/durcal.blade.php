@@ -33,9 +33,9 @@
         Activa sueldos + SS.EMPRESA de los empleados marcados "ACTIVAR" en
         <code class="px-1 bg-gray-100 rounded">Datos\personal.xlsx</code> repartidos por proyecto, rellena la
         tabla de resultado en el propio fichero de nómina, y da de alta las filas de amortización a 36 meses en
-        <code class="px-1 bg-gray-100 rounded">Amortizacion Alpify 2026.xlsm</code>. Escribe siempre sobre los
+        <code class="px-1 bg-gray-100 rounded">Amortizacion Alpify {{ \App\Support\Anio::paraMes($mes) }}.xlsm</code>. Escribe siempre sobre los
         ficheros reales de
-        <code class="px-1 bg-gray-100 rounded">OneDrive\_Clientes\2026\Durcal 2026\Laboral</code>, desde el PC de trabajo —
+        <code class="px-1 bg-gray-100 rounded">OneDrive\_Clientes\{{ \App\Support\Anio::paraMes($mes) }}\Durcal {{ \App\Support\Anio::paraMes($mes) }}\Laboral</code>, desde el PC de trabajo —
         antes de ejecutar se ve lo que el PC encuentra (nómina del mes, Amortizacion cerrado).
         El Amortizacion tiene que estar <b>cerrado</b>: se escribe con el propio Excel para no perder la escala de
         tiempo, las tablas dinámicas ni la macro.
@@ -64,11 +64,11 @@
                         <span class="text-green-700">✔ {{ $n['nombre'] }}</span>
                         <span class="text-gray-500">({{ number_format($n['bytes'] / 1024, 0, ',', '.') }} KB · guardada {{ $n['fecha'] }})</span>
                     @else
-                        <span class="text-red-600">✘ no la encuentra en OneDrive (Durcal 2026\Laboral)</span>
+                        <span class="text-red-600">✘ no la encuentra en OneDrive (Durcal {{ \App\Support\Anio::paraMes($mes) }}\Laboral)</span>
                     @endif
                 </p>
                 <p>
-                    Amortizacion Alpify 2026.xlsm:
+                    Amortizacion Alpify {{ \App\Support\Anio::paraMes($mes) }}.xlsm:
                     @if ($am)
                         <span class="{{ ! empty($am['abierto']) ? 'text-red-600' : 'text-green-700' }}">{{ ! empty($am['abierto']) ? '⚠ está ABIERTO en Excel: ciérralo antes de ejecutar' : '✔ cerrado' }}</span>
                         <span class="text-gray-500">({{ number_format($am['bytes'] / 1024, 0, ',', '.') }} KB · {{ $am['fecha'] }})</span>
@@ -88,7 +88,7 @@
                 wire:loading.attr="disabled"
                 wire:target="ejecutar"
                 :disabled="! $n || ! empty($am['abierto'])"
-                wire:confirm="Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify 2026.xlsm reales, en el OneDrive del PC. ¿Seguro?"
+                wire:confirm="Esto escribe sobre el fichero de nómina del mes y sobre Amortizacion Alpify {{ \App\Support\Anio::paraMes($mes) }}.xlsm reales, en el OneDrive del PC. ¿Seguro?"
             >
                 <span wire:loading.remove wire:target="ejecutar">▶ Ejecutar en el PC</span>
                 <span wire:loading wire:target="ejecutar">⏳ Pidiendo…</span>
@@ -99,9 +99,9 @@
                 <span wire:loading.remove wire:target="sincronizarAhora">↻ Comprobar en el PC</span><span wire:loading wire:target="sincronizarAhora">⏳ Pidiendo al PC…</span></button>
 
             @if (! $n)
-                <span class="text-sm text-red-600">No se puede ejecutar: el PC no ve la nómina del mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} en OneDrive (Durcal 2026\Laboral). Elige otro mes o deja ahí el fichero y pulsa «Comprobar en el PC».</span>
+                <span class="text-sm text-red-600">No se puede ejecutar: el PC no ve la nómina del mes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} en OneDrive (Durcal {{ \App\Support\Anio::paraMes($mes) }}\Laboral). Elige otro mes o deja ahí el fichero y pulsa «Comprobar en el PC».</span>
             @elseif (! empty($am['abierto']))
-                <span class="text-sm text-red-600">No se puede ejecutar: Amortizacion Alpify 2026.xlsm está abierto en Excel en el PC. Ciérralo y pulsa «Comprobar en el PC».</span>
+                <span class="text-sm text-red-600">No se puede ejecutar: Amortizacion Alpify {{ \App\Support\Anio::paraMes($mes) }}.xlsm está abierto en Excel en el PC. Ciérralo y pulsa «Comprobar en el PC».</span>
             @endif
 
             @if (! empty($resultados['durcal']))

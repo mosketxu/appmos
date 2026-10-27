@@ -130,10 +130,12 @@ class Procesos extends Component
     // suministros...) sale de monthlyFIQ/pagosFinMes.json. Mes = el del título
     // (desde 2026-10-01; antes tenía desplegable propio).
     public int $pfMes;
+    /** Año de trabajo (27-oct-2026): por defecto el del mes anterior al actual; selector junto al del mes. */
+    public int $anio;
     public string $pfSaldo = '';
     public string $pfIva = '';
     public string $pfSs = '';
-    public string $pfNominas = ''; // vacío = total de la remesa Laboral 2026/<MM>/RM*.xml
+    public string $pfNominas = ''; // vacío = total de la remesa Laboral AAAA/<MM>/RM*.xml
     public string $pfCargo = '';   // vacío = último día hábil del mes ("Wednesday 30th")
     /** Observaciones por fila del correo (VAT, SS, Payrolls, fijas...); vacío = la de siempre. */
     public array $pfObs = [];
@@ -190,6 +192,7 @@ class Procesos extends Component
         // "que por defecto el mes sea el de la fecha actual menos 1").
         $m = (int) date('n') - 1;
         $this->mes = $m < 1 ? 12 : $m;
+        $this->anio = \App\Support\Anio::defecto();
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
         $this->cargarBasePagosFinMes();
         $this->updatedPfMes();
@@ -336,7 +339,7 @@ class Procesos extends Component
                 // el orden importa.
                 'scripts' => ['sysSplit.js', 'anaplanConsolida.js', 'anaplanDesviaciones.js'],
                 'soportaReal' => true,
-                'ayuda' => 'Separa por canal y consolida en SyS 2026 indicando desviaciones.',
+                'ayuda' => 'Separa por canal y consolida en SyS del año indicando desviaciones.',
             ],
             // 2026-09-23: pega las pestañas *_Anaplan de SyS MM.xlsx en la web de
             // Anaplan controlando el Chrome abierto con abrirChromeAnaplan.bat
@@ -428,7 +431,7 @@ class Procesos extends Component
 
         $r = $todo && isset($todo[$mm]) ? $todo[$mm] + ['origen' => $origen] : [];
         // El SyS del mes en los ficheros base (subido en cualquier pantalla) cuenta como «está»: se deja en la carpeta al ejecutar.
-        $c = $this->fiqEntidad() ? FicherosBase::ultimo($this->fiqEntidad(), 'sys', "2026-{$mm}") : null;
+        $c = $this->fiqEntidad() ? FicherosBase::ultimo($this->fiqEntidad(), 'sys', "{$this->anio}-{$mm}") : null;
         if ($c) {
             $nuevo = ($this->sysPuestos()[$mm] ?? null) !== FicherosBase::sha($c['ruta']);
             $r['sys_central'] = ['nombre' => $c['nombre'], 'fecha' => date('d/m/Y H:i', $c['fecha']), 'origen' => $c['origen'], 'nuevo' => $nuevo];
@@ -505,7 +508,7 @@ class Procesos extends Component
     /** Abre el modal con el estado por días del Fiscal Report y del Cashier de un mes ('2026-10'). */
     public function abrirFiscalDias(string $mes): void
     {
-        if (! $this->autorizar('fiscal_report') || ! preg_match('/^2026-(0[1-9]|1[0-2])$/', $mes)) {
+        if (! $this->autorizar('fiscal_report') || ! preg_match('/^20\d\d-(0[1-9]|1[0-2])$/', $mes)) {
             return;
         }
         $this->fiscalDiasMes = $mes;
@@ -1453,7 +1456,7 @@ class Procesos extends Component
                 $args[] = '--forzar';
             }
         } else {
-            $c = $eid ? FicherosBase::ultimo($eid, 'sys', "2026-{$mm}") : null;
+            $c = $eid ? FicherosBase::ultimo($eid, 'sys', "{$this->anio}-{$mm}") : null;
             if (! $c || ($this->sysPuestos()[$mm] ?? null) === ($sha = FicherosBase::sha($c['ruta']))) {
                 return true;   // no hay ninguno en los ficheros base, o ya es el que está en la carpeta
             }
@@ -1492,7 +1495,7 @@ class Procesos extends Component
         if ($nuevo && is_file($nuevo['ruta'])) {
             $eid = $this->fiqEntidad();
             if ($ok && $eid && ! FicherosBase::existeContenido($eid, 'sys', $nuevo['ruta'])) {
-                FicherosBase::guardar($eid, 'sys', $nuevo['ruta'], $nuevo['nombre'], 'Procesos FIQ'.(auth()->user() ? ' · '.auth()->user()->name : ''), '2026-'.$ctx['pasoSys']);
+                FicherosBase::guardar($eid, 'sys', $nuevo['ruta'], $nuevo['nombre'], 'Procesos FIQ'.(auth()->user() ? ' · '.auth()->user()->name : ''), $this->anio.'-'.$ctx['pasoSys']);
             }
             @unlink($nuevo['ruta']);
         }
@@ -1522,7 +1525,7 @@ class Procesos extends Component
                 }
             }
         } else {
-            $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, 2026) : null;
+            $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, $this->anio) : null;
             if (! $c) {
                 return true;
             }
@@ -1561,7 +1564,7 @@ class Procesos extends Component
             }
             $flag = '--mayor';
         } else {
-            $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, 2026) : null;
+            $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, $this->anio) : null;
             if (! $c || ! FicherosBase::esMayorLineal($c['ruta'])) {
                 return true;   // el script usa el de SageLauncher (o Descargas) del PC
             }
@@ -1581,7 +1584,7 @@ class Procesos extends Component
     /** Lo que se enseña en la fila de Cash flow: el mayor que se usará. */
     public function getCashflowMayorCentralProperty(): ?array
     {
-        $c = $this->fiqEntidad() ? FicherosBase::ultimo($this->fiqEntidad(), 'mayor', null, 2026) : null;
+        $c = $this->fiqEntidad() ? FicherosBase::ultimo($this->fiqEntidad(), 'mayor', null, $this->anio) : null;
 
         return $c ? ['nombre' => $c['nombre'], 'fecha' => date('d/m/Y H:i', $c['fecha']), 'origen' => $c['origen']] : null;
     }
@@ -1917,7 +1920,7 @@ class Procesos extends Component
     {
         $cargo = trim($this->pfCargo);
         if ($cargo === '') {
-            $d = \Carbon\Carbon::create(2026, $this->pfMes, 1)->endOfMonth()->startOfDay();
+            $d = \Carbon\Carbon::create($this->anio, $this->pfMes, 1)->endOfMonth()->startOfDay();
             while ($d->isWeekend()) {
                 $d->subDay();
             }
@@ -2136,6 +2139,13 @@ class Procesos extends Component
      * "al cambiar el mes no debería ver los importes, corrige esto en cualquier
      * sitio que tenga memoria").
      */
+    public function updatedAnio(): void
+    {
+        $this->anio = max(2020, min(2100, $this->anio));
+        unset($this->checklist, $this->checklistMarcas);
+        $this->updatedMes();
+    }
+
     public function updatedMes(): void
     {
         $this->resultados = [];
@@ -2305,7 +2315,7 @@ class Procesos extends Component
 
     // ---- Intrastat (14-oct-2026) ----------------------------------------------
     // "Que pueda elegir el fichero en la tarea Intrastat y que cuando lo procese se marque como hecho": el Excel
-    // «Outbound Fashion IQ PPI & PS - MM.2026.xlsx» pasa por el motor de Impuestos → Intrastat (en el servidor,
+    // «Outbound Fashion IQ PPI & PS - MM.AAAA.xlsx» pasa por el motor de Impuestos → Intrastat (en el servidor,
     // sin PC trabajador; cliente «fashioniq», periodo 2026-MM) y deja el CSV para la Sede.
 
     public $intrastatFichero = null;
@@ -2314,7 +2324,7 @@ class Procesos extends Component
 
     protected function intrastatPeriodo(): string
     {
-        return sprintf('2026-%02d', $this->mes);
+        return sprintf('%d-%02d', $this->anio, $this->mes);
     }
 
     protected function cargarIntrastat(): void
@@ -2349,7 +2359,7 @@ class Procesos extends Component
         $error = IntrastatMotor::generar('fashioniq', $periodo);
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         if ($error) {
-            $this->salida .= "⚠️ {$error}\n   👉 Qué hacer: elige el Excel «Outbound Fashion IQ PPI & PS - ".substr($periodo, 5).".2026.xlsx» y vuelve a procesar.";
+            $this->salida .= "⚠️ {$error}\n   👉 Qué hacer: elige el Excel «Outbound Fashion IQ PPI & PS - ".substr($periodo, 5).".".$this->anio.".xlsx» y vuelve a procesar.";
             $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\n{$error}");
             return;
         }
@@ -2403,7 +2413,7 @@ class Procesos extends Component
     {
         $extra = array_map(fn ($f) => \Carbon\Carbon::createFromFormat('d/m/Y', $f)->format('Y-m-d'),
             $this->confComunicarImpuestos()['festivos_extra'] ?? []);
-        return \App\Support\PlazosAeat::finPlazo($clave, 2026, $this->mes, false, $extra)->format('d/m/Y');
+        return \App\Support\PlazosAeat::finPlazo($clave, $this->anio, $this->mes, false, $extra)->format('d/m/Y');
     }
 
     protected function cargarComunicarImpuestos(): void
@@ -2521,16 +2531,16 @@ class Procesos extends Component
     // "Guardar un registro de que se ha hecho cada mes para no volverme loco":
     // un check por proceso y mes. La lista de procesos (con su detalle, el ⓘ)
     // está en monthlyFIQ/checklist.json; las marcas, en OneDrive
-    // (Fashion 2026/checklist FIQ 2026.estado.json) para que los dos PCs vean
+    // (Fashion AAAA/checklist FIQ AAAA.estado.json) para que los dos PCs vean
     // lo mismo. Los procesos que se lanzan desde aquí se marcan solos al
     // terminar bien (marcarChecklist); el resto, con un clic.
 
-    /** Columnas: dic-2025 (el checklist empezó ahí) y los 12 meses de 2026. */
+    /** Columnas: dic-2025 (el checklist empezó ahí) y los 12 meses del año. */
     public function getChecklistMesesProperty(): array
     {
-        $meses = ['2025-12' => 'dic 25'];
+        $meses = [($this->anio - 1) . '-12' => 'dic ' . substr((string) ($this->anio - 1), 2)];
         foreach (['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'] as $i => $n) {
-            $meses[sprintf('2026-%02d', $i + 1)] = $n;
+            $meses[sprintf('%d-%02d', $this->anio, $i + 1)] = $n;
         }
         return $meses;
     }
@@ -2574,9 +2584,9 @@ class Procesos extends Component
     {
         foreach (['e', 'f'] as $u) {
             foreach (['_Clientes', 'Clientes'] as $c) {
-                $dir = "/mnt/{$u}/OneDrive/{$c}/2026/Fashion 2026";
+                $dir = "/mnt/{$u}/OneDrive/{$c}/{$this->anio}/Fashion {$this->anio}";
                 if (is_dir($dir)) {
-                    return "{$dir}/checklist FIQ 2026.estado.json";
+                    return "{$dir}/checklist FIQ {$this->anio}.estado.json";
                 }
             }
         }
@@ -2585,7 +2595,7 @@ class Procesos extends Component
 
     protected function leerChecklistEstado(): array
     {
-        $d = $this->estadoFiq('fiq.checklist_estado', $this->checklistEstadoPath());
+        $d = $this->estadoFiq('fiq.checklist_estado.'.$this->anio, $this->checklistEstadoPath());
         return is_array($d) ? $d + ['marcas' => []] : ['marcas' => []];
     }
 
@@ -2622,14 +2632,14 @@ class Procesos extends Component
                 $this->salida .= "\n\n⚠️ Checklist: falta la migración de la cola de tareas; no se ha guardado.";
                 return;
             }
-            ColaTareas::guardarEstado('fiq.checklist_estado', $cambio($this->leerChecklistEstado()), 'web');
+            ColaTareas::guardarEstado('fiq.checklist_estado.'.$this->anio, $cambio($this->leerChecklistEstado()), 'web');
             ColaTareas::crear('fiq.checklist', $op, ColaTareas::pcElegido(), auth()->id(), null, ColaTareas::preferido());
             unset($this->checklist, $this->checklistMarcas);
             return;
         }
         $f = $this->checklistEstadoPath();
         if (! $f) {
-            $this->salida .= "\n\n⚠️ Checklist: no encuentro la carpeta Fashion 2026 de OneDrive; no se ha guardado.";
+            $this->salida .= "\n\n⚠️ Checklist: no encuentro la carpeta Fashion {$this->anio} de OneDrive; no se ha guardado.";
             return;
         }
         $d = $cambio($this->leerChecklistEstado());
@@ -2641,11 +2651,11 @@ class Procesos extends Component
         unset($this->checklist, $this->checklistMarcas);
     }
 
-    /** Lo llaman los procesos al terminar bien. $mes = número de mes de 2026. */
+    /** Lo llaman los procesos al terminar bien. $mes = número de mes del año de trabajo. */
     protected function marcarChecklist(string $id, int $mes, string $estado = 'ok'): void
     {
         try {
-            $clave = sprintf('2026-%02d', $mes);
+            $clave = sprintf('%d-%02d', $this->anio, $mes);
             if ($estado === 'proc' && ($this->checklistMarcas[$clave][$id]['estado'] ?? '') === 'ok') {
                 return; // ya estaba enviado: reprocesar no lo devuelve a «sin enviar»
             }
@@ -2665,7 +2675,7 @@ class Procesos extends Component
         if (! in_array($id, array_column($this->checklist, 'id'), true)) {
             return;
         }
-        $mes = sprintf('2026-%02d', $this->mes);
+        $mes = sprintf('%d-%02d', $this->anio, $this->mes);
         $hecho = ($this->checklistMarcas[$mes][$id]['estado'] ?? '') === 'ok';
         $this->guardarChecklist($id, $mes, $hecho ? null : ['estado' => 'ok', 'cuando' => date('Y-m-d H:i'), 'como' => 'manual']);
     }

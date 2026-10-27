@@ -192,7 +192,7 @@ class LeoyBra extends Component
 
     protected function carpetaPeriodo(string $sub): string
     {
-        abort_unless(preg_match('/^\d{4}-[1-4]T$/', $this->periodo), 422, 'Periodo no válido (usa por ejemplo 2026-3T).');
+        abort_unless(preg_match('/^\d{4}-[1-4]T$/', $this->periodo), 422, 'Periodo no válido (usa por ejemplo '.\App\Support\Anio::actual().'-3T).');
         $d = $this->dir().'/'.$sub.'/'.$this->periodo;
         @mkdir($d, 0775, true);
         return $d;

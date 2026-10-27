@@ -2,7 +2,7 @@
     @if (! $puede)
         <p class="text-gray-600">No tienes permiso para este proceso.</p>
     @else
-    <p class="text-gray-700">Del Excel <b>CabeceraAlbaranCliente</b> que exportas de SAGE deja en OneDrive (<i>_Suma/Facturas/2026</i>) el <b>«Prevision facturacion 2026 {{ sprintf('%02d', $mes) }}.xlsx»</b>
+    <p class="text-gray-700">Del Excel <b>CabeceraAlbaranCliente</b> que exportas de SAGE deja en OneDrive (<i>_Suma/Facturas/{{ \App\Support\Anio::paraMes($mes) }}</i>) el <b>«Prevision facturacion {{ \App\Support\Anio::paraMes($mes) }} {{ sprintf('%02d', $mes) }}.xlsx»</b>
         con el mismo formato que el del mes anterior, y después lo envía a <b>Susana y Marta</b>.</p>
 
     <div class="flex flex-wrap items-center gap-3 mt-3">

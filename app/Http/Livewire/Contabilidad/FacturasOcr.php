@@ -734,7 +734,7 @@ class FacturasOcr extends Component
     {
         $p = trim($this->chequeoPeriodo);
         if (! $this->clienteValido() || ! preg_match('/^\d{4}-([1-4]T|(0[1-9]|1[0-2]))$/', $p)) {
-            $this->addError('chequeo', 'Pon el periodo como 2026-3T (trimestre) o 2026-09 (mes).');
+            $this->addError('chequeo', 'Pon el periodo como '.\App\Support\Anio::actual().'-3T (trimestre) o '.\App\Support\Anio::actual().'-09 (mes).');
             return;
         }
         $this->resetErrorBag('chequeo');
