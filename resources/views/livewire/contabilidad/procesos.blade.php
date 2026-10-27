@@ -774,7 +774,7 @@
                         <td class="px-2 py-0.5 text-right border border-gray-400">{{ $c }}</td>
                         <td class="px-2 py-0.5 border border-gray-400">
                             <span class="text-gray-500">K</span>
-                            <input type="text" wire:model.blur="pfObs.{{ $i }}" placeholder="{{ $d }}"
+                            <input type="text" wire:model.blur="pfObs.{{ $i }}"
                                 class="w-full py-0 text-sm border-0 border-b border-gray-200 rounded-none focus:ring-0" style="min-width:160px">
                         </td>
                     </tr>
@@ -786,7 +786,7 @@
                     <td class="px-2 py-0.5 border border-gray-400">K</td>
                 </tr>
             </table>
-            <p class="mt-1 text-xs text-gray-500">"—" = vacío (VAT y SS se buscan solos al enviar). Se actualiza al salir de cada campo. La columna tras la K es una observación editable por fila (vacía = la de siempre). Las filas fijas están en monthlyFIQ/pagosFinMes.json.</p>
+            <p class="mt-1 text-xs text-gray-500">"—" = vacío (VAT y SS se buscan solos al enviar). Se actualiza al salir de cada campo. La columna tras la K es una observación editable por fila (VAT y SS vienen rellenas con el día de cargo; si las borras o cambias, se respeta). Las filas fijas están en monthlyFIQ/pagosFinMes.json.</p>
         </div>
         </div>
 
@@ -852,6 +852,10 @@
                                     <td class="px-2 py-0.5 border border-gray-400">{{ $f[1] }}</td>
                                     <td class="px-1 py-0.5 border border-gray-400">
                                         <input type="text" wire:model.blur="pfRecFilas.{{ $i }}.2" class="px-1 py-0 text-sm text-right border-gray-300 rounded" style="width:70px">
+                                    </td>
+                                    <td class="px-1 py-0.5 border border-gray-400">
+                                        <span class="text-gray-500">K</span>
+                                        <input type="text" wire:model.blur="pfRecFilas.{{ $i }}.3" class="py-0 text-sm border-0 border-b border-gray-200 rounded-none focus:ring-0" style="min-width:150px">
                                     </td>
                                     <td class="px-1 py-0.5 border border-gray-400">
                                         <select wire:model.live="pfRecFilas.{{ $i }}.4" class="py-0 pl-1 pr-6 text-sm border-gray-300 rounded {{ $f[4] === 'paid' ? 'text-green-700' : 'text-red-700' }}">

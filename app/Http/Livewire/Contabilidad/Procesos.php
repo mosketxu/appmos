@@ -1850,9 +1850,7 @@ class Procesos extends Component
         if (trim($this->pfCargo) !== '') {
             array_push($args, '--cargo', trim($this->pfCargo));
         }
-        if (array_filter($this->pfObs, fn ($o) => trim((string) $o) !== '')) {
-            array_push($args, '--obs', json_encode(array_map(fn ($o) => trim((string) $o), array_values($this->pfObs)), JSON_UNESCAPED_UNICODE));
-        }
+        array_push($args, '--obs', json_encode(array_map(fn ($o) => trim((string) $o), array_values($this->pfObs)), JSON_UNESCAPED_UNICODE));
         array_push($args, '--texto', $this->pfTexto, '--destacado', $this->pfDestacado,
             $this->pfIncluirDestacado ? '--con-destacado' : '--sin-destacado',
             '--to', $this->pfTo, '--cc', $this->pfCc);
@@ -1915,14 +1913,8 @@ class Procesos extends Component
      * de la tarjeta (pedido 2026-09-25). Mismas cuentas que pagosFinMes.py;
      * VAT/SS/Payrolls vacíos salen como "—" (el script los buscaría al enviar).
      */
-    public function getPfLineasProperty(): array
+    protected function pfCargoTexto(): string
     {
-        $saldo = $this->pfNum($this->pfSaldo);
-        $iva = $this->pfNum($this->pfIva);
-        $ss = $this->pfNum($this->pfSs);
-        $nom = $this->pfNum($this->pfNominas);
-        $fijas = $this->confPagosFinMes()['fijas'] ?? [];
-
         $cargo = trim($this->pfCargo);
         if ($cargo === '') {
             $d = \Carbon\Carbon::create(2026, $this->pfMes, 1)->endOfMonth()->startOfDay();
@@ -1931,14 +1923,41 @@ class Procesos extends Component
             }
             $cargo = $d->locale('en')->isoFormat('dddd Do');
         }
+        return $cargo;
+    }
+
+    protected function pfObsPorDefecto(): array
+    {
+        $t = 'Will be charged on ' . $this->pfCargoTexto();
+        return [$t, $t];
+    }
+
+    /** Si cambia el día de cargo, las observaciones de VAT/SS que seguían la frase de siempre la siguen. */
+    public function updatedPfCargo(): void
+    {
+        $t = 'Will be charged on ' . $this->pfCargoTexto();
+        foreach ([0, 1] as $i) {
+            if (preg_match('/^Will be charged on /', (string) ($this->pfObs[$i] ?? ''))) {
+                $this->pfObs[$i] = $t;
+            }
+        }
+    }
+
+    public function getPfLineasProperty(): array
+    {
+        $saldo = $this->pfNum($this->pfSaldo);
+        $iva = $this->pfNum($this->pfIva);
+        $ss = $this->pfNum($this->pfSs);
+        $nom = $this->pfNum($this->pfNominas);
+        $fijas = $this->confPagosFinMes()['fijas'] ?? [];
 
         $completo = $iva !== null && $ss !== null && $nom !== null;
         $impNom = $completo ? $iva + $ss + $nom : null;
         $total = $completo ? $impNom + array_sum(array_column($fijas, 2)) : null;
 
         $filas = [
-            ['VAT TAX', '', $this->pfK($iva), "Will be charged on {$cargo}"],
-            ['Social Security', '', $this->pfK($ss), "Will be charged on {$cargo}"],
+            ['VAT TAX', '', $this->pfK($iva), ''],
+            ['Social Security', '', $this->pfK($ss), ''],
             ['Payrolls', '', $this->pfK($nom), ''],
         ];
         foreach ($fijas as [$a, $b, $c]) {
@@ -2000,7 +2019,9 @@ class Procesos extends Component
         $this->pfNominas = (string) ($m['nominas'] ?? '');
         $this->pfCargo = (string) ($m['cargo'] ?? '');
         $this->pfEnviado = (string) ($m['enviado'] ?? '');
-        $this->pfObs = array_values($m['obs'] ?? []);
+        // Observaciones: las guardadas de ese mes o, si no hay, VAT/SS con el día de cargo.
+        // Una vez en pantalla se respetan tal cual (vacías = vacías).
+        $this->pfObs = isset($m['obs']) ? array_values($m['obs']) : $this->pfObsPorDefecto();
         $this->pfRecFilas = [];
         $this->pfRecOriginal = '';
         $this->pfRecSaldo = '';
