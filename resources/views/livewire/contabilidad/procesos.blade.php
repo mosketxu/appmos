@@ -463,7 +463,7 @@
                                     @endif
                                 </div>
                             @elseif ($auto === 'tabla' && isset($botones[$id]))
-                                <div class="flex gap-x-2 {{ $id === 'laboral' ? 'items-center flex-wrap' : 'items-start' }}">
+                                <div class="flex gap-x-2 {{ $id === 'laboral' ? 'items-center flex-nowrap whitespace-nowrap' : 'items-start' }}">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
                                         wire:click="ejecutar('{{ $id }}')"
                                         wire:loading.attr="disabled"
@@ -504,7 +504,7 @@
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="8" r="6.3"/><circle cx="19" cy="8" r="6.3"/><path d="M4.6 10c1.3 1.7 3.5 1.7 4.8 0M16.6 10c1.3 1.7 3.5 1.7 4.8 0"/><circle cx="5.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".5" fill="currentColor"/><circle cx="17.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="20.7" cy="6.3" r=".5" fill="currentColor"/></svg>{{ $sinNomL ? ' '.count($sinNomL) : '' }}
                                             </button>
                                         @endif
-                                        <div style="flex-basis:100%;white-space:normal">@include('livewire.contabilidad._staff-faltan')</div>
+                                        
                                     @endif
                                     @if ($id === 'adyen')
                                         <x-subir-fichero wire:model="adyenSettlement" accept=".xlsx" :fichero="$adyenSettlement" texto="Settlement"
@@ -617,6 +617,7 @@
                                         </div>
                                     @endif
                                 </div>
+                                @if ($id === 'laboral')@include('livewire.contabilidad._staff-faltan')@endif
                             @elseif ($auto === 'cash-in-store')
                                 <div class="flex flex-wrap items-center gap-1">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" wire:click="buscarCashInStore" wire:loading.attr="disabled" wire:target="buscarCashInStore,pedirCashInStore,recordarCashInStore,grabarCashInStore">
