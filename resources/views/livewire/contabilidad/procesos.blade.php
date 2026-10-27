@@ -172,9 +172,12 @@
                         <thead class="bg-gray-50"><tr class="text-left"><th class="p-1.5">Tienda</th><th class="p-1.5">Nombre</th><th class="p-1.5">DNI / NIE / pasaporte</th><th class="p-1.5">Correo</th><th class="p-1.5">Nacimiento</th><th class="p-1.5"></th></tr></thead>
                         <tbody>
                         @foreach ($edu['por_alta'] as $u)
-                            <tr class="border-t border-gray-100 {{ ($u['dni'] ?? 'PENDIENTE') === 'PENDIENTE' ? 'bg-yellow-50' : '' }}">
+                            <tr class="border-t border-gray-100 {{ ($u['dni'] ?? 'PENDIENTE') === 'PENDIENTE' || ! empty($u['faltan']) ? 'bg-yellow-50' : '' }}">
                                 <td class="p-1.5">{{ $u['tienda'] ?? '' }}</td>
-                                <td class="p-1.5">{{ trim(($u['nombre'] ?? '').' '.($u['ap1'] ?? '').' '.($u['ap2'] ?? '')) }}</td>
+                                <td class="p-1.5">{{ trim(($u['nombre'] ?? '').' '.($u['ap1'] ?? '').' '.($u['ap2'] ?? '')) }}
+                                    @if (! empty($u['fuente']))<div class="text-gray-400" style="font-size:10px" title="Correo del que salen los datos: compruébalo antes de crear el usuario">de: {{ $u['fuente'] }}</div>@endif
+                                    @if (! empty($u['faltan']))<div class="text-red-700" style="font-size:10px">Falta: {{ implode(', ', $u['faltan']) }}</div>@endif
+                                </td>
                                 <td class="p-1.5">{{ $u['dni'] ?? 'PENDIENTE' }}</td>
                                 <td class="p-1.5">{{ $u['email'] ?? '—' }}</td>
                                 <td class="p-1.5">{{ $u['nacimiento'] ?? '—' }}</td>
