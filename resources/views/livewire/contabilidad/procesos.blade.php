@@ -463,8 +463,8 @@
                                     @endif
                                 </div>
                             @elseif ($auto === 'tabla' && isset($botones[$id]))
-                                <div class="flex items-start gap-x-2">
-                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                <div class="flex gap-x-2 {{ $id === 'laboral' ? 'items-center flex-wrap' : 'items-start' }}">
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
                                         wire:click="ejecutar('{{ $id }}')"
                                         wire:loading.attr="disabled"
                                         wire:target="ejecutar('{{ $id }}')"
@@ -498,13 +498,13 @@
                                         {{-- 17-oct-2026: los nombres de Anaplan del personal salen de aquí (Alex: «este proceso va unido a Entrar nóminas») --}}
                                         @php $sinNomL = $this->staffSinNombreMes; @endphp
                                         @if (! empty($this->staffDatosMes['tiendas']))
-                                            <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium whitespace-nowrap {{ $sinNomL ? 'text-white bg-red-600 border-red-600 hover:bg-red-700' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50' }} border rounded shadow-sm disabled:opacity-50"
+                                            <button type="button" class="inline-flex items-center px-2 py-1 text-xs font-medium whitespace-nowrap border rounded shadow-sm disabled:opacity-50 {{ $sinNomL ? 'text-white bg-red-600 border-red-600 hover:bg-red-700' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50' }}"
                                                 wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
                                                 title="{{ ! $sinNomL && ! empty($this->staffDatosMes['tiendas']) ? '✓ Los '.collect($this->staffDatosMes['tiendas'])->flatten(1)->count().' empleados del mes tienen nombre de Anaplan. ' : '' }}Nombres de Anaplan: empleados de la nómina del mes con su nombre en Anaplan; escribe el de los que falten. Luego «⬆ Subir a Anaplan» en ANAPLAN · personal (o en la propia ventana).">
-                                                ✎ Nombres{{ $sinNomL ? ' ('.count($sinNomL).' faltan)' : '' }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="8" r="6.3"/><circle cx="19" cy="8" r="6.3"/><path d="M4.6 10c1.3 1.7 3.5 1.7 4.8 0M16.6 10c1.3 1.7 3.5 1.7 4.8 0"/><circle cx="5.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".5" fill="currentColor"/><circle cx="17.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="20.7" cy="6.3" r=".5" fill="currentColor"/></svg>{{ $sinNomL ? ' '.count($sinNomL) : '' }}
                                             </button>
                                         @endif
-                                        @include('livewire.contabilidad._staff-faltan')
+                                        <div style="flex-basis:100%;white-space:normal">@include('livewire.contabilidad._staff-faltan')</div>
                                     @endif
                                     @if ($id === 'adyen')
                                         <x-subir-fichero wire:model="adyenSettlement" accept=".xlsx" :fichero="$adyenSettlement" texto="Settlement"
@@ -561,15 +561,8 @@
                                     @endif
                                     @if ($id === 'laboral')
                                         @php $mmL = str_pad($mes, 2, '0', STR_PAD_LEFT); @endphp
-                                        <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
-                                            <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" texto="Imputación de costes {{ $mmL }}"
-                                                title="Si no eliges ninguno, se usa «imputacion costes {{ $mmL }}{{ $anio }}…» de versión más alta en la carpeta Laboral {{ $anio }} del mes." />
-                                            @if ($laboralFichero)
-                                                <span class="text-green-700">✓ {{ $laboralFichero->getClientOriginalName() }}</span>
-                                            @else
-                                                <span class="text-gray-500">Usa la última versión de la carpeta del mes</span>
-                                            @endif
-                                        </div>
+                                        <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" texto="Imputación de costes {{ $mmL }}"
+                                            title="Si no eliges ninguno, se usa «imputacion costes {{ $mmL }}{{ $anio }}…» de versión más alta en la carpeta Laboral {{ $anio }} del mes." />
                                     @endif
                                     @if ($id === 'edenred')
                                         {{-- 27-oct-2026: Recargas de Edenred. Se sube la Imputación (última versión) y «Ejecutar» analiza; la decisión sobre cada diferencia se toma en una ventana. --}}
