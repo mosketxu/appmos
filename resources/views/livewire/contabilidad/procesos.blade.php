@@ -81,6 +81,123 @@
         </div>
     @endif
 
+
+    @if ($edenredAbierto && $edenredAnalisis)
+        {{-- EDENRED: diferencias con el mes anterior y trabajadores nuevos, antes de generar los Recargas (27-oct-2026) --}}
+        @php $ea = $edenredAnalisis; @endphp
+        <div class="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="cerrarEdenred">
+            <div class="w-full p-5 space-y-4 bg-white rounded-lg shadow-xl" style="max-width:60rem; border-top:6px solid #2563eb">
+                <h2 class="text-lg font-semibold text-gray-900">EDENRED {{ str_pad($ea['mes'], 2, '0', STR_PAD_LEFT) }}/{{ $ea['anio'] }}: antes de generar los Recargas</h2>
+                <p class="text-xs text-gray-500">Imputación: {{ $ea['imputacion'] }}. Solo aparecen en los Recargas quienes tienen importe en la fila 95. Esto es interno: Edenred no ve las regularizaciones, solo el importe final.</p>
+
+                @foreach ($ea['avisos'] ?? [] as $av)
+                    <p class="p-2 text-xs text-yellow-800 bg-yellow-50 border border-yellow-300 rounded">⚠️ {{ $av }}</p>
+                @endforeach
+
+                <div>
+                    <h3 class="mb-1 text-sm font-semibold text-gray-800">Diferencias del mes anterior (última versión frente a la copia con la que se prepararon los Recargas)</h3>
+                    @if (! empty($ea['diferencias']))
+                        <table class="w-full text-xs border border-gray-200">
+                            <thead class="bg-gray-50"><tr class="text-left">
+                                <th class="p-1.5">Tienda</th><th class="p-1.5">Trabajador</th><th class="p-1.5 text-right">Última versión</th><th class="p-1.5 text-right">Copia de Carme</th>
+                                <th class="p-1.5 text-right">Diferencia</th><th class="p-1.5">Este mes</th><th class="p-1.5">Nota (interna)</th></tr></thead>
+                            <tbody>
+                            @foreach ($ea['diferencias'] as $x)
+                                @php $k = $x['key']; @endphp
+                                <tr class="border-t border-gray-100 {{ empty($x['aplicable']) ? 'bg-yellow-50' : '' }}">
+                                    <td class="p-1.5">{{ $x['tienda'] }}</td>
+                                    <td class="p-1.5">{{ $x['nombre'] }}@if (empty($x['aplicable'])) <span class="text-yellow-700" title="No aparece en la fila 95 de este mes: el ajuste no se puede aplicar.">(no está este mes)</span>@endif</td>
+                                    <td class="p-1.5 text-right">{{ number_format($x['ultima'], 2, ',', '.') }}</td>
+                                    <td class="p-1.5 text-right">{{ number_format($x['carme'], 2, ',', '.') }}</td>
+                                    <td class="p-1.5 font-semibold text-right {{ $x['dif'] < 0 ? 'text-red-700' : 'text-green-700' }}">{{ number_format($x['dif'], 2, ',', '.') }}</td>
+                                    <td class="p-1.5 whitespace-nowrap">
+                                        <select wire:model="edenredDec.{{ $k }}.accion" class="py-0.5 text-xs border-gray-300 rounded">
+                                            <option value="aplicar">Aplicar {{ number_format($x['dif'], 2, ',', '.') }}</option>
+                                            <option value="no">No aplicar</option>
+                                            <option value="importe">Otro importe…</option>
+                                        </select>
+                                        @if (($edenredDec[$k]['accion'] ?? '') === 'importe')
+                                            <input type="number" step="0.01" wire:model.lazy="edenredDec.{{ $k }}.importe" class="w-20 py-0.5 text-xs border-gray-300 rounded">
+                                        @endif
+                                    </td>
+                                    <td class="p-1.5"><input type="text" wire:model.lazy="edenredDec.{{ $k }}.nota" class="w-44 py-0.5 text-xs border-gray-300 rounded" placeholder="motivo"></td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                        <p class="mt-1 text-xs text-gray-500">«Aplicar» suma o resta la diferencia al importe de este mes. Si no decides nada, se aplica.</p>
+                    @else
+                        <p class="text-xs text-green-700">✓ Sin diferencias con lo que se preparó el mes anterior.</p>
+                    @endif
+                </div>
+
+                <div>
+                    <h3 class="mb-1 text-sm font-semibold text-gray-800">Trabajadores nuevos (no están en ningún Recargas anterior)</h3>
+                    @if (! empty($ea['nuevos']))
+                        <ul class="ml-4 text-xs list-disc">
+                            @foreach ($ea['nuevos'] as $n)
+                                <li>{{ $n['nombre'] }} ({{ $n['tienda'] }}) · {{ number_format($n['importe'], 2, ',', '.') }} €</li>
+                            @endforeach
+                        </ul>
+                        <p class="mt-1 text-xs text-gray-500">Al generar se buscan sus datos (DNI/NIE, correo y fecha de nacimiento) en el contrato, en el Outlook de Alex (Laboral). Los que no se encuentren quedan en amarillo y podrás pedírselos a Jordi.</p>
+                    @else
+                        <p class="text-xs text-green-700">✓ Ninguno.</p>
+                    @endif
+                </div>
+
+                <div class="flex justify-end gap-x-2">
+                    <x-button.secondary wire:click="cerrarEdenred">Cancelar</x-button.secondary>
+                    <x-button.primary wire:click="generarEdenred" wire:loading.attr="disabled">▶ Generar Recargas</x-button.primary>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($edenredUsuariosAbierto)
+        {{-- EDENRED: usuarios por dar de alta en Edenred (datos del contrato) y petición de contratos a Jordi --}}
+        @php $edu = $this->edenredUsuarios; @endphp
+        <div class="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="$set('edenredUsuariosAbierto', false)">
+            <div class="w-full p-5 space-y-3 bg-white rounded-lg shadow-xl" style="max-width:60rem; border-top:6px solid #2563eb">
+                <h2 class="text-lg font-semibold text-gray-900">👤 Usuarios de Edenred por dar de alta</h2>
+                <p class="text-xs text-gray-500">Datos del contrato para crear el usuario en Edenred. Datos personales: no se guardan en git, solo en OneDrive/_ClaudeDesarrollo/Edenred. {{ ! empty($edu['cuando']) ? 'Última ejecución: '.$edu['cuando'].'.' : '' }}</p>
+                @if (! empty($edu['por_alta']))
+                    <table class="w-full text-xs border border-gray-200">
+                        <thead class="bg-gray-50"><tr class="text-left"><th class="p-1.5">Tienda</th><th class="p-1.5">Nombre</th><th class="p-1.5">DNI / NIE / pasaporte</th><th class="p-1.5">Correo</th><th class="p-1.5">Nacimiento</th><th class="p-1.5"></th></tr></thead>
+                        <tbody>
+                        @foreach ($edu['por_alta'] as $u)
+                            <tr class="border-t border-gray-100 {{ ($u['dni'] ?? 'PENDIENTE') === 'PENDIENTE' ? 'bg-yellow-50' : '' }}">
+                                <td class="p-1.5">{{ $u['tienda'] ?? '' }}</td>
+                                <td class="p-1.5">{{ trim(($u['nombre'] ?? '').' '.($u['ap1'] ?? '').' '.($u['ap2'] ?? '')) }}</td>
+                                <td class="p-1.5">{{ $u['dni'] ?? 'PENDIENTE' }}</td>
+                                <td class="p-1.5">{{ $u['email'] ?? '—' }}</td>
+                                <td class="p-1.5">{{ $u['nacimiento'] ?? '—' }}</td>
+                                <td class="p-1.5 text-right"><button type="button" wire:click="altaEdenred('{{ $u['clave'] }}')" class="px-2 py-0.5 text-xs bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Ya está creado en Edenred">✓ Dado de alta</button></td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <p class="text-xs text-green-700">✓ No hay usuarios pendientes de alta.</p>
+                @endif
+                @if (! empty($edu['pendientes']))
+                    <div class="p-2 text-xs border border-yellow-300 rounded bg-yellow-50">
+                        <p class="font-semibold text-yellow-800">Sin contrato (faltan DNI/NIE, correo y fecha de nacimiento): {{ collect($edu['pendientes'])->map(fn ($p) => $p['nombre'].' ('.$p['tienda'].')')->implode(', ') }}</p>
+                        <div class="flex gap-x-2 mt-1">
+                            <button type="button" wire:click="correoJordi('borrador')" class="px-2 py-0.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50">✎ Borrador para Jordi</button>
+                            @if ($edenredConfirmaJordi)
+                                <button type="button" wire:click="correoJordi('enviar')" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700">⚠️ Confirmar envío REAL a Jordi (desde tu buzón)</button>
+                                <button type="button" wire:click="$set('edenredConfirmaJordi', false)" class="px-2 py-0.5 text-gray-600 underline">cancelar</button>
+                            @else
+                                <button type="button" wire:click="$set('edenredConfirmaJordi', true)" class="px-2 py-0.5 text-white bg-blue-600 rounded shadow-sm hover:bg-blue-700">✉ Pedir contratos a Jordi…</button>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+                @if ($edenredMsg !== '')<p class="text-xs text-gray-700">{{ $edenredMsg }}</p>@endif
+                <div class="flex justify-end"><x-button.secondary wire:click="$set('edenredUsuariosAbierto', false)">Cerrar</x-button.secondary></div>
+            </div>
+        </div>
+    @endif
     @if ($resultadoModal !== '')
         {{-- Resultado de «Batches Adyen» (25-oct-2026): lo que ha hecho el proceso, en una ventana --}}
         <div class="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style="background:rgba(17,24,39,.5)" wire:keydown.escape="cerrarResultadoModal">
@@ -329,6 +446,23 @@
                                     @if ($id === 'laboral')
                                         <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" opcional texto="Imputación de costes"
                                             title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}{{ $anio }}…» de versión más alta en la carpeta Laboral {{ $anio }} del mes." />
+                                    @endif
+                                    @if ($id === 'edenred')
+                                        {{-- 27-oct-2026: Recargas de Edenred. Se sube la Imputación (última versión) y «Ejecutar» analiza; la decisión sobre cada diferencia se toma en una ventana. --}}
+                                        @php $edu = $this->edenredUsuarios; $nAlta = count($edu['por_alta'] ?? []); @endphp
+                                        <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
+                                            <x-subir-fichero wire:model="edenredFichero" accept=".xlsx" :fichero="$edenredFichero" texto="Imputación de costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
+                                                title="La última versión de «IMPUTACION COSTES MMAAAA vN.0.xlsx» del mes (la que llega de Jordi). Se compara con la que se usó el mes anterior." />
+                                            @if ($edenredFichero)
+                                                <span class="text-green-700">✓ {{ $edenredFichero->getClientOriginalName() }}</span>
+                                            @else
+                                                <span class="text-gray-500">Falta subir la Imputación</span>
+                                            @endif
+                                            <button type="button" wire:click="$set('edenredUsuariosAbierto', true)" class="px-2 py-0.5 text-xs bg-white border rounded shadow-sm hover:bg-gray-50 {{ $nAlta ? 'border-red-400 text-red-700' : 'border-gray-300 text-gray-700' }}"
+                                                title="Trabajadores nuevos con sus datos (DNI/NIE, correo, fecha de nacimiento) para crear el usuario en Edenred.">
+                                                👤 Usuarios{{ $nAlta ? " ({$nAlta} por dar de alta)" : '' }}
+                                            </button>
+                                        </div>
                                     @endif
                                     @if ($id === 'open_items')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
