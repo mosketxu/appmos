@@ -45,6 +45,18 @@ class Procesos extends Component
     public string $histDesde = '';
     public string $histHasta = '';
     public string $histTexto = '';
+    /**
+     * EDENRED (27-oct-2026): Imputación de costes del mes (la última versión, subida a mano). «Ejecutar» primero ANALIZA (diferencias con la copia
+     * de Carme, trabajadores nuevos) y abre una ventana; ahí se decide cada diferencia y «Generar Recargas» hace los 5 ficheros.
+     */
+    public $edenredFichero = null;
+    public ?array $edenredAnalisis = null;
+    public array $edenredDec = [];
+    public bool $edenredAbierto = false;
+    public bool $edenredUsuariosAbierto = false;
+    public string $edenredMsg = '';
+    /** Envío real a Jordi en dos pasos, comprobado en el servidor (wire:confirm no frena Livewire: incidente 5-oct-2026). */
+    public bool $edenredConfirmaJordi = false;
     /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
     public $laboralFichero = null;
     /**
@@ -403,6 +415,15 @@ class Procesos extends Component
                 'timeout' => 1500,
                 'ayuda' => 'Pasa los settlement de Adyen a Bat MM DD importe N.xlsx y los añade a Totals Batch Adyen.xlsx.',
             ],
+            // 2026-10-27: Recargas de Ticket Restaurant (Edenred) desde la Imputación de costes. Excel por COM; trabajadores nuevos desde el Outlook de Alex.
+            'edenred' => [
+                'label' => 'EDENRED',
+                'script' => 'Edenred/edenred.py',
+                'python' => true,
+                'soportaReal' => true,
+                'timeout' => 900,
+                'ayuda' => 'Sube la Imputación de costes del mes: enseña las diferencias con lo que se preparó el mes anterior y los trabajadores nuevos, y deja los RecargasRestaurantCards de BCN, LRV, ROZ, MAL y MAR.',
+            ],
         ];
     }
 
@@ -604,6 +625,131 @@ class Procesos extends Component
         ]], ['resultados' => 'anaplan_web']);
         if (! empty($ids)) {
             $this->salida .= "\n🚫 Subida a Anaplan cancelada (tarea #".implode(', #', $ids).'): el PC la corta en unos segundos.';
+        }
+    }
+
+    /** Quita la línea EDENRED_JSON de la Salida y la devuelve. */
+    protected function jsonEdenred(int $desde): ?array
+    {
+        $nuevo = substr($this->salida, $desde);
+        if (! preg_match('/^EDENRED_JSON: (.*)$/m', $nuevo, $m)) {
+            return null;
+        }
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^EDENRED_JSON: .*(\r?\n)?/m', '', $nuevo));
+
+        return json_decode($m[1], true) ?: null;
+    }
+
+    /** Fin de EDENRED. Devuelve true si era la fase de análisis (abre la ventana de decisiones y no marca el check). */
+    protected function postEdenred(array $ctx, int $desde, bool $ok): bool
+    {
+        $d = $this->jsonEdenred($desde);
+        if (($ctx['fase'] ?? '') === 'analizar') {
+            if ($ok && $d) {
+                $this->edenredAnalisis = $d;
+                $this->edenredDec = [];
+                foreach ($d['diferencias'] ?? [] as $x) {
+                    $this->edenredDec[$x['key']] = ['accion' => 'aplicar', 'importe' => $x['dif'], 'nota' => ''];
+                }
+                $this->edenredAbierto = true;
+            } else {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ EDENRED: no he podido analizar la Imputación. Mira la Salida.');
+            }
+
+            return true;
+        }
+        if ($d && Schema::hasTable('estado_procesos')) {
+            ColaTareas::guardarEstado('fiq.edenred_usuarios', ['por_alta' => $d['usuarios_por_alta'] ?? [], 'pendientes' => $d['pendientes'] ?? [], 'cuando' => now()->format('d/m H:i')], 'Procesos FIQ');
+        }
+        $this->resultadoModal = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', substr($this->salida, $desde)));
+        $this->resultadoModalOk = $ok;
+        $this->resultadoModalTitulo = $ok ? 'EDENRED: Recargas preparados' : 'EDENRED: ha habido un problema';
+        if ($ok) {
+            $this->edenredFichero = null;
+            $this->edenredAnalisis = null;
+        }
+
+        return false;
+    }
+
+    /** Fase 2 de EDENRED: con las decisiones de la ventana, genera los Recargas (y los ajustes). */
+    public function generarEdenred(): void
+    {
+        if (! $this->autorizar('edenred') || ! $this->edenredFichero) {
+            return;
+        }
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        $json = tempnam(sys_get_temp_dir(), 'edenred');
+        file_put_contents($json, json_encode(['decisiones' => (object) $this->edenredDec], JSON_UNESCAPED_UNICODE));
+        $f = $this->edenredFichero;
+        $remoto = $this->remoto();
+        $pasos = [[
+            'script' => 'Edenred/edenred.py',
+            'args' => [$mm, '--real', '--fichero', $remoto ? '{E0}' : $f->getRealPath(), '--ajustes', $remoto ? '{E1}' : $json],
+            'timeout' => 900,
+            'etiqueta' => "EDENRED · Recargas (mes {$mm}, REAL)",
+            'windows' => false,
+        ]];
+        $opc = ['resultados' => 'edenred', 'post' => 'postProceso', 'ctx' => ['id' => 'edenred', 'mes' => $this->mes, 'fase' => 'generar']];
+        if ($remoto) {
+            $opc['entradas'] = [
+                ['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/edenred_in'],
+                ['ruta' => $json, 'nombre' => 'edenred_ajustes.json', 'dir' => '_tmp/edenred_in'],
+            ];
+        }
+        $this->edenredAbierto = false;
+        $this->lanzar($pasos, $opc);
+    }
+
+    public function cerrarEdenred(): void
+    {
+        $this->edenredAbierto = false;
+    }
+
+    /** Usuarios de Edenred por dar de alta (copia en la BD del VPS que deja cada ejecución). */
+    public function getEdenredUsuariosProperty(): array
+    {
+        return Schema::hasTable('estado_procesos') ? $this->estadoRemoto('fiq.edenred_usuarios') : [];
+    }
+
+    /** «Pedir contratos a Jordi»: un correo con todos los trabajadores sin contrato. $modo = borrador | enviar (doble paso en el cliente y aquí). */
+    public function correoJordi(string $modo): void
+    {
+        if (! $this->autorizar('edenred') || ! in_array($modo, ['borrador', 'enviar'], true)) {
+            return;
+        }
+        if ($modo === 'enviar' && ! $this->edenredConfirmaJordi) {
+            return;
+        }
+        $this->edenredConfirmaJordi = false;
+        $pend = $this->edenredUsuarios['pendientes'] ?? [];
+        if (! $pend) {
+            $this->edenredMsg = 'No hay trabajadores pendientes de contrato.';
+            return;
+        }
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        $this->lanzar([[
+            'script' => 'Edenred/edenred.py',
+            'args' => [$mm, '--correo-jordi', $modo, '--remitente', (string) auth()->user()?->email, '--pendientes', json_encode($pend, JSON_UNESCAPED_UNICODE)],
+            'timeout' => 120,
+            'etiqueta' => 'EDENRED · '.($modo === 'enviar' ? 'enviar a Jordi' : 'borrador para Jordi'),
+            'windows' => false,
+        ]], ['resultados' => 'edenred_jordi']);
+        $this->edenredMsg = $modo === 'enviar' ? '✉ Pedido el envío a Jordi: el resultado sale en «Salida».' : '✉ Pedido el borrador para Jordi: el resultado sale en «Salida».';
+    }
+
+    /** Carme ha creado el usuario en Edenred: sale de la lista de pendientes. */
+    public function altaEdenred(string $clave): void
+    {
+        if (! $this->autorizar('edenred')) {
+            return;
+        }
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        $this->lanzar([['script' => 'Edenred/edenred.py', 'args' => [$mm, '--alta', $clave], 'timeout' => 60, 'etiqueta' => 'EDENRED · usuario dado de alta', 'windows' => false]], ['resultados' => 'edenred_alta']);
+        if (Schema::hasTable('estado_procesos')) {
+            $e = $this->estadoRemoto('fiq.edenred_usuarios');
+            $e['por_alta'] = array_values(array_filter($e['por_alta'] ?? [], fn ($u) => ($u['clave'] ?? '') !== $clave));
+            ColaTareas::guardarEstado('fiq.edenred_usuarios', $e, 'Procesos FIQ');
         }
     }
 
@@ -955,6 +1101,24 @@ class Procesos extends Component
         }
         if ($id === 'laboral') {
             $this->prepararStaffLaboral($pasos, $opc);
+        }
+        if ($id === 'edenred') {
+            // Fase 1: solo analiza (no escribe). La ventana de después lanza la fase 2 (generarEdenred).
+            $f = $this->edenredFichero;
+            if (! $f) {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ Sube primero la Imputación de costes del mes (la última versión).');
+                return;
+            }
+            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+                $this->dispatch('proceso-terminado', mensaje: '⚠️ La Imputación de costes tiene que ser un .xlsx.');
+                return;
+            }
+            $pasos[0]['args'] = [$mm, '--analizar', '--fichero', $this->remoto() ? '{E0}' : $f->getRealPath()];
+            $pasos[0]['etiqueta'] = "EDENRED · análisis (mes {$mm})";
+            $opc['ctx']['fase'] = 'analizar';
+            if ($this->remoto()) {
+                $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/edenred_in']];
+            }
         }
         $this->lanzar($pasos, $opc);
         if ($id === 'adyen') {
@@ -1600,6 +1764,11 @@ class Procesos extends Component
         }
         if (($ctx['id'] ?? '') === 'laboral') {
             $this->postStaffLaboral($ctx, $desde);
+        }
+        if (($ctx['id'] ?? '') === 'edenred') {
+            if ($this->postEdenred($ctx, $desde, $ok)) {
+                return;   // fase de análisis: no se marca el check
+            }
         }
         if ($ok) {
             $p = $this->procesos()[$ctx['id']] ?? [];
