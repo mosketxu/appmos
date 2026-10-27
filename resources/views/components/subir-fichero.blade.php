@@ -20,7 +20,7 @@
         x-bind:class="arrastrando && 'subir-arrastrando'"
         class="subir-btn {{ ! $nombre && ! $neutro ? 'vacio' : '' }}">
         <x-subir.icono :target="$modelo ?: null" />
-        <span class="truncate" style="max-width:16rem">{{ $nombre ?? $texto }}@if (! $nombre && $opcional) <span style="font-weight:400;color:#4b5563">(opcional)</span>@endif</span>
+        <span class="truncate" style="max-width:16rem">{{ $nombre ?? $texto }}{{-- 27-oct-2026 (Alex): sin «(opcional)» en ningún botón; si lo es, ya lo dice el hover --}}</span>
         @if ($nombre && $modelo)
             <button type="button" x-on:click.prevent.stop="$wire.set('{{ $modelo }}', null)" class="subir-x" title="Quitar el fichero elegido">✕</button>
         @endif
