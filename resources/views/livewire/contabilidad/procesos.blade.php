@@ -367,9 +367,11 @@
                                         $confSubir = '⚠️ ¿Estás seguro? '.count($sinNom)." empleado(s) NO tienen nombre de Anaplan y NO se subirán:\n"
                                             .collect($sinNom)->map(fn ($f) => "· {$f['tienda']}: {$f['excel']}")->implode("\n")."\n\n".$confSubir;
                                     }
-                                    $btn = 'inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50';
+                                    $btn = 'inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap';
+                                    // verde = ya hecho este mes (la marca del check de ese paso)
+                                    $verde = fn ($pid) => ($marcas[$mesSel][$pid]['estado'] ?? '') === 'ok' ? 'background:#f0fdf4;border-color:#22c55e;color:#166534' : '';
                                 @endphp
-                                <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1">
+                                <div class="flex flex-nowrap items-center text-xs text-gray-600 gap-x-1.5">
                                     <x-subir-fichero wire:model="sysFichero" accept=".xlsx" :fichero="$sysFichero"
                                         texto="Subir SyS {{ $mmSel }}"
                                         title="El balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera). Si no subes ninguno se usa el de los ficheros base. Puedes arrastrarlo aquí." />
@@ -382,7 +384,7 @@
                                             <span class="font-medium text-red-700" title="@foreach ($faltan as $e)✗ {{ $e['que'] }} ({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})&#10;@endforeach">✗ Faltan {{ count($faltan) }} fichero(s)</span>
                                         @endif
                                     @endif
-                                    <button type="button" class="{{ $btn }}" wire:click="ejecutar('anaplan')" wire:loading.attr="disabled" wire:target="ejecutar('anaplan')"
+                                    <button type="button" class="{{ $btn }}" style="{{ $verde('anaplan') }}" wire:click="ejecutar('anaplan')" wire:loading.attr="disabled" wire:target="ejecutar('anaplan')"
                                         wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
                                         title="Anaplan (sysSplit.js → anaplanConsolida.js → anaplanDesviaciones.js): separa el SyS por canal (pestaña U y una por tienda), consolida el mes en SyS {{ $anio }}.xlsx y marca las cuentas que se salen de lo normal.">
                                         <span wire:loading.remove wire:target="ejecutar('anaplan')">▶ Split SyS Canal</span><span wire:loading wire:target="ejecutar('anaplan')">⏳…</span>
@@ -391,7 +393,7 @@
                                         <x-contabilidad.resultado-fichero :r="$r" compacto />
                                     @endforeach
                                     <span class="text-gray-300">│</span>
-                                    <button type="button" class="{{ $btn }}" wire:click="ejecutar('anaplan_web')" wire:loading.attr="disabled" wire:target="ejecutar('anaplan_web')"
+                                    <button type="button" class="{{ $btn }}" style="{{ $verde('anaplan_web') }}" wire:click="ejecutar('anaplan_web')" wire:loading.attr="disabled" wire:target="ejecutar('anaplan_web')"
                                         wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
                                         title="Pega U_Anaplan y las tiendas en el modelo de Anaplan (LTB-Upload for LE / AC), lo comprueba fila a fila y revisa «All Check Reports». Abre Chrome solo; si pide login, entra en esa ventana y sigue solo. Mientras corre, no toques esa ventana.">
                                         <span wire:loading.remove wire:target="ejecutar('anaplan_web')">▶ Subir Web</span><span wire:loading wire:target="ejecutar('anaplan_web')">⏳…</span>
@@ -405,19 +407,20 @@
                                         <x-contabilidad.resultado-fichero :r="$r" compacto />
                                     @endforeach
                                     <span class="text-gray-300">│</span>
-                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 border border-indigo-600 rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                                    <button type="button" class="{{ $btn }}" style="{{ $verde('anaplan_staff') }}"
                                         wire:click="subirStaff" wire:loading.attr="disabled" wire:target="subirStaff" wire:confirm="{{ $confSubir }}"
                                         title="Se conecta a Anaplan (Chrome del PC de «Ejecutar en»), escribe Bruto sin Bonus en Salary Value MTD y Bonus + Incentivo en Bonus Value MTD, lo relee y marca el check">
-                                        <span wire:loading.remove wire:target="subirStaff">⬆ Split Empleados</span>
+                                        <span wire:loading.remove wire:target="subirStaff">▶ Split Empleados</span>
                                         <span wire:loading wire:target="subirStaff">⏳…</span>
                                     </button>
-                                    <button type="button" class="{{ $sinNom ? 'inline-flex items-center px-2 py-0.5 text-xs font-medium text-white bg-red-600 border border-red-600 rounded shadow-sm hover:bg-red-700' : $btn }}"
+                                    <button type="button" class="{{ $btn }}" style="{{ $sinNom ? 'background:#dc2626;border-color:#dc2626;color:#fff' : '' }}"
                                         wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
                                         title="Nombres de Anaplan: empleados de la nómina del mes (los deja «Laboral») con su nombre en Anaplan; escribe el de los que falten{{ $sinNom ? ' ('.count($sinNom).' faltan)' : '' }}">
-                                        👥{{ $sinNom ? ' '.count($sinNom) : '' }}
+                                        {{-- dos caras sonrientes --}}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="8" r="6.3"/><circle cx="19" cy="8" r="6.3"/><path d="M4.6 10c1.3 1.7 3.5 1.7 4.8 0M16.6 10c1.3 1.7 3.5 1.7 4.8 0"/><circle cx="5.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".5" fill="currentColor"/><circle cx="17.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="20.7" cy="6.3" r=".5" fill="currentColor"/></svg>{{ $sinNom ? ' '.count($sinNom) : '' }}
                                     </button>
-                                    @include('livewire.contabilidad._staff-faltan')
                                 </div>
+                                @include('livewire.contabilidad._staff-faltan')
                                 @if (! empty($this->entradas['sin_canal']))
                                     @php $sc = $this->entradas['sin_canal']; @endphp
                                     <div style="max-width:24rem;margin-top:.3rem;padding:.4rem .6rem;border:1px solid #fca5a5;border-left:5px solid #dc2626;border-radius:.375rem;background:#fef2f2;font-size:.75rem;line-height:1.25;color:#7f1d1d">
