@@ -709,7 +709,7 @@ class Procesos extends Component
     /** Usuarios de Edenred por dar de alta (copia en la BD del VPS que deja cada ejecución). */
     public function getEdenredUsuariosProperty(): array
     {
-        return Schema::hasTable('estado_procesos') ? $this->estadoRemoto('fiq.edenred_usuarios') : [];
+        return Schema::hasTable('estado_procesos') ? (array) $this->estadoRemoto('fiq.edenred_usuarios') : [];
     }
 
     /** «Pedir contratos a Jordi»: un correo con todos los trabajadores sin contrato. $modo = borrador | enviar (doble paso en el cliente y aquí). */
@@ -747,7 +747,7 @@ class Procesos extends Component
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
         $this->lanzar([['script' => 'Edenred/edenred.py', 'args' => [$mm, '--alta', $clave], 'timeout' => 60, 'etiqueta' => 'EDENRED · usuario dado de alta', 'windows' => false]], ['resultados' => 'edenred_alta']);
         if (Schema::hasTable('estado_procesos')) {
-            $e = $this->estadoRemoto('fiq.edenred_usuarios');
+            $e = (array) $this->estadoRemoto('fiq.edenred_usuarios');
             $e['por_alta'] = array_values(array_filter($e['por_alta'] ?? [], fn ($u) => ($u['clave'] ?? '') !== $clave));
             ColaTareas::guardarEstado('fiq.edenred_usuarios', $e, 'Procesos FIQ');
         }
