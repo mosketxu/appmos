@@ -71,17 +71,7 @@ class VigilanciaTrabajadores
     public static function reactivar(object $w): void
     {
         DB::table('trabajadores')->where('id', $w->id)->update(['silenciado_at' => null]);
-        try {
-            $alex = User::whereIn('email', config('contabilidad.claude_todo_gestores', []))->orderBy('id')->first();
-            if ($alex) {
-                $t = TodoTarea::create(['titulo' => 'El PC '.$w->nombre.' se ha encendido: vigilancia reactivada', 'descripcion' => 'Estaba apagado a propósito; ha vuelto a dar señales y Appmos vuelve a vigilarlo.',
-                    'creador_id' => $alex->id, 'estado' => 'hecha', 'prioridad' => 'baja', 'cerrada_at' => now()]);
-                $t->asignados()->attach($alex->id, ['orden' => TodoTarea::siguienteOrden($alex->id)]);
-                TodoAviso::create(['user_id' => $alex->id, 'tarea_id' => $t->id, 'origen_id' => null, 'texto' => '✔ El PC '.$w->nombre.' se ha encendido: vigilancia reactivada']);
-            }
-        } catch (\Throwable $e) {
-            // no romper por avisar
-        }
+        // 27-oct-2026 (Alex): ya no se deja tarea ni aviso de «se ha encendido»; solo se reactiva la vigilancia
     }
 
     protected static function avisarCaida(User $alex, object $w, string $marca): void
@@ -141,9 +131,7 @@ class VigilanciaTrabajadores
 
     protected static function cerrarAviso(User $alex, TodoTarea $t, object $w): void
     {
-        TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $alex->id, 'tipo' => 'evento', 'fecha' => now()->format('Y-m-d'),
-            'texto' => 'el PC '.$w->nombre.' vuelve a dar señales ('.now()->format('d/m H:i').'): cierro el aviso']);
-        $t->update(['estado' => 'hecha', 'cerrada_at' => now()]);
-        TodoAviso::create(['user_id' => $alex->id, 'tarea_id' => $t->id, 'origen_id' => null, 'texto' => '✔ El PC '.$w->nombre.' vuelve a estar activo']);
+        // 27-oct-2026 (Alex): sin histórico de caídas; al volver el PC se borra el aviso (comentarios y avisos caen en cascada)
+        $t->delete();
     }
 }

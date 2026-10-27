@@ -60,10 +60,12 @@ class ErroresApp
                 // Permisos con los que nace la tarea de error (decisión de Alex, 4-oct): «scripts» para que Claude pueda comprobar la sintaxis, hacer tests y commit
                 'claude_permisos' => array_values(array_intersect(array_keys(TodoTarea::PERMISOS_CLAUDE), (array) config('contabilidad.errores_permisos', []))),
             ]);
-            foreach (array_filter([$alex->id, $claude?->id]) as $uid) {
-                $t->asignados()->attach($uid, ['orden' => TodoTarea::siguienteOrden($uid)]);
+            // 27-oct-2026 (Alex): estos errores los resuelve Claude solo y a Alex no le interesan: se asignan solo a Claude, sin campana.
+            // Si Claude necesita a Alex, lo asigna o se lo pide en un comentario. Sin usuario Claude, sí va a Alex.
+            $t->asignados()->attach($claude?->id ?? $alex->id, ['orden' => TodoTarea::siguienteOrden($claude?->id ?? $alex->id)]);
+            if (! $claude) {
+                TodoAviso::para($t, [$alex->id], 'Appmos ha detectado un error: '.$t->titulo, 0);
             }
-            TodoAviso::para($t, [$alex->id], 'Appmos ha detectado un error: '.$t->titulo, $claude?->id ?? 0);
             if ($claude) {
                 TodoClaude::alAsignar($t, $alex);   // Alex es gestor: autorizada y a la cola (sin permisos: no ejecuta ni toca nada fuera del proyecto)
             }
@@ -121,6 +123,8 @@ class ErroresApp
                     'texto' => 'cerrada sola: este error no ha vuelto a pasar en '.self::AUTOCIERRE_HORAS.' h']);
                 $t->update(['estado' => 'hecha', 'cerrada_at' => now()]);
             }
+            // sin histórico: las tareas de error ya cerradas (por Claude o solas) se borran; comentarios, asignaciones y avisos caen en cascada
+            TodoTarea::where('descripcion', 'like', '%[err-%')->whereIn('estado', TodoTarea::CERRADOS)->delete();
         } catch (\Throwable $e) {
             // nunca romper por limpiar
         }
