@@ -1336,7 +1336,7 @@ class Procesos extends Component
             return;
         }
         if (! $this->cargarStaffDatos()) {
-            $this->dispatch('proceso-terminado', mensaje: '⚠️ No tengo los datos de personal del mes '.sprintf('%02d', $this->mes).'. 👉 Pasa antes «Laboral» (Entrar nóminas · imputación de costes).');
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No tengo los datos de personal del mes '.sprintf('%02d', $this->mes).'. 👉 Pasa antes «Laboral» (Nóminas (Imputación de costes)).');
             return;
         }
         $this->staffAbierto = true;
@@ -1493,7 +1493,7 @@ class Procesos extends Component
             return;
         }
         if (! $this->staffAbierto && ! $this->cargarStaffDatos()) {
-            $this->dispatch('proceso-terminado', mensaje: '⚠️ No tengo los datos de personal del mes '.sprintf('%02d', $this->mes).'. 👉 Pasa antes «Laboral» (Entrar nóminas · imputación de costes).');
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No tengo los datos de personal del mes '.sprintf('%02d', $this->mes).'. 👉 Pasa antes «Laboral» (Nóminas (Imputación de costes)).');
             return;
         }
         $this->guardarNombresStaff(false);

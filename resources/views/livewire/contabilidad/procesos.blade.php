@@ -529,8 +529,16 @@
                                         </div>
                                     @endif
                                     @if ($id === 'laboral')
-                                        <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" opcional texto="Imputación de costes"
-                                            title="Opcional: si no eliges ninguno, se usa «imputacion costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}{{ $anio }}…» de versión más alta en la carpeta Laboral {{ $anio }} del mes." />
+                                        @php $mmL = str_pad($mes, 2, '0', STR_PAD_LEFT); @endphp
+                                        <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
+                                            <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" texto="Imputación de costes {{ $mmL }}"
+                                                title="Si no eliges ninguno, se usa «imputacion costes {{ $mmL }}{{ $anio }}…» de versión más alta en la carpeta Laboral {{ $anio }} del mes." />
+                                            @if ($laboralFichero)
+                                                <span class="text-green-700">✓ {{ $laboralFichero->getClientOriginalName() }}</span>
+                                            @else
+                                                <span class="text-gray-500">Usa la última versión de la carpeta del mes</span>
+                                            @endif
+                                        </div>
                                     @endif
                                     @if ($id === 'edenred')
                                         {{-- 27-oct-2026: Recargas de Edenred. Se sube la Imputación (última versión) y «Ejecutar» analiza; la decisión sobre cada diferencia se toma en una ventana. --}}
