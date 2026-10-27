@@ -6,7 +6,19 @@
      el diálogo "Abrir" de Excel). Al lado, «⬇ Descargar» lo baja por el navegador.
 
      Prop: r = ['ruta' => 'E:\...\fichero.xlsx', ...]. --}}
-@props(['r'])
+@props(['r', 'compacto' => false])
+
+@if ($compacto)
+    {{-- 27-oct-2026 (Alex): solo un clip; al pasar el ratón, el fichero y su ruta. Descarga si hay fichero en el servidor; si no, copia la ruta. --}}
+    @php $nom = $r['nombre'] ?? (preg_split('/[\\\\\/]/', (string) $r['ruta']) ? last(preg_split('/[\\\\\/]/', (string) $r['ruta'])) : ''); $tip = "Descargar {$nom}\nRuta: {$r['ruta']}"; @endphp
+    @if (! empty($r['tarea']))
+        <button type="button" wire:click="descargarDeTarea({{ (int) $r['tarea'] }}, @js($r['nombre'] ?? ''))" title="{{ $tip }}" class="px-1 text-base text-indigo-700 rounded hover:bg-indigo-50">📎</button>
+    @elseif (! empty($r['local']))
+        <button type="button" wire:click="descargarResultado('{{ base64_encode($r['local']) }}')" title="{{ $tip }}" class="px-1 text-base text-indigo-700 rounded hover:bg-indigo-50">📎</button>
+    @else
+        <button type="button" data-ruta="{{ $r['ruta'] }}" title="{{ str_replace('Descargar ', '', $tip) }}&#10;(clic: copiar la ruta)" x-on:click.prevent="navigator.clipboard && navigator.clipboard.writeText($el.dataset.ruta)" class="px-1 text-base text-indigo-700 rounded hover:bg-indigo-50">📎</button>
+    @endif
+@else
 
 <div x-data="{ copiado: false }" class="text-xs">
     <a href="#" role="button"
@@ -26,3 +38,4 @@
                 class="ml-1 px-1.5 py-0 font-sans text-xs text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50">⬇ Descargar</button>
     @endif
 </div>
+@endif
