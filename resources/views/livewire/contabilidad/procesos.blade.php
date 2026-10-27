@@ -376,14 +376,7 @@
                                         texto="Subir SyS {{ $mmSel }}"
                                         title="El balance de sumas y saldos de SAGE (con desglose por canal), con el nombre que tenga. Antes del proceso se comprueba que es de Fashion IQ y del mes {{ $mmSel }} y se deja como «SyS {{ $mmSel }}.xlsx» en la carpeta Anaplan (sustituye al que hubiera). Si no subes ninguno se usa el de los ficheros base. Puedes arrastrarlo aquí." />
                                     @if ($sysFichero)<span class="text-green-700">→ SyS {{ $mmSel }}.xlsx</span>@endif
-                                    @if ($ent)
-                                        @php $faltan = array_filter($ent, fn ($e) => ! $e['ok'] && empty($e['opcional'])); @endphp
-                                        @if (! $faltan)
-                                            <span class="text-green-700 whitespace-nowrap" title="Ficheros del mes {{ $mmSel }} completos">✓</span>
-                                        @else
-                                            <span class="font-medium text-red-700" title="@foreach ($faltan as $e)✗ {{ $e['que'] }} ({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})&#10;@endforeach">✗ Faltan {{ count($faltan) }} fichero(s)</span>
-                                        @endif
-                                    @endif
+                                                                        @endif
                                     <button type="button" class="{{ $btn }}" style="{{ $verde('anaplan') }}" wire:click="ejecutar('anaplan')" wire:loading.attr="disabled" wire:target="ejecutar('anaplan')"
                                         wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
                                         title="Anaplan (sysSplit.js → anaplanConsolida.js → anaplanDesviaciones.js): separa el SyS por canal (pestaña U y una por tienda), consolida el mes en SyS {{ $anio }}.xlsx y marca las cuentas que se salen de lo normal.">
@@ -420,6 +413,12 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="8" r="6.3"/><circle cx="19" cy="8" r="6.3"/><path d="M4.6 10c1.3 1.7 3.5 1.7 4.8 0M16.6 10c1.3 1.7 3.5 1.7 4.8 0"/><circle cx="5.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".5" fill="currentColor"/><circle cx="17.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="20.7" cy="6.3" r=".5" fill="currentColor"/></svg>{{ $sinNom ? ' '.count($sinNom) : '' }}
                                     </button>
                                 </div>
+                                @if ($ent)
+                                    @php $faltan = array_filter($ent, fn ($e) => ! $e['ok'] && empty($e['opcional'])); @endphp
+                                    @if ($faltan)
+                                        <div class="text-xs font-medium text-red-700 whitespace-nowrap" title="@foreach ($faltan as $e)✗ {{ $e['que'] }} ({{ $e['donde'] }}{{ ! empty($e['nota']) ? ' · '.$e['nota'] : '' }})&#10;@endforeach">✗ Falta{{ count($faltan) > 1 ? 'n' : '' }} {{ count($faltan) }} fichero{{ count($faltan) > 1 ? 's' : '' }}: {{ collect($faltan)->pluck('que')->implode(', ') }}</div>
+                                    @endif
+                                @endif
                                 @include('livewire.contabilidad._staff-faltan')
                                 @if (! empty($this->entradas['sin_canal']))
                                     @php $sc = $this->entradas['sin_canal']; @endphp
