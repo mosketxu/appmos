@@ -135,6 +135,8 @@ class Procesos extends Component
     public string $pfSs = '';
     public string $pfNominas = ''; // vacío = total de la remesa Laboral 2026/<MM>/RM*.xml
     public string $pfCargo = '';   // vacío = último día hábil del mes ("Wednesday 30th")
+    /** Observaciones por fila del correo (VAT, SS, Payrolls, fijas...); vacío = la de siempre. */
+    public array $pfObs = [];
     public string $pfEmailPrueba = 'alex.arregui@sumaempresa.com';
     // Texto, frase en negrita (opcional) y destinatarios: se precargan de
     // pagosFinMes.json, que el script reescribe al enviar a Plein -> lo que sale
@@ -1848,6 +1850,9 @@ class Procesos extends Component
         if (trim($this->pfCargo) !== '') {
             array_push($args, '--cargo', trim($this->pfCargo));
         }
+        if (array_filter($this->pfObs, fn ($o) => trim((string) $o) !== '')) {
+            array_push($args, '--obs', json_encode(array_map(fn ($o) => trim((string) $o), array_values($this->pfObs)), JSON_UNESCAPED_UNICODE));
+        }
         array_push($args, '--texto', $this->pfTexto, '--destacado', $this->pfDestacado,
             $this->pfIncluirDestacado ? '--con-destacado' : '--sin-destacado',
             '--to', $this->pfTo, '--cc', $this->pfCc);
@@ -1932,12 +1937,12 @@ class Procesos extends Component
         $total = $completo ? $impNom + array_sum(array_column($fijas, 2)) : null;
 
         $filas = [
-            ['VAT TAX', '', $this->pfK($iva), "K Will be charged on {$cargo}"],
-            ['Social Security', '', $this->pfK($ss), "K Will be charged on {$cargo}"],
-            ['Payrolls', '', $this->pfK($nom), 'K'],
+            ['VAT TAX', '', $this->pfK($iva), "Will be charged on {$cargo}"],
+            ['Social Security', '', $this->pfK($ss), "Will be charged on {$cargo}"],
+            ['Payrolls', '', $this->pfK($nom), ''],
         ];
         foreach ($fijas as [$a, $b, $c]) {
-            $filas[] = [$a, $b, $this->pfK((float) $c), 'K'];
+            $filas[] = [$a, $b, $this->pfK((float) $c), ''];
         }
 
         return [
@@ -1995,6 +2000,7 @@ class Procesos extends Component
         $this->pfNominas = (string) ($m['nominas'] ?? '');
         $this->pfCargo = (string) ($m['cargo'] ?? '');
         $this->pfEnviado = (string) ($m['enviado'] ?? '');
+        $this->pfObs = array_values($m['obs'] ?? []);
         $this->pfRecFilas = [];
         $this->pfRecOriginal = '';
         $this->pfRecSaldo = '';

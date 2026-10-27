@@ -767,12 +767,16 @@
                 @endforeach
             </table>
             <table class="w-full mt-3 text-sm text-gray-800 border border-collapse border-gray-400">
-                @foreach ($pl['filas'] as [$a, $b, $c, $d])
+                @foreach ($pl['filas'] as $i => [$a, $b, $c, $d])
                     <tr>
                         <td class="px-2 py-0.5 border border-gray-400">{{ $a }}</td>
                         <td class="px-2 py-0.5 border border-gray-400">{{ $b }}</td>
                         <td class="px-2 py-0.5 text-right border border-gray-400">{{ $c }}</td>
-                        <td class="px-2 py-0.5 border border-gray-400">{{ $d }}</td>
+                        <td class="px-2 py-0.5 border border-gray-400">
+                            <span class="text-gray-500">K</span>
+                            <input type="text" wire:model.blur="pfObs.{{ $i }}" placeholder="{{ $d }}"
+                                class="w-full py-0 text-sm border-0 border-b border-gray-200 rounded-none focus:ring-0" style="min-width:160px">
+                        </td>
                     </tr>
                 @endforeach
                 <tr class="font-semibold">
@@ -782,7 +786,7 @@
                     <td class="px-2 py-0.5 border border-gray-400">K</td>
                 </tr>
             </table>
-            <p class="mt-1 text-xs text-gray-500">"—" = vacío (VAT y SS se buscan solos al enviar). Se actualiza al salir de cada campo. Las filas fijas están en monthlyFIQ/pagosFinMes.json.</p>
+            <p class="mt-1 text-xs text-gray-500">"—" = vacío (VAT y SS se buscan solos al enviar). Se actualiza al salir de cada campo. La columna tras la K es una observación editable por fila (vacía = la de siempre). Las filas fijas están en monthlyFIQ/pagosFinMes.json.</p>
         </div>
         </div>
 
