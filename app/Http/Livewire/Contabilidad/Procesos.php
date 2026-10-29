@@ -203,9 +203,16 @@ class Procesos extends Component
     {
         // Por defecto, el mes ANTERIOR al actual (pedido del usuario 2026-09-09:
         // "que por defecto el mes sea el de la fecha actual menos 1").
-        $m = (int) date('n') - 1;
-        $this->mes = $m < 1 ? 12 : $m;
-        $this->anio = \App\Support\Anio::defecto();
+        // Desde el día 20 se trabaja ya el mes corriente (pedido 2026-10-29: los pagos de
+        // fin de mes y el cierre salían en el mes anterior cuando ya tocaba el actual).
+        if ((int) date('j') >= 20 && \App\Support\Anio::forzado() === null) {
+            $this->mes = (int) date('n');
+            $this->anio = (int) date('Y');
+        } else {
+            $m = (int) date('n') - 1;
+            $this->mes = $m < 1 ? 12 : $m;
+            $this->anio = \App\Support\Anio::defecto();
+        }
         $this->rvEnvio = $this->rvDestinatariosPorDefecto();
         $this->cargarBasePagosFinMes();
         $this->updatedPfMes();

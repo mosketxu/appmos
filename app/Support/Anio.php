@@ -11,7 +11,7 @@ use Carbon\Carbon;
  */
 class Anio
 {
-    protected static function forzado(): ?int
+    public static function forzado(): ?int
     {
         $v = trim((string) env('APPMOS_ANIO', ''));
 
