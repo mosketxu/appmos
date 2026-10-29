@@ -132,4 +132,21 @@ class TrabajadorApiController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    /** Copia diaria de la BD de mmcontrol: ¿está hecha hoy? (los trabajadores deciden si les toca hacerla) */
+    public function mmcontrolBdEstado(Request $r)
+    {
+        $this->trabajador($r);
+
+        return response()->json(['hecha_hoy' => \App\Support\BackupMmcontrol::hechaHoy()] + \App\Support\BackupMmcontrol::estado());
+    }
+
+    public function mmcontrolBdResultado(Request $r)
+    {
+        $t = $this->trabajador($r);
+        $d = $r->validate(['ok' => 'required|boolean', 'mensaje' => 'nullable|string|max:2000']);
+        \App\Support\BackupMmcontrol::registrar($t->nombre, (bool) $d['ok'], (string) ($d['mensaje'] ?? ''));
+
+        return response()->json(['ok' => true]);
+    }
 }

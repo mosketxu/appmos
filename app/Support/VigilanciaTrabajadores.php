@@ -24,6 +24,7 @@ class VigilanciaTrabajadores
     public static function revisar(): void
     {
         ErroresApp::cerrarResueltos();   // de paso: cierra las tareas de error que ya no se repiten
+        BackupMmcontrol::vigilar();      // y avisa si ya es tarde y no hay copia de hoy de la BD de mmcontrol
         try {
             if (! Schema::hasTable('trabajadores') || ! Schema::hasTable('todo_tareas') || ! Cache::add('vigilancia.trabajadores', 1, 60)) {
                 return;
