@@ -6,11 +6,9 @@ use App\Models\Entidad;
 use App\Models\Suma;
 use Livewire\Attributes\Url;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class Ents extends Component
 {
-    use WithPagination;
     use Concerns\CoResponsables;
 
     // En la URL: al entrar a editar y volver atrás se siguen aplicando (pedido 1-oct-2026)
@@ -26,6 +24,10 @@ class Ents extends Component
     #[Url(except: '')]
     public $filtroresponsable='';
     public Entidad $entidad;
+
+    /** Scroll infinito: cuántas entidades se muestran; crece al llegar al final de la lista. */
+    public int $limite = self::LOTE;
+    const LOTE = 30;
 
     // Cambio de estado desde el listado: pregunta fecha y motivo (queda en entidad_historico)
     public $cambioId = null;
@@ -102,11 +104,16 @@ class Ents extends Component
         $entidad->save();
     }
 
-    /** Al cambiar la búsqueda o un filtro, a la primera página. */
+    public function cargarMas()
+    {
+        $this->limite += self::LOTE;
+    }
+
+    /** Al cambiar la búsqueda o un filtro, se vuelve al primer lote. */
     public function updated($propiedad)
     {
         if (in_array($propiedad, ['search', 'filtrocliente', 'filtroactivo', 'filtrofacturar', 'filtroresponsable'])) {
-            $this->resetPage();
+            $this->limite = self::LOTE;
         }
     }
 
@@ -140,14 +147,18 @@ class Ents extends Component
             ->where(fn ($q) => $q->search('entidad',$this->search)->orSearch('nif',$this->search))
             ->orderBy('favorito','desc')
             ->orderBy('entidad','asc')
-            ->paginate(15);
+            ->limit($this->limite + 1)
+            ->get();
+        // Se pide uno de más para saber si quedan entidades por cargar
+        $hayMas = $entidades->count() > $this->limite;
+        $entidades = $entidades->take($this->limite);
 
         $nombresCiclo = \Illuminate\Support\Facades\DB::table('ciclos')->pluck('ciclo', 'id')->map(fn ($c, $id) => $id === 0 ? 'Sin definir' : $c)->all();
 
         $sumas = Suma::orderBy('nombre')->get(['id', 'nombre', 'user_id']);
         $coResp = self::coResponsablesDe(array_merge($entidades->pluck('id')->all(), array_filter([$this->coRespDe])));
 
-        return view('livewire.ents',compact('entidades', 'nombresCiclo', 'sumas', 'coResp'));
+        return view('livewire.ents',compact('entidades', 'hayMas', 'nombresCiclo', 'sumas', 'coResp'));
     }
 
     public function delete($entidadId)

@@ -148,9 +148,13 @@
                 </span>
             </div>
             @endforelse
-            <div>
-                {{ $entidades->links() }}
-            </div>
+            @if ($hayMas)
+                {{-- Centinela: al entrar en pantalla pide el siguiente lote --}}
+                <div wire:key="ent-mas-{{ $entidades->count() }}" class="py-4 text-sm text-center text-gray-400"
+                     x-data x-init="new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { o.disconnect(); $wire.cargarMas(); } }, { rootMargin: '300px' }).observe($el)">
+                    Cargando más entidades…
+                </div>
+            @endif
             @include('livewire.ents._coresp', ['modo' => 'modal'])
             @include('livewire.ents._cambio_estado')
         </div>
