@@ -9,13 +9,13 @@ use App\Exports\PrefacturasExport;
 use App\Models\{Facturacion,Entidad, FacturacionConcepto, FacturacionDetalleConcepto};
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
-use Livewire\WithPagination;
+use App\Http\Livewire\DataTable\WithScrollInfinito;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Livewire\DataTable\WithBulkActions;
 
 class Prefacturas extends Component
 {
-    use WithPagination, WithBulkActions;
+    use WithScrollInfinito, WithBulkActions;
 
     public $entidad;
     public $search='';
@@ -88,10 +88,6 @@ class Prefacturas extends Component
             ->orderBy('facturacion.fechafactura')
             ->orderBy('entidades.entidad');
             // ->paginate(5); solo contemplo la query, no el resultado. Luego pongo el resultado: get, paginate o lo que quiera
-    }
-
-    public function getRowsProperty(){
-        return $this->rowsQuery->paginate(100);
     }
 
     public function generarSelected(){

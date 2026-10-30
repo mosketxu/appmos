@@ -91,10 +91,10 @@
                             <tr class="bg-gray-200" wire:key="row-message">
                                 <td  class="py-3 pl-2 font-medium" colspan="16">
                                 @unless($selectAll)
-                                    <span>Has seleccionado <strong>{{ $facturaciones->count() }}</strong> prefacturas, ¿quieres seleccionar el total: <strong>{{ $facturaciones->total() }}</strong> ?</span>
+                                    <span>Has seleccionado <strong>{{ $facturaciones->count() }}</strong> prefacturas, ¿quieres seleccionar el total: <strong>{{ $this->totalFilas }}</strong> ?</span>
                                     <x-button.link wire:click="selectAll" class="ml-1 text-blue-600">Select all</x-button.link>
                                 @else
-                                    <span>Has seleccionado <strong>todas</strong> las {{ $facturaciones->total() }} prefacturas</span>
+                                    <span>Has seleccionado <strong>todas</strong> las {{ $this->totalFilas }} prefacturas</span>
                                 @endif
                                 </td>
                             </tr>
@@ -173,9 +173,12 @@
                         @endforelse
                     </tbody>
                 </table>
-                <div>
-                    {{ $facturaciones->links() }}
-                </div>
+                @if ($hayMas)
+                    <div wire:key="mas-{{ $facturaciones->count() }}" class="py-4 text-sm text-center text-gray-400"
+                         x-data x-init="new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { o.disconnect(); $wire.cargarMas(); } }, { rootMargin: '300px' }).observe($el)">
+                        Cargando más…
+                    </div>
+                @endif
             </div>
         </div>
 

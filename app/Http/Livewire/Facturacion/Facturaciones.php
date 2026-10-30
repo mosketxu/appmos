@@ -8,7 +8,7 @@ use App\Exports\FacturacionExport;
 use App\Exports\RemesaExport;
 use App\Models\{Facturacion,Entidad};
 use Livewire\Component;
-use Livewire\WithPagination;
+use App\Http\Livewire\DataTable\WithScrollInfinito;
 use Illuminate\Support\Facades\DB;
 use App\Http\Livewire\DataTable\WithBulkActions;
 use App\Mail\MailFactura;
@@ -20,7 +20,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class Facturaciones extends Component
 {
-    use WithPagination, WithBulkActions;
+    use WithScrollInfinito, WithBulkActions;
 
     public $search='';
     public $filtrofacturado='';
@@ -117,10 +117,6 @@ class Facturaciones extends Component
             ->orderBy('facturacion.numfactura','desc')
             ->orderBy('facturacion.id','desc');
             // ->paginate(5); solo contemplo la query, no el resultado. Luego pongo el resultado: get, paginate o lo que quiera
-    }
-
-    public function getRowsProperty(){
-        return $this->rowsQuery->paginate(100);
     }
 
     public function zipSelected(){
