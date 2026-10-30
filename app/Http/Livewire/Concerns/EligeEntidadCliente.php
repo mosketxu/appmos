@@ -22,6 +22,8 @@ trait EligeEntidadCliente
     public string $nuevoEntidad = '';
     public bool $nuevoDetectada = false;
     public string $nuevoError = '';
+    /** Carpeta de Z: elegida con «Examinar…» (empresas del Grupo): las validadas van a Z:, no a OneDrive. Vacío = OneDrive. */
+    public string $nuevoZ = '';
 
     protected function opcionesClientes(): array
     {
@@ -70,6 +72,7 @@ trait EligeEntidadCliente
         $this->nuevoEid = $eid;
         $this->nuevoNombre = $p['nombre'];
         $this->nuevoCarpeta = $p['carpeta'];
+        $this->nuevoZ = '';
         $this->explorando = false;
         $this->nuevoEntidad = $p['entidad'].($p['nif'] ? ' · '.$p['nif'] : '');
         $this->nuevoDetectada = $p['detectada'];
@@ -111,7 +114,7 @@ trait EligeEntidadCliente
             return;
         }
         try {
-            $hechos = ClientesEntidad::crear($this->nuevoEid, $nombre, $carpeta, $this->raizOneDrive(), $this->pideCarpetaFacturas());
+            $hechos = ClientesEntidad::crear($this->nuevoEid, $nombre, $carpeta, $this->raizOneDrive(), $this->pideCarpetaFacturas(), $this->nuevoZ !== '');
         } catch (\Throwable $e) {
             $this->nuevoError = 'No se pudo crear: '.$e->getMessage();
 
@@ -162,6 +165,12 @@ trait EligeEntidadCliente
 
             return;
         }
+        if (! empty($e['z'])) {   // una unidad de Windows (Z:): la empresa guarda allí; la ruta de OneDrive propuesta queda solo como copia de trabajo del servidor
+            $this->nuevoZ = (string) $e['z'];
+
+            return;
+        }
+        $this->nuevoZ = '';
         $c = ClientesEntidad::aCarpeta((string) ($e['ruta'] ?? ''));
         if ($c === null) {
             $this->nuevoError = 'Elige la carpeta donde están las facturas recibidas, dentro de la carpeta de la empresa (no la raíz _Clientes ni el año).';

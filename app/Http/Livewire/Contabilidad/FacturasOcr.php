@@ -1332,7 +1332,7 @@ class FacturasOcr extends Component
         }
         if (! \Illuminate\Support\Facades\DB::table('tareas')->where('proceso', 'pc.facturasocr')->where('parametros', 'like', '%"cliente":"'.$this->cliente.'"%')
             ->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
-            \App\Support\ColaTareas::crear('pc.facturasocr', ['cliente' => $this->cliente, 'empresa' => $this->nombreEmpresaOcr()], \App\Support\ColaTareas::pcElegido() ?: (config('contabilidad.facturasocr_pc') ?: null), auth()->id());
+            \App\Support\ColaTareas::crear('pc.facturasocr', ['cliente' => $this->cliente, 'empresa' => $this->nombreEmpresaOcr(), 'destino_z' => ! empty($this->cfg()['destino_z'])], \App\Support\ColaTareas::pcElegido() ?: (config('contabilidad.facturasocr_pc') ?: null), auth()->id());
         }
         $this->sincronizando = true;
     }

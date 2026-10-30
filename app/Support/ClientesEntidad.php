@@ -277,7 +277,7 @@ class ClientesEntidad
      * Crea el cliente en Facturas OCR y en Bancos (cada uno solo si su carpeta de código existe en esta máquina), enlazado a la entidad.
      * Devuelve los módulos creados.
      */
-    public static function crear(int $entidadId, string $nombre, string $carpeta, ?string $raizOneDrive, bool $conFacturasOcr = true): array
+    public static function crear(int $entidadId, string $nombre, string $carpeta, ?string $raizOneDrive, bool $conFacturasOcr = true, bool $destinoZ = false): array
     {
         $e = self::activas()[$entidadId] ?? null;
         abort_unless($e, 403, 'Entidad no disponible');
@@ -293,6 +293,8 @@ class ClientesEntidad
                 'carpeta_recibidas' => '{OneDrive}/'.self::rutaOneDrive($carpeta).($trimestral ? '' : '/{MM}_{AAAA}'),
                 'carpeta_emitidas' => '{OneDrive}/'.($trimestral ? dirname(self::rutaOneDrive($carpeta)).'/Emitidas' : self::rutaOneDrive($carpeta).'/Emitidas/{MM}_{AAAA}'),
                 'serie_recibidas' => '',
+                // Empresa del Grupo con carpeta en Z: el PC trabajador deja allí las validadas (carpetas_cliente.txt, por nombre de entidad) en vez de en OneDrive
+                ...($destinoZ ? ['destino_z' => true] : []),
                 'datos' => '{OneDrive}/_ClaudeDesarrollo/FacturasOCR/'.$nombre,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $hechos[] = 'Facturas OCR';
