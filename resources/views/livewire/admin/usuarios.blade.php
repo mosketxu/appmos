@@ -30,6 +30,7 @@
                     <thead class="text-xs text-left text-gray-600 bg-gray-100">
                         <tr>
                             <th class="px-3 py-2">Nombre</th>
+                            <th class="px-3 py-2">Inic.</th>
                             <th class="px-3 py-2">Correo</th>
                             <th class="px-3 py-2">Rol</th>
                             <th class="px-3 py-2">Responsable Suma</th>
@@ -41,6 +42,7 @@
                             <tr wire:key="u-{{ $u->id }}" wire:click="editar({{ $u->id }})"
                                 class="border-t cursor-pointer hover:bg-indigo-50 {{ $editando === $u->id ? 'bg-indigo-100' : '' }} {{ $u->activo ? '' : 'text-gray-400 line-through' }}">
                                 <td class="px-3 py-2 font-medium">{{ $u->name }}</td>
+                                <td class="px-3 py-2 text-xs text-gray-600">{{ $u->iniciales }}</td>
                                 <td class="px-3 py-2">{!! $u->email ? e($u->email) : '<span class="text-amber-600">sin correo</span>' !!}</td>
                                 <td class="px-3 py-2">
                                     @php $r = $u->getRoleNames()->first(); @endphp
@@ -69,6 +71,11 @@
                             <label class="block text-xs text-gray-600">Nombre</label>
                             <input type="text" wire:model="name" class="w-full py-1 text-sm border-gray-300 rounded-md shadow-sm">
                             @error('name') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600">Iniciales (salen en «Otro Resp.» de Entidades)</label>
+                            <input type="text" wire:model="iniciales" maxlength="5" class="w-full py-1 text-sm uppercase border-gray-300 rounded-md shadow-sm">
+                            @error('iniciales') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="block text-xs text-gray-600">Correo (para entrar; vacío = aún no puede entrar)</label>

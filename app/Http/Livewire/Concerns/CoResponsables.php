@@ -23,10 +23,11 @@ trait CoResponsables
     {
         $out = [];
         $filas = DB::table('entidad_user')->join('sumas', 'sumas.user_id', '=', 'entidad_user.user_id')
+            ->join('users', 'users.id', '=', 'sumas.user_id')
             ->whereIn('entidad_user.entidad_id', $entidadIds ?: [0])
-            ->orderBy('sumas.nombre')->get(['entidad_user.entidad_id', 'sumas.id as suma_id', 'sumas.nombre']);
+            ->orderBy('sumas.nombre')->get(['entidad_user.entidad_id', 'sumas.id as suma_id', 'sumas.nombre', 'users.iniciales']);
         foreach ($filas as $f) {
-            $out[$f->entidad_id][] = ['suma_id' => $f->suma_id, 'nombre' => $f->nombre];
+            $out[$f->entidad_id][] = ['suma_id' => $f->suma_id, 'nombre' => $f->nombre, 'iniciales' => $f->iniciales ?: $f->nombre];
         }
         return $out;
     }

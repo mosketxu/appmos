@@ -27,6 +27,7 @@ class Usuarios extends Component
     public ?int $editando = null;
 
     public string $name = '';
+    public string $iniciales = '';
     public string $email = '';
     public string $rol = 'Usuario';
     public bool $activo = true;
@@ -53,6 +54,7 @@ class Usuarios extends Component
         $this->resetForm();
         $this->editando = $u->id;
         $this->name = $u->name;
+        $this->iniciales = (string) $u->iniciales;
         $this->email = (string) $u->email;
         $this->rol = $u->getRoleNames()->first() ?? 'Usuario';
         $this->activo = (bool) $u->activo;
@@ -87,7 +89,7 @@ class Usuarios extends Component
 
     protected function resetForm(): void
     {
-        $this->reset(['editando', 'name', 'email', 'rol', 'activo', 'password', 'sumaId', 'permisosExtra', 'entidadesAsignadas', 'buscarEntidad', 'soloMarcadas']);
+        $this->reset(['editando', 'name', 'iniciales', 'email', 'rol', 'activo', 'password', 'sumaId', 'permisosExtra', 'entidadesAsignadas', 'buscarEntidad', 'soloMarcadas']);
         $this->resetErrorBag();
     }
 
@@ -97,6 +99,7 @@ class Usuarios extends Component
         $this->email = trim($this->email);
         $this->validate([
             'name' => 'required|string|max:255',
+            'iniciales' => 'nullable|string|max:5',
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'rol' => ['required', Rule::exists('roles', 'name')],
             'password' => ($id ? 'nullable' : 'nullable').'|string|min:8',
@@ -115,6 +118,7 @@ class Usuarios extends Component
         DB::transaction(function () use ($id) {
             $u = $id ? User::findOrFail($id) : new User();
             $u->name = trim($this->name);
+            $u->iniciales = trim($this->iniciales) !== '' ? mb_strtoupper(trim($this->iniciales)) : null;
             $u->email = $this->email !== '' ? $this->email : null;
             $u->activo = $this->activo;
             if ($this->password !== '') {

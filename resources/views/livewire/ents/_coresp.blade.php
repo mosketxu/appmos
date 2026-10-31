@@ -4,8 +4,8 @@
 @if ($modo === 'etiquetas')
     <span class="inline-flex flex-wrap items-center gap-1">
         @foreach ($coResp[$e->id] ?? [] as $cr)
-            <span class="inline-flex items-center px-1.5 text-xs text-indigo-800 bg-indigo-100 rounded-full whitespace-nowrap">
-                {{ $cr['nombre'] }}
+            <span class="inline-flex items-center px-1.5 text-xs text-indigo-800 bg-indigo-100 rounded-full whitespace-nowrap" title="{{ $cr['nombre'] }}">
+                {{ $cr['iniciales'] ?? $cr['nombre'] }}
                 @if ($puede)
                     <button type="button" wire:click="alternarCoResp({{ $e->id }}, {{ $cr['suma_id'] }}, false)" title="Quitar" class="ml-1 text-indigo-400 hover:text-red-600">✕</button>
                 @endif
