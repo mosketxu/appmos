@@ -1084,6 +1084,9 @@ class Procesos extends Component
                     return;
                 }
             }
+            if ($email = auth()->user()?->email) {   // el correo-resumen va a quien lanza el proceso (30-oct-2026)
+                $pasos[0]['args'] = array_merge($pasos[0]['args'], ['--aviso-a', $email]);
+            }
             $pasos[0]['args'][] = '--ficheros';
             foreach ($fs as $i => $f) {
                 if ($this->remoto()) {
