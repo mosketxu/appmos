@@ -217,6 +217,35 @@
                         </div>
                     </div>
                 @endif
+                @php $tdas = $this->edenredTiendas; @endphp
+                <div class="p-2 text-xs border border-gray-200 rounded">
+                    <p class="font-semibold text-gray-800">Recargas por tienda</p>
+                    <table class="w-full mt-1">
+                        @foreach (['BCN', 'LRV', 'ROZ', 'MAL', 'MAR'] as $tt)
+                            @php $x = $tdas[$tt] ?? ['estado' => 'sin_fichero']; @endphp
+                            <tr class="border-t border-gray-100">
+                                <td class="p-1 font-medium">{{ $tt }}</td>
+                                <td class="p-1">
+                                    @if ($x['estado'] === 'pedido')<span class="text-green-700">✓ Pedido #{{ $x['pedido'] ?? '' }} ({{ number_format((float) ($x['total'] ?? 0), 2, ',', '.') }} €)</span>
+                                    @elseif ($x['estado'] === 'bloqueada')<span class="text-red-700">⛔ Falta crear la tarjeta de: {{ implode(', ', $x['faltan'] ?? []) }}</span>
+                                    @elseif ($x['estado'] === 'listo')<span class="text-blue-700">Listo para subir</span>
+                                    @else<span class="text-gray-500">Sin fichero (ejecuta EDENRED con la Imputación)</span>@endif
+                                </td>
+                                <td class="p-1 text-right">
+                                    @if ($x['estado'] === 'listo')
+                                        @if ($edenredConfirmaSubir === $tt)
+                                            <button type="button" wire:click="subirRecargasEdenred('{{ $tt }}', true)" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700">⚠️ ¿Seguro? Subir y confirmar {{ $tt }}</button>
+                                            <button type="button" wire:click="$set('edenredConfirmaSubir', '')" class="px-1 text-gray-600 underline">cancelar</button>
+                                        @else
+                                            <button type="button" wire:click="subirRecargasEdenred('{{ $tt }}', false)" class="px-2 py-0.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Sube el fichero y calcula el pedido; se para antes de confirmar.">Calcular</button>
+                                            <button type="button" wire:click="$set('edenredConfirmaSubir', '{{ $tt }}')" class="px-2 py-0.5 text-white bg-blue-600 rounded shadow-sm hover:bg-blue-700">⬆ Subir y confirmar…</button>
+                                        @endif
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </table>
+                </div>
                 @if ($edenredMsg !== '')<p class="text-xs text-gray-700">{{ $edenredMsg }}</p>@endif
                 <div class="flex justify-end"><x-button.secondary wire:click="$set('edenredUsuariosAbierto', false)">Cerrar</x-button.secondary></div>
             </div>
@@ -590,16 +619,6 @@
                                                 title="Trabajadores nuevos con sus datos (DNI/NIE, correo, fecha de nacimiento) para crear el usuario en Edenred.">
                                                 👤 Usuarios{{ $nAlta ? " ({$nAlta} por dar de alta)" : '' }}
                                             </button>
-                                            <span class="inline-flex items-center gap-x-1 whitespace-nowrap">
-                                                @if ($edenredConfirmaSubir)
-                                                    <button type="button" wire:click="subirRecargasEdenred(true)" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700" title="Sube el Recargas de cada tienda sin pedido y CONFIRMA los pedidos en Edenred (luego hay que transferir).">⚠️ ¿Seguro?</button>
-                                                    <button type="button" wire:click="$set('edenredConfirmaSubir', false)" class="px-1 text-gray-600 underline">cancelar</button>
-                                                @else
-                                                    <button type="button" wire:click="$set('edenredConfirmaSubir', true)" class="px-2 py-0.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Sube a Edenred los Recargas que aún no tienen pedido y los confirma (no repite los ya pedidos).">⬆ Subir Recargas…</button>
-                                                    <button type="button" wire:click="subirRecargasEdenred(false)" class="px-2 py-0.5 text-gray-600 underline" title="Sube y calcula el primero y se para antes de confirmar.">sin confirmar</button>
-                                                @endif
-                                            </span>
-                                            @if ($edenredMsg !== '')<span class="text-gray-700 truncate" style="max-width:18rem" title="{{ $edenredMsg }}">{{ \Illuminate\Support\Str::limit($edenredMsg, 60) }}</span>@endif
                                         </div>
                                     @endif
                                     @if ($id === 'open_items')

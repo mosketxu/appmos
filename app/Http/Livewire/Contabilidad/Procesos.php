@@ -59,7 +59,7 @@ class Procesos extends Component
     /** Envío real a Jordi en dos pasos, comprobado en el servidor (wire:confirm no frena Livewire: incidente 5-oct-2026). */
     public bool $edenredConfirmaJordi = false;
     public bool $edenredConfirmaAlta = false;      // doble paso antes de crear tarjetas en el portal de Edenred (envío real)
-    public bool $edenredConfirmaSubir = false;     // doble paso antes de subir y confirmar los Recargas
+    public string $edenredConfirmaSubir = '';      // tienda (siglas) cuyo pedido de Recargas se va a confirmar: doble paso
     /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
     public $laboralFichero = null;
     /**
@@ -679,7 +679,7 @@ class Procesos extends Component
         }
         if ($d && Schema::hasTable('estado_procesos')) {
             ColaTareas::guardarEstado('fiq.edenred_historial', (array) ($d['historial'] ?? []), 'Procesos FIQ');
-            ColaTareas::guardarEstado('fiq.edenred_usuarios', ['por_alta' => $d['usuarios_por_alta'] ?? [], 'pendientes' => $d['pendientes'] ?? [], 'cuando' => now()->format('d/m H:i')], 'Procesos FIQ');
+            ColaTareas::guardarEstado('fiq.edenred_usuarios', ['por_alta' => $d['usuarios_por_alta'] ?? [], 'pendientes' => $d['pendientes'] ?? [], 'tiendas' => $d['tiendas'] ?? [], 'cuando' => now()->format('d/m H:i')], 'Procesos FIQ');
         }
         $this->resultadoModal = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', substr($this->salida, $desde)));
         $this->resultadoModalOk = $ok;
@@ -822,15 +822,23 @@ class Procesos extends Component
         $this->lanzarEdenred('Edenred/altaUsuarios.py', ['--comprobar'], 'comprobar usuarios en Edenred', 600);
     }
 
-    /** Sube los Recargas pendientes (uno por tienda) a Edenred. $confirmar=false: solo sube y calcula el primero y se para. */
-    public function subirRecargasEdenred(bool $confirmar): void
+    /** Estado de los Recargas de cada tienda del mes (lo publica el proceso): pedido / listo / bloqueada / sin fichero. */
+    public function getEdenredTiendasProperty(): array
     {
-        if (! $this->autorizar('edenred') || ($confirmar && ! $this->edenredConfirmaSubir)) {
+        $t = (array) ($this->edenredUsuarios['tiendas'] ?? []);
+
+        return (array) ($t[$this->anio.'-'.str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT)] ?? []);
+    }
+
+    /** Sube el Recargas de UNA tienda a Edenred (decide Alex tienda a tienda). $confirmar=false: sube y calcula y se para antes de confirmar. */
+    public function subirRecargasEdenred(string $tienda, bool $confirmar): void
+    {
+        if (! $this->autorizar('edenred') || ! preg_match('/^[A-Z]{3}$/', $tienda) || ($confirmar && $this->edenredConfirmaSubir !== $tienda)) {
             return;
         }
-        $this->edenredConfirmaSubir = false;
-        $this->lanzarEdenred('Edenred/subirRecargas.py', $confirmar ? ['--confirmar'] : [],
-            $confirmar ? 'subir los Recargas a Edenred y confirmar los pedidos' : 'subir un Recargas a Edenred y calcular (sin confirmar)', 2400);
+        $this->edenredConfirmaSubir = '';
+        $this->lanzarEdenred('Edenred/subirRecargas.py', array_merge(['--tienda', $tienda], $confirmar ? ['--confirmar'] : []),
+            $confirmar ? "subir los Recargas de {$tienda} a Edenred y confirmar el pedido" : "subir los Recargas de {$tienda} y calcular (sin confirmar)", 2400);
     }
 
     public function cerrarResultadoModal(): void
