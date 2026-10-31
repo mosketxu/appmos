@@ -576,11 +576,13 @@
                                     @if ($id === 'edenred')
                                         {{-- 27-oct-2026: Recargas de Edenred. Se sube la Imputación (última versión) y «Ejecutar» analiza; la decisión sobre cada diferencia se toma en una ventana. --}}
                                         @php $edu = $this->edenredUsuarios; $nAlta = count($edu['por_alta'] ?? []); @endphp
-                                        <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
+                                        <div class="flex items-center text-xs text-gray-600 gap-x-3 flex-nowrap">
                                             <x-subir-fichero wire:model="edenredFichero" accept=".xlsx" :fichero="$edenredFichero" texto="Imputación de costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
                                                 title="La última versión de «IMPUTACION COSTES MMAAAA vN.0.xlsx» del mes (la que llega de Jordi). Se compara con la que se usó el mes anterior." />
                                             @if ($edenredFichero)
                                                 <span class="text-green-700">✓ {{ $edenredFichero->getClientOriginalName() }}</span>
+                                            @elseif ($u = $this->edenredUsada)
+                                                <span class="text-green-700" title="Los Recargas de este mes ya se prepararon con esta Imputación ({{ $u['cuando'] ?? '' }}). Solo hay que subir otra si llega una versión nueva.">✓ Usada: {{ \Illuminate\Support\Str::before($u['imputacion'] ?? '', '.xlsx') }}</span>
                                             @else
                                                 <span class="text-gray-500">Falta subir la Imputación</span>
                                             @endif
@@ -588,16 +590,16 @@
                                                 title="Trabajadores nuevos con sus datos (DNI/NIE, correo, fecha de nacimiento) para crear el usuario en Edenred.">
                                                 👤 Usuarios{{ $nAlta ? " ({$nAlta} por dar de alta)" : '' }}
                                             </button>
-                                            <span class="inline-flex items-center gap-x-1">
+                                            <span class="inline-flex items-center gap-x-1 whitespace-nowrap">
                                                 @if ($edenredConfirmaSubir)
-                                                    <button type="button" wire:click="subirRecargasEdenred(true)" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700" title="Sube el Recargas de cada tienda sin pedido y CONFIRMA los pedidos en Edenred (luego hay que transferir).">⚠️ ¿Seguro? Subir y confirmar</button>
+                                                    <button type="button" wire:click="subirRecargasEdenred(true)" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700" title="Sube el Recargas de cada tienda sin pedido y CONFIRMA los pedidos en Edenred (luego hay que transferir).">⚠️ ¿Seguro?</button>
                                                     <button type="button" wire:click="$set('edenredConfirmaSubir', false)" class="px-1 text-gray-600 underline">cancelar</button>
                                                 @else
-                                                    <button type="button" wire:click="$set('edenredConfirmaSubir', true)" class="px-2 py-0.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Sube a Edenred los Recargas que aún no tienen pedido y los confirma (no repite los ya pedidos).">⬆ Subir Recargas a Edenred…</button>
-                                                    <button type="button" wire:click="subirRecargasEdenred(false)" class="px-2 py-0.5 text-gray-600 underline" title="Sube y calcula el primero y se para antes de confirmar.">calcular sin confirmar</button>
+                                                    <button type="button" wire:click="$set('edenredConfirmaSubir', true)" class="px-2 py-0.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Sube a Edenred los Recargas que aún no tienen pedido y los confirma (no repite los ya pedidos).">⬆ Subir Recargas…</button>
+                                                    <button type="button" wire:click="subirRecargasEdenred(false)" class="px-2 py-0.5 text-gray-600 underline" title="Sube y calcula el primero y se para antes de confirmar.">sin confirmar</button>
                                                 @endif
                                             </span>
-                                            @if ($edenredMsg !== '')<span class="text-gray-700">{{ $edenredMsg }}</span>@endif
+                                            @if ($edenredMsg !== '')<span class="text-gray-700 truncate" style="max-width:18rem" title="{{ $edenredMsg }}">{{ \Illuminate\Support\Str::limit($edenredMsg, 60) }}</span>@endif
                                         </div>
                                     @endif
                                     @if ($id === 'open_items')

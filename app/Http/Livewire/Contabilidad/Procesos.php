@@ -678,6 +678,7 @@ class Procesos extends Component
             return true;
         }
         if ($d && Schema::hasTable('estado_procesos')) {
+            ColaTareas::guardarEstado('fiq.edenred_historial', (array) ($d['historial'] ?? []), 'Procesos FIQ');
             ColaTareas::guardarEstado('fiq.edenred_usuarios', ['por_alta' => $d['usuarios_por_alta'] ?? [], 'pendientes' => $d['pendientes'] ?? [], 'cuando' => now()->format('d/m H:i')], 'Procesos FIQ');
         }
         $this->resultadoModal = trim(preg_replace('/^RESULT_FILE:.*(\r?\n)?/m', '', substr($this->salida, $desde)));
@@ -723,6 +724,17 @@ class Procesos extends Component
     public function cerrarEdenred(): void
     {
         $this->edenredAbierto = false;
+    }
+
+    /** Imputación con la que ya se prepararon los Recargas del mes (copia en la BD que deja el proceso): evita el «Falta subir la Imputación» cuando ya se hizo. */
+    public function getEdenredUsadaProperty(): ?array
+    {
+        if (! Schema::hasTable('estado_procesos')) {
+            return null;
+        }
+        $h = (array) $this->estadoRemoto('fiq.edenred_historial');
+
+        return $h[$this->anio.'-'.str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT)] ?? null;
     }
 
     /** Usuarios de Edenred por dar de alta (copia en la BD del VPS que deja cada ejecución). */
