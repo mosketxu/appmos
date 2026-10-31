@@ -58,6 +58,8 @@ class Procesos extends Component
     public string $edenredMsg = '';
     /** Envío real a Jordi en dos pasos, comprobado en el servidor (wire:confirm no frena Livewire: incidente 5-oct-2026). */
     public bool $edenredConfirmaJordi = false;
+    public bool $edenredConfirmaAlta = false;      // doble paso antes de crear tarjetas en el portal de Edenred (envío real)
+    public bool $edenredConfirmaSubir = false;     // doble paso antes de subir y confirmar los Recargas
     /** Laboral (nóminas): fichero «imputacion costes» elegido a mano (opcional; si no, se usa el de versión más alta de la carpeta del mes). */
     public $laboralFichero = null;
     /**
@@ -768,6 +770,55 @@ class Procesos extends Component
             $e['por_alta'] = array_values(array_filter($e['por_alta'] ?? [], fn ($u) => ($u['clave'] ?? '') !== $clave));
             ColaTareas::guardarEstado('fiq.edenred_usuarios', $e, 'Procesos FIQ');
         }
+    }
+
+    /** Acciones en el portal de Edenred (Playwright en el PC de «Ejecutar en»; Chrome con ventana, Alex hace el login y los 2 pasos). */
+    protected function lanzarEdenred(string $script, array $args, string $etiqueta, int $timeout): void
+    {
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        $this->edenredMsg = "⏳ {$etiqueta}: pedido. Si Edenred pide entrar, sale un aviso: escribe usuario, contraseña y valida los 2 pasos en la ventana de Chrome del PC.";
+        $this->lanzar([['script' => $script, 'args' => array_merge([$mm], $args), 'timeout' => $timeout, 'etiqueta' => "EDENRED · {$etiqueta}", 'windows' => false]],
+            ['resultados' => 'edenred_portal', 'post' => 'finEdenredAccion', 'ctx' => ['etiqueta' => $etiqueta]]);
+    }
+
+    protected function finEdenredAccion(array $ctx, int $desde, array $oks): void
+    {
+        $ok = ! in_array(false, $oks, true);
+        $this->edenredMsg = ($ok ? '✅ ' : '⚠️ ').($ctx['etiqueta'] ?? 'Edenred').($ok ? ': terminado. Mira el detalle en «Salida».' : ': ha terminado con avisos. Mira «Salida».');
+        if (Schema::hasTable('estado_procesos')) {
+            // el script ya ha actualizado la copia de usuarios en la BD (altaUsuarios.py); aquí solo se refresca la pantalla
+            $this->dispatch('proceso-terminado', mensaje: $this->edenredMsg);
+        }
+    }
+
+    /** «Dar de alta en Edenred»: tarjeta virtual a 0 € para los pendientes con datos completos (doble paso: es una acción real en el portal). */
+    public function altaUsuariosEdenred(): void
+    {
+        if (! $this->autorizar('edenred') || ! $this->edenredConfirmaAlta) {
+            return;
+        }
+        $this->edenredConfirmaAlta = false;
+        $this->lanzarEdenred('Edenred/altaUsuarios.py', ['--confirmar-pedido'], 'dar de alta a los usuarios pendientes (tarjeta virtual, 0 €)', 1500);
+    }
+
+    /** Comprueba en «Usuarios y saldos» quién ya existe (p. ej. si se ha creado a mano) y actualiza la lista y el contador. */
+    public function comprobarUsuariosEdenred(): void
+    {
+        if (! $this->autorizar('edenred')) {
+            return;
+        }
+        $this->lanzarEdenred('Edenred/altaUsuarios.py', ['--comprobar'], 'comprobar usuarios en Edenred', 600);
+    }
+
+    /** Sube los Recargas pendientes (uno por tienda) a Edenred. $confirmar=false: solo sube y calcula el primero y se para. */
+    public function subirRecargasEdenred(bool $confirmar): void
+    {
+        if (! $this->autorizar('edenred') || ($confirmar && ! $this->edenredConfirmaSubir)) {
+            return;
+        }
+        $this->edenredConfirmaSubir = false;
+        $this->lanzarEdenred('Edenred/subirRecargas.py', $confirmar ? ['--confirmar'] : [],
+            $confirmar ? 'subir los Recargas a Edenred y confirmar los pedidos' : 'subir un Recargas a Edenred y calcular (sin confirmar)', 2400);
     }
 
     public function cerrarResultadoModal(): void

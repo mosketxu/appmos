@@ -249,7 +249,7 @@ return [
             'imputacionCostes.js', 'adyenReparto.js', 'ponerSyS.js', 'calculosRentasVariables.js', 'rentasVariablesDeclaracion.js',
             'enviarRentasVariables.py', 'pagosFinMes.py', 'FacturasEmitidas/facturasEmitidas.py', 'CashFlow/cashflow.py',
             'CashInStore/cashInStore.py',
-            'ComunicarImpuestos/comunicarImpuestos.py', 'OpenItems/openItems.py', 'AdyenBatch/adyenBatch.py', 'Edenred/edenred.py',
+            'ComunicarImpuestos/comunicarImpuestos.py', 'OpenItems/openItems.py', 'AdyenBatch/adyenBatch.py', 'Edenred/edenred.py', 'Edenred/altaUsuarios.py', 'Edenred/subirRecargas.py',
         ]],
         // Fiscal Report y Cashier de Fashion (18-oct-2026): lo hace SOLO el PC que mueve los correos y escribe Ctrol Dinamico (FISCAL_REPORT_PC, miniServ); sin relevo.
         'fiscal' => ['pc' => env('FISCAL_REPORT_PC', 'miniServ'), 'exclusivo' => true, 'relevo' => [], 'scripts' => ['FiscalReport/fiscalReport.py', 'FiscalReport/estadoDias.py']],

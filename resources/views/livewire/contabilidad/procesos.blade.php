@@ -189,6 +189,20 @@
                 @else
                     <p class="text-xs text-green-700">✓ No hay usuarios pendientes de alta.</p>
                 @endif
+                @if (! empty($edu['por_alta']))
+                    <div class="p-2 text-xs border border-blue-200 rounded bg-blue-50">
+                        <p class="text-blue-900">Crea en Edenred la tarjeta <b>virtual</b> (importe 0 €, centro de costes y punto de entrega = tienda) de quien tenga <b>DNI/NIE, correo y fecha de nacimiento</b>. Los que tengan algún dato en amarillo no se crean. Completa los datos en «Usuarios nuevos Edenred» (Laboral → Edenred → mes) y vuelve a pulsar.</p>
+                        <div class="flex flex-wrap mt-1 gap-x-2 gap-y-1">
+                            @if ($edenredConfirmaAlta)
+                                <button type="button" wire:click="altaUsuariosEdenred" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700">⚠️ ¿Seguro? Crear las tarjetas y confirmar el pedido en Edenred</button>
+                                <button type="button" wire:click="$set('edenredConfirmaAlta', false)" class="px-2 py-0.5 text-gray-600 underline">cancelar</button>
+                            @else
+                                <button type="button" wire:click="$set('edenredConfirmaAlta', true)" class="px-2 py-0.5 text-white bg-blue-600 rounded shadow-sm hover:bg-blue-700">👤 Dar de alta en Edenred…</button>
+                            @endif
+                            <button type="button" wire:click="comprobarUsuariosEdenred" class="px-2 py-0.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Mira «Usuarios y saldos»: si alguien ya existe (creado a mano), lo marca como dado de alta.">🔄 Comprobar en Edenred</button>
+                        </div>
+                    </div>
+                @endif
                 @if (! empty($edu['pendientes']))
                     <div class="p-2 text-xs border border-yellow-300 rounded bg-yellow-50">
                         <p class="font-semibold text-yellow-800">Sin contrato (faltan DNI/NIE, correo y fecha de nacimiento): {{ collect($edu['pendientes'])->map(fn ($p) => $p['nombre'].' ('.$p['tienda'].')')->implode(', ') }}</p>
@@ -574,6 +588,16 @@
                                                 title="Trabajadores nuevos con sus datos (DNI/NIE, correo, fecha de nacimiento) para crear el usuario en Edenred.">
                                                 👤 Usuarios{{ $nAlta ? " ({$nAlta} por dar de alta)" : '' }}
                                             </button>
+                                            <span class="inline-flex items-center gap-x-1">
+                                                @if ($edenredConfirmaSubir)
+                                                    <button type="button" wire:click="subirRecargasEdenred(true)" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700" title="Sube el Recargas de cada tienda sin pedido y CONFIRMA los pedidos en Edenred (luego hay que transferir).">⚠️ ¿Seguro? Subir y confirmar</button>
+                                                    <button type="button" wire:click="$set('edenredConfirmaSubir', false)" class="px-1 text-gray-600 underline">cancelar</button>
+                                                @else
+                                                    <button type="button" wire:click="$set('edenredConfirmaSubir', true)" class="px-2 py-0.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Sube a Edenred los Recargas que aún no tienen pedido y los confirma (no repite los ya pedidos).">⬆ Subir Recargas a Edenred…</button>
+                                                    <button type="button" wire:click="subirRecargasEdenred(false)" class="px-2 py-0.5 text-gray-600 underline" title="Sube y calcula el primero y se para antes de confirmar.">calcular sin confirmar</button>
+                                                @endif
+                                            </span>
+                                            @if ($edenredMsg !== '')<span class="text-gray-700">{{ $edenredMsg }}</span>@endif
                                         </div>
                                     @endif
                                     @if ($id === 'open_items')
