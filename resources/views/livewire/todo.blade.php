@@ -278,12 +278,12 @@
                                             @forelse ($detalle->comentarios as $c)
                                                 @if ($c->tipo === 'evento')
                                                     <p wire:key="c{{ $c->id }}" class="px-1 text-xs italic text-gray-500">
-                                                        ➜ <b>{{ $c->user->name }}</b> {{ $c->texto }} · {{ $c->fecha->format('d/m/Y') }}
+                                                        ➜ <b>{{ $c->user->name }}</b> {{ $c->texto }} · {{ $c->fecha->format('d/m/Y') }}{{ $c->created_at ? ' '.$c->created_at->format('H:i') : '' }}
                                                     </p>
                                                 @else
                                                     <div wire:key="c{{ $c->id }}" class="p-2 text-sm bg-white border border-gray-200 rounded-md">
                                                         <div class="flex items-center justify-between text-xs text-gray-500">
-                                                            <span><b class="text-gray-800">{{ $c->user->name }}</b> responde · {{ $c->fecha->format('d/m/Y') }}</span>
+                                                            <span><b class="text-gray-800">{{ $c->user->name }}</b> responde · {{ $c->fecha->format('d/m/Y') }}{{ $c->created_at ? ' '.$c->created_at->format('H:i') : '' }}</span>
                                                             @if ($c->user_id === auth()->id() || $esAdmin)
                                                                 <button type="button" wire:click="borrarComentario({{ $c->id }})" wire:confirm="¿Borrar la respuesta?" class="text-gray-400 hover:text-red-600">✕</button>
                                                             @endif
