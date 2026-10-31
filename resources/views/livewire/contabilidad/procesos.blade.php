@@ -245,6 +245,18 @@
                             </tr>
                         @endforeach
                     </table>
+                    @php $nListas = collect($tdas)->where('estado', 'listo')->count(); @endphp
+                    @if ($nListas > 1)
+                        <div class="flex items-center gap-x-2 pt-1 mt-1 border-t border-gray-200">
+                            <span class="text-gray-600">{{ $nListas }} tiendas listas:</span>
+                            @if ($edenredConfirmaSubir === 'TODAS')
+                                <button type="button" wire:click="subirRecargasEdenred('TODAS', true)" class="px-2 py-0.5 text-white bg-red-600 rounded shadow-sm hover:bg-red-700">⚠️ ¿Seguro? Subir y confirmar las {{ $nListas }}</button>
+                                <button type="button" wire:click="$set('edenredConfirmaSubir', '')" class="px-1 text-gray-600 underline">cancelar</button>
+                            @else
+                                <button type="button" wire:click="$set('edenredConfirmaSubir', 'TODAS')" class="px-2 py-0.5 text-white bg-blue-600 rounded shadow-sm hover:bg-blue-700" title="Sube y confirma una tras otra todas las tiendas listas. Si una falla, se para.">⬆ Subir todas y confirmar…</button>
+                            @endif
+                        </div>
+                    @endif
                 </div>
                 @if ($edenredMsg !== '')<p class="text-xs text-gray-700">{{ $edenredMsg }}</p>@endif
                 <div class="flex justify-end"><x-button.secondary wire:click="$set('edenredUsuariosAbierto', false)">Cerrar</x-button.secondary></div>

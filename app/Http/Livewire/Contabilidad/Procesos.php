@@ -833,12 +833,13 @@ class Procesos extends Component
     /** Sube el Recargas de UNA tienda a Edenred (decide Alex tienda a tienda). $confirmar=false: sube y calcula y se para antes de confirmar. */
     public function subirRecargasEdenred(string $tienda, bool $confirmar): void
     {
-        if (! $this->autorizar('edenred') || ! preg_match('/^[A-Z]{3}$/', $tienda) || ($confirmar && $this->edenredConfirmaSubir !== $tienda)) {
+        if (! $this->autorizar('edenred') || ! preg_match('/^([A-Z]{3}|TODAS)$/', $tienda) || ($confirmar && $this->edenredConfirmaSubir !== $tienda)) {
             return;
         }
         $this->edenredConfirmaSubir = '';
-        $this->lanzarEdenred('Edenred/subirRecargas.py', array_merge(['--tienda', $tienda], $confirmar ? ['--confirmar'] : []),
-            $confirmar ? "subir los Recargas de {$tienda} a Edenred y confirmar el pedido" : "subir los Recargas de {$tienda} y calcular (sin confirmar)", 2400);
+        $todas = $tienda === 'TODAS';   // todas las tiendas listas, una tras otra (para si se pide con todos los datos completos)
+        $this->lanzarEdenred('Edenred/subirRecargas.py', array_merge($todas ? [] : ['--tienda', $tienda], $confirmar ? ['--confirmar'] : []),
+            $todas ? 'subir los Recargas de todas las tiendas listas y confirmar los pedidos' : ($confirmar ? "subir los Recargas de {$tienda} a Edenred y confirmar el pedido" : "subir los Recargas de {$tienda} y calcular (sin confirmar)"), 4800);
     }
 
     public function cerrarResultadoModal(): void
