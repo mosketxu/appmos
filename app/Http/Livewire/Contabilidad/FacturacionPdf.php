@@ -114,6 +114,9 @@ class FacturacionPdf extends Component
     /** Poner el nombre del archivo original detrás del nuevo nombre (por defecto sí con varios ficheros). */
     public bool $genericoNombreOriginal = false;
 
+    /** Formato del nombre: 'proveedor' (Proveedor Fra 123 - original) | 'numero' (26 00014 nombre original, facturas emitidas). Se recuerda por cliente. */
+    public string $genericoFormato = 'proveedor';
+
     /** «No mover»: en la carpeta del usuario los originales se quedan donde están (no van a «originales»); vale para todos los marcados. */
     public bool $genericoNoMover = false;
 
@@ -198,6 +201,7 @@ class FacturacionPdf extends Component
         }
         $this->generico = $this->genericoVacio();
         $this->genericoCliente = (string) session('facturacion-pdf.generico-cliente', '');
+        $this->cargarFormatoGenerico();
         $proceso = (string) session('facturacion-pdf.proceso', 'Suma');
         $this->proceso = in_array($proceso, ['Suma', 'Balerga', 'Generico'], true) ? $proceso : 'Suma';
         $this->retomarTareas();
@@ -295,6 +299,7 @@ class FacturacionPdf extends Component
             if ($etiqueta = $elegir($puntos)) {
                 $this->genericoCliente = $etiqueta;
                 $this->genericoClienteOrigen = "la carpeta «{$carpeta}»";
+                $this->cargarFormatoGenerico();
                 return;
             }
         }
@@ -311,6 +316,7 @@ class FacturacionPdf extends Component
             if ($etiqueta = $elegir($puntos)) {
                 $this->genericoCliente = $etiqueta;
                 $this->genericoClienteOrigen = 'el nombre de los ficheros';
+                $this->cargarFormatoGenerico();
             }
         }
     }
@@ -318,6 +324,31 @@ class FacturacionPdf extends Component
     public function updatedGenericoCliente(): void
     {
         $this->genericoClienteOrigen = '';
+        $this->cargarFormatoGenerico();
+    }
+
+    private function claveFormatoGenerico(): string
+    {
+        return 'facturacion-pdf.generico-formato.'.md5(mb_strtolower(trim($this->genericoCliente)));
+    }
+
+    /** El formato que se usó la última vez con este cliente (Entidades). */
+    private function cargarFormatoGenerico(): void
+    {
+        if (trim($this->genericoCliente) !== '') {
+            $f = \Illuminate\Support\Facades\Cache::get($this->claveFormatoGenerico());
+            $this->genericoFormato = in_array($f, ['proveedor', 'numero'], true) ? $f : 'proveedor';
+        }
+    }
+
+    public function updatedGenericoFormato(): void
+    {
+        if (! in_array($this->genericoFormato, ['proveedor', 'numero'], true)) {
+            $this->genericoFormato = 'proveedor';
+        }
+        if (trim($this->genericoCliente) !== '') {
+            \Illuminate\Support\Facades\Cache::forever($this->claveFormatoGenerico(), $this->genericoFormato);
+        }
     }
 
     public function limpiarSalida(): void
@@ -779,7 +810,8 @@ class FacturacionPdf extends Component
         try {
             $result = Process::path($this->genericoDir())->timeout(300)
                 ->run([$this->genericoPython(), 'separar_generico.py', 'generar', '--input', $master, '--plan', $rutaPlan,
-                    ...($this->genericoNombreOriginal ? ['--nombre-original'] : [])]);
+                    ...($this->genericoNombreOriginal ? ['--nombre-original'] : []),
+                    ...($this->genericoFormato === 'numero' ? ['--formato', 'numero-primero'] : [])]);
             $texto = trim($result->output()."\n".$result->errorOutput());
         } catch (\Throwable $e) {
             $this->salida .= '⚠️ '.get_class($e).': '.$e->getMessage();

@@ -155,7 +155,7 @@
                 catch (e) { await escribir(destino, n, await h.getFile()); await desde.removeEntry(h.name); }
             };
             return {
-                sel: 0, arrastrando: null, sobre: null, subidos: false, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false,
+                sel: 0, arrastrando: null, sobre: null, subidos: false, soportado: 'showDirectoryPicker' in window, carpeta: '', sueltos: false, ficheros: [], estado: '', ayuda: false, ocupado: false, ultimo: [],
                 hayCarpeta() { return !! dir && this.carpeta !== ''; },
                 get marcados() { return this.ficheros.filter(f => f.marcado); },
                 marcar(v) { this.ficheros.forEach(f => f.marcado = v); },
@@ -255,9 +255,10 @@
                         const res = await this.$wire.generarGenerico();
                         this.estado = aviso;
                         if (! res || ! res.length) { this.estado = '⚠️ No se han generado PDF: mira la Salida.'; return; }
+                        this.ultimo = res;
                         if (! this.hayCarpeta()) {
                             if (! aviso) this.estado = '⚠️ No hay carpeta con permiso de escritura, así que los PDF solo están en el .zip. '
-                                + (this.ficheros.length ? 'Vuelve a elegir la carpeta (o los ficheros) y repite.' : 'Para renombrar en tu carpeta, elígela con «Seleccionar carpeta» antes de analizar.');
+                                + (this.soportado ? 'Pulsa «Guardar todas en una carpeta…» para escribirlos donde quieras.' : '');
                             return;
                         }
                         const log = [];
@@ -308,7 +309,29 @@
                         dir = null;   // ya aplicado: no se repite sobre ficheros que ya no están
                     } finally { this.ocupado = false; }
                 },
-                limpiar() { dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = []; this.estado = ''; this.sel = 0; this.subidos = false; },
+                // Escribe TODOS los PDF generados (con su nombre final, sin zip) en la carpeta que se elija ahora; los originales no se tocan
+                async guardarTodas() {
+                    let d;
+                    try { d = await window.showDirectoryPicker({ id: 'generico-destino', mode: 'readwrite' }); } catch (e) { return; }
+                    this.ocupado = true;
+                    const log = []; let bien = 0, i = 0;
+                    try {
+                        for (const r of this.ultimo) {
+                            i++; this.estado = 'Guardando ' + i + ' de ' + this.ultimo.length + '…';
+                            try {
+                                const resp = await fetch(r.url);
+                                if (! resp.ok) throw new Error('no se pudo bajar (' + resp.status + ')');
+                                const n = await libre(d, r.fichero);
+                                await escribir(d, n, await resp.blob());
+                                log.push('+ ' + n); bien++;
+                            } catch (e) { log.push('⚠️ ' + r.fichero + ': ' + e.message); }
+                        }
+                        await this.$wire.anotarCarpeta('Guardadas en ' + d.name + ' (sin zip):\n' + log.join('\n'));
+                        this.estado = bien === this.ultimo.length ? '✅ ' + bien + ' facturas guardadas en la carpeta «' + d.name + '».'
+                            : '⚠️ ' + bien + ' de ' + this.ultimo.length + ' guardadas en «' + d.name + '»; mira la Salida.';
+                    } finally { this.ocupado = false; }
+                },
+                limpiar() { this.ultimo = []; dir = null; handles = {}; this.carpeta = ''; this.sueltos = false; this.ficheros = []; this.estado = ''; this.sel = 0; this.subidos = false; },
             };
         };
     </script>
@@ -752,7 +775,15 @@
                     </table>
                 </div>
 
-                <label class="flex items-center gap-2 mb-2 text-xs text-gray-700">
+                <div class="mb-2 text-xs text-gray-700">
+                    <span class="font-medium text-gray-600">Formato del nombre:</span>
+                    <label class="inline-flex items-center gap-1 ml-2"><input type="radio" wire:model.live="genericoFormato" value="proveedor" class="border-gray-300"> Proveedor primero <span class="font-mono text-gray-500">(Xatelite Fra 123)</span></label>
+                    <label class="inline-flex items-center gap-1 ml-3"><input type="radio" wire:model.live="genericoFormato" value="numero" class="border-gray-300"> Número primero · emitidas <span class="font-mono text-gray-500">(26 00014 SUNBELT_… mensual Julio)</span></label>
+                </div>
+                @if ($genericoFormato === 'numero')
+                    <p class="mb-2 text-xs text-gray-500">Número primero: va el número de factura y detrás el nombre original tal cual (sin él, el cliente de la tabla). Abonos: «Abo» tras el número. Proformas y presupuestos igual que siempre.</p>
+                @endif
+                <label class="flex items-center gap-2 mb-2 text-xs text-gray-700" @if ($genericoFormato === 'numero') style="display:none" @endif>
                     <input type="checkbox" wire:model="genericoNombreOriginal" class="border-gray-300 rounded">
                     Poner el nombre original detrás (<span class="font-mono">Proveedor Fra 123 - nombre original.pdf</span>)
                 </label>
@@ -765,6 +796,9 @@
                         <span x-show="! ocupado" x-text="hayCarpeta() || sueltos ? 'Fase 2 · Generar y renombrar en la carpeta' : 'Fase 2 · Generar PDFs'"></span>
                         <span x-show="ocupado" x-cloak>⏳ Trabajando…</span>
                     </x-button.primary>
+                    @if ($g['fase'] === 'generado')
+                        <x-button.secondary x-show="soportado && ultimo.length" x-cloak x-on:click="guardarTodas()" x-bind:disabled="ocupado" title="Escribe todos los PDF, ya con su nombre, en la carpeta que elijas (sin .zip)">💾 Guardar todas en una carpeta…</x-button.secondary>
+                    @endif
                     @if ($g['fase'] === 'generado' && $g['zip'])
                         <x-button.secondary wire:click="descargarZipGenerico">⬇️ Descargar .zip</x-button.secondary>
                     @endif
