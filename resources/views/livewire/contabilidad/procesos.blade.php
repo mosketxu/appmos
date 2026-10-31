@@ -106,7 +106,7 @@
                     @if (! empty($ea['diferencias']))
                         <table class="w-full text-xs border border-gray-200">
                             <thead class="bg-gray-50"><tr class="text-left">
-                                <th class="p-1.5">Tienda</th><th class="p-1.5">Trabajador</th><th class="p-1.5 text-right">Última versión</th><th class="p-1.5 text-right">Copia de Carme</th>
+                                <th class="p-1.5">Tienda</th><th class="p-1.5">Trabajador</th><th class="p-1.5 text-right">Última versión</th><th class="p-1.5 text-right">Copia usada</th>
                                 <th class="p-1.5 text-right">Diferencia</th><th class="p-1.5">Este mes</th><th class="p-1.5">Nota (interna)</th></tr></thead>
                             <tbody>
                             @foreach ($ea['diferencias'] as $x)
