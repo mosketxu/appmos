@@ -628,7 +628,7 @@
                                 <x-subir-fichero multiple accept="application/pdf,.pdf,image/*" texto="Subir PDF o imágenes"
                                     :elegido="count($archivosGenerico) === 1 ? $archivosGenerico[0]['nombre'] : (count($archivosGenerico) > 1 ? count($archivosGenerico).' ficheros' : null)"
                                     :quitar="count($archivosGenerico) === 1 ? '$wire.quitarArchivoGenerico(0)' : null"
-                                    title="Desde cualquier carpeta (también las que Chrome no deja abrir)"
+                                    :title="count($archivosGenerico) === 1 ? $archivosGenerico[0]['nombre'] : (count($archivosGenerico) > 1 ? implode(' · ', array_column($archivosGenerico, 'nombre')) : 'Desde cualquier carpeta (también las que Chrome no deja abrir)')"
                                     x-on:change="subirSueltos($event.target.files); $event.target.value = ''" />
                             </span>
                             {{-- 1-nov-2026: quitado «Elegir ficheros…» (showOpenFilePicker): lo cubre «Subir PDF o imágenes». --}}
@@ -748,6 +748,7 @@
                                 <th class="px-1 py-1 text-left">Tipo</th>
                                 <th class="px-1 py-1 text-left">Proveedor</th>
                                 <th class="px-1 py-1 text-left">Número</th>
+                                <th class="px-1 py-1 text-left">Nombre final</th>
                                 <th class="px-1 py-1"></th>
                             </tr>
                         </thead>
@@ -781,7 +782,7 @@
                                         @endif
                                     </td>
                                     <td class="px-1 py-1">
-                                        <select wire:model="genericoPaginas.{{ $i }}.tipo" class="py-0.5 pl-1 pr-6 text-xs border-gray-300 rounded">
+                                        <select wire:model.live="genericoPaginas.{{ $i }}.tipo" class="py-0.5 pl-1 pr-6 text-xs border-gray-300 rounded">
                                             <option value="Fra">Fra</option>
                                             <option value="Abo">Abo</option>
                                             <option value="Pre">Pre</option>
@@ -789,13 +790,15 @@
                                         </select>
                                     </td>
                                     <td class="px-1 py-1">
-                                        <input type="text" wire:model="genericoPaginas.{{ $i }}.proveedor"
+                                        <input type="text" wire:model.blur="genericoPaginas.{{ $i }}.proveedor"
                                                style="min-width:8rem" class="w-full py-0.5 px-1 text-xs border-gray-300 rounded {{ trim($f['proveedor'] ?? '') === '' ? 'bg-red-50' : '' }}">
                                     </td>
                                     <td class="px-1 py-1">
-                                        <input type="text" wire:model="genericoPaginas.{{ $i }}.numero"
+                                        <input type="text" wire:model.blur="genericoPaginas.{{ $i }}.numero"
                                                style="min-width:6rem" class="w-full py-0.5 px-1 text-xs border-gray-300 rounded {{ trim($f['numero'] ?? '') === '' ? 'bg-red-50' : '' }}">
                                     </td>
+                                    @php($nomFinal = $genericoNombres[(string) ($f['pagina'] ?? '')] ?? '')
+                                    <td class="px-1 py-1 text-xs {{ str_starts_with($nomFinal, '↑') ? 'text-gray-400 italic' : 'font-mono text-gray-700' }}" style="min-width:14rem" title="{{ $nomFinal }}">{{ $nomFinal }}</td>
                                     <td class="px-1 py-1 whitespace-nowrap">
                                         <button type="button" wire:click="girarPagina({{ $i }})"
                                                 class="text-gray-400 hover:text-gray-700" title="Girar 90° (se aplica al generar los PDF)">↻</button>

@@ -117,6 +117,9 @@ class FacturacionPdf extends Component
     /** Poner el nombre del archivo original detrás del nuevo nombre (por defecto sí con varios ficheros). */
     public bool $genericoNombreOriginal = false;
 
+    /** Vista previa del nombre final de cada PDF: [pagina => 'Nombre.pdf' | '↑ mismo PDF'] (separar_generico.py nombres, 1-nov-2026). */
+    public array $genericoNombres = [];
+
     /** Formato del nombre: 'proveedor' (Proveedor Fra 123 - original) | 'numero' (26 00014 nombre original, facturas emitidas). Se recuerda por cliente. */
     public string $genericoFormato = 'proveedor';
 
@@ -697,6 +700,7 @@ class FacturacionPdf extends Component
 
         $this->genericoPaginas = $data['paginas'] ?? [];
         $this->numerarGrupos();
+        $this->refrescarNombresGenerico();
         $this->generico['destinatario'] = $data['destinatario'] ?? '';
         $this->generico['avisos'] = $data['avisos'] ?? [];
         $this->generico['fase'] = 'analizado';
@@ -708,6 +712,58 @@ class FacturacionPdf extends Component
             $this->salida .= "\n⚠️ {$a}";
         }
         $this->dispatch('proceso-terminado', mensaje: "✅ {$etiqueta}\nRevisa número y proveedor de cada página.");
+    }
+
+    /** Plan de la tabla tal como lo leen «generar» y «nombres» de separar_generico.py. */
+    private function planGenerico(): array
+    {
+        return array_map(fn ($f) => [
+            'pagina' => (int) ($f['pagina'] ?? 0),
+            'numero' => trim((string) ($f['numero'] ?? '')),
+            'proveedor' => trim((string) ($f['proveedor'] ?? '')),
+            // el nombre entero: para ver si el fichero ya empieza por el proveedor (basta una palabra suya)
+            'proveedor_completo' => trim((string) ($f['proveedor_completo'] ?? '')),
+            'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre', 'Prof'], true) ? $f['tipo'] : 'Fra',
+            'giro' => ((int) ($f['giro'] ?? 0)) % 360,
+            'grupo' => (int) ($f['grupo'] ?? 0),
+            'archivo' => (string) ($f['archivo'] ?? ''),
+            'mes' => (string) ($f['mes'] ?? ''),
+        ], $this->genericoPaginas);
+    }
+
+    private function clienteNombreGenerico(): string
+    {
+        $c = trim($this->genericoCliente);
+        return $this->entidadesCliente[$c][0] ?? preg_replace('/\s*\([^)]*\)\s*$/', '', $c);
+    }
+
+    /** Recalcula la columna «Nombre final» (rápido: no abre el PDF). */
+    public function refrescarNombresGenerico(): void
+    {
+        if (! $this->genericoPaginas || ! $this->genericoPermitido) {
+            $this->genericoNombres = [];
+            return;
+        }
+        try {
+            $ruta = tempnam(sys_get_temp_dir(), 'genplan');
+            file_put_contents($ruta, json_encode($this->planGenerico(), JSON_UNESCAPED_UNICODE));
+            $r = Process::path($this->genericoDir())->timeout(30)
+                ->run([$this->genericoPython(), 'separar_generico.py', 'nombres', '--plan', $ruta, '--cliente', $this->clienteNombreGenerico(),
+                    ...($this->genericoNombreOriginal ? ['--nombre-original'] : []),
+                    ...($this->genericoFormato === 'numero' ? ['--formato', 'numero-primero'] : [])]);
+            @unlink($ruta);
+            $this->genericoNombres = $r->successful() ? (json_decode(trim($r->output()), true) ?: []) : [];
+        } catch (\Throwable $e) {
+            $this->genericoNombres = [];
+        }
+    }
+
+    /** Cualquier cambio en la tabla, el formato o «nombre original» recalcula la vista previa. */
+    public function updated($propiedad): void
+    {
+        if (str_starts_with($propiedad, 'genericoPaginas') || in_array($propiedad, ['genericoFormato', 'genericoNombreOriginal', 'genericoCliente'], true)) {
+            $this->refrescarNombresGenerico();
+        }
     }
 
     /** Gira 90° (sentido horario) una página: se aplica al generar los PDF. */
@@ -747,6 +803,7 @@ class FacturacionPdf extends Component
                     $this->genericoPaginas[$i][$k] = $this->genericoPaginas[$i - 1][$k];
                 }
             }
+            $this->refrescarNombresGenerico();
         }
     }
 
@@ -759,6 +816,7 @@ class FacturacionPdf extends Component
         }
         $fila = array_splice($this->genericoPaginas, $desde, 1);
         array_splice($this->genericoPaginas, $hasta, 0, $fila);
+        $this->refrescarNombresGenerico();
     }
 
     /**
@@ -815,25 +873,17 @@ class FacturacionPdf extends Component
             return [];
         }
 
-        $plan = array_map(fn ($f) => [
-            'pagina' => (int) ($f['pagina'] ?? 0),
-            'numero' => trim((string) ($f['numero'] ?? '')),
-            'proveedor' => trim((string) ($f['proveedor'] ?? '')),
-            // el nombre entero: para ver si el fichero ya empieza por el proveedor (basta una palabra suya)
-            'proveedor_completo' => trim((string) ($f['proveedor_completo'] ?? '')),
-            'tipo' => in_array($f['tipo'] ?? '', ['Fra', 'Abo', 'Pre', 'Prof'], true) ? $f['tipo'] : 'Fra',
-            'giro' => ((int) ($f['giro'] ?? 0)) % 360,
-            'grupo' => (int) ($f['grupo'] ?? 0),
-            'archivo' => (string) ($f['archivo'] ?? ''),
-        ], $this->genericoPaginas);
+        $plan = $this->planGenerico();
         $rutaPlan = $master.'.plan.json';
         file_put_contents($rutaPlan, json_encode($plan, JSON_UNESCAPED_UNICODE));
+        $clienteNombre = $this->clienteNombreGenerico();
 
         $etiqueta = 'Acciones PDF · Genérico (Generar PDFs)';
         $this->salida .= "\n\n===== {$etiqueta} =====\n";
         try {
             $result = Process::path($this->genericoDir())->timeout(300)
                 ->run([$this->genericoPython(), 'separar_generico.py', 'generar', '--input', $master, '--plan', $rutaPlan,
+                    '--cliente', $clienteNombre,
                     ...($this->genericoNombreOriginal ? ['--nombre-original'] : []),
                     ...($this->genericoFormato === 'numero' ? ['--formato', 'numero-primero'] : [])]);
             $texto = trim($result->output()."\n".$result->errorOutput());
