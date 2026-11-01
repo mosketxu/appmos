@@ -626,10 +626,12 @@
                             <span class="text-xs text-gray-400" x-show="! carpeta && ! sueltos">o</span>
                             <span x-show="! carpeta && ! sueltos">
                                 <x-subir-fichero multiple accept="application/pdf,.pdf,image/*" texto="Subir PDF o imágenes"
-                                    title="Desde cualquier carpeta (también las que Chrome no deja abrir). Al terminar: «💾 Guardar todas en una carpeta…» o .zip"
+                                    :elegido="count($archivosGenerico) === 1 ? $archivosGenerico[0]['nombre'] : (count($archivosGenerico) > 1 ? count($archivosGenerico).' ficheros' : null)"
+                                    :quitar="count($archivosGenerico) === 1 ? '$wire.quitarArchivoGenerico(0)' : null"
+                                    title="Desde cualquier carpeta (también las que Chrome no deja abrir)"
                                     x-on:change="subirSueltos($event.target.files); $event.target.value = ''" />
                             </span>
-                            {{-- 1-nov-2026: quitado «Elegir ficheros…» (showOpenFilePicker): lo cubre «Subir PDF o imágenes» + «💾 Guardar todas en una carpeta…». --}}
+                            {{-- 1-nov-2026: quitado «Elegir ficheros…» (showOpenFilePicker): lo cubre «Subir PDF o imágenes». --}}
                             <button type="button" x-on:click="ayuda = ! ayuda" class="text-lg font-bold text-indigo-700" title="¿Por qué no se pueden arrastrar?">*</button>
                         </div>
                         <div x-show="ayuda" x-cloak class="p-2 mt-2 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
@@ -669,7 +671,7 @@
                         <x-subir-fichero multiple accept="application/pdf,.pdf,image/*" texto="Subir PDF o imágenes"
                             x-on:change="subirSueltos($event.target.files); $event.target.value = ''" />
                     </div>
-                    @if ($archivosGenerico)
+                    @if (count($archivosGenerico) > 1)
                         <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
                             @foreach ($archivosGenerico as $i => $a)
                                 <div wire:key="gen-arch-{{ $i }}-{{ md5($a['ruta']) }}" class="flex items-center justify-between gap-2 px-2 py-1 text-xs border-b last:border-b-0">

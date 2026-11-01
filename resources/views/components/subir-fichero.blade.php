@@ -7,11 +7,12 @@
     Directriz (Alex, 17-oct-2026, toda la web): el texto de estado («✓ …», «falta…», el fichero que se usará) va A LA DERECHA
     del botón, en un contenedor flex-wrap: si no cabe, baja solo. Nunca debajo a propósito.
 --}}
-@props(['texto' => 'Subir fichero', 'accept' => null, 'fichero' => null, 'opcional' => false, 'neutro' => false])
+@props(['texto' => 'Subir fichero', 'accept' => null, 'fichero' => null, 'opcional' => false, 'neutro' => false, 'elegido' => null, 'quitar' => null])
+{{-- elegido / quitar (1-nov-2026): para subidas propias en JS sin wire:model: nombre a enseñar dentro del botón y expresión (Livewire/Alpine) del ✕ --}}
 @php
     $modelo = $attributes->wire('model')->value();
     $paso = $attributes->filter(fn ($v, $k) => str_starts_with($k, 'wire:model') || str_starts_with($k, 'x-on:') || str_starts_with($k, '@') || $k === 'multiple');
-    $nombre = $fichero && method_exists($fichero, 'getClientOriginalName') ? $fichero->getClientOriginalName() : null;
+    $nombre = $fichero && method_exists($fichero, 'getClientOriginalName') ? $fichero->getClientOriginalName() : ($elegido ?: null);
 @endphp
 <div x-data="{ arrastrando: false }" class="inline-flex">
     <label {{ $attributes->only('title') }}
@@ -21,7 +22,9 @@
         class="subir-btn {{ ! $nombre && ! $neutro ? 'vacio' : '' }}">
         <x-subir.icono :target="$modelo ?: null" />
         <span class="truncate" style="max-width:16rem">{{ $nombre ?? $texto }}{{-- 27-oct-2026 (Alex): sin «(opcional)» en ningún botón; si lo es, ya lo dice el hover --}}</span>
-        @if ($nombre && $modelo)
+        @if ($nombre && $quitar)
+            <button type="button" x-on:click.prevent.stop="{{ $quitar }}" class="subir-x" title="Quitar">✕</button>
+        @elseif ($nombre && $modelo)
             <button type="button" x-on:click.prevent.stop="$wire.set('{{ $modelo }}', null)" class="subir-x" title="Quitar el fichero elegido">✕</button>
         @endif
         <input x-ref="input" type="file" class="hidden" {{ $paso }} @if ($accept) accept="{{ $accept }}" @endif>
