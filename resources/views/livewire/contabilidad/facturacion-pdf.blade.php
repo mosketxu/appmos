@@ -585,7 +585,7 @@
         @if ($proceso === 'Generico')
         @php($genAncha = $this->genericoPermitido && $g['fase'] !== 'vacio')
         <div wire:key="cliente-Generico" class="p-4 bg-white border rounded-lg shadow tarjeta-ancha"
-             x-data="genericoCarpeta()" style="--izq:40rem">
+             x-data="genericoCarpeta()" style="--izq:clamp(40rem, 62%, 66rem)">
         <div class="fila-tarjeta">
         <div class="col-izq">
             <h2 class="text-lg font-semibold text-gray-900">Genérico</h2>
@@ -798,7 +798,7 @@
                                                style="min-width:6rem" class="w-full py-0.5 px-1 text-xs border-gray-300 rounded {{ trim($f['numero'] ?? '') === '' ? 'bg-red-50' : '' }}">
                                     </td>
                                     @php($nomFinal = $genericoNombres[(string) ($f['pagina'] ?? '')] ?? '')
-                                    <td class="px-1 py-1 text-xs {{ str_starts_with($nomFinal, '↑') ? 'text-gray-400 italic' : 'font-mono text-gray-700' }}" style="min-width:14rem" title="{{ $nomFinal }}">{{ $nomFinal }}</td>
+                                    <td class="px-1 py-1 text-xs {{ str_starts_with($nomFinal, '↑') ? 'text-gray-400 italic' : 'font-mono text-gray-700' }} whitespace-nowrap" title="{{ $nomFinal }}">{{ $nomFinal }}</td>
                                     <td class="px-1 py-1 whitespace-nowrap">
                                         <button type="button" wire:click="girarPagina({{ $i }})"
                                                 class="text-gray-400 hover:text-gray-700" title="Girar 90° (se aplica al generar los PDF)">↻</button>
@@ -836,6 +836,9 @@
                     @if ($g['fase'] === 'generado' && $g['zip'])
                         <x-button.secondary wire:click="descargarZipGenerico">⬇️ Descargar .zip</x-button.secondary>
                     @endif
+                    @if ($g['fase'] === 'generado')
+                        <x-button.secondary wire:click="abrirCorreoGenerico">📧 Enviar por correo…</x-button.secondary>
+                    @endif
                     @if ($g['fase'] === 'generado' && count($this->clientesOcr))
                         <span class="flex items-center gap-1">
                             <select wire:model="genericoOcr" class="py-1 text-xs border-gray-300 rounded-md">
@@ -854,6 +857,33 @@
                     </x-button.secondary>
                 </div>
                 @if ($avisoOcr !== '')<p class="mt-2 text-xs text-gray-700">{{ $avisoOcr }}</p>@endif
+                @if ($g['fase'] === 'generado' && $genMailAbierto)
+                    <div class="p-3 mt-3 text-xs border border-indigo-200 rounded-md bg-indigo-50" style="max-width:44rem">
+                        <p class="mb-2 font-semibold text-gray-700">📧 Un solo correo con todos los PDF generados ({{ count($genericoNombres ? array_filter($genericoNombres, fn ($n) => ! str_starts_with($n, '↑')) : []) }})</p>
+                        <div class="grid gap-1 mb-2" style="grid-template-columns:4.5rem 1fr">
+                            <label class="pt-1 text-gray-600">Para</label>
+                            <input type="text" wire:model.blur="genMailPara" class="py-1 text-xs border-gray-300 rounded" placeholder="correo@cliente.com (varios con ;)">
+                            <label class="pt-1 text-gray-600">CC</label>
+                            <input type="text" wire:model.blur="genMailCc" class="py-1 text-xs border-gray-300 rounded">
+                            <label class="pt-1 text-gray-600">Asunto</label>
+                            <input type="text" wire:model.blur="genMailAsunto" class="py-1 text-xs border-gray-300 rounded">
+                            <label class="pt-1 text-gray-600">Texto</label>
+                            <textarea wire:model.blur="genMailTexto" rows="8" class="text-xs border-gray-300 rounded"></textarea>
+                        </div>
+                        <p class="mb-2 text-gray-500">Sale desde tu buzón ({{ auth()->user()->email }}) con el logo de Suma. Adjuntos: {{ implode(' · ', array_filter($genericoNombres, fn ($n) => ! str_starts_with($n, '↑'))) }}</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if ($genMailArmado > time() - 120)
+                                <button type="button" wire:click="enviarCorreoGenerico" wire:loading.attr="disabled" class="px-3 py-1 text-xs font-semibold text-white rounded shadow" style="background:#dc2626">⚠️ Confirmar envío REAL</button>
+                                <x-button.secondary wire:click="$set('genMailArmado', 0)">Cancelar</x-button.secondary>
+                            @else
+                                <x-button.primary wire:click="enviarCorreoGenerico" wire:loading.attr="disabled">Enviar</x-button.primary>
+                                <x-button.secondary wire:click="$set('genMailAbierto', false)">Cerrar</x-button.secondary>
+                            @endif
+                            <span wire:loading wire:target="enviarCorreoGenerico">⏳ Enviando…</span>
+                            @if ($genMailMsg !== '')<span class="{{ str_starts_with($genMailMsg, '✔') ? 'text-emerald-700' : 'text-red-700' }}">{{ $genMailMsg }}</span>@endif
+                        </div>
+                    </div>
+                @endif
                 <p class="mt-2 text-xs text-gray-600" x-show="estado" x-text="estado"></p>
                 <p class="mt-2 text-xs text-gray-500" x-show="hayCarpeta() || sueltos">
                     En la carpeta: los PDF que salen enteros y sin girar solo se renombran; los que se parten, giran o

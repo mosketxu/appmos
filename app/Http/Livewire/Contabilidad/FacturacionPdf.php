@@ -120,6 +120,15 @@ class FacturacionPdf extends Component
     /** Vista previa del nombre final de cada PDF: [pagina => 'Nombre.pdf' | '↑ mismo PDF'] (separar_generico.py nombres, 1-nov-2026). */
     public array $genericoNombres = [];
 
+    /** Genérico → un solo correo con todos los PDF generados (1-nov-2026, Sunbelt). Destinatario por defecto: email de administración de la entidad. */
+    public bool $genMailAbierto = false;
+    public string $genMailPara = '';
+    public string $genMailCc = '';
+    public string $genMailAsunto = '';
+    public string $genMailTexto = '';
+    public int $genMailArmado = 0;
+    public string $genMailMsg = '';
+
     /** Formato del nombre: 'proveedor' (Proveedor Fra 123 - original) | 'numero' (26 00014 nombre original, facturas emitidas). Se recuerda por cliente. */
     public string $genericoFormato = 'proveedor';
 
@@ -920,6 +929,62 @@ class FacturacionPdf extends Component
             'fichero' => $m['fichero'], 'archivo' => $m['archivo'], 'intacto' => (bool) $m['intacto'],
             'url' => route('contabilidad.facturacion-pdf.generado', [$id, $n]),
         ], $manifiesto, array_keys($manifiesto));
+    }
+
+    /** Abre el recuadro del correo con los valores por defecto (destinatario = emailadm de la entidad, si no emailgral). */
+    public function abrirCorreoGenerico(): void
+    {
+        $c = trim($this->genericoCliente);
+        [$nombre, $nif] = $this->entidadesCliente[$c] ?? [$this->clienteNombreGenerico(), ''];
+        $ent = Entidad::where('estado', 1)->where(fn ($q) => $nif !== '' ? $q->where('nif', $nif) : $q->where('entidad', $nombre))->first();
+        $this->genMailPara = trim((string) ($ent?->emailadm ?: $ent?->emailgral ?: ''));
+        $this->genMailCc = '';
+        $nums = array_values(array_unique(array_filter(array_map(fn ($f) => trim((string) ($f['numero'] ?? '')), $this->genericoPaginas))));
+        $meses = array_values(array_unique(array_filter(array_map(fn ($f) => (string) ($f['mes'] ?? ''), $this->genericoPaginas))));
+        $this->genMailAsunto = (count($nums) === 1 ? 'Factura ' : 'Facturas ').implode(', ', $nums).($meses ? ' · '.implode(', ', $meses) : '');
+        $u = auth()->user();
+        $this->genMailTexto = "Buenos días,\n\nOs adjuntamos ".(count($nums) === 1 ? 'la factura' : 'las facturas')
+            .($meses ? ' correspondientes a '.mb_strtolower(implode(', ', $meses)) : '').".\n\nUn saludo,\n\n".($u->name ?? '')."\nSuma Apoyo Empresarial SL\nwww.sumaempresa.com";
+        $this->genMailArmado = 0;
+        $this->genMailMsg = $this->genMailPara === '' ? '⚠️ La entidad no tiene email de administración: escríbelo.' : '';
+        $this->genMailAbierto = true;
+    }
+
+    /** Envío real en dos pasos (el primer clic arma, el segundo envía; 2 min). Desde el buzón de quien pulsa. */
+    public function enviarCorreoGenerico(): void
+    {
+        $id = $this->generico['id'] ?? null;
+        $rutas = $id ? (json_decode((string) @file_get_contents(self::rutaGenerados($id)), true) ?: []) : [];
+        $rutas = array_values(array_filter($rutas, 'is_file'));
+        $lista = fn ($t) => array_values(array_filter(array_map('trim', preg_split('/[;,\s]+/', (string) $t))));
+        $para = $lista($this->genMailPara);
+        $cc = $lista($this->genMailCc);
+        $malos = array_filter([...$para, ...$cc], fn ($m) => ! filter_var($m, FILTER_VALIDATE_EMAIL));
+        if (($this->generico['fase'] ?? '') !== 'generado' || ! $rutas) {
+            $this->genMailMsg = '⚠️ Primero genera los PDF.';
+            return;
+        }
+        if (! $para || $malos) {
+            $this->genMailMsg = '⚠️ Revisa el destinatario'.($malos ? ': '.implode(', ', $malos) : '').'.';
+            return;
+        }
+        if ($this->genMailArmado < time() - 120) {
+            $this->genMailArmado = time();
+            $this->genMailMsg = '⚠️ Vas a enviar '.count($rutas).' PDF a '.implode(', ', $para).'. Pulsa «Confirmar envío REAL» para mandarlo.';
+            return;
+        }
+        $this->genMailArmado = 0;
+        $de = (string) auth()->user()->email;
+        $de = str_ends_with(strtolower($de), '@sumaempresa.com') ? $de : (string) config('contabilidad.graph.sender');
+        try {
+            \App\Support\GraphMail::enviarHtml($de, $para, $cc, $this->genMailAsunto, \App\Support\GraphMail::html($this->genMailTexto),
+                array_map(fn ($r) => ['nombre' => basename($r), 'ruta' => $r], $rutas));
+        } catch (\Throwable $e) {
+            $this->genMailMsg = '⚠️ No se ha enviado: '.$e->getMessage();
+            return;
+        }
+        $this->genMailMsg = '✔ Enviado desde '.$de.' a '.implode(', ', $para).' con '.count($rutas).' PDF ('.date('H:i').'). Queda en tus Enviados.';
+        $this->salida .= "\n\n[".date('H:i:s')."] 📧 Genérico: correo enviado a ".implode(', ', $para).' con '.count($rutas).' PDF: '.implode(', ', array_map('basename', $rutas));
     }
 
     public static function rutaGenerados(string $id): string
