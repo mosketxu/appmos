@@ -403,6 +403,20 @@
                         @endif
                     </div>
 
+                    @php($avisosPend = $e['fase'] === 'separado' ? $this->avisosPendientes($id) : [])
+                    @if ($avisosPend)
+                        <div class="p-3 mb-3 text-sm border-2 border-red-500 rounded-md bg-red-50">
+                            <p class="mb-1 font-semibold text-red-700">⛔ {{ count($avisosPend) }} factura(s) con AVISO: revísalas antes de enviar (no se puede enviar hasta validarlas)</p>
+                            <ul class="mb-2 ml-4 text-red-800 list-disc">
+                                @foreach ($avisosPend as $av)
+                                    <li><span class="font-semibold">{{ $av['factura'] }} · {{ $av['empresa'] }}</span> ({{ $av['total'] }} €): {{ $av['avisos'] }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" wire:click="validarAvisos('{{ $id }}')"
+                                wire:confirm="¿Has revisado {{ count($avisosPend) }} factura(s) con aviso? Si las validas, se podrán enviar tal cual."
+                                class="px-3 py-1 text-xs font-semibold text-white bg-red-600 rounded hover:bg-red-700">✔ He revisado los avisos</button>
+                        </div>
+                    @endif
                     <div class="flex flex-wrap gap-2">
                         @if ($e['fase'] === 'separado')
                             <x-button.secondary
@@ -422,7 +436,7 @@
                                 </button>
                                 <x-button.secondary wire:click="cancelarEnvio('{{ $id }}')">Cancelar</x-button.secondary>
                             @else
-                                <x-button.primary wire:click="enviarCorreos('{{ $id }}')" wire:loading.attr="disabled" wire:target="enviarCorreos('{{ $id }}')">
+                                <x-button.primary wire:click="enviarCorreos('{{ $id }}')" wire:loading.attr="disabled" wire:target="enviarCorreos('{{ $id }}')" :disabled="(bool) $avisosPend">
                                     <span wire:loading.remove wire:target="enviarCorreos('{{ $id }}')">Fase 2 · Enviar correos (REAL)</span>
                                     <span wire:loading wire:target="enviarCorreos('{{ $id }}')">⏳ Enviando…</span>
                                 </x-button.primary>
@@ -608,7 +622,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <x-button.secondary x-on:click="elegirCarpeta()">📁 Elegir carpeta…</x-button.secondary>
-                            <x-button.secondary x-on:click="elegirFicheros()">📄 Elegir ficheros…</x-button.secondary>
+                            {{-- 1-nov-2026: quitado «Elegir ficheros…» (showOpenFilePicker): lo cubre «Subir PDF o imágenes» + «💾 Guardar todas en una carpeta…». --}}
                             <button type="button" x-on:click="ayuda = ! ayuda" class="text-lg font-bold text-indigo-700" title="¿Por qué no se pueden arrastrar?">*</button>
                         </div>
                         <div x-show="ayuda" x-cloak class="p-2 mt-2 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
@@ -647,7 +661,7 @@
                     <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
                         <x-subir-fichero multiple accept="application/pdf,.pdf,image/*" texto="Subir PDF o imágenes"
                             x-on:change="subirSueltos($event.target.files); $event.target.value = ''" />
-                        <div x-show="soportado" style="flex:1 1 16rem">…o <strong>subir una copia</strong> (desde cualquier carpeta, también las que Chrome no deja abrir; sale solo en .zip)</div>
+                        <div x-show="soportado" style="flex:1 1 16rem">…o <strong>sube ficheros sueltos</strong> (desde cualquier carpeta; al terminar, «💾 Guardar todas en una carpeta…» o .zip)</div>
                     </div>
                     @if ($archivosGenerico)
                         <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">

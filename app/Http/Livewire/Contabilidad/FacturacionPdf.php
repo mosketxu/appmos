@@ -81,6 +81,9 @@ class FacturacionPdf extends Component
     /** Envío real armado (2 pasos): [cliente => hora en que se pulsó el primer botón]. El segundo clic, en menos de 2 minutos, envía. */
     public array $envioArmado = [];
 
+    /** Avisos del lote revisados por el usuario: [cliente => carpeta del lote validada]. Sin esto no se puede enviar (1-nov-2026). */
+    public array $avisosValidados = [];
+
     /** Solo los clientes con factura en el último lote separado: [cliente => bool]. */
     public array $soloLote = [];
 
@@ -403,6 +406,10 @@ class FacturacionPdf extends Component
             $this->salida .= "\n\n⚠️ {$cliente}: hay cambios de destinatarios sin guardar en el TODO. Pulsa «Guardar en TODO» (o descártalos) antes de enviar: el envío lee el Excel.";
             return;
         }
+        if ($this->avisosPendientes($cliente)) {
+            $this->salida .= "\n\n[".date('H:i:s')."] ⛔ {$cliente}: hay facturas con AVISOS sin revisar (recuadro rojo encima de los botones). Revísalas y pulsa «He revisado los avisos» antes de enviar.";
+            return;
+        }
         // Doble paso en el servidor (el confirm() del navegador no basta: wire:click se ejecuta aunque se cancele).
         $armado = (int) ($this->envioArmado[$cliente] ?? 0);
         if ($armado < time() - 120) {
@@ -417,6 +424,23 @@ class FacturacionPdf extends Component
             $this->estado[$cliente]['fase'] = 'enviado';
         }
         $this->guardarEstado($cliente);
+    }
+
+    /** Facturas del último lote con avisos (_log.csv) que aún no se han dado por revisadas. */
+    public function avisosPendientes(string $cliente): array
+    {
+        $lote = $this->destinatarios[$cliente]['lote'] ?? [];
+        $inc = $lote['incidencias'] ?? [];
+        if (! $inc || ($this->avisosValidados[$cliente] ?? null) === ($lote['dir'] ?? '')) {
+            return [];
+        }
+        return $inc;
+    }
+
+    public function validarAvisos(string $cliente): void
+    {
+        $this->avisosValidados[$cliente] = $this->destinatarios[$cliente]['lote']['dir'] ?? '';
+        $this->salida .= "\n\n[".date('H:i:s')."] ✔ {$cliente}: avisos del lote revisados por ".(auth()->user()->name ?? '?').'.';
     }
 
     public function cancelarEnvio(string $cliente): void
