@@ -678,7 +678,15 @@
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
 
-                <div class="flex items-center gap-3 mt-3">
+                <div class="mt-3 mb-1 text-xs text-gray-700">
+                    <span class="font-medium text-gray-600">Formato del nombre:</span>
+                    <label class="inline-flex items-center gap-1 ml-2"><input type="radio" wire:model.live="genericoFormato" value="proveedor" class="border-gray-300"> Proveedor primero <span class="font-mono text-gray-500">(Xatelite Fra 123)</span></label>
+                    <label class="inline-flex items-center gap-1 ml-3"><input type="radio" wire:model.live="genericoFormato" value="numero" class="border-gray-300"> Número primero · emitidas <span class="font-mono text-gray-500">(26 00014 SUNBELT_… mensual Julio)</span></label>
+                </div>
+                @if ($genericoFormato === 'numero')
+                    <p class="mb-2 text-xs text-gray-500">Número primero: va el número de factura y detrás el nombre original tal cual (sin él, el cliente de la tabla). Abonos: «Abo» tras el número. Proformas y presupuestos igual que siempre.</p>
+                @endif
+                <div class="flex items-center gap-3 mt-2">
                     <x-button.primary x-on:click="analizar()" x-bind:disabled="ocupado">
                         <span x-show="! ocupado">Fase 1 · Analizar</span>
                         <span x-show="ocupado" x-cloak>⏳ Trabajando…</span>
@@ -789,14 +797,6 @@
                     </table>
                 </div>
 
-                <div class="mb-2 text-xs text-gray-700">
-                    <span class="font-medium text-gray-600">Formato del nombre:</span>
-                    <label class="inline-flex items-center gap-1 ml-2"><input type="radio" wire:model.live="genericoFormato" value="proveedor" class="border-gray-300"> Proveedor primero <span class="font-mono text-gray-500">(Xatelite Fra 123)</span></label>
-                    <label class="inline-flex items-center gap-1 ml-3"><input type="radio" wire:model.live="genericoFormato" value="numero" class="border-gray-300"> Número primero · emitidas <span class="font-mono text-gray-500">(26 00014 SUNBELT_… mensual Julio)</span></label>
-                </div>
-                @if ($genericoFormato === 'numero')
-                    <p class="mb-2 text-xs text-gray-500">Número primero: va el número de factura y detrás el nombre original tal cual (sin él, el cliente de la tabla). Abonos: «Abo» tras el número. Proformas y presupuestos igual que siempre.</p>
-                @endif
                 <label class="flex items-center gap-2 mb-2 text-xs text-gray-700" @if ($genericoFormato === 'numero') style="display:none" @endif>
                     <input type="checkbox" wire:model="genericoNombreOriginal" class="border-gray-300 rounded">
                     Poner el nombre original detrás (<span class="font-mono">Proveedor Fra 123 - nombre original.pdf</span>)
