@@ -597,7 +597,9 @@
             @if (! $this->genericoPermitido)
                 <p class="text-xs text-amber-600">⚠️ No disponible en este servidor.</p>
             @elseif ($g['fase'] === 'vacio')
-                <label class="block mb-1 text-xs font-medium text-gray-600">Cliente (a quien van las facturas) <span class="text-emerald-700">· recomendado</span></label>
+                <label class="block mb-1 text-xs font-medium text-gray-600">Cliente (a quien van las facturas) <span class="text-emerald-700">· recomendado</span>
+                    <span class="inline-flex items-center justify-center w-4 h-4 ml-1 font-bold text-indigo-700 border border-indigo-300 rounded-full cursor-help align-middle" style="font-size:10px"
+                          title="Sale de Entidades (nombre + NIF) y nunca se propone como proveedor. Al elegir la carpeta o los ficheros se rellena solo si su nombre lo deja claro («Sunbelt 2026»).">i</span></label>
                 <input type="text" wire:model.blur="genericoCliente" list="gen-entidades" placeholder="Elígelo de Entidades (escribe para buscar)"
                        class="block w-full mb-1 text-sm border-gray-300 rounded-md shadow-sm">
                 <datalist id="gen-entidades" wire:ignore>
@@ -614,14 +616,19 @@
                 @elseif ($genericoClienteOrigen !== '')
                     <p class="mb-1 text-xs text-emerald-700">✔ Propuesto por {{ $genericoClienteOrigen }}. Si no es, cámbialo.</p>
                 @endif
-                <p class="mb-3 text-xs text-gray-500">Sale de Entidades (nombre + NIF) y nunca se propone como proveedor. Al elegir la carpeta
-                    o los ficheros se rellena solo si su nombre lo deja claro ("Sunbelt 2026").</p>
+                <div class="mb-3"></div>
 
                 <label class="block mb-2 text-xs font-medium text-gray-600">Facturas (PDF o imágenes; una, varias o toda la carpeta)</label>
                 <template x-if="soportado">
                     <div>
                         <div class="flex items-center gap-2">
-                            <x-button.secondary x-on:click="elegirCarpeta()">📁 Elegir carpeta…</x-button.secondary>
+                            <x-button.secondary x-on:click="elegirCarpeta()" title="Renombra los PDF en su sitio (Chrome/Edge piden permiso para editar la carpeta)">📁 Elegir carpeta…</x-button.secondary>
+                            <span class="text-xs text-gray-400" x-show="! carpeta && ! sueltos">o</span>
+                            <span x-show="! carpeta && ! sueltos">
+                                <x-subir-fichero multiple accept="application/pdf,.pdf,image/*" texto="Subir PDF o imágenes"
+                                    title="Desde cualquier carpeta (también las que Chrome no deja abrir). Al terminar: «💾 Guardar todas en una carpeta…» o .zip"
+                                    x-on:change="subirSueltos($event.target.files); $event.target.value = ''" />
+                            </span>
                             {{-- 1-nov-2026: quitado «Elegir ficheros…» (showOpenFilePicker): lo cubre «Subir PDF o imágenes» + «💾 Guardar todas en una carpeta…». --}}
                             <button type="button" x-on:click="ayuda = ! ayuda" class="text-lg font-bold text-indigo-700" title="¿Por qué no se pueden arrastrar?">*</button>
                         </div>
@@ -658,10 +665,9 @@
                 {{-- Subir copias: sin File System Access API, o carpetas que Chrome bloquea (C:\ProgramData,
                      Archivos de programa, AppData...). El resultado va solo en el .zip. --}}
                 <div class="mt-2" x-show="! carpeta && ! sueltos">
-                    <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
+                    <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1" x-show="! soportado">
                         <x-subir-fichero multiple accept="application/pdf,.pdf,image/*" texto="Subir PDF o imágenes"
                             x-on:change="subirSueltos($event.target.files); $event.target.value = ''" />
-                        <div x-show="soportado" style="flex:1 1 16rem">…o <strong>sube ficheros sueltos</strong> (desde cualquier carpeta; al terminar, «💾 Guardar todas en una carpeta…» o .zip)</div>
                     </div>
                     @if ($archivosGenerico)
                         <div class="mt-2 overflow-auto border rounded" style="max-height:16rem">
@@ -678,15 +684,24 @@
                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                 @enderror
 
-                <div class="mt-3 mb-1 text-xs text-gray-700">
-                    <span class="font-medium text-gray-600">Formato del nombre:</span>
-                    <label class="inline-flex items-center gap-1 ml-2"><input type="radio" wire:model.live="genericoFormato" value="proveedor" class="border-gray-300"> Proveedor primero <span class="font-mono text-gray-500">(Xatelite Fra 123)</span></label>
-                    <label class="inline-flex items-center gap-1 ml-3"><input type="radio" wire:model.live="genericoFormato" value="numero" class="border-gray-300"> Número primero · emitidas <span class="font-mono text-gray-500">(26 00014 SUNBELT_… mensual Julio)</span></label>
+                <div class="mt-4">
+                    <p class="mb-1 text-xs font-medium text-gray-600">Formato del nombre</p>
+                    <div class="grid gap-2 sm:grid-cols-2" style="max-width:36rem">
+                        @foreach ([['proveedor', 'Proveedor primero', 'Facturas recibidas', 'Xatelite Fra 123.pdf'], ['numero', 'Número primero', 'Facturas emitidas', '26 00014 SUNBELT_… Julio.pdf']] as [$v, $tit, $sub, $ej])
+                            <label class="flex items-start gap-2 p-2 border rounded-md cursor-pointer {{ $genericoFormato === $v ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50' }}">
+                                <input type="radio" wire:model.live="genericoFormato" value="{{ $v }}" class="mt-0.5 border-gray-300">
+                                <span class="text-xs leading-tight">
+                                    <span class="block font-semibold text-gray-800">{{ $tit }} <span class="font-normal text-gray-500">· {{ $sub }}</span></span>
+                                    <span class="block mt-0.5 font-mono text-gray-500">{{ $ej }}</span>
+                                </span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @if ($genericoFormato === 'numero')
+                        <p class="mt-1 text-xs text-gray-500" style="max-width:36rem">Número de factura y detrás el nombre original tal cual (si no lo hay, el cliente de la tabla). Abonos: «Abo» tras el número.</p>
+                    @endif
                 </div>
-                @if ($genericoFormato === 'numero')
-                    <p class="mb-2 text-xs text-gray-500">Número primero: va el número de factura y detrás el nombre original tal cual (sin él, el cliente de la tabla). Abonos: «Abo» tras el número. Proformas y presupuestos igual que siempre.</p>
-                @endif
-                <div class="flex items-center gap-3 mt-2">
+                <div class="flex items-center gap-3 mt-4">
                     <x-button.primary x-on:click="analizar()" x-bind:disabled="ocupado">
                         <span x-show="! ocupado">Fase 1 · Analizar</span>
                         <span x-show="ocupado" x-cloak>⏳ Trabajando…</span>
