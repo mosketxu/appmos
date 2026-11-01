@@ -486,9 +486,31 @@
                     'application/pdf': ['.pdf'], 'application/vnd.ms-excel': ['.xls'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }] });
                 wire.upload('archivo', await h.getFile(), () => {}, () => {});
                 return;
-            } catch (e) { if (e && e.name === 'AbortError') return; }
+            } catch (e) {
+                // 1-nov-2026: Chrome/Edge rechazan con este selector los ficheros de carpetas que consideran «del sistema» (AppData, adjuntos abiertos
+                // desde Outlook, Temp…) y al Cancelar llega un AbortError. Como la activación del clic ya se ha gastado, no se puede abrir el selector
+                // clásico solo: se ofrece un aviso con un botón que lo abre (el clásico no tiene esa limitación).
+                if (e && e.name === 'AbortError') { window.impAvisoClasico(); return; }
+            }
         }
         document.getElementById('imp-fichero').click();
+    };
+    window.impAvisoClasico = () => {
+        let a = document.getElementById('imp-aviso-clasico');
+        if (!a) {
+            a = document.createElement('div');
+            a.id = 'imp-aviso-clasico';
+            a.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:#1f2937;color:#fff;padding:10px 12px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center';
+            a.innerHTML = '<span>¿El navegador no te deja abrir el archivo?</span>'
+                + '<button type="button" style="background:#4f46e5;color:#fff;border-radius:6px;padding:4px 10px">Usar el selector clásico</button>'
+                + '<button type="button" title="Cerrar" style="color:#9ca3af">✕</button>';
+            const [b1, b2] = a.querySelectorAll('button');
+            b1.onclick = () => { a.style.display = 'none'; document.getElementById('imp-fichero').click(); };
+            b2.onclick = () => { a.style.display = 'none'; };
+            document.body.appendChild(a);
+        }
+        a.style.display = 'flex';
+        clearTimeout(window.impAvisoT); window.impAvisoT = setTimeout(() => { a.style.display = 'none'; }, 12000);
     };
 
     // Menús de las casillas y del sobre (.imp-pop): van en posición fija junto a su botón, para que la tabla (con scroll) no los corte
