@@ -1712,9 +1712,62 @@ class FacturasOcr extends Component
     /** Id de la validada que se está viendo en el modal del listado ('' = cerrado). */
     public string $verValidada = '';
 
-    public function verValidada(string $id): void
+    /** Se llamaba igual que la propiedad $verValidada y Livewire tomaba la propiedad: el botón «👁 Ver» no hacía nada (2-nov-2026). */
+    public function abrirValidada(string $id): void
     {
         $this->verValidada = $id;
+    }
+
+    /** Corrección de una validada en la propia fila del listado (2-nov-2026): id en edición y sus campos. */
+    public string $editVal = '';
+    public array $editForm = [];
+
+    public function editarValidada(string $id): void
+    {
+        $f = $this->factura($id);
+        if (! $f || ($f['estado'] ?? '') !== 'validada') {
+            return;
+        }
+        $d = $f['datos'] ?? [];
+        $this->editVal = $id;
+        $this->editForm = [];
+        foreach (['fecha_registro', 'su_factura', 'fecha_expedicion', 'contrapartida', 'codigo_transaccion', 'clave_operacion', 'canal'] as $k) {
+            $this->editForm[$k] = (string) ($d[$k] ?? '');
+        }
+    }
+
+    public function cancelarEdicionValidada(): void
+    {
+        $this->editVal = '';
+        $this->editForm = [];
+        $this->resetErrorBag('editVal');
+    }
+
+    public function guardarEdicionValidada(): void
+    {
+        if ($this->editVal === '') {
+            return;
+        }
+        foreach (['contrapartida', 'codigo_transaccion', 'canal'] as $k) {
+            $v = trim((string) ($this->editForm[$k] ?? ''));
+            if ($v !== '' && ! ctype_digit($v)) {
+                $this->addError('editVal', 'Solo números en '.str_replace('_', ' ', $k).'.');
+                return;
+            }
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'focr-edv-');
+        file_put_contents($tmp, json_encode($this->editForm, JSON_UNESCAPED_UNICODE));
+        $this->salida = '';
+        $ok = $this->ejecutar(['editar_validada', $this->editVal, '--datos', $tmp], 120, 'Corregir validada', false);
+        @unlink($tmp);
+        $msg = trim(collect(explode("\n", $this->salida))->filter(fn ($l) => trim($l) !== '')->last() ?? '');
+        if ($ok) {
+            $this->editVal = '';
+            $this->editForm = [];
+            $this->dispatch('proceso-terminado', mensaje: '✔ '.$msg);
+        } else {
+            $this->addError('editVal', $msg ?: 'No se ha podido guardar.');
+        }
     }
 
     public function cerrarValidada(): void

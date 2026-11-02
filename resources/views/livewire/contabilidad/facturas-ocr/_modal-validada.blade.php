@@ -30,7 +30,7 @@
                             @foreach ([
                                 'F. registro' => (($d['tipo'] ?? 'R') === 'E' ? '' : $fmt($d['fecha_registro'] ?? '')), 'Serie' => $d['serie'] ?? '', 'F. factura' => $fmt($d['fecha_expedicion'] ?? ''),
                                 (($d['tipo'] ?? 'R') === 'E' ? 'Cliente' : 'Proveedor') => trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')), 'CIF' => $d['cif'] ?? '', 'Nº factura' => $d['su_factura'] ?? '',
-                                'Contrapartida' => $d['contrapartida'] ?? '', 'Cód. transacción' => $d['codigo_transaccion'] ?? '', 'Clave operación' => $d['clave_operacion'] ?? '',
+                                'Contrapartida' => $d['contrapartida'] ?? '', 'Cód. transacción' => $d['codigo_transaccion'] ?? '', 'Clave operación' => $d['clave_operacion'] ?? '', 'Canal' => $d['canal'] ?? '',
                                 'Comentario' => $d['comentario'] ?? '',
                             ] as $k => $val)
                                 @if ($val !== '' && $val !== null)
