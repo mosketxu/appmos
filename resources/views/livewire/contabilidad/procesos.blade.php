@@ -651,14 +651,14 @@
                                             <span wire:loading.remove wire:target="enviarCashflow">{{ $estCf === 'ok' ? '✉ Reenviar' : '✉ Enviar a Plein' }}</span>
                                             <span wire:loading wire:target="enviarCashflow">⏳…</span>
                                         </button>
-                                        <label class="flex items-center text-xs text-gray-600 gap-x-2 whitespace-nowrap" title="Opcional: el mayor de SAGE (listado en columnas, el mismo que usan Bancos, Facturas OCR...). Se guarda en los ficheros base de Fashion IQ para todos los procesos. Si no eliges ninguno, se usa el último subido en cualquier pantalla.">
-                                            <x-subir-fichero wire:model="cashflowMayor" accept=".xlsx" :fichero="$cashflowMayor" opcional texto="Mayor" />
-                                            @if (! $cashflowMayor && $mc)
-                                                <span class="text-gray-500 whitespace-nowrap" title="Usa «{{ $mc['nombre'] }}», {{ $mc['fecha'] }}{{ $mc['origen'] ? ' · '.$mc['origen'] : '' }}">✓ {{ \Illuminate\Support\Str::limit($mc['nombre'], 24) }} · {{ $mc['fecha'] }} <span class="text-indigo-500 cursor-help">ⓘ</span></span>
-                                            @elseif (! $cashflowMayor)
+                                        <span class="text-xs text-gray-600">
+                                            📂 Sube el Mayor actualizado en los Ficheros base de SAGE.
+                                            @if ($mc)
+                                                <span class="text-gray-500 whitespace-nowrap" title="{{ $mc['origen'] ?? '' }}">Ahora usa «{{ \Illuminate\Support\Str::limit($mc['nombre'], 24) }}» · {{ $mc['fecha'] }}</span>
+                                            @else
                                                 <span class="text-yellow-700">No hay mayor en los ficheros base: lo busca en Descargas del PC.</span>
                                             @endif
-                                        </label>
+                                        </span>
                                     @endif
                                     @if (! empty($resultados[$id]))
                                         <div class="flex flex-col min-w-0 gap-y-1 pt-1">
