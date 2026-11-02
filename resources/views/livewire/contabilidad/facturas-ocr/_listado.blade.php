@@ -407,7 +407,7 @@
                             @forelse ($validadas as $f)
                                 @php $d = $f['datos']; @endphp
                                 @php $edit = $editVal === $f['id']; @endphp
-                                <tr wire:key="v-{{ $f['id'] }}" @if ($f['estado'] === 'validada' && ! $edit) class="clic" wire:click="abrirValidada('{{ $f['id'] }}')" title="Ver lo validado (en una ventana; desde ahí se puede volver a pendiente para corregirla)" @endif @if ($edit) style="background:#fffbeb" @endif>
+                                <tr wire:key="v-{{ $f['id'] }}" @if ($f['estado'] === 'validada' && ! $edit) class="clic" wire:click="abrirValidada('{{ $f['id'] }}')" title="Ver lo validado (en una ventana; desde ahí se puede volver a pendiente para corregirla)" @endif @if ($edit) style="background:#fffbeb" @elseif ($verValidada === $f['id']) style="background:#e0e7ff" @endif>
                                     <td x-data x-on:click.stop style="white-space:nowrap">@if ($f['estado'] === 'validada')<input type="checkbox" wire:model.live="marcadasValidadas" value="{{ $f['id'] }}" title="Marcar para retroceder">
                                         @if ($edit)
                                             <button type="button" wire:click="guardarEdicionValidada" wire:loading.attr="disabled" class="focr-btn b-verde" style="padding:.05rem .4rem; font-size:.72rem" title="Guarda los cambios y reescribe su fila en el Excel para SAGE">✔ Guardar</button>
@@ -450,8 +450,9 @@
                                             <span class="focr-chip c-ok">En curso</span>
                                         @endif
                                         fila {{ $f['fila_excel'] ?? '' }}</td>
-                                    <td class="text-xs" style="max-width:340px; word-break:break-all">
-                                        <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline">{{ $f['ruta'] }}</a>
+                                    {{-- Solo el nombre, en una línea: la ruta entera (/var/www/…) partida en trozos hacía las filas altísimas en pantallas medianas --}}
+                                    <td class="text-xs" style="max-width:14rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" x-data x-on:click.stop>
+                                        <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline" title="{{ $f['ruta'] }}">{{ basename($f['ruta']) }}</a>
                                     </td>
                                     <td class="text-xs" style="white-space:nowrap">{{ $f['estado'] === 'validando' ? 'guardando…' : ($f['validada_el'] ?? '') }}
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>

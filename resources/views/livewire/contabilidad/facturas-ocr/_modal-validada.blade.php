@@ -7,11 +7,15 @@
     @endphp
     @if ($v)
         @php $d = $v['datos']; $im = $importes($d); @endphp
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(17,24,39,.55)"
-             x-data x-on:keydown.escape.window="$wire.cerrarValidada()"
-             x-on:keydown.arrow-left.window="if (! ['INPUT','TEXTAREA'].includes($event.target.tagName)) $wire.vecinaValidada(-1)"
-             x-on:keydown.arrow-right.window="if (! ['INPUT','TEXTAREA'].includes($event.target.tagName)) $wire.vecinaValidada(1)">
-            <div class="flex flex-col w-full bg-white rounded-lg shadow-xl" style="max-width:76rem; height:90vh" wire:key="mv-{{ $v['id'] }}">
+        {{-- Panel acoplado a la derecha, SIN fondo que tape (2-nov-2026, Alex): se puede seguir haciendo clic en otras facturas del listado
+             y el panel cambia a esa. «⇔» lo ensancha o estrecha (se recuerda en el navegador). --}}
+        <div class="fixed z-40 flex flex-col bg-white border-l border-gray-300 shadow-2xl"
+             x-data="{ ancho: localStorage.getItem('focrPanelAncho') || 'normal' }"
+             :style="'top:4rem; right:0; bottom:0; width:' + (ancho === 'ancho' ? 'min(96vw, 110rem)' : 'min(96vw, max(36rem, 58vw))')"
+             x-on:keydown.escape.window="$wire.cerrarValidada()"
+             x-on:keydown.arrow-left.window="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName)) $wire.vecinaValidada(-1)"
+             x-on:keydown.arrow-right.window="if (! ['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName)) $wire.vecinaValidada(1)">
+            <div class="flex flex-col w-full h-full" wire:key="mv-{{ $v['id'] }}">
                 <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-gray-200">
                     <button type="button" wire:click="vecinaValidada(-1)" @disabled($pos === 0) class="px-2 py-1 text-sm border rounded disabled:opacity-30" title="Anterior (←)">‹</button>
                     <button type="button" wire:click="vecinaValidada(1)" @disabled($pos >= count($ids) - 1) class="px-2 py-1 text-sm border rounded disabled:opacity-30" title="Siguiente (→)">›</button>
@@ -21,11 +25,12 @@
                     <span class="flex-1"></span>
                     <button type="button" wire:click="corregirValidada('{{ $v['id'] }}')" class="focr-btn b-gris" style="padding:.25rem .7rem"
                             title="Abre la factura en la pantalla de revisión, ya como pendiente, para corregirla (sale del Excel; si ya estaba guardado para SAGE, corrígela también allí)">↩ Volver a pendiente y corregir</button>
+                    <button type="button" x-on:click="ancho = ancho === 'ancho' ? 'normal' : 'ancho'; localStorage.setItem('focrPanelAncho', ancho)" class="px-2 py-1 text-sm border rounded" title="Ensanchar / estrechar el panel">⇔</button>
                     <button type="button" wire:click="cerrarValidada" class="px-3 py-1 text-sm font-semibold border rounded" title="Esc">✕ Cerrar</button>
                 </div>
                 <div class="flex flex-1 min-h-0">
                     <iframe src="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $v['id']]) }}" class="flex-1 min-w-0 border-0" style="background:#f3f4f6"></iframe>
-                    <div class="overflow-y-auto p-3 text-sm border-l border-gray-200" style="width:26rem; flex:none">
+                    <div class="overflow-y-auto p-3 text-sm border-l border-gray-200" style="width:min(22rem, 45%); flex:none">
                         <table class="w-full">
                             @foreach ([
                                 'F. registro' => (($d['tipo'] ?? 'R') === 'E' ? '' : $fmt($d['fecha_registro'] ?? '')), 'Serie' => $d['serie'] ?? '', 'F. factura' => $fmt($d['fecha_expedicion'] ?? ''),
