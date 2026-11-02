@@ -281,8 +281,9 @@ class FacturasOcr extends Component
         $ult = $this->estado()['ultimo_analisis'] ?? [];
         $this->carpeta = $this->web() ? $this->dirEntrada() : ($ult['carpeta'] ?? ($this->cfg()['carpeta_entrada'] ?? ''));
         $this->leyendo = $this->web() && $this->lecturaEnCurso() !== null;
+        // Se recuerda el último periodo usado solo si no es anterior al que toca ahora (el 2-nov se propone octubre, no el septiembre de la última vez)
         $this->periodo = (string) ($ult['periodo'] ?? '');
-        if (! array_key_exists($this->periodo, $this->periodos())) {
+        if (! array_key_exists($this->periodo, $this->periodos()) || strcmp($this->periodo, $this->periodoActual()) < 0) {
             $this->periodo = $this->periodoActual();
         }
         $this->cierre = (string) ($ult['cierre'] ?? '');
@@ -380,9 +381,10 @@ class FacturasOcr extends Component
         }
     }
 
+    /** Periodo que toca contabilizar: el del mes anterior (el 2-nov, octubre; con IVA trimestral, el trimestre de ese mes). */
     protected function periodoActual(): string
     {
-        $h = now();
+        $h = now()->startOfMonth()->subMonth();
         return $this->ciclo === 'M' ? $h->format('Y-m') : $h->year.'-'.$h->quarter.'T';
     }
 
