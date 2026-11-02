@@ -635,12 +635,12 @@
                                     @endif
                                     @if ($id === 'open_items')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
-                                        <label class="flex items-center text-xs text-gray-600 gap-x-2 whitespace-nowrap" title="Opcional: el mayor de SAGE en columnas («FIQ MAyor.xlsx» de SageLauncher). Si no eliges ninguno, se usa el más reciente entre el de SageLauncher del PC y el último subido en cualquier pantalla. Resultado: OpenItems_FIQ_CL_<hoy>.xlsx, con el cuadre por cuenta en el resumen (amarillo = no cuadra).">
-                                            <x-subir-fichero wire:model="openItemsMayor" accept=".xlsx" :fichero="$openItemsMayor" opcional texto="Mayor" />
-                                            @if (! $openItemsMayor)
-                                                <span class="text-gray-500" title="Usa el más reciente entre el de SageLauncher del PC{{ $mc ? ' y «'.$mc['nombre'].'» ('.$mc['fecha'].')' : '' }}">✓ Usa el más reciente <span class="text-indigo-500 cursor-help">ⓘ</span></span>
+                                        <span class="text-xs text-gray-600" title="Se usa el más reciente entre el de SageLauncher del PC{{ $mc ? ' y «'.$mc['nombre'].'» ('.$mc['fecha'].')' : '' }}.">
+                                            📂 Sube el Mayor actualizado en los Ficheros base de SAGE.
+                                            @if ($mc)
+                                                <span class="text-gray-500 whitespace-nowrap">Último subido: «{{ \Illuminate\Support\Str::limit($mc['nombre'], 24) }}» · {{ $mc['fecha'] }}</span>
                                             @endif
-                                        </label>
+                                        </span>
                                     @endif
                                     @if ($id === 'cashflow')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
