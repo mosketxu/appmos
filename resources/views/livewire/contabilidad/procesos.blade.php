@@ -488,6 +488,8 @@
                                 {{-- 27-oct-2026 (Alex): el UBS es automático (miniServ); aquí se ve cuándo fue lo último y se puede lanzar a mano con un extracto. --}}
                                 @php $uu = $this->ubsUltimo; @endphp
                                 <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1">
+                                    <x-subir-fichero wire:model="ubsFichero" accept=".xlsx" :fichero="$ubsFichero" texto="Extracto UBS"
+                                        title="El Excel «FIQ UBS dd.mm - dd.mm.xlsx» que manda Luca. Normalmente se procesa solo al llegar el correo; esto es para hacerlo a mano. Puedes arrastrarlo aquí." />
                                     <button type="button" class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
                                         wire:click="ejecutar('ubs')" wire:loading.attr="disabled" wire:target="ejecutar('ubs')"
                                         wire:confirm="Esto escribe en UBS BANCOS.xlsx y crea el plugin de bancos (y te manda el correo con el resumen). ¿Seguro?"
@@ -495,8 +497,6 @@
                                         <span wire:loading.remove wire:target="ejecutar('ubs')">▶ Ejecutar</span>
                                         <span wire:loading wire:target="ejecutar('ubs')">⏳…</span>
                                     </button>
-                                    <x-subir-fichero wire:model="ubsFichero" accept=".xlsx" :fichero="$ubsFichero" texto="Extracto UBS"
-                                        title="El Excel «FIQ UBS dd.mm - dd.mm.xlsx» que manda Luca. Normalmente se procesa solo al llegar el correo; esto es para hacerlo a mano. Puedes arrastrarlo aquí." />
                                     @if ($uu)
                                         @php
                                             $uuCuando = \Illuminate\Support\Carbon::parse($uu['cuando'] ?? now())->format('d/m/Y H:i');
@@ -517,48 +517,6 @@
                                 </div>
                             @elseif ($auto === 'tabla' && isset($botones[$id]))
                                 <div class="flex gap-x-2 {{ $id === 'laboral' ? 'items-center flex-nowrap whitespace-nowrap' : 'items-start' }}">
-                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
-                                        wire:click="ejecutar('{{ $id }}')"
-                                        wire:loading.attr="disabled"
-                                        wire:target="ejecutar('{{ $id }}')"
-                                        wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
-                                    >
-                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">▶ Ejecutar</span>
-                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
-                                    </button>
-                                    @if ($id === 'anaplan_web')
-                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
-                                            title="Si la subida se ha quedado colgada o has tocado la ventana de Chrome de Anaplan: para la subida, cierra ese Chrome (solo el de Anaplan) y lo abre limpio. Luego entra si pide sesión y vuelve a pulsar ▶ Ejecutar."
-                                            wire:click="reiniciarAnaplan" wire:loading.attr="disabled" wire:target="reiniciarAnaplan"
-                                            wire:confirm="¿Parar la subida a Anaplan (si hay una en marcha) y reiniciar su ventana de Chrome?">
-                                            <span wire:loading.remove wire:target="reiniciarAnaplan">🔄 Reiniciar</span>
-                                            <span wire:loading wire:target="reiniciarAnaplan">⏳…</span>
-                                        </button>
-                                    @endif
-                                    @if (in_array($id, ['anaplan', 'anaplan_web'], true) && ! empty($this->entradas['sin_canal']))
-                                        {{-- 16-oct-2026 (Alex: «dato muy importante, aviso en pantalla fuera de la salida»): gastos/ingresos del SyS
-                                             del mes sin tienda. Van a «Alta automática»: en Anaplan LE ≠ AC por ese importe. --}}
-                                        @php $sc = $this->entradas['sin_canal']; @endphp
-                                        <div style="max-width:24rem;padding:.4rem .6rem;border:1px solid #fca5a5;border-left:5px solid #dc2626;border-radius:.375rem;background:#fef2f2;font-size:.75rem;line-height:1.25;color:#7f1d1d">
-                                            <div style="font-weight:700">🚨 {{ count($sc) }} cuenta(s) de gasto/ingreso SIN TIENDA en el SyS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} · {{ number_format(array_sum(array_column($sc, 'mes')), 2, ',', '.') }} €</div>
-                                            @foreach ($sc as $h)
-                                                <div>{{ $h['cuenta'] }} {{ \Illuminate\Support\Str::limit($h['descripcion'], 30) }}: <b>{{ number_format($h['mes'], 2, ',', '.') }} €</b></div>
-                                            @endforeach
-                                            <div style="margin-top:.2rem;color:#991b1b">👉 En Anaplan, LE y AC no cuadrarán por ese importe. Asigna tienda en SAGE, exporta de nuevo el SyS y vuelve a lanzar Anaplan.</div>
-                                        </div>
-                                    @endif
-                                    @if ($id === 'laboral')
-                                        {{-- 17-oct-2026: los nombres de Anaplan del personal salen de aquí (Alex: «este proceso va unido a Entrar nóminas») --}}
-                                        @php $sinNomL = $this->staffSinNombreMes; @endphp
-                                        @if (! empty($this->staffDatosMes['tiendas']))
-                                            <button type="button" class="inline-flex items-center px-2 py-1 text-xs font-medium whitespace-nowrap border rounded shadow-sm disabled:opacity-50 {{ $sinNomL ? 'text-white bg-red-600 border-red-600 hover:bg-red-700' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50' }}"
-                                                wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
-                                                title="{{ ! $sinNomL && ! empty($this->staffDatosMes['tiendas']) ? '✓ Los '.collect($this->staffDatosMes['tiendas'])->flatten(1)->count().' empleados del mes tienen nombre de Anaplan. ' : '' }}Nombres de Anaplan: empleados de la nómina del mes con su nombre en Anaplan; escribe el de los que falten. Luego «⬆ Subir a Anaplan» en ANAPLAN · personal (o en la propia ventana).">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="8" r="6.3"/><circle cx="19" cy="8" r="6.3"/><path d="M4.6 10c1.3 1.7 3.5 1.7 4.8 0M16.6 10c1.3 1.7 3.5 1.7 4.8 0"/><circle cx="5.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".5" fill="currentColor"/><circle cx="17.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="20.7" cy="6.3" r=".5" fill="currentColor"/></svg>{{ $sinNomL ? ' '.count($sinNomL) : '' }}
-                                            </button>
-                                        @endif
-                                        
-                                    @endif
                                     @if ($id === 'adyen')
                                         <x-subir-fichero wire:model="adyenSettlement" accept=".xlsx" :fichero="$adyenSettlement" texto="Settlement"
                                             title="El settlement_report_aggregate_*.xlsx de Adyen. Si ya está en la carpeta Adyen del mes puedes ejecutar sin subirlo (te avisa antes)." />
@@ -633,6 +591,48 @@
                                             </button>
                                         </div>
                                     @endif
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+                                        wire:click="ejecutar('{{ $id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="ejecutar('{{ $id }}')"
+                                        wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
+                                    >
+                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">▶ Ejecutar</span>
+                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
+                                    </button>
+                                    @if ($id === 'anaplan_web')
+                                        <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                                            title="Si la subida se ha quedado colgada o has tocado la ventana de Chrome de Anaplan: para la subida, cierra ese Chrome (solo el de Anaplan) y lo abre limpio. Luego entra si pide sesión y vuelve a pulsar ▶ Ejecutar."
+                                            wire:click="reiniciarAnaplan" wire:loading.attr="disabled" wire:target="reiniciarAnaplan"
+                                            wire:confirm="¿Parar la subida a Anaplan (si hay una en marcha) y reiniciar su ventana de Chrome?">
+                                            <span wire:loading.remove wire:target="reiniciarAnaplan">🔄 Reiniciar</span>
+                                            <span wire:loading wire:target="reiniciarAnaplan">⏳…</span>
+                                        </button>
+                                    @endif
+                                    @if (in_array($id, ['anaplan', 'anaplan_web'], true) && ! empty($this->entradas['sin_canal']))
+                                        {{-- 16-oct-2026 (Alex: «dato muy importante, aviso en pantalla fuera de la salida»): gastos/ingresos del SyS
+                                             del mes sin tienda. Van a «Alta automática»: en Anaplan LE ≠ AC por ese importe. --}}
+                                        @php $sc = $this->entradas['sin_canal']; @endphp
+                                        <div style="max-width:24rem;padding:.4rem .6rem;border:1px solid #fca5a5;border-left:5px solid #dc2626;border-radius:.375rem;background:#fef2f2;font-size:.75rem;line-height:1.25;color:#7f1d1d">
+                                            <div style="font-weight:700">🚨 {{ count($sc) }} cuenta(s) de gasto/ingreso SIN TIENDA en el SyS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }} · {{ number_format(array_sum(array_column($sc, 'mes')), 2, ',', '.') }} €</div>
+                                            @foreach ($sc as $h)
+                                                <div>{{ $h['cuenta'] }} {{ \Illuminate\Support\Str::limit($h['descripcion'], 30) }}: <b>{{ number_format($h['mes'], 2, ',', '.') }} €</b></div>
+                                            @endforeach
+                                            <div style="margin-top:.2rem;color:#991b1b">👉 En Anaplan, LE y AC no cuadrarán por ese importe. Asigna tienda en SAGE, exporta de nuevo el SyS y vuelve a lanzar Anaplan.</div>
+                                        </div>
+                                    @endif
+                                    @if ($id === 'laboral')
+                                        {{-- 17-oct-2026: los nombres de Anaplan del personal salen de aquí (Alex: «este proceso va unido a Entrar nóminas») --}}
+                                        @php $sinNomL = $this->staffSinNombreMes; @endphp
+                                        @if (! empty($this->staffDatosMes['tiendas']))
+                                            <button type="button" class="inline-flex items-center px-2 py-1 text-xs font-medium whitespace-nowrap border rounded shadow-sm disabled:opacity-50 {{ $sinNomL ? 'text-white bg-red-600 border-red-600 hover:bg-red-700' : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50' }}"
+                                                wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
+                                                title="{{ ! $sinNomL && ! empty($this->staffDatosMes['tiendas']) ? '✓ Los '.collect($this->staffDatosMes['tiendas'])->flatten(1)->count().' empleados del mes tienen nombre de Anaplan. ' : '' }}Nombres de Anaplan: empleados de la nómina del mes con su nombre en Anaplan; escribe el de los que falten. Luego «⬆ Subir a Anaplan» en ANAPLAN · personal (o en la propia ventana).">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="7" cy="8" r="6.3"/><circle cx="19" cy="8" r="6.3"/><path d="M4.6 10c1.3 1.7 3.5 1.7 4.8 0M16.6 10c1.3 1.7 3.5 1.7 4.8 0"/><circle cx="5.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".5" fill="currentColor"/><circle cx="17.3" cy="6.3" r=".5" fill="currentColor"/><circle cx="20.7" cy="6.3" r=".5" fill="currentColor"/></svg>{{ $sinNomL ? ' '.count($sinNomL) : '' }}
+                                            </button>
+                                        @endif
+                                        
+                                    @endif
                                     @if ($id === 'open_items')
                                         @php $mc = $this->cashflowMayorCentral; @endphp
                                         <span class="text-xs text-gray-600" title="Se usa el más reciente entre el de SageLauncher del PC{{ $mc ? ' y «'.$mc['nombre'].'» ('.$mc['fecha'].')' : '' }}.">
@@ -702,15 +702,15 @@
                             @elseif ($auto === 'intrastat')
                                 {{-- 14-oct-2026: se elige el Excel de Outbound, se procesa con el motor de Impuestos → Intrastat y se marca hecho --}}
                                 <div class="flex flex-wrap items-start gap-x-2 gap-y-1">
+                                    <x-subir-fichero wire:model="intrastatFichero" accept=".xlsx,.xlsm" :fichero="$intrastatFichero"
+                                        texto="Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
+                                        title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.{{ $anio }}.xlsx». Sustituye al que hubiera procesado de este mes. Puedes arrastrarlo aquí." />
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
                                         wire:click="procesarIntrastat" wire:loading.attr="disabled" wire:target="procesarIntrastat,intrastatFichero"
                                         @if (! $intrastatFichero && ! $intrastatRes) disabled title="Elige antes el Excel" @endif>
                                         <span wire:loading.remove wire:target="procesarIntrastat">▶ Procesar</span>
                                         <span wire:loading wire:target="procesarIntrastat">⏳…</span>
                                     </button>
-                                    <x-subir-fichero wire:model="intrastatFichero" accept=".xlsx,.xlsm" :fichero="$intrastatFichero"
-                                        texto="Outbound PPI & PS {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
-                                        title="Excel mensual «Outbound Fashion IQ PPI & PS - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}.{{ $anio }}.xlsx». Sustituye al que hubiera procesado de este mes. Puedes arrastrarlo aquí." />
                                     @if ($intrastatRes)
                                         <div class="flex flex-col text-xs text-gray-600">
                                             <span>
