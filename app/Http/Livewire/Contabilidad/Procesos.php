@@ -1649,6 +1649,30 @@ class Procesos extends Component
     }
 
     /** Al cambiar a mano el empleado de Anaplan de una fila del modal. */
+    /** Botón «usar este nombre»: pone en el empleado el nombre propuesto (el que se le dijo a Alex que creara en Anaplan) y lo guarda. */
+    public function usarPropuestaStaff(int $bi, int $fi): void
+    {
+        $f = $this->staff[$bi]['filas'][$fi] ?? null;
+        $nombre = trim((string) ($f['propuesta'] ?? '')) ?: trim((string) ($f['excel'] ?? ''));
+        if (! $f || $nombre === '') {
+            return;
+        }
+        $this->staff[$bi]['filas'][$fi]['anaplan'] = $nombre;
+        $this->updatedStaff($nombre, "{$bi}.filas.{$fi}.anaplan");
+    }
+
+    /** «Usar todos los propuestos»: a cada empleado sin nombre de Anaplan, el propuesto. */
+    public function usarPropuestasStaff(): void
+    {
+        foreach ($this->staff as $bi => $b) {
+            foreach ($b['filas'] as $fi => $f) {
+                if (trim((string) ($f['anaplan'] ?? '')) === '') {
+                    $this->usarPropuestaStaff((int) $bi, (int) $fi);
+                }
+            }
+        }
+    }
+
     public function updatedStaff($valor, $clave): void
     {
         if (preg_match('/^(\d+)\.filas\.(\d+)\.anaplan$/', (string) $clave, $m) && isset($this->staff[$m[1]]['filas'][$m[2]])) {

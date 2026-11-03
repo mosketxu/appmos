@@ -299,7 +299,11 @@
                                     <td class="py-0.5 pr-2">{{ $f['excel'] }}</td>
                                     <td class="pr-2 text-right">{{ number_format($f['bruto'], 2, ',', '.') }}</td>
                                     <td class="pr-2 text-right">{{ number_format($f['bonus'], 2, ',', '.') }}</td>
-                                    <td class="pr-2"><input type="text" list="staff-anaplan-{{ $bi }}" wire:model.blur="staff.{{ $bi }}.filas.{{ $fi }}.anaplan" class="w-full px-1 py-0.5 text-sm border-gray-300 rounded" placeholder="(no se sube)"></td>
+                                    <td class="pr-2"><input type="text" list="staff-anaplan-{{ $bi }}" wire:model.blur="staff.{{ $bi }}.filas.{{ $fi }}.anaplan" class="w-full px-1 py-0.5 text-sm border-gray-300 rounded" placeholder="(no se sube)">
+                                        @if (trim($f['anaplan']) === '' && trim((string) ($f['propuesta'] ?? '')) !== '')
+                                            <button type="button" wire:click="usarPropuestaStaff({{ $bi }}, {{ $fi }})" wire:loading.attr="disabled" class="mt-0.5 px-2 py-0.5 text-xs text-indigo-700 bg-white border border-indigo-300 rounded hover:bg-indigo-50" title="Pone el nombre propuesto, el mismo con el que lo has creado en Anaplan">✓ Usar «{{ $f['propuesta'] }}»</button>
+                                        @endif
+                                    </td>
                                     <td class="text-xs {{ trim($f['anaplan']) === '' ? 'text-red-700' : 'text-yellow-800' }}">{{ $f['origen'] === 'historico' ? '' : $f['nota'] }}</td>
                                 </tr>
                             @endforeach
@@ -316,6 +320,9 @@
                     }
                 @endphp
                 <div class="flex flex-wrap justify-end gap-2 pt-2 border-t">
+                    @if ($sinPareja->isNotEmpty())
+                        <button type="button" wire:click="usarPropuestasStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-white bg-red-600 rounded-md hover:bg-red-700" title="A los que no tienen nombre de Anaplan les pone el propuesto (el mismo con el que los has creado)">✓ Usar los {{ $sinPareja->count() }} nombres propuestos</button>
+                    @endif
                     <button type="button" wire:click="$set('staffAbierto', false)" class="px-3 py-1.5 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Cerrar</button>
                     <button type="button" wire:click="guardarNombresStaff" wire:loading.attr="disabled" class="px-3 py-1.5 text-sm text-indigo-700 border border-indigo-300 rounded-md hover:bg-indigo-50" title="Los nombres se guardan al escribirlos (valen para los meses siguientes). Esto además vuelve a pasar «Laboral» para que el Excel de imputación de costes lleve los nombres de Anaplan (cierra antes el Excel si lo tienes abierto)">💾 Guardar y actualizar el Excel</button>
                     <button type="button" wire:click="subirStaff" wire:loading.attr="disabled"
