@@ -7,6 +7,11 @@
 
      Prop: r = ['ruta' => 'E:\...\fichero.xlsx', ...]. --}}
 @props(['r', 'compacto' => false])
+@php
+    // 3-nov-2026 (Alex): la ruta puede venir con « (AlexMiniPC)» detrás para saber en qué PC está; al copiar se quita, porque pegada daba error.
+    $pcs = \Illuminate\Support\Facades\Cache::remember('resultado-fichero.pcs', 300, fn () => \Illuminate\Support\Facades\DB::table('trabajadores')->pluck('nombre')->all());
+    $rutaCopia = preg_replace('/\s+\((?:'.implode('|', array_map('preg_quote', $pcs ?: ['AlexMiniPC', 'PortalExomen', 'miniServ'])).')\)\s*$/i', '', (string) ($r['ruta'] ?? ''));
+@endphp
 
 @if ($compacto)
     {{-- 27-oct-2026 (Alex): solo un clip; al pasar el ratón, el fichero y su ruta. Descarga si hay fichero en el servidor; si no, copia la ruta. --}}
@@ -16,14 +21,14 @@
     @elseif (! empty($r['local']))
         <button type="button" wire:click="descargarResultado('{{ base64_encode($r['local']) }}')" title="{{ $tip }}" class="px-1 text-base text-indigo-700 rounded hover:bg-indigo-50">📎</button>
     @else
-        <button type="button" data-ruta="{{ $r['ruta'] }}" title="{{ str_replace('Descargar ', '', $tip) }}&#10;(clic: copiar la ruta)" x-on:click.prevent="navigator.clipboard && navigator.clipboard.writeText($el.dataset.ruta)" class="px-1 text-base text-indigo-700 rounded hover:bg-indigo-50">📎</button>
+        <button type="button" data-ruta="{{ $rutaCopia }}" title="{{ str_replace('Descargar ', '', $tip) }}&#10;(clic: copiar la ruta)" x-on:click.prevent="navigator.clipboard && navigator.clipboard.writeText($el.dataset.ruta)" class="px-1 text-base text-indigo-700 rounded hover:bg-indigo-50">📎</button>
     @endif
 @else
 
 <div x-data="{ copiado: false }" class="text-xs">
     <a href="#" role="button"
        class="font-mono text-blue-700 underline break-all hover:text-blue-900"
-       data-ruta="{{ $r['ruta'] }}"
+       data-ruta="{{ $rutaCopia }}"
        title="Clic para copiar la ruta al portapapeles"
        x-on:click.prevent="navigator.clipboard && navigator.clipboard.writeText($el.dataset.ruta); copiado = true; setTimeout(() => copiado = false, 1500)">📄 {{ $r['ruta'] }}</a>
     <span x-show="copiado" style="display:none" class="ml-1 font-sans text-green-600">✓ ruta copiada</span>

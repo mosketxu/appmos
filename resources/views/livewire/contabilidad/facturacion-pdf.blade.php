@@ -345,18 +345,7 @@
             <div wire:key="cliente-{{ $id }}" class="p-4 bg-white border rounded-lg shadow tarjeta-ancha">
             <div class="fila-tarjeta">
             <div class="col-izq">
-                <div x-data="{ porque: false }">
-                    <div class="flex items-center gap-2">
-                        <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
-                        <button type="button" x-on:click="porque = ! porque" class="text-lg font-bold text-indigo-700" title="¿Por qué no se puede usar en la web?">*</button>
-                    </div>
-                    <div x-show="porque" x-cloak class="p-2 mt-2 text-xs text-gray-700 border border-indigo-200 rounded bg-indigo-50">
-                        <strong>¿Dónde se hace?</strong> El proceso necesita OneDrive ({{ $id === 'Suma' ? 'lee los destinatarios del Excel maestro (ToDO Alex) y ' : '' }}copia
-                        las facturas a las carpetas de OneDrive: Facturas del mes y la de cada cliente), así que lo hace un PC de
-                        trabajo (AlexMiniPC / PortalExomen). Desde la web, el PDF se le manda al PC, que lo procesa y devuelve
-                        aquí el resultado; si ningún PC está encendido, la tarea espera (se puede cancelar).
-                    </div>
-                </div>
+                <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
                 @if (($c['ayuda'] ?? '') !== '')<p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>@else<div class="mb-3"></div>@endif
 
                 @if ($e['fase'] === 'vacio')
