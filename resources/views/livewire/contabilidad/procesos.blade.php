@@ -571,6 +571,11 @@
                                         @php $mmL = str_pad($mes, 2, '0', STR_PAD_LEFT); @endphp
                                         <x-subir-fichero wire:model="laboralFichero" accept=".xlsx,.xls" :fichero="$laboralFichero" texto="Imputación de costes {{ $mmL }}"
                                             title="Si no eliges ninguno, se usa «imputacion costes {{ $mmL }}{{ $anio }}…» de versión más alta en la carpeta Laboral {{ $anio }} del mes." />
+                                        {{-- 3-nov-2026: si ya se subió (Laboral o Edenred), se ofrece y no hace falta volver a subirla --}}
+                                        @php $impLab = ($this->staffDatosMes['fichero'] ?? '') ?: ($this->edenredUsada['imputacion'] ?? ''); @endphp
+                                        @if (! $laboralFichero && $impLab)
+                                            <span class="text-xs text-green-700" title="Ya está en la carpeta Laboral del mes: «Ejecutar» usa la versión más alta de la carpeta. Sube otra solo si llega una versión nueva.">✓ Ya tengo: {{ \Illuminate\Support\Str::before($impLab, '.xlsx') }} — no hace falta subirla</span>
+                                        @endif
                                     @endif
                                     @if ($id === 'edenred')
                                         {{-- 27-oct-2026: Recargas de Edenred. Se sube la Imputación (última versión) y «Ejecutar» analiza; la decisión sobre cada diferencia se toma en una ventana. --}}
