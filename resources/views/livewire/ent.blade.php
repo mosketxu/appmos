@@ -256,7 +256,7 @@
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="grupo_id" >{{ __('Grupo') }}</x-jet-label>
-                    <select wire:model="entidad.grupo_id" id="grupo_id" class="w-full border-gray-300 rounded-md shadow-sm" title="Grupo de empresas al que pertenece (vacío = ninguno). Sirve para agrupar y filtrar en Impuestos">
+                    <select wire:model="entidad.grupo_id" id="grupo_id" class="w-full text-xs text-gray-600 bg-white border-gray-300 rounded-md shadow-sm hover:border-gray-400 focus:outline-none" title="Grupo de empresas al que pertenece (vacío = ninguno). Sirve para agrupar y filtrar en Impuestos">
                         <option value="">— sin grupo —</option>
                         @foreach ($grupos as $gr)<option value="{{ $gr->id }}">{{ $gr->nombre }}</option>@endforeach
                         <option value="__nuevo">➕ Nuevo grupo…</option>
