@@ -348,7 +348,7 @@
                 <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
                 @if (($c['ayuda'] ?? '') !== '')<p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>@else<div class="mb-3"></div>@endif
                 @if ($id === 'Suma')
-                    @php($ctl = $this->control)
+                    @php($ctl = $this->controlEstado())
                     <div @if ($ctl['enCurso']) wire:poll.5s @endif class="p-3 mb-3 text-xs border border-gray-200 rounded-md bg-gray-50">
                         <div class="mb-2 font-medium text-gray-700">Control de facturación</div>
                         <div class="flex flex-wrap items-center gap-3">

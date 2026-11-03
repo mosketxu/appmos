@@ -1356,7 +1356,7 @@ class FacturacionPdf extends Component
     public string $controlAviso = '';
 
     /** Estado del proceso: última tarea, si hay una en curso y el enlace de descarga del resultado. */
-    public function getControlProperty(): array
+    public function controlEstado(): array   // método y no propiedad calculada: Livewire cachea estas últimas por petición y el estado cambia al lanzar la tarea
     {
         $vacio = ['ultima' => null, 'enCurso' => false, 'enlace' => null];
         if (! Schema::hasTable('tareas')) {
@@ -1398,7 +1398,7 @@ class FacturacionPdf extends Component
             return;
         }
         $this->validate(['controlExcel' => 'file|max:20480|mimes:xlsx']);
-        if ($this->control['enCurso']) {
+        if ($this->controlEstado()['enCurso']) {
             $this->controlAviso = 'Ya hay un control de facturación en marcha.';
 
             return;
@@ -1420,7 +1420,7 @@ class FacturacionPdf extends Component
         file_put_contents($dir.'/entidades.json', json_encode($this->entidadesControl(), JSON_UNESCAPED_UNICODE));
         ColaTareas::liberar($id);
         $this->controlExcel = null;
-        $this->controlAviso = 'Pedido a un PC: monta el control de facturación en OneDrive…';
+        $this->controlAviso = '';
     }
 
     public function render()
