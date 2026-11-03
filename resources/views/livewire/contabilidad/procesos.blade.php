@@ -574,7 +574,7 @@
                                         {{-- 3-nov-2026: si ya se subió (Laboral o Edenred), se ofrece y no hace falta volver a subirla --}}
                                         @php $impLab = ($this->staffDatosMes['fichero'] ?? '') ?: ($this->edenredUsada['imputacion'] ?? ''); @endphp
                                         @if (! $laboralFichero && $impLab)
-                                            <span class="text-xs text-green-700" title="Ya está en la carpeta Laboral del mes: «Ejecutar» usa la versión más alta de la carpeta. Sube otra solo si llega una versión nueva.">✓ Ya tengo: {{ \Illuminate\Support\Str::before($impLab, '.xlsx') }} — no hace falta subirla</span>
+                                            <span class="text-xs text-green-700" title="Ya está en la carpeta Laboral del mes: «Ejecutar» usa la versión más alta de la carpeta. Sube otra solo si llega una versión nueva.">✓ Ya tengo: {{ \Illuminate\Support\Str::before($impLab, '.xlsx') }}</span>
                                         @endif
                                     @endif
                                     @if ($id === 'edenred')
