@@ -347,6 +347,32 @@
             <div class="col-izq">
                 <h2 class="text-lg font-semibold text-gray-900">{{ $c['label'] }}</h2>
                 @if (($c['ayuda'] ?? '') !== '')<p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>@else<div class="mb-3"></div>@endif
+                @if ($id === 'Suma')
+                    @php($ctl = $this->control)
+                    <div @if ($ctl['enCurso']) wire:poll.5s @endif class="p-3 mb-3 text-xs border border-gray-200 rounded-md bg-gray-50">
+                        <div class="mb-2 font-medium text-gray-700">Control de facturación</div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <x-subir-fichero wire:model="controlExcel" accept=".xlsx" :fichero="$controlExcel" texto="Excel de SAGE (ResumenCliente)"
+                                title="El ResumenCliente_….xlsx que exportas de SAGE: deja en OneDrive el «control facturacion AAAA MM.xlsx» del mes de las facturas" />
+                            <button type="button" wire:click="generarControl" wire:loading.attr="disabled" wire:target="controlExcel,generarControl" @disabled($ctl['enCurso'] || ! $controlExcel)
+                                class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">📑 Generar control</button>
+                            @error('controlExcel') <span class="text-red-700">{{ $message }}</span> @enderror
+                            @if ($ctl['enCurso']) <span class="text-gray-600">⏳ Un PC está en ello…</span> @endif
+                        </div>
+                        @if ($controlAviso)<p class="mt-2 text-indigo-700">{{ $controlAviso }}</p>@endif
+                        @if ($ctl['ultima'] && ! $ctl['enCurso'])
+                            @if ($ctl['ultima']->estado === 'ok')
+                                <p class="mt-2" style="color:#047857">✓ {{ $ctl['ultima']->r['fichero'] ?? '' }} en <i>{{ $ctl['ultima']->r['carpeta'] ?? '' }}</i> · {{ $ctl['ultima']->r['resumen'] ?? '' }}
+                                    <span class="text-gray-500">· {{ $ctl['ultima']->r['fecha'] ?? '' }}{{ ! empty($ctl['ultima']->r['pc']) ? ' · '.$ctl['ultima']->r['pc'] : '' }}</span>
+                                    @if ($ctl['enlace']) · <a href="{{ $ctl['enlace'] }}" download class="text-indigo-700 underline">⬇ Descargar</a>@endif</p>
+                                @if (! empty($ctl['ultima']->r['apartado']))<p class="text-gray-500">El anterior del mismo mes quedó como «{{ $ctl['ultima']->r['apartado'] }}».</p>@endif
+                                @foreach (array_slice($ctl['ultima']->r['avisos'] ?? [], 0, 15) as $av)<p style="color:#b45309">⚠️ {{ $av }}</p>@endforeach
+                            @else
+                                <p class="mt-2" style="color:#b91c1c">⚠️ No se pudo generar{{ ! empty($ctl['ultima']->r['error']) ? ': '.$ctl['ultima']->r['error'] : ' (mira el aviso de tareas)' }}</p>
+                            @endif
+                        @endif
+                    </div>
+                @endif
 
                 @if ($e['fase'] === 'vacio')
                     {{-- Fase 0: elegir/subir el PDF --}}

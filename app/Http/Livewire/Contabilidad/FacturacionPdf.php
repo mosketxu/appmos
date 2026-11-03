@@ -5,9 +5,13 @@ namespace App\Http\Livewire\Contabilidad;
 use App\Http\Livewire\Concerns\EjecutaEnPcs;
 use App\Models\Entidad;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\ColaTareas;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -1343,6 +1347,80 @@ class FacturacionPdf extends Component
             $yaEstan[] = $win;
             $this->resultados[$cliente][] = ['ruta' => $win, 'url' => $this->fileUrl($ruta)];
         }
+    }
+
+    // ---- Control de facturación (3-nov-2026, pestaña Suma) -------------------------------------------------------------
+    /** Excel «ResumenCliente_*.xlsx» de SAGE subido para montar el «control facturacion AAAA MM.xlsx» en OneDrive. */
+    public $controlExcel = null;
+
+    public string $controlAviso = '';
+
+    /** Estado del proceso: última tarea, si hay una en curso y el enlace de descarga del resultado. */
+    public function getControlProperty(): array
+    {
+        $vacio = ['ultima' => null, 'enCurso' => false, 'enlace' => null];
+        if (! Schema::hasTable('tareas')) {
+            return $vacio;
+        }
+        $t = DB::table('tareas')->where('proceso', 'pc.control_facturacion')->orderByDesc('id')->first(['id', 'estado', 'resultado', 'created_at']);
+        if (! $t) {
+            return $vacio;
+        }
+        $t->r = $t->resultado ? (json_decode($t->resultado, true) ?: []) : [];
+        $enlace = $t->estado === 'ok' && ! empty($t->r['ficheros'][0])
+            ? URL::temporarySignedRoute('contabilidad.tarea-fichero', now()->addHours(2), ['id' => $t->id, 'nombre' => $t->r['ficheros'][0]]) : null;
+
+        return ['ultima' => $t, 'enCurso' => in_array($t->estado, ['pendiente', 'en_curso', 'preparando'], true), 'enlace' => $enlace];
+    }
+
+    /** Código de cliente (SAGE) → modo de pago y día de cobro, de Entidades. Un cliente puede llevar varios códigos («430084/430229»). */
+    protected function entidadesControl(): array
+    {
+        $mapa = [];
+        foreach (Entidad::whereNotNull('codigo_cliente')->where('codigo_cliente', '<>', '')->with('metodopago')->get() as $e) {
+            $corto = (string) ($e->metodopago->metodopagocorto ?? '');
+            $modo = ['Recibo' => 'Dom', 'Transferencia' => 'Transf'][$corto] ?? ($corto !== '' && ! in_array($corto, ['No.Def', 'No Aplica'], true) ? $corto : null);
+            preg_match_all('/\d+/', (string) $e->codigo_cliente, $m);
+            foreach ($m[0] as $cod) {
+                $mapa[(int) $cod] ??= ['modo' => $modo, 'dia' => $e->diavencimiento ?: null];
+            }
+        }
+
+        return $mapa;
+    }
+
+    public function generarControl(): void
+    {
+        $this->controlAviso = '';
+        if (! $this->controlExcel) {
+            $this->controlAviso = 'Sube primero el Excel de SAGE (ResumenCliente…).';
+
+            return;
+        }
+        $this->validate(['controlExcel' => 'file|max:20480|mimes:xlsx']);
+        if ($this->control['enCurso']) {
+            $this->controlAviso = 'Ya hay un control de facturación en marcha.';
+
+            return;
+        }
+        if (DB::table('trabajadores')->where('activo', true)->where('ultimo_latido', '>=', now()->subSeconds(ColaTareas::LATIDO_MAX))->count() === 0) {
+            $this->controlAviso = '⚠️ No hay ningún PC trabajador conectado ahora mismo (mira la barra de arriba).';
+
+            return;
+        }
+        $id = ColaTareas::crear('pc.control_facturacion', [
+            'entrada' => ['archivo' => 'export.xlsx', 'nombre' => basename(str_replace('\\', '/', $this->controlExcel->getClientOriginalName()))],
+            'entidades' => ['archivo' => 'entidades.json'],
+        ], ColaTareas::pcElegido() ?: null, auth()->id(), null, null, 'preparando');
+        $dir = ColaTareas::carpetaEntradas($id);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        copy($this->controlExcel->getRealPath(), $dir.'/export.xlsx');
+        file_put_contents($dir.'/entidades.json', json_encode($this->entidadesControl(), JSON_UNESCAPED_UNICODE));
+        ColaTareas::liberar($id);
+        $this->controlExcel = null;
+        $this->controlAviso = 'Pedido a un PC: monta el control de facturación en OneDrive…';
     }
 
     public function render()

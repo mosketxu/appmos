@@ -224,6 +224,7 @@ return [
         'pc.libro_iva' => 'Libro de IVA (303) maquetado: listar la carpeta o generar el Excel del periodo (pestaña Impuestos)',
         'pc.limpieza' => 'Limpieza de OneDrive: borrar los «_anterior …» y las copias de _copias_libro_iva de más de N días (Proc.Mensuales)',
         'pc.prefacturacion' => 'Prefacturación mensual: del Excel de SAGE dejar el «Prevision facturacion» en OneDrive/_Suma/Facturas o enviarlo a Susana y Marta (Proc.Mensuales)',
+        'pc.control_facturacion' => 'Acciones PDF (Suma): del ResumenCliente de SAGE dejar el «control facturacion AAAA MM.xlsx» en OneDrive/_Suma/Facturas/<año>, con modo de pago y día de cobro de Entidades',
         'pc.whatsapp' => 'WhatsApp: leer el chat exportado de OneDrive y subir a Appmos los mensajes y adjuntos nuevos',
         'pc.elegir_carpeta' => 'Abrir el selector de carpetas de Windows en este PC (nuevo cliente de Facturas OCR y Bancos)',
     ],
