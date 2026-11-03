@@ -1382,7 +1382,8 @@ class FacturacionPdf extends Component
             $modo = ['Recibo' => 'Dom', 'Transferencia' => 'Transf'][$corto] ?? ($corto !== '' && ! in_array($corto, ['No.Def', 'No Aplica'], true) ? $corto : null);
             preg_match_all('/\d+/', (string) $e->codigo_cliente, $m);
             foreach ($m[0] as $cod) {
-                $mapa[(int) $cod] ??= ['modo' => $modo, 'dia' => $e->diavencimiento ?: null, 'aviso' => (bool) preg_match('/marta\s+avisa/i', (string) $e->observaciones)];
+                $mapa[(int) $cod] ??= ['modo' => $modo, 'dia' => $e->diavencimiento ?: null, 'aviso' => (bool) preg_match('/marta\s+avisa/i', (string) $e->observaciones),
+                    'marta' => $e->porcentajemarta, 'susana' => $e->porcentajesusana];
             }
         }
 
