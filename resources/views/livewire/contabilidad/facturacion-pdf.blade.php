@@ -357,7 +357,7 @@
                         aquí el resultado; si ningún PC está encendido, la tarea espera (se puede cancelar).
                     </div>
                 </div>
-                <p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>
+                @if (($c['ayuda'] ?? '') !== '')<p class="mt-1 mb-3 text-xs text-gray-500">{{ $c['ayuda'] }}</p>@else<div class="mb-3"></div>@endif
 
                 @if ($e['fase'] === 'vacio')
                     {{-- Fase 0: elegir/subir el PDF --}}

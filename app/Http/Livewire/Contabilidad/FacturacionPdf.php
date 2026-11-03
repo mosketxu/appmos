@@ -194,7 +194,7 @@ class FacturacionPdf extends Component
         return [
             'Suma' => [
                 'label' => 'Suma',
-                'ayuda' => 'Factura de renta mensual, un PDF y un correo por empresa inquilina.',
+                'ayuda' => '',
             ],
             'Balerga' => [
                 'label' => 'Balerga',
