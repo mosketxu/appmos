@@ -74,17 +74,17 @@
                 <div class="ent-nueva"><x-button.button  onclick="location.href = '{{ route('entidad.nueva',$ruta) }}'" color="blue"><x-icon.plus/>{{ __('Nueva Entidad') }}</x-button.button></div>
             </div>
             {{-- tabla entidades: en móvil, nombre + acciones y debajo los controles; en pantalla grande, columnas --}}
-            <div class="flex w-full mt-1 text-sm bg-blue-100 rounded-t-md">
+            <div class="flex w-full mt-1 space-x-1 text-sm bg-blue-100 rounded-t-md">
                 <div class="hidden pl-2 lg:w-10 lg:flex">{{ __('Fav') }} </div>
                 <div class="w-7/12 pl-2 md:w-4/12 lg:w-3/12 xl:w-2/12" style="flex-grow:1">{{ __('Entidad') }}</div>
                 <div class="hidden xl:block xl:w-1/12">{{ __('Nif') }} </div>
                 <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Responsable') }}</div>
                 <div class="hidden md:flex md:w-2/12 lg:w-1/12">{{ __('Otro Resp.') }}</div>
-                <div class="hidden lg:flex" style="width:5.75rem;flex:none;justify-content:center;text-align:center" title="Cliente / Proveedor / Contacto (clic para cambiar)">{{ __('Relación') }}</div>
-                <div class="hidden lg:flex" style="width:2.75rem;flex:none;justify-content:center;text-align:center" title="Facturar">{{ __('Fact.') }}</div>
-                <div class="hidden lg:flex" style="width:4rem;flex:none;justify-content:center;text-align:center" title="Ciclo de impuestos">{{ __('C.Imp.') }}</div>
-                <div class="hidden lg:flex" style="width:3.5rem;flex:none;justify-content:center;text-align:center" title="Ciclo de facturación">{{ __('C.Fact.') }}</div>
-                <div class="hidden lg:flex" style="width:4.5rem;flex:none;justify-content:center;text-align:center">{{ __('Estado') }}</div>
+                <div class="hidden lg:flex" style="width:5.75rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(59,130,246,.08)" title="Cliente / Proveedor / Contacto (clic para cambiar)">{{ __('Relación') }}</div>
+                <div class="hidden lg:flex" style="width:2.75rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(148,163,184,.16)" title="Facturar">{{ __('Fact.') }}</div>
+                <div class="hidden lg:flex" style="width:4rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(59,130,246,.08)" title="Ciclo de impuestos">{{ __('C.Imp.') }}</div>
+                <div class="hidden lg:flex" style="width:3.5rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(148,163,184,.16)" title="Ciclo de facturación">{{ __('C.Fact.') }}</div>
+                <div class="hidden lg:flex" style="width:4.5rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(59,130,246,.08)">{{ __('Estado') }}</div>
                 <div class="w-5/12 md:w-4/12 lg:w-2/12"></div>
             </div>
             @forelse ($entidades as $entidad)
@@ -108,14 +108,14 @@
                     @endcan
                 </div>
                 <div class="items-center hidden md:flex md:w-2/12 lg:w-1/12">@include('livewire.ents._coresp', ['e' => $entidad, 'modo' => 'etiquetas'])</div>
-                <div class="items-center hidden lg:flex" style="width:5.75rem;flex:none;justify-content:center;text-align:center">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])</div>
-                <div class="items-center hidden lg:flex" style="width:2.75rem;flex:none;justify-content:center;text-align:center">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])</div>
-                <div class="items-center hidden lg:flex" style="width:4rem;flex:none;justify-content:center;text-align:center">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])</div>
-                <div class="hidden lg:flex" style="width:3.5rem;flex:none;justify-content:center;text-align:center">
+                <div class="items-center hidden lg:flex" style="width:5.75rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(59,130,246,.08)">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])</div>
+                <div class="items-center hidden lg:flex" style="width:2.75rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(148,163,184,.16)">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])</div>
+                <div class="items-center hidden lg:flex" style="width:4rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(59,130,246,.08)">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])</div>
+                <div class="hidden lg:flex" style="width:3.5rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(148,163,184,.16)">
                     @php $cf = $entidad->ciclofac->ciclo ?? '-'; @endphp
                     <span class="text-xs text-gray-500" title="Ciclo de facturación: {{ $cf }}">{{ in_array($cf, ['No Def', '-', ''], true) ? '–' : $cf }}</span>
                 </div>
-                <div class="items-center hidden lg:flex" style="width:4.5rem;flex:none;justify-content:center;text-align:center">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
+                <div class="items-center hidden lg:flex" style="width:4.5rem;flex:none;justify-content:center;text-align:center;align-self:stretch;align-items:center;background:rgba(59,130,246,.08)">@include('livewire.ents._control', ['e' => $entidad, 'c' => 'estado'])</div>
                 <button type="button" class="ent-toggle" x-on:click="abierta = ! abierta" x-bind:aria-expanded="abierta" title="Acciones y estado">⋯</button>
                 <div class="w-5/12 md:w-4/12 lg:w-2/12 ent-acc">
                     <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 lg:flex-nowrap lg:space-x-3">
