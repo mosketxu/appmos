@@ -240,14 +240,19 @@
             </div>
             <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
                 <div class="w-full form-item">
+                    <x-jet-label for="digitos_cuenta" title="Cuántas cifras tienen las cuentas de proveedor y cliente en SAGE de esta empresa (Fashion 7, Neteges 9, el resto 6). Lo usan Facturas OCR, LeoyBra y Bancos para crear cuentas nuevas.">{{ __('Nº Dígitos Sage') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.digitos_cuenta" type="number" min="6" max="12" id="digitos_cuenta" name="digitos_cuenta" class="w-full"/>
+                    <x-jet-input-error for="digitos_cuenta" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="cuentacontable" >{{ __('Cta.Contable') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.cuentacontable" type="number" id="cuentacontable" name="cuentacontable" :value="old('cuentacontable')" class="w-full"/>
                     <x-jet-input-error for="cuentacontable" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
-                    <x-jet-label for="digitos_cuenta" title="Cuántas cifras tienen las cuentas de proveedor y cliente en SAGE de esta empresa (Fashion 7, Neteges 9, el resto 6). Lo usan Facturas OCR, LeoyBra y Bancos para crear cuentas nuevas.">{{ __('Cifras de cuenta SAGE') }}</x-jet-label>
-                    <x-jet-input  wire:model.defer="entidad.digitos_cuenta" type="number" min="6" max="12" id="digitos_cuenta" name="digitos_cuenta" class="w-full"/>
-                    <x-jet-input-error for="digitos_cuenta" class="mt-2" />
+                    <x-jet-label for="codigo_cliente" >{{ __('Cód. Cliente') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.codigo_cliente" type="text" id="codigo_cliente" maxlength="20" class="w-full" title="Código de cliente (no es la cuenta contable)"/>
+                    <x-jet-input-error for="codigo_cliente" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="alias" >{{ __('Alias') }}</x-jet-label>
@@ -264,11 +269,6 @@
                     @if (($entidad['grupo_id'] ?? null) === '__nuevo')
                         <x-jet-input wire:model.defer="grupoNuevo" type="text" maxlength="60" class="w-full mt-1" placeholder="Nombre del nuevo grupo" autofocus/>
                     @endif
-                </div>
-                <div class="w-full form-item">
-                    <x-jet-label for="codigo_cliente" >{{ __('Cód. Cliente') }}</x-jet-label>
-                    <x-jet-input  wire:model.defer="entidad.codigo_cliente" type="text" id="codigo_cliente" maxlength="20" class="w-full" title="Código de cliente (no es la cuenta contable)"/>
-                    <x-jet-input-error for="codigo_cliente" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="cnae" >{{ __('CNAE') }}</x-jet-label>
