@@ -6,6 +6,8 @@
         @foreach ($sf as $f)
             <div>{{ $f['tienda'] }}: {{ $f['excel'] }} → créalo como <b>«{{ $f['propuesta'] }}»</b>@if (! empty($f['quizas'])) <span style="color:#991b1b">(¿o es «{{ $f['quizas'] }}»?)</span>@endif</div>
         @endforeach
-        <div style="margin-top:.2rem;color:#991b1b">👉 Créalos en Anaplan («Input Staff Data for AC») y escribe su nombre en ANAPLAN · personal → «✎ Nombres».</div>
+        <div style="margin-top:.2rem;color:#991b1b">👉 1) Créalos en Anaplan («Input Staff Data for AC»). 2) Pulsa el botón de abajo y, en la ventana, escribe al lado de cada uno el nombre que tiene en Anaplan (normalmente el mismo que he propuesto).</div>
+        <button type="button" wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
+            style="margin-top:.3rem;padding:.2rem .6rem;font-size:.75rem;font-weight:600;color:#fff;background:#dc2626;border-radius:.25rem">✎ Escribir los nombres de Anaplan</button>
     </div>
 @endif

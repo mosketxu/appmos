@@ -1368,7 +1368,7 @@ class Procesos extends Component
         $faltan = $this->staffSinNombre();
         if ($faltan) {
             $txt = collect($faltan)->map(fn ($f) => "· {$f['tienda']}: {$f['excel']} → créalo como «{$f['propuesta']}»")->implode("\n");
-            $this->dispatch('proceso-terminado', mensaje: '⚠️ '.count($faltan)." empleado(s) sin nombre de Anaplan:\n{$txt}\n\n👉 Créalos en Anaplan y escribe su nombre en ANAPLAN · personal → «✎ Nombres». Después, «⬆ Subir a Anaplan».");
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ '.count($faltan)." empleado(s) sin nombre de Anaplan:\n{$txt}\n\n👉 Créalos en Anaplan y escribe su nombre con el botón «✎ Nombres» (fila ANAPLAN · personal o fila Laboral). Después, «⬆ Subir a Anaplan».");
         }
     }
 
