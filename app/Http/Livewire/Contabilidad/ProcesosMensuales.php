@@ -29,6 +29,7 @@ class ProcesosMensuales extends Component
         'certificados' => ['icono' => '🔐', 'componente' => 'contabilidad.certificados', 'parametros' => ['embebido' => true]],
         'limpieza' => ['icono' => '🧹', 'componente' => 'contabilidad.limpieza', 'parametros' => [], 'ancho' => '720px'],
         'prefacturacion_mensual' => ['icono' => '📑', 'componente' => 'contabilidad.prefactura-mensual', 'parametros' => [], 'ancho' => '860px'],
+        'nuevo_cliente' => ['icono' => '🆕', 'componente' => 'contabilidad.nuevo-cliente', 'parametros' => [], 'ancho' => '960px'],
         'prefacturacion' => ['icono' => '🧾', 'componente' => 'contabilidad.prefacturacion', 'parametros' => [], 'ancho' => '1500px'],
     ];
 

@@ -66,6 +66,34 @@ class GraphMail
         return $r->json();
     }
 
+    /**
+     * Busca correos en el buzón (lectura; 4-nov-2026, «Nuevo cliente»). $texto se busca en asunto y cuerpo. Devuelve [id, asunto, de, fecha, adjuntos],
+     * los más recientes primero. Graph no deja ordenar una búsqueda, así que se ordena aquí.
+     */
+    public static function buscarMensajes(string $buzon, string $texto, int $max = 25): array
+    {
+        $texto = trim(str_replace('"', '', $texto));
+        if ($texto === '') {
+            return [];
+        }
+        $url = 'users/'.rawurlencode($buzon).'/messages?$search="'.rawurlencode($texto).'"&$top='.$max.'&$select=id,subject,from,receivedDateTime,hasAttachments';
+        $filas = collect(self::api('get', $url)['value'] ?? [])->map(fn ($m) => [
+            'id' => $m['id'], 'asunto' => $m['subject'] ?? '', 'de' => $m['from']['emailAddress']['address'] ?? '',
+            'fecha' => $m['receivedDateTime'] ?? '', 'adjuntos' => (bool) ($m['hasAttachments'] ?? false),
+        ]);
+
+        return $filas->sortByDesc('fecha')->values()->all();
+    }
+
+    /** Un correo con su cuerpo en HTML (lectura). */
+    public static function mensaje(string $buzon, string $id): array
+    {
+        $m = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'?$select=id,subject,from,receivedDateTime,body');
+
+        return ['id' => $m['id'], 'asunto' => $m['subject'] ?? '', 'de' => $m['from']['emailAddress']['address'] ?? '',
+            'fecha' => $m['receivedDateTime'] ?? '', 'html' => $m['body']['content'] ?? '', 'tipo' => $m['body']['contentType'] ?? 'html'];
+    }
+
     /** Id de la carpeta $ruta (['2026', '___Suma 2026', 'Eric 2026']) del buzón, o null. */
     public static function carpetaId(string $buzon, array $ruta): ?string
     {

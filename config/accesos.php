@@ -78,6 +78,7 @@ return [
         'contabilidad.procesosmensuales' => ['prefijo' => 'proceso.pm.', 'lista' => [
             'certificados' => 'Certificados por caducar',
             'limpieza' => 'Limpieza de OneDrive',
+            'nuevo_cliente' => 'Nuevo cliente (alta desde el correo de Marta)',
             'whatsapp' => 'Importar WhatsApp de clientes',
             'prefacturacion' => 'Notas de cargo',
             'prefacturacion_mensual' => 'Prefacturación mensual (Excel de SAGE → Susana y Marta)',
