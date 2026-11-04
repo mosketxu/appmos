@@ -79,6 +79,7 @@ return [
             'certificados' => 'Certificados por caducar',
             'limpieza' => 'Limpieza de OneDrive',
             'nuevo_cliente' => 'Nuevo cliente (alta desde el correo de Marta)',
+            'informes_balerga' => 'Informes de Balerga (ficheros de SAGE para Albena)',
             'whatsapp' => 'Importar WhatsApp de clientes',
             'prefacturacion' => 'Notas de cargo',
             'prefacturacion_mensual' => 'Prefacturación mensual (Excel de SAGE → Susana y Marta)',

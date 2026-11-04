@@ -28,11 +28,11 @@ class FicherosBaseSubida extends Component
     public string $msg = '';
     public string $error = '';
 
-    public function mount(int $entidadId = 0, array $tipos = [], bool $abierto = false): void
+    public function mount(int $entidadId = 0, array $tipos = [], bool $abierto = false, string $periodo = ''): void
     {
         $this->entidadId = $entidadId;
-        $this->tipos = array_values(array_filter($tipos ?: array_keys(FicherosBase::TIPOS), fn ($t) => isset(FicherosBase::TIPOS[$t])));
-        $this->periodoSys = now()->subMonth()->format('Y-m');
+        $this->tipos = array_values(array_filter($tipos ?: array_keys(array_filter(FicherosBase::TIPOS, fn ($d) => empty($d['extra']))), fn ($t) => isset(FicherosBase::TIPOS[$t])));
+        $this->periodoSys = preg_match('/^\d{4}-\d{2}$/', $periodo) ? $periodo : now()->subMonth()->format('Y-m');
         $this->abierto = $abierto;
     }
 
@@ -71,12 +71,16 @@ class FicherosBaseSubida extends Component
             $this->error = '«'.$nombre.'» no es el mayor en columnas de SAGE (Código cuenta, Fecha asiento…).';
             return;
         }
+        if (in_array($tipo, ['pyg', 'balance'], true) && ! preg_match('/^\d{4}-\d{2}$/', $this->periodoSys)) {
+            $this->error = 'Falta el mes al que llega «'.$nombre.'».';
+            return;
+        }
         if ($tipo === 'sys' && (! FicherosBase::esSumasSaldos($ruta) || ! preg_match('/^\d{4}-\d{2}$/', $this->periodoSys))) {
             $this->error = '«'.$nombre.'» no es un balance de sumas y saldos de SAGE (o falta el mes al que llega).';
             return;
         }
         $r = FicherosBase::guardar($this->entidadId, $tipo, $ruta, $nombre, 'subido desde '.request()->header('Referer', 'una pantalla').' · '.auth()->user()->name,
-            $tipo === 'sys' ? $this->periodoSys : null);
+            ! empty(FicherosBase::TIPOS[$tipo]['por_periodo']) ? $this->periodoSys : null);
         if (! $r) {
             $this->error = 'No se ha podido guardar «'.$nombre.'».';
             return;

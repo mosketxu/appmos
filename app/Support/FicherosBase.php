@@ -21,6 +21,9 @@ class FicherosBase
         'proveedores' => ['titulo' => 'Proveedores', 'icono' => '🏭', 'ayuda' => 'Listado de proveedores de SAGE (Excel).'],
         'mayor' => ['titulo' => 'Mayor', 'icono' => '📒', 'ayuda' => 'Mayor de SAGE (Excel). Se puede subir uno nuevo en cualquier momento: los procesos usan el último.'],
         'sys' => ['titulo' => 'Sumas y saldos', 'icono' => '⚖️', 'ayuda' => 'Balance de sumas y saldos de SAGE (Excel), del mes al que llega.', 'por_periodo' => true],
+        // Solo los ofrece quien los pide por nombre (informes de Balerga, 4-nov-2026): no salen en el recuadro estándar de las demás pantallas
+        'pyg' => ['titulo' => 'Pérdidas y ganancias', 'icono' => '📈', 'ayuda' => 'Cuenta de pérdidas y ganancias de SAGE (Excel), del periodo al que llega.', 'por_periodo' => true, 'extra' => true],
+        'balance' => ['titulo' => 'Balance de situación', 'icono' => '🧾', 'ayuda' => 'Balance de situación de SAGE (Excel), del mes al que llega.', 'por_periodo' => true, 'extra' => true],
     ];
 
     public static function raiz(): string
