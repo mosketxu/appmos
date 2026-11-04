@@ -51,7 +51,7 @@ class NuevoCliente extends Component
         return (string) config('contabilidad.graph.sender');
     }
 
-    public function buscar(): void
+    public function buscar(bool $asuntoExacto = false): void
     {
         $this->reiniciarCorreo();
         if (! $this->puede() || trim($this->consulta) === '') {
@@ -68,6 +68,14 @@ class NuevoCliente extends Component
             $this->error = 'No he podido buscar en el correo: '.$e->getMessage();
 
             return;
+        }
+        if ($asuntoExacto) {
+            // Correo arrastrado: Graph busca el texto también en el cuerpo; me quedo con los que tienen ese asunto (sin «RE:»/«FW:» no, tal cual).
+            $q = AltaClienteCorreo::norm($this->consulta);
+            $exactos = array_values(array_filter($this->resultados, fn ($r) => AltaClienteCorreo::norm($r['asunto']) === $q));
+            if ($exactos) {
+                $this->resultados = $exactos;
+            }
         }
         if (count($this->resultados) === 1) {
             $this->elegir($this->resultados[0]['id']);
@@ -106,7 +114,7 @@ class NuevoCliente extends Component
         }
         // .msg: se usa el nombre (Outlook lo nombra con el asunto) para localizar el correo en el buzón.
         $this->consulta = trim(preg_replace('/[_\s]+/', ' ', pathinfo($nombre, PATHINFO_FILENAME)));
-        $this->buscar();
+        $this->buscar(true);
     }
 
     public function elegir(string $id): void
