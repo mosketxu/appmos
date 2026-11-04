@@ -54,6 +54,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         return view('todo.index');
     })->name('todo')->middleware('can:todo.ver');
     Route::get('/formacion', fn () => view('formacion'))->name('formacion')->middleware('can:formacion.ver');
+    Route::get('/formacion/tema/{tema}/zip', [\App\Http\Controllers\FormacionArchivoController::class, 'zip'])->whereNumber('tema')->name('formacion.zip')->middleware('can:formacion.ver');
     Route::get('/formacion/archivo/{id}', [\App\Http\Controllers\FormacionArchivoController::class, 'ver'])->whereNumber('id')->name('formacion.archivo')->middleware('can:formacion.ver');
     Route::get('/todo/mejoras', fn () => view('todo.mejoras'))->name('todo.mejoras')->middleware('can:todo.ver');
 

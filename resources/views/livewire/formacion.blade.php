@@ -81,6 +81,9 @@
                                     @endif
                                 </span>
                             @endforeach
+                            @if ($misArchivos->count() > 1)
+                                <a href="{{ route('formacion.zip', $t->id) }}" class="px-2 py-1 text-xs text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50">⬇ Descargar todos (.zip)</a>
+                            @endif
                             @if ($puedeEditar)
                                 <button type="button" x-on:click="elegir({{ $t->id }})" class="px-2 py-1 text-xs text-indigo-700 border border-indigo-300 border-dashed rounded hover:bg-indigo-50">＋ Añadir archivos (o arrástralos aquí)</button>
                             @endif
