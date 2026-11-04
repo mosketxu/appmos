@@ -663,10 +663,10 @@
                                             <span wire:loading.remove wire:target="enviarCashflow">{{ $estCf === 'ok' ? '✉ Reenviar' : '✉ Enviar a Plein' }}</span>
                                             <span wire:loading wire:target="enviarCashflow">⏳…</span>
                                         </button>
-                                        <span class="text-xs text-gray-600">
-                                            📂 Sube el Mayor actualizado en los Ficheros base de SAGE.
+                                        <span class="text-xs text-gray-600 whitespace-nowrap">
+                                            📂 Sube el mayor en Ficheros base.
                                             @if ($mc)
-                                                <span class="text-gray-500 whitespace-nowrap" title="{{ $mc['origen'] ?? '' }}">Ahora usa «{{ \Illuminate\Support\Str::limit($mc['nombre'], 24) }}» · {{ $mc['fecha'] }}</span>
+                                                <span class="text-gray-500" title="{{ $mc['origen'] ?? '' }}">Actual: «{{ \Illuminate\Support\Str::limit($mc['nombre'], 24) }}» · {{ $mc['fecha'] }}</span>
                                             @else
                                                 <span class="text-yellow-700">No hay mayor en los ficheros base: lo busca en Descargas del PC.</span>
                                             @endif
