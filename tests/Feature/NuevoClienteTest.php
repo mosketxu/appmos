@@ -85,12 +85,14 @@ class NuevoClienteTest extends TestCase
         }
         $t = Livewire::actingAs($u)->test(NuevoCliente::class);
         $t->set('asunto', 'Alta cliente FORZA ANDINA')->call('cargar', $this->correo());
-        $t->assertSet('campos.nif', 'B05622055')->call('crear')->assertSet('error', '');
+        $t->assertSet('campos.nif', 'B05622055')->set('campos.porcentajemarta', '60')->set('campos.porcentajesusana', '40')->call('crear')->assertSet('error', '');
         $e = Entidad::withoutGlobalScopes()->where('nif', 'B05622055')->first();
         $this->assertNotNull($e);
         $this->assertSame(1, (int) $e->cliente);
         $this->assertSame('08028', $e->codpostal);
         $this->assertSame(9, (int) $e->suma_id);
+        $this->assertSame(60.0, (float) $e->porcentajemarta);
+        $this->assertSame(40.0, (float) $e->porcentajesusana);
         $h = $e->historico()->first();
         $this->assertSame(270.0, (float) $h->importe_facturacion);
         $this->assertStringContainsString('Primera factura: 30/11/2026', $h->comentario);

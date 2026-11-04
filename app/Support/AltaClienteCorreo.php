@@ -187,6 +187,14 @@ class AltaClienteCorreo
             }
         }
 
+        // % de Marta y de Susana (si el correo los trae, p. ej. «% Marta»; si no, se rellenan a mano en la pantalla).
+        foreach (['porcentajemarta' => ['marta', 'porcentaje marta'], 'porcentajesusana' => ['susana', 'porcentaje susana']] as $campo => $claves) {
+            $campos[$campo] = null;
+            if (($pc = $dame($claves)) !== null && is_numeric($n = str_replace(',', '.', preg_replace('/[^\d,.]/', '', $pc)))) {
+                $campos[$campo] = (float) $n;
+            }
+        }
+
         // Lo que no tiene campo propio va al historial de la entidad.
         foreach (['fecha' => 'Fecha del correo', 'primera factura' => 'Primera factura', 'cuota' => 'Cuota', 'sage' => 'SAGE', 'equipo' => 'Equipo'] as $k => $etq) {
             if (($v = $dame([$k])) !== null) {

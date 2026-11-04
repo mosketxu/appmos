@@ -60,6 +60,10 @@
                 <label class="block"><span class="text-xs text-gray-500">Facturación</span>
                     <select wire:model="campos.ciclo" class="w-full border-gray-300 rounded-md"><option value="">—</option>
                         @foreach ([1 => 'Mensual', 3 => 'Trimestral', 12 => 'Anual', 20 => 'Puntual'] as $id => $n)<option value="{{ $id }}">{{ $n }}</option>@endforeach</select></label>
+                <label class="block"><span class="text-xs text-gray-500">% Marta</span>
+                    <input type="number" step="any" wire:model="campos.porcentajemarta" class="w-full border-gray-300 rounded-md"></label>
+                <label class="block"><span class="text-xs text-gray-500">% Susana</span>
+                    <input type="number" step="any" wire:model="campos.porcentajesusana" class="w-full border-gray-300 rounded-md"></label>
                 <label class="block"><span class="text-xs text-gray-500">Importe (€)</span>
                     <input type="text" wire:model="campos.importe" class="w-full border-gray-300 rounded-md"></label>
             </div>

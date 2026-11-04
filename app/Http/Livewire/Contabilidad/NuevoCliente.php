@@ -199,6 +199,8 @@ class NuevoCliente extends Component
                     'codpostal' => $v('codpostal'), 'localidad' => $v('localidad'), 'provincia_id' => $v('provincia_id'), 'pais_id' => 'ES', 'idioma' => 'ES',
                     'tfno' => $v('tfno'), 'web' => $v('web'), 'emailadm' => $v('emailadm'), 'iban1' => $v('iban1'),
                     'metodopago_id' => (int) ($c['metodopago_id'] ?? 1), 'suma_id' => $v('suma_id'), 'cliente' => 1, 'estado' => 1,
+                    'porcentajemarta' => is_numeric($c['porcentajemarta'] ?? null) ? (float) $c['porcentajemarta'] : 0,
+                    'porcentajesusana' => is_numeric($c['porcentajesusana'] ?? null) ? (float) $c['porcentajesusana'] : 0,
                 ];
                 if (! empty($c['ciclo'])) {
                     $datos['ciclofacturacion_id'] = (int) $c['ciclo'];
