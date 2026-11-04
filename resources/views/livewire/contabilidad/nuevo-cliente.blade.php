@@ -93,7 +93,7 @@
             </div>
             @if ($codigoInfo)
                 <p class="mt-2 text-xs text-gray-600">Código de cliente = cuenta contable: el mayor 430xxx de 6 dígitos +1
-                    ({{ collect($codigoInfo['fuentes'] ?? [])->map(fn ($v, $k) => $k.' '.$v)->implode(' · ') ?: 'sin ficheros' }}; los de 7 dígitos no cuentan).
+                    ({{ collect($codigoInfo['fuentes'] ?? [])->map(fn ($v, $k) => $k.' '.$v)->implode(' · ') ?: 'sin ficheros' }}; los de 7 dígitos y los 430900 en adelante no cuentan).
                     @foreach ($codigoInfo['avisos'] ?? [] as $av)<span class="text-yellow-800">⚠️ {{ $av }}</span> @endforeach</p>
             @endif
             <div class="flex flex-wrap items-center mt-2 gap-x-5">

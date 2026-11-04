@@ -119,7 +119,7 @@ class NuevoClienteTest extends TestCase
         $f1 = $tmp.'/EU_Clientes_GRID_01017.xlsx';
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($l))->save($f1);
         $p = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $p->getActiveSheet()->fromArray([['Código cuenta', 'Descripción'], ['430000', 'x'], ['430250', 'cliente'], ['4301000', 'siete']]);
+        $p->getActiveSheet()->fromArray([['Código cuenta', 'Descripción'], ['430000', 'x'], ['430250', 'cliente'], ['4301000', 'siete'], ['430950', 'excepcion']]);
         $f2 = $tmp.'/Plan.xlsx';
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($p))->save($f2);
         \App\Support\FicherosBase::guardar($suma->id, 'clientes', $f1, 'EU_Clientes_GRID_01017.xlsx');

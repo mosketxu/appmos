@@ -11,12 +11,15 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  * Alta de un cliente de Suma en SAGE (4-nov-2026, «Nuevo cliente»). Con los ficheros base de la propia Suma (listado de clientes EU_Clientes_GRID y
  * plan de cuentas, subidos en el recuadro de «Ficheros base»):
  * - código de cliente = cuenta contable = el mayor código de 6 dígitos 430xxx de los dos ficheros (y de las entidades) + 1. Los de otra longitud (7 dígitos)
- *   son errores antiguos de Alex y NO se tienen en cuenta (orden suya, 4-nov-2026);
+ *   son errores antiguos de Alex y NO se tienen en cuenta, ni los 430900 en adelante (excepciones); se parte de ~430274 (orden suya, 4-nov-2026);
  * - añade una fila al final de una COPIA del listado de clientes (el original no se toca) para que Alex la lleve a SAGE.
  */
 class AltaClienteSage
 {
     public const NIF_SUMA = 'B66260076';
+
+    /** Los 430900 en adelante son excepciones (cuentas especiales de Alex): no cuentan para el siguiente código ni se llega a ellos. */
+    public const TOPE = 430900;
 
     public static function sumaId(): int
     {
@@ -44,7 +47,7 @@ class AltaClienteSage
         foreach ($filas as $f) {
             foreach ($cols as $i) {
                 $v = trim((string) ($f[$i] ?? ''));
-                if (preg_match('/^430\d{3}$/', $v)) {
+                if (preg_match('/^430\d{3}$/', $v) && (int) $v < self::TOPE) {
                     $out[] = (int) $v;
                 }
             }
@@ -82,7 +85,7 @@ class AltaClienteSage
         // También lo ya dado de alta en Appmos y aún no importado en SAGE
         foreach (['codigo_cliente', 'cuentacontable'] as $col) {
             $m = Entidad::withoutGlobalScopes()->whereNotNull($col)->where($col, 'like', '430%')->pluck($col)
-                ->filter(fn ($v) => preg_match('/^430\d{3}$/', trim((string) $v)))->map(fn ($v) => (int) $v)->max();
+                ->filter(fn ($v) => preg_match('/^430\d{3}$/', trim((string) $v)) && (int) $v < self::TOPE)->map(fn ($v) => (int) $v)->max();
             if ($m) {
                 $fuentes['entidades.'.$col] = $m;
                 $max = max($max, $m);
@@ -91,8 +94,8 @@ class AltaClienteSage
         if ($max === 0) {
             return ['codigo' => null, 'fuentes' => $fuentes, 'avisos' => $avisos];
         }
-        if ($max >= 430999) {
-            $avisos[] = 'Se han acabado los códigos 430xxx de 6 dígitos.';
+        if ($max + 1 >= self::TOPE) {
+            $avisos[] = 'Se han acabado los códigos 430xxx antes de las excepciones (430900).';
 
             return ['codigo' => null, 'fuentes' => $fuentes, 'avisos' => $avisos];
         }
