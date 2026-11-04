@@ -417,6 +417,7 @@
                                         <span wire:loading.remove wire:target="ejecutarRvDeclaracion">▶ Certificación</span><span wire:loading wire:target="ejecutarRvDeclaracion">⏳…</span>
                                     </button>
                                     <button type="button" x-data="{ ab: false }" x-on:panel-abierto.window="if ($event.detail.id === 'rentas-variables') ab = $event.detail.open" x-on:click="$dispatch('alternar-panel', 'rentas-variables')" x-text="ab ? '▴ Plegar' : 'Envío ↓'" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" title="Envío a los arrendadores (y correo de prueba), tiendas y resultados">Envío ↓</button>
+                                    <span class="text-xs text-gray-500 whitespace-nowrap">Necesita el SyS del mes</span>
                                 </div>
                             @elseif ($grupo === 'ANAPLAN')
                                 {{-- 27-oct-2026 (Alex): las 3 líneas de Anaplan en una sola fila: SyS por canal · subir a la web · personal.
