@@ -21,6 +21,9 @@ class InformesBalerga extends Component
     /** Mes que se informa (AAAA-MM); por defecto el mes anterior. */
     public string $periodo = '';
 
+    /** Al subir un fichero, se vuelve a mirar qué hay (si no, el cuadro de «falta subirlo» se queda desfasado). */
+    protected $listeners = ['ficheros-base-cambiados' => '$refresh'];
+
     public function mount(): void
     {
         $this->periodo = now()->subMonth()->format('Y-m');
