@@ -58,6 +58,7 @@
             if (! a || a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('wire:click') || a.getAttribute('href').startsWith('#')) return;
             const u = new URL(a.href, location.href);
             if (/\/(descargar|tarea-fichero|adjunto|documento|exportar)(\/|$)/.test(u.pathname)) return;   // descargas: no cambian de página, el recuadro se quedaría puesto
+            if (u.searchParams.has('descargar') || /\/(archivo|zip)(\/|$)/.test(u.pathname)) return;   // descargas de Formación y similares
             if (u.origin !== location.origin || (u.pathname === location.pathname && u.search === location.search)) return;
             const sitio = u.pathname.replace(/^\/(contabilidad\/)?/, '').split('/')[0] || 'la pantalla';
             clearTimeout(t);
