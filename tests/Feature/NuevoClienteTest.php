@@ -85,7 +85,7 @@ class NuevoClienteTest extends TestCase
         }
         $t = Livewire::actingAs($u)->test(NuevoCliente::class);
         $t->set('asunto', 'Alta cliente FORZA ANDINA')->call('cargar', $this->correo());
-        $t->assertSet('campos.nif', 'B05622055')->set('campos.porcentajemarta', '60')->set('campos.porcentajesusana', '40')->call('crear')->assertSet('error', '');
+        $t->assertSet('campos.nif', 'B05622055')->set('campos.porcentajemarta', '60')->set('campos.porcentajesusana', '40')->call('crear')->assertSet('creada', fn ($v) => $v > 0);
         $e = Entidad::withoutGlobalScopes()->where('nif', 'B05622055')->first();
         $this->assertNotNull($e);
         $this->assertSame(1, (int) $e->cliente);
@@ -100,6 +100,44 @@ class NuevoClienteTest extends TestCase
         // segunda vez: mismo NIF → no duplica
         $t->call('otro')->call('cargar', $this->correo())->call('crear')->assertNotSet('error', '');
         $this->assertSame(1, Entidad::withoutGlobalScopes()->where('nif', 'B05622055')->count());
+    }
+
+    public function test_codigo_430_y_excel_para_sage(): void
+    {
+        $this->datos();
+        $suma = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'Suma Apoyo Empresarial S.L.', 'nif' => \App\Support\AltaClienteSage::NIF_SUMA]);
+        $tmp = sys_get_temp_dir().'/nc_'.uniqid();
+        mkdir($tmp);
+        config(['contabilidad.ficheros_base_dir' => $tmp.'/fb']);
+        // listado de clientes (cabecera + 3 filas de descripción + datos; un 7 dígitos que NO cuenta) y plan de cuentas con una 430 más alta que el listado
+        $l = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $h = $l->getActiveSheet();
+        $cab = ['Código cliente', 'Razón social', 'Nombre fiscal', 'Sigla Nación', 'CIF/DNI', 'Delegación', 'Teléfono', 'Municipio', 'Provincia', 'Código comisionista', 'Código contable', 'Categoría', 'Nación', 'Código Nación'];
+        $h->fromArray([$cab, array_fill(0, 14, 'Descripción'), array_fill(0, 14, 'Características'), array_fill(0, 14, 'Valores'),
+            ['430000100', 'A', 'A', 'ES', 'B1', '', '', '', '', '0', '430000100', 'CLI', 'ESPAÑA', '108'],
+            ['4300123', 'ERROR 7', 'ERROR 7', 'ES', 'B2', '', '', '', '', '0', '4300123', 'CLI', 'ESPAÑA', '108']]);
+        $f1 = $tmp.'/EU_Clientes_GRID_01017.xlsx';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($l))->save($f1);
+        $p = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $p->getActiveSheet()->fromArray([['Código cuenta', 'Descripción'], ['430000', 'x'], ['430250', 'cliente'], ['4301000', 'siete']]);
+        $f2 = $tmp.'/Plan.xlsx';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($p))->save($f2);
+        \App\Support\FicherosBase::guardar($suma->id, 'clientes', $f1, 'EU_Clientes_GRID_01017.xlsx');
+        \App\Support\FicherosBase::guardar($suma->id, 'plan', $f2, 'Plan.xlsx');
+        // (en 6 dígitos los 430xxx son 430250 y 430100; el de 7 dígitos se ignora)
+        $r = \App\Support\AltaClienteSage::siguiente();
+        $this->assertSame('430251', $r['codigo']);
+
+        $e = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'FORZA ANDINA CAPITAL, S.L.', 'nif' => 'B05622055', 'codigo_cliente' => '430251', 'cuentacontable' => '430251', 'localidad' => 'Barcelona', 'provincia_id' => '08']);
+        $nombre = \App\Support\AltaClienteSage::excelAlta($e);
+        $filas = \PhpOffice\PhpSpreadsheet\IOFactory::load(\App\Support\AltaClienteSage::dirSalida().'/'.$nombre)->getActiveSheet()->toArray(null, false, false, false);
+        $ult = end($filas);
+        $this->assertSame('430251', $ult[0]);
+        $this->assertSame('430251', $ult[10]);
+        $this->assertSame('B05622055', $ult[4]);
+        $this->assertSame('BARCELONA', $ult[8]);
+        $this->assertSame('CLI', $ult[11]);
+        $this->assertCount(7, $filas);
     }
 
     public function test_sin_permiso_no_hace_nada(): void

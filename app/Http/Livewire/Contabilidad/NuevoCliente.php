@@ -7,8 +7,10 @@ use App\Models\EntidadHistorico;
 use App\Models\Provincia;
 use App\Models\Suma;
 use App\Support\AltaClienteCorreo;
+use App\Support\AltaClienteSage;
 use App\Support\GraphMail;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -38,6 +40,10 @@ class NuevoCliente extends Component
     public string $error = '';
     public ?int $creada = null;
     public bool $confirmarNombre = false;
+    /** Código 430xxx propuesto (código de cliente = cuenta contable) y de dónde sale. */
+    public array $codigoInfo = [];
+    /** Excel de clientes para SAGE ya generado (nombre dentro de storage/app/nuevo-cliente). */
+    public string $excel = '';
 
     protected function puede(): bool
     {
@@ -147,6 +153,50 @@ class NuevoCliente extends Component
         $this->avisos = $r['avisos'];
         $this->resultados = [];
         $this->avisos = array_merge($this->avisos, $this->duplicados());
+        $this->proponerCodigo();
+    }
+
+    /** Código de cliente = cuenta contable: el mayor 430xxx de 6 dígitos del listado de clientes, el plan y las entidades, más 1. */
+    public function proponerCodigo(): void
+    {
+        $r = AltaClienteSage::siguiente();
+        $this->codigoInfo = $r;
+        if ($this->campos && $r['codigo']) {
+            $this->campos['codigo_cliente'] = $r['codigo'];
+            $this->campos['cuentacontable'] = $r['codigo'];
+        }
+    }
+
+    #[On('ficheros-base-cambiados')]
+    public function ficherosCambiados(): void
+    {
+        if ($this->campos) {
+            $this->proponerCodigo();
+        }
+    }
+
+    /** Genera (o repite) el Excel de clientes con la fila de la entidad creada. */
+    public function generarExcel(): void
+    {
+        if (! $this->puede() || ! $this->creada) {
+            return;
+        }
+        try {
+            $this->excel = AltaClienteSage::excelAlta(Entidad::withoutGlobalScopes()->findOrFail($this->creada));
+            $this->error = '';
+        } catch (\Throwable $e) {
+            $this->error = 'No he podido preparar el Excel para SAGE: '.$e->getMessage();
+        }
+    }
+
+    public function descargar()
+    {
+        $f = AltaClienteSage::dirSalida().'/'.basename($this->excel);
+        if (! $this->puede() || $this->excel === '' || ! is_file($f)) {
+            return null;
+        }
+
+        return response()->download($f, $this->excel);
     }
 
     /** Avisos si el NIF o el nombre ya están en Entidades. */
@@ -241,9 +291,11 @@ class NuevoCliente extends Component
             return;
         }
         $this->creada = $id;
+        $this->generarExcel();
+        $err = $this->error;
         $this->campos = [];
         $this->avisos = [];
-        $this->error = '';
+        $this->error = $err;
     }
 
     public function otro(): void
@@ -264,6 +316,8 @@ class NuevoCliente extends Component
         $this->asunto = '';
         $this->error = '';
         $this->creada = null;
+        $this->excel = '';
+        $this->codigoInfo = [];
     }
 
     /** Asunto y HTML de un .eml (multipart, quoted-printable o base64). */
@@ -341,6 +395,7 @@ class NuevoCliente extends Component
             'paises' => \App\Models\Pais::orderBy('pais')->pluck('pais', 'id'),
             'grupos' => \App\Models\EntidadGrupo::orderBy('nombre')->pluck('nombre', 'id'),
             'puede' => $this->puede(),
+            'sumaId' => AltaClienteSage::sumaId(),
         ]);
     }
 }

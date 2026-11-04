@@ -2,10 +2,18 @@
 @if (! $puede)
     <p class="text-gray-600">No tienes permiso para dar de alta clientes desde un correo.</p>
 @else
+    @include('livewire._ficheros_base', ['eid' => $sumaId, 'clave' => 'nuevo-cliente'])
     @if ($creada)
         <p class="text-green-700">✓ Entidad creada.
             <a href="{{ route('entidad.edit', $creada) }}" target="_blank" class="underline text-indigo-600">Abrir la ficha ↗</a> ·
             <a href="{{ route('entidad.historial', $creada) }}" target="_blank" class="underline text-indigo-600">Ver su historial ↗</a></p>
+        @if ($error)<p class="mt-2 text-red-700">⚠️ {{ $error }}</p>@endif
+        @if ($excel)
+            <p class="mt-2">📥 Excel de clientes para SAGE (listado de Suma con la fila nueva):
+                <button type="button" wire:click="descargar" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Descargar «{{ $excel }}»</button></p>
+        @else
+            <button type="button" wire:click="generarExcel" class="px-3 py-1 mt-2 border border-gray-300 rounded-md hover:bg-gray-50">Preparar el Excel para SAGE</button>
+        @endif
         <button type="button" wire:click="otro" class="px-3 py-1 mt-3 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Otro cliente</button>
     @else
         <p class="text-gray-700">Indica el correo «Alta cliente» de Marta: <b>arrástralo desde Outlook</b> a este botón, o escribe parte del asunto / el nombre del cliente y pulsa «Buscar». No se mira el correo hasta que lo pides.</p>
@@ -83,6 +91,11 @@
                 <label class="block"><span class="text-xs text-gray-500">Estado</span>
                     <select wire:model="campos.estado" class="w-full border-gray-300 rounded-md">@foreach (\App\Models\Entidad::ESTADOS as $id => $n)<option value="{{ $id }}">{{ $n }}</option>@endforeach</select></label>
             </div>
+            @if ($codigoInfo)
+                <p class="mt-2 text-xs text-gray-600">Código de cliente = cuenta contable: el mayor 430xxx de 6 dígitos +1
+                    ({{ collect($codigoInfo['fuentes'] ?? [])->map(fn ($v, $k) => $k.' '.$v)->implode(' · ') ?: 'sin ficheros' }}; los de 7 dígitos no cuentan).
+                    @foreach ($codigoInfo['avisos'] ?? [] as $av)<span class="text-yellow-800">⚠️ {{ $av }}</span> @endforeach</p>
+            @endif
             <div class="flex flex-wrap items-center mt-2 gap-x-5">
                 @foreach ($checks as [$k, $etq])
                     <label class="inline-flex items-center gap-1"><input type="checkbox" wire:model="campos.{{ $k }}" class="w-4 h-4 border-gray-300 rounded"> {{ $etq }}</label>
