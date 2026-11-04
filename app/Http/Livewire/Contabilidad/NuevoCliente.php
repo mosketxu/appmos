@@ -137,7 +137,11 @@ class NuevoCliente extends Component
     public function cargar(string $html): void
     {
         $r = AltaClienteCorreo::interpretar($html);
-        $this->campos = $r['campos'] + ['entidad' => null];
+        // Lo que trae el correo, más los valores con los que Entidades crea una ficha nueva; el resto de campos de la ficha queda para rellenar.
+        $this->campos = array_filter($r['campos'], fn ($v) => $v !== null) + [
+            'pais_id' => 'ES', 'idioma' => 'ES', 'tipoiva' => '0.21', 'diafactura' => 1, 'diavencimiento' => 10,
+            'cliente' => true, 'estado' => 1, 'facturar' => isset($r['campos']['importe']), 'proveedor' => false, 'contacto' => false, 'favorito' => false, 'enviar' => false,
+        ];
         $this->extra = $r['extra'];
         $this->nota = $r['nota'];
         $this->avisos = $r['avisos'];
@@ -194,14 +198,23 @@ class NuevoCliente extends Component
         $v = fn ($k) => ($x = trim((string) ($c[$k] ?? ''))) === '' ? null : $x;
         try {
             $id = DB::transaction(function () use ($c, $v, $nombre, $nif) {
-                $datos = [
-                    'entidad' => $nombre, 'nif' => $nif ?: null, 'direccion' => $v('direccion') ? mb_substr($v('direccion'), 0, 100) : null,
-                    'codpostal' => $v('codpostal'), 'localidad' => $v('localidad'), 'provincia_id' => $v('provincia_id'), 'pais_id' => 'ES', 'idioma' => 'ES',
-                    'tfno' => $v('tfno'), 'web' => $v('web'), 'emailadm' => $v('emailadm'), 'iban1' => $v('iban1'),
-                    'metodopago_id' => (int) ($c['metodopago_id'] ?? 1), 'suma_id' => $v('suma_id'), 'cliente' => 1, 'estado' => 1,
-                    'porcentajemarta' => is_numeric($c['porcentajemarta'] ?? null) ? (float) $c['porcentajemarta'] : 0,
-                    'porcentajesusana' => is_numeric($c['porcentajesusana'] ?? null) ? (float) $c['porcentajesusana'] : 0,
-                ];
+                $datos = ['entidad' => $nombre, 'nif' => $nif ?: null];
+                foreach (['direccion', 'codpostal', 'localidad', 'provincia_id', 'pais_id', 'idioma', 'tfno', 'web', 'emailgral', 'emailadm', 'banco1', 'banco2', 'banco3',
+                    'iban1', 'iban2', 'iban3', 'referenciacliente', 'cuentacontable', 'codigo_cliente', 'alias', 'cnae', 'epigrafe_iae', 'observaciones',
+                    'digitos_cuenta', 'suma_id', 'grupo_id', 'cicloimpuesto_id'] as $k) {
+                    $datos[$k] = $v($k);
+                }
+                $datos['direccion'] = $datos['direccion'] ? mb_substr($datos['direccion'], 0, 100) : null;
+                $datos['observaciones'] = $datos['observaciones'] ? mb_substr($datos['observaciones'], 0, 255) : null;
+                foreach (['tipoiva' => 0.21, 'diafactura' => 1, 'diavencimiento' => 10, 'metodopago_id' => 1, 'estado' => 1] as $k => $def) {
+                    $datos[$k] = is_numeric($c[$k] ?? null) ? $c[$k] + 0 : $def;
+                }
+                foreach (['porcentajemarta', 'porcentajesusana'] as $k) {
+                    $datos[$k] = is_numeric($c[$k] ?? null) ? (float) $c[$k] : 0;
+                }
+                foreach (['favorito', 'facturar', 'cliente', 'proveedor', 'contacto', 'enviar'] as $k) {
+                    $datos[$k] = (bool) ($c[$k] ?? false);
+                }
                 if (! empty($c['ciclo'])) {
                     $datos['ciclofacturacion_id'] = (int) $c['ciclo'];
                 }
@@ -325,6 +338,8 @@ class NuevoCliente extends Component
         return view('livewire.contabilidad.nuevo-cliente', [
             'provincias' => Provincia::orderBy('provincia')->pluck('provincia', 'id'),
             'sumas' => Suma::orderBy('nombre')->pluck('nombre', 'id'),
+            'paises' => \App\Models\Pais::orderBy('pais')->pluck('pais', 'id'),
+            'grupos' => \App\Models\EntidadGrupo::orderBy('nombre')->pluck('nombre', 'id'),
             'puede' => $this->puede(),
         ]);
     }
