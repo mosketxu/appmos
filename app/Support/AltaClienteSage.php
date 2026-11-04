@@ -103,12 +103,50 @@ class AltaClienteSage
         return ['codigo' => (string) ($max + 1), 'fuentes' => $fuentes, 'avisos' => $avisos];
     }
 
-    /** Copia el último listado de clientes de Suma con una fila más para $e. Devuelve el nombre del fichero (dentro de dirSalida()). */
-    public static function excelAlta(Entidad $e): string
+    /** Entidades dadas de alta con «Nuevo cliente» que todavía no están en el último listado de clientes de SAGE (ni por código ni por CIF), por código. */
+    public static function pendientes(): \Illuminate\Support\Collection
+    {
+        $eid = self::sumaId();
+        $u = $eid ? FicherosBase::ultimo($eid, 'clientes') : null;
+        $codigos = [];
+        $cifs = [];
+        if ($u) {
+            $lector = IOFactory::createReaderForFile($u['ruta']);
+            $lector->setReadDataOnly(true);
+            $filas = $lector->load($u['ruta'])->getActiveSheet()->toArray(null, false, false, false);
+            $cab = array_map(fn ($h) => trim((string) $h), $filas[0] ?? []);
+            $ic = array_search('Código cliente', $cab, true);
+            $ik = array_search('Código contable', $cab, true);
+            $in = array_search('CIF/DNI', $cab, true);
+            foreach (array_slice($filas, 1) as $f) {
+                foreach ([$ic, $ik] as $i) {
+                    if ($i !== false && trim((string) ($f[$i] ?? '')) !== '') {
+                        $codigos[trim((string) $f[$i])] = true;
+                    }
+                }
+                if ($in !== false && ($c = AltaClienteCorreo::nifLimpio((string) ($f[$in] ?? ''))) !== '') {
+                    $cifs[$c] = true;
+                }
+            }
+        }
+        $ids = \Illuminate\Support\Facades\DB::table('entidad_historico')->where('tipo', 'alta')->pluck('entidad_id');
+
+        return Entidad::withoutGlobalScopes()->whereIn('id', $ids)->get()
+            ->filter(fn ($e) => ($c = trim((string) ($e->codigo_cliente ?: $e->cuentacontable))) !== ''
+                && ! isset($codigos[$c]) && ! isset($cifs[AltaClienteCorreo::nifLimpio((string) $e->nif)]))
+            ->sortBy(fn ($e) => (string) ($e->codigo_cliente ?: $e->cuentacontable))->values();
+    }
+
+    /** Copia el último listado de clientes de Suma con UNA FILA MÁS por cada entidad pendiente (todas las nuevas, no solo la última). Devuelve el nombre del fichero (dentro de dirSalida()). */
+    public static function excelPendientes(): string
     {
         $u = self::sumaId() ? FicherosBase::ultimo(self::sumaId(), 'clientes') : null;
         if (! $u) {
             throw new \RuntimeException('Falta subir el listado de clientes de SAGE de Suma (EU_Clientes_GRID).');
+        }
+        $ents = self::pendientes();
+        if ($ents->isEmpty()) {
+            throw new \RuntimeException('No hay clientes nuevos pendientes: todos los dados de alta ya están en el listado de SAGE.');
         }
         $libro = IOFactory::load($u['ruta']);
         $hoja = $libro->getActiveSheet();
@@ -123,22 +161,24 @@ class AltaClienteSage
                 throw new \RuntimeException("El listado de clientes no tiene la columna «{$obligada}».");
             }
         }
-        $ultima = $hoja->getHighestDataRow();
-        $codigo = (string) ($e->codigo_cliente ?: $e->cuentacontable);
-        $prov = $e->provincia_id ? (string) Provincia::whereKey($e->provincia_id)->value('provincia') : '';
-        $nueva = $ultima + 1;
-        $valores = [
-            'Código cliente' => $codigo, 'Razón social' => mb_substr($e->entidad, 0, 40), 'Nombre fiscal' => mb_substr($e->entidad, 0, 35), 'Sigla Nación' => 'ES',
-            'CIF/DNI' => mb_substr((string) $e->nif, 0, 13), 'Delegación' => '', 'Teléfono' => mb_substr((string) $e->tfno, 0, 15), 'Municipio' => mb_substr((string) $e->localidad, 0, 25),
-            'Provincia' => mb_substr(mb_strtoupper($prov), 0, 20), 'Código comisionista' => '0', 'Código contable' => $codigo, 'Categoría' => 'CLI', 'Nación' => 'ESPAÑA', 'Código Nación' => '108',
-        ];
-        foreach ($cab as $nombre => $col) {
-            $v = $valores[$nombre] ?? '';
-            $hoja->getStyle($col.$nueva)->applyFromArray([])->getNumberFormat()->setFormatCode($hoja->getStyle($col.$ultima)->getNumberFormat()->getFormatCode());
-            $hoja->getCell($col.$nueva)->setValueExplicit($v, DataType::TYPE_STRING);
+        $nueva = $hoja->getHighestDataRow();
+        foreach ($ents as $e) {
+            $ultima = $nueva;
+            $nueva++;
+            $codigo = (string) ($e->codigo_cliente ?: $e->cuentacontable);
+            $prov = $e->provincia_id ? (string) Provincia::whereKey($e->provincia_id)->value('provincia') : '';
+            $valores = [
+                'Código cliente' => $codigo, 'Razón social' => mb_substr($e->entidad, 0, 40), 'Nombre fiscal' => mb_substr($e->entidad, 0, 35), 'Sigla Nación' => 'ES',
+                'CIF/DNI' => mb_substr((string) $e->nif, 0, 13), 'Delegación' => '', 'Teléfono' => mb_substr((string) $e->tfno, 0, 15), 'Municipio' => mb_substr((string) $e->localidad, 0, 25),
+                'Provincia' => mb_substr(mb_strtoupper($prov), 0, 20), 'Código comisionista' => '0', 'Código contable' => $codigo, 'Categoría' => 'CLI', 'Nación' => 'ESPAÑA', 'Código Nación' => '108',
+            ];
+            foreach ($cab as $nombre => $col) {
+                $hoja->getStyle($col.$nueva)->getNumberFormat()->setFormatCode($hoja->getStyle($col.$ultima)->getNumberFormat()->getFormatCode());
+                $hoja->getCell($col.$nueva)->setValueExplicit($valores[$nombre] ?? '', DataType::TYPE_STRING);
+            }
         }
         @mkdir(self::dirSalida(), 0775, true);
-        $nombre = date('Ymd-His').' '.preg_replace('/\.xlsx$/i', '', preg_replace('/^\d{8}-\d{6}_/', '', $u['nombre'])).' + '.$codigo.'.xlsx';
+        $nombre = date('Ymd-His').' '.preg_replace('/\.xlsx$/i', '', preg_replace('/^\d{8}-\d{6}_/', '', $u['nombre'])).' + '.$ents->count().' nuevos.xlsx';
         IOFactory::createWriter($libro, 'Xlsx')->save(self::dirSalida().'/'.$nombre);
 
         return $nombre;

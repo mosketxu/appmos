@@ -129,15 +129,21 @@ class NuevoClienteTest extends TestCase
         $this->assertSame('430251', $r['codigo']);
 
         $e = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'FORZA ANDINA CAPITAL, S.L.', 'nif' => 'B05622055', 'codigo_cliente' => '430251', 'cuentacontable' => '430251', 'localidad' => 'Barcelona', 'provincia_id' => '08']);
-        $nombre = \App\Support\AltaClienteSage::excelAlta($e);
+        $e2 = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'OTRA SL', 'nif' => 'B11111111', 'codigo_cliente' => '430252', 'cuentacontable' => '430252']);
+        $e3 = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'YA EN SAGE', 'nif' => 'B1', 'codigo_cliente' => '430100', 'cuentacontable' => '430100']);
+        foreach ([$e, $e2, $e3] as $x) {
+            DB::table('entidad_historico')->insert(['entidad_id' => $x->id, 'tipo' => 'alta', 'fecha' => now()->toDateString(), 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $nombre = \App\Support\AltaClienteSage::excelPendientes();   // 430100 ya está en el listado: no se repite
         $filas = \PhpOffice\PhpSpreadsheet\IOFactory::load(\App\Support\AltaClienteSage::dirSalida().'/'.$nombre)->getActiveSheet()->toArray(null, false, false, false);
-        $ult = end($filas);
+        $this->assertSame('430252', end($filas)[0]);
+        $ult = $filas[count($filas) - 2];
         $this->assertSame('430251', $ult[0]);
         $this->assertSame('430251', $ult[10]);
         $this->assertSame('B05622055', $ult[4]);
         $this->assertSame('BARCELONA', $ult[8]);
         $this->assertSame('CLI', $ult[11]);
-        $this->assertCount(7, $filas);
+        $this->assertCount(8, $filas);
     }
 
     public function test_sin_permiso_no_hace_nada(): void

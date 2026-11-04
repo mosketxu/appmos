@@ -3,13 +3,19 @@
     <p class="text-gray-600">No tienes permiso para dar de alta clientes desde un correo.</p>
 @else
     @include('livewire._ficheros_base', ['eid' => $sumaId, 'clave' => 'nuevo-cliente'])
+    @if ($pendientes > 0 && ! $creada)
+        <p class="mb-2 text-gray-700">📥 Hay <b>{{ $pendientes }}</b> cliente(s) dados de alta aquí que aún no están en el listado de SAGE.
+            <button type="button" wire:click="generarExcel" class="px-3 py-1 ml-1 border border-gray-300 rounded-md hover:bg-gray-50">Preparar el Excel con todos</button>
+            @if ($excel)<button type="button" wire:click="descargar" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Descargar «{{ $excel }}»</button>@endif</p>
+        @if ($error)<p class="mb-2 text-red-700">⚠️ {{ $error }}</p>@endif
+    @endif
     @if ($creada)
         <p class="text-green-700">✓ Entidad creada.
             <a href="{{ route('entidad.edit', $creada) }}" target="_blank" class="underline text-indigo-600">Abrir la ficha ↗</a> ·
             <a href="{{ route('entidad.historial', $creada) }}" target="_blank" class="underline text-indigo-600">Ver su historial ↗</a></p>
         @if ($error)<p class="mt-2 text-red-700">⚠️ {{ $error }}</p>@endif
         @if ($excel)
-            <p class="mt-2">📥 Excel de clientes para SAGE (listado de Suma con la fila nueva):
+            <p class="mt-2">📥 Excel de clientes para SAGE (listado de Suma con una fila por cada cliente nuevo pendiente):
                 <button type="button" wire:click="descargar" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Descargar «{{ $excel }}»</button></p>
         @else
             <button type="button" wire:click="generarExcel" class="px-3 py-1 mt-2 border border-gray-300 rounded-md hover:bg-gray-50">Preparar el Excel para SAGE</button>

@@ -145,7 +145,7 @@ class NuevoCliente extends Component
         $r = AltaClienteCorreo::interpretar($html);
         // Lo que trae el correo, más los valores con los que Entidades crea una ficha nueva; el resto de campos de la ficha queda para rellenar.
         $this->campos = array_filter($r['campos'], fn ($v) => $v !== null) + [
-            'pais_id' => 'ES', 'idioma' => 'ES', 'tipoiva' => '0.21', 'diafactura' => 1, 'diavencimiento' => 10,
+            'pais_id' => 'ES', 'idioma' => 'ES', 'tipoiva' => '0.21', 'digitos_cuenta' => 6, 'diafactura' => 1, 'diavencimiento' => 10,
             'cliente' => true, 'estado' => 1, 'facturar' => isset($r['campos']['importe']), 'proveedor' => false, 'contacto' => false, 'favorito' => false, 'enviar' => false,
         ];
         $this->extra = $r['extra'];
@@ -178,11 +178,11 @@ class NuevoCliente extends Component
     /** Genera (o repite) el Excel de clientes con la fila de la entidad creada. */
     public function generarExcel(): void
     {
-        if (! $this->puede() || ! $this->creada) {
+        if (! $this->puede()) {
             return;
         }
         try {
-            $this->excel = AltaClienteSage::excelAlta(Entidad::withoutGlobalScopes()->findOrFail($this->creada));
+            $this->excel = AltaClienteSage::excelPendientes();
             $this->error = '';
         } catch (\Throwable $e) {
             $this->error = 'No he podido preparar el Excel para SAGE: '.$e->getMessage();
@@ -396,6 +396,7 @@ class NuevoCliente extends Component
             'grupos' => \App\Models\EntidadGrupo::orderBy('nombre')->pluck('nombre', 'id'),
             'puede' => $this->puede(),
             'sumaId' => AltaClienteSage::sumaId(),
+            'pendientes' => $this->puede() ? AltaClienteSage::pendientes()->count() : 0,
         ]);
     }
 }
