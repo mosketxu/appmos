@@ -40,4 +40,15 @@ class InformesBalergaTest extends TestCase
         Livewire::test(InformesBalerga::class)->set('periodo', '2026-09')
             ->assertSee('Mayor')->assertSee('falta subirlo')->assertSee('toca también el informe trimestral');
     }
+
+    public function test_la_tarea_mensual_se_crea_una_sola_vez_y_asignada_a_alex(): void
+    {
+        $id = \DB::table('users')->insertGetId(['name' => 'Alex', 'email' => 'alex.arregui@sumaempresa.com', 'password' => 'x', 'created_at' => now(), 'updated_at' => now()]);
+        $this->artisan('todo:informes-balerga', ['--mes' => '2026-09'])->assertExitCode(0);
+        $this->artisan('todo:informes-balerga', ['--mes' => '2026-09'])->assertExitCode(0);
+        $t = \App\Models\TodoTarea::where('titulo', 'like', 'Balerga: subir mayor%septiembre 2026%')->get();
+        $this->assertCount(1, $t);
+        $this->assertTrue($t->first()->estaAsignadaA($id));
+        $this->assertStringContainsString('Pérdidas y ganancias', $t->first()->descripcion);   // septiembre cierra trimestre
+    }
 }
