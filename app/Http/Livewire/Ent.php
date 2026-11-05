@@ -77,7 +77,7 @@ class Ent extends Component
             'entidad.digitos_cuenta'=>'nullable|integer|between:6,12',
             'entidad.codigo_empresa_sage'=>'nullable|string|max:10',
             'entidad.contrapartida'=>'nullable|string|max:12',
-            'entidad.retencion'=>'nullable|numeric|min:0|max:100',
+            'entidad.retencion'=>'nullable|in:7,18,19',
             'entidad.persona_fj'=>'nullable|in:F,J',
             'entidad.codigo_cliente'=>'nullable|max:20',
             'entidad.alias'=>'nullable|string|max:255',

@@ -294,7 +294,7 @@ class AltaClienteSage
                 'NumeroPlazos' => $n(1), 'DiasFijos1' => $n((int) ($e->diavencimiento ?: 10)),
                 'CodigoCuenta' => $codigo !== '' ? $n((int) $codigo) : $t(''),
                 'CodigoIdioma_' => $t(strtoupper((string) ($e->idioma ?: 'ES'))), 'CodigoIva' => $n(21),
-                'CodigoRetencion' => $ret >= 15 ? $n(18) : ($ret > 0 ? $n((int) round($ret)) : $t('')),
+                'CodigoRetencion' => $ret > 0 ? $n((int) $ret) : $t(''),
                 'CodigoCondiciones' => $n((int) $e->metodopago_id === 2 ? 2 : 1), 'CodigoTransaccion' => $n(1), 'Deducible' => $n(-1),
                 'Contrapartida' => ($cp0 = trim((string) ($e->contrapartida ?: ($tipo === 'C' ? $suma->contrapartida : '')))) !== '' ? $n((int) $cp0) : $t(''),
                 'PersonaFisicaJuridica' => $t($e->persona_fj === 'F' ? 'F' : 'J'),

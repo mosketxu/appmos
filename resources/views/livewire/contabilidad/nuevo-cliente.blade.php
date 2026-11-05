@@ -72,7 +72,7 @@
                     ['direccion', 'Dirección'], ['codpostal', 'C.P.'], ['localidad', 'Localidad'],
                     ['banco1', 'Banco 1'], ['iban1', 'IBAN 1'], ['banco2', 'Banco 2'], ['iban2', 'IBAN 2'], ['banco3', 'Banco 3'], ['iban3', 'IBAN 3'],
                     ['cuentacontable', 'Cta. contable'], ['digitos_cuenta', 'Dígitos de cuenta (6-12)'], ['codigo_cliente', 'Cód. cliente'], ['referenciacliente', 'Ref. cliente'],
-                    ['cnae', 'CNAE'], ['epigrafe_iae', 'Epígrafe IAE'], ['diafactura', 'Día factura'], ['diavencimiento', 'Día vencimiento'], ['retencion', '% Retención (7 o 15)'],
+                    ['cnae', 'CNAE'], ['epigrafe_iae', 'Epígrafe IAE'], ['diafactura', 'Día factura'], ['diavencimiento', 'Día vencimiento'],
                     ['porcentajemarta', '% Marta'], ['porcentajesusana', '% Susana'], ['importe', 'Importe (€) → historial']];
                 $ciclos = \App\Models\Entidad::CICLOS;
                 $checks = [['cliente', 'Cliente'], ['proveedor', 'Proveedor'], ['contacto', 'Contacto'], ['facturar', 'Facturar'], ['enviar', 'Enviar'], ['favorito', 'Favorito']];
@@ -80,7 +80,7 @@
             <div class="grid gap-2 mt-2" style="grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))">
                 @foreach ($texto as [$k, $etq])
                     <label class="block"><span class="text-xs text-gray-500">{{ $etq }}</span>
-                        <input type="{{ in_array($k, ['porcentajemarta', 'porcentajesusana', 'retencion']) ? 'number' : 'text' }}" @if (in_array($k, ['porcentajemarta', 'porcentajesusana', 'retencion'])) step="any" @endif wire:model="campos.{{ $k }}" class="w-full border-gray-300 rounded-md"></label>
+                        <input type="{{ in_array($k, ['porcentajemarta', 'porcentajesusana']) ? 'number' : 'text' }}" @if (in_array($k, ['porcentajemarta', 'porcentajesusana'])) step="any" @endif wire:model="campos.{{ $k }}" class="w-full border-gray-300 rounded-md"></label>
                 @endforeach
                 <label class="block"><span class="text-xs text-gray-500">Provincia</span>
                     <select wire:model="campos.provincia_id" class="w-full border-gray-300 rounded-md"><option value="">—</option>
@@ -88,6 +88,8 @@
                 <label class="block"><span class="text-xs text-gray-500">País</span>
                     <select wire:model="campos.pais_id" class="w-full border-gray-300 rounded-md"><option value="">—</option>
                         @foreach ($paises as $id => $n)<option value="{{ $id }}">{{ $n }}</option>@endforeach</select></label>
+                <label class="block"><span class="text-xs text-gray-500">Retención</span>
+                    <select wire:model="campos.retencion" class="w-full border-gray-300 rounded-md"><option value="">No</option><option value="7">7 - 7%</option><option value="18">18 - 15%</option><option value="19">19 - 19%</option></select></label>
                 <label class="block"><span class="text-xs text-gray-500">Persona</span>
                     <select wire:model="campos.persona_fj" class="w-full border-gray-300 rounded-md"><option value="J">Jurídica</option><option value="F">Física</option></select></label>
                 <label class="block"><span class="text-xs text-gray-500">Idioma</span>

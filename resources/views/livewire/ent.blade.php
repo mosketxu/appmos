@@ -248,8 +248,13 @@
                     <x-jet-input  wire:model.defer="entidad.contrapartida" type="text" maxlength="12" id="contrapartida" class="w-full"/>
                 </div>
                 <div class="w-full form-item">
-                    <x-jet-label for="retencion" title="Porcentaje de retención de sus facturas (7 o 15). Vacío = sin retención. En el Excel de SAGE: 15 → código 18, 7 → código 7.">{{ __('% Retención') }}</x-jet-label>
-                    <x-jet-input  wire:model.defer="entidad.retencion" type="number" step="any" id="retencion" class="w-full"/>
+                    <x-jet-label for="retencion" title="Código de retención de SAGE para las facturas de esta entidad (vacío = sin retención).">{{ __('Retención') }}</x-jet-label>
+                    <x-select wire:model.defer="entidad.retencion" class="w-full" selectname="retencion">
+                        <option value="">-- no --</option>
+                        <option value="7">7 - 7%</option>
+                        <option value="18">18 - 15%</option>
+                        <option value="19">19 - 19%</option>
+                    </x-select>
                     <x-jet-input-error for="retencion" class="mt-2" />
                 </div>
                 <div class="w-full form-item">

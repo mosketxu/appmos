@@ -259,7 +259,7 @@ class NuevoCliente extends Component
                     $datos[$k] = $v($k);
                 }
                 $datos['persona_fj'] = $datos['persona_fj'] === 'F' ? 'F' : 'J';
-                $datos['retencion'] = is_numeric($c['retencion'] ?? null) && (float) $c['retencion'] > 0 ? (float) $c['retencion'] : null;
+                $datos['retencion'] = in_array((int) ($c['retencion'] ?? 0), [7, 18, 19], true) ? (int) $c['retencion'] : null;
                 $datos['direccion'] = $datos['direccion'] ? mb_substr($datos['direccion'], 0, 100) : null;
                 $datos['observaciones'] = $datos['observaciones'] ? mb_substr($datos['observaciones'], 0, 255) : null;
                 foreach (['tipoiva' => 0.21, 'diafactura' => 1, 'diavencimiento' => 10, 'metodopago_id' => 1, 'estado' => 1] as $k => $def) {

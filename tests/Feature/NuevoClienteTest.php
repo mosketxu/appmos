@@ -160,7 +160,7 @@ class NuevoClienteTest extends TestCase
 
         // Plantilla de importación «Gestión»: sin sus filas de ejemplo, con las pendientes + una ya creada pedida por código
         $suma->update(['codigo_empresa_sage' => '1017', 'contrapartida' => '705000']);
-        $e->update(['retencion' => 15, 'persona_fj' => 'J', 'codpostal' => '08010', 'direccion' => 'C/ Casp 39', 'iban1' => 'ES12 3456', 'metodopago_id' => 2]);
+        $e->update(['retencion' => 18, 'persona_fj' => 'J', 'codpostal' => '08010', 'direccion' => 'C/ Casp 39', 'iban1' => 'ES12 3456', 'metodopago_id' => 2]);
         $g = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $cabG = ['CodigoEmpresa', 'ClienteOProveedor', 'CodigoClienteProveedor', 'SiglaNacion', 'CifDni', 'CodigoCategoriaCliente_', 'CifEuropeo', 'RazonSocial', 'Domicilio', 'CodigoPostal', 'CodigoMunicipio', 'Municipio',
             'CodigoProvincia', 'Provincia', 'IBAN', 'NumeroPlazos', 'DiasFijos1', 'CodigoCuenta', 'CodigoIva', 'CodigoRetencion', 'CodigoCondiciones', 'CodigoTransaccion', 'Contrapartida', 'Deducible', 'PersonaFisicaJuridica'];
