@@ -12,7 +12,7 @@
             <div class="flex flex-wrap items-end gap-3 mt-1">
                 <label class="text-xs text-gray-500">Es un<br>
                     <select wire:model="clienteOProveedor" class="border-gray-300 rounded-md"><option value="C">Cliente (C)</option><option value="P">Proveedor (P)</option></select></label>
-                <label class="text-xs text-gray-500">Añadir además códigos ya creados (p. ej. 430277)<br>
+                <label class="text-xs text-gray-500">Solo estos códigos ya creados (vacío = todos los pendientes)<br>
                     <input type="text" wire:model="codigosExtra" placeholder="430277, 430278" class="border-gray-300 rounded-md"></label>
                 <button type="button" wire:click="generarExcel" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-white">Preparar el Excel</button>
                 @if ($excel)<button type="button" wire:click="descargar" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Descargar «{{ $excel }}»</button>@endif

@@ -170,8 +170,11 @@ class NuevoClienteTest extends TestCase
         \App\Support\FicherosBase::guardar($suma->id, 'gestion', $f3, 'GES.xlsx');
         $n2 = \App\Support\AltaClienteSage::excelGestion('C', '430100');
         $r = \PhpOffice\PhpSpreadsheet\IOFactory::load(\App\Support\AltaClienteSage::dirSalida().'/'.$n2)->getActiveSheet()->toArray(null, false, false, false);
-        $this->assertCount(4, $r);   // cabecera + 430100 + 430251 + 430252
-        $c = array_combine($r[0], $r[2]);
+        $this->assertCount(2, $r);   // cabecera + solo 430100
+        $n3 = \App\Support\AltaClienteSage::excelGestion('C');
+        $r = \PhpOffice\PhpSpreadsheet\IOFactory::load(\App\Support\AltaClienteSage::dirSalida().'/'.$n3)->getActiveSheet()->toArray(null, false, false, false);
+        $this->assertCount(3, $r);   // cabecera + pendientes 430251 y 430252
+        $c = array_combine($r[0], $r[1]);
         $this->assertEquals(1017, $c['CodigoEmpresa']);
         $this->assertSame('C', $c['ClienteOProveedor']);
         $this->assertEquals(430251, $c['CodigoClienteProveedor']);

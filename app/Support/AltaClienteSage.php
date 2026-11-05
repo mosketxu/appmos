@@ -228,7 +228,7 @@ class AltaClienteSage
 
     /**
      * Excel de importación «Gestión de clientes y proveedores» de SAGE (5-nov-2026): COPIA de la plantilla base (GES_ClientesProveedores, sin sus filas de ejemplo)
-     * con una fila por cada entidad pendiente (+ las de $codigosExtra, ya creadas, p. ej. para repetir una prueba). $tipo: C cliente / P proveedor.
+     * con una fila por cada entidad pendiente (o, si se dan $codigosExtra, SOLO esas entidades ya creadas: p. ej. para repetir una prueba). $tipo: C cliente / P proveedor.
      * Devuelve el nombre del fichero (dentro de dirSalida()).
      */
     public static function excelGestion(string $tipo = 'C', string $codigosExtra = ''): string
@@ -239,8 +239,8 @@ class AltaClienteSage
         if (! $u) {
             throw new \RuntimeException('Falta subir la plantilla de importación de SAGE (GES_ClientesProveedores) en «Ficheros base».');
         }
-        $ents = self::pendientes()->keyBy('id');
         $extra = array_filter(array_map('trim', preg_split('/[\s,;]+/', $codigosExtra)));
+        $ents = $extra ? collect() : self::pendientes()->keyBy('id');   // con códigos: solo esos; sin códigos: todos los pendientes
         if ($extra) {
             foreach (Entidad::withoutGlobalScopes()->get() as $e) {
                 if (in_array(trim((string) ($e->codigo_cliente ?: $e->cuentacontable)), $extra, true)) {
@@ -250,7 +250,7 @@ class AltaClienteSage
         }
         $ents = $ents->sortBy(fn ($e) => (string) ($e->codigo_cliente ?: $e->cuentacontable))->values();
         if ($ents->isEmpty()) {
-            throw new \RuntimeException('No hay clientes nuevos pendientes (y no has indicado ningún código para añadir).');
+            throw new \RuntimeException('No hay clientes nuevos pendientes (o ninguna entidad tiene los códigos indicados).');
         }
         $libro = IOFactory::load($u['ruta']);
         $hoja = $libro->getActiveSheet();
