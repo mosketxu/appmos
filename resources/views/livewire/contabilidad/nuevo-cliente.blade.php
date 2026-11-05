@@ -9,6 +9,7 @@
         <div class="p-2 mb-2 border border-gray-200 rounded-md bg-gray-50">
             <p class="text-gray-700">📥 Excel de importación para SAGE (plantilla «Importación Gestión»):
                 @if ($pendientes > 0) hay <b>{{ $pendientes }}</b> cliente(s) dados de alta aquí que aún no están en el listado de SAGE. @else no hay clientes pendientes. @endif</p>
+            <p class="mt-1 text-xs text-indigo-700">ℹ️ En SAGE: Gestión → Importación → elegir <b>GES_ClientesProveedores</b> y seleccionar este Excel.</p>
             <div class="flex flex-wrap items-end gap-3 mt-1">
                 <label class="text-xs text-gray-500">Es un<br>
                     <select wire:model="clienteOProveedor" class="border-gray-300 rounded-md"><option value="C">Cliente (C)</option><option value="P">Proveedor (P)</option></select></label>
