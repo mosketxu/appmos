@@ -2,12 +2,23 @@
 @if (! $puede)
     <p class="text-gray-600">No tienes permiso para dar de alta clientes desde un correo.</p>
 @else
-    @include('livewire._ficheros_base', ['eid' => $sumaId, 'clave' => 'nuevo-cliente'])
-    @if ($pendientes > 0 && ! $creada)
-        <p class="mb-2 text-gray-700">📥 Hay <b>{{ $pendientes }}</b> cliente(s) dados de alta aquí que aún no están en el listado de SAGE.
-            <button type="button" wire:click="generarExcel" class="px-3 py-1 ml-1 border border-gray-300 rounded-md hover:bg-gray-50">Preparar el Excel con todos</button>
-            @if ($excel)<button type="button" wire:click="descargar" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Descargar «{{ $excel }}»</button>@endif</p>
-        @if ($error)<p class="mb-2 text-red-700">⚠️ {{ $error }}</p>@endif
+    @if ((int) $sumaId > 0)
+        @livewire('ficheros-base-subida', ['entidadId' => (int) $sumaId, 'tipos' => ['plan', 'clientes', 'gestion']], key('fb-nuevo-cliente-'.(int) $sumaId))
+    @endif
+    @if (! $creada)
+        <div class="p-2 mb-2 border border-gray-200 rounded-md bg-gray-50">
+            <p class="text-gray-700">📥 Excel de importación para SAGE (plantilla «Importación Gestión»):
+                @if ($pendientes > 0) hay <b>{{ $pendientes }}</b> cliente(s) dados de alta aquí que aún no están en el listado de SAGE. @else no hay clientes pendientes. @endif</p>
+            <div class="flex flex-wrap items-end gap-3 mt-1">
+                <label class="text-xs text-gray-500">Es un<br>
+                    <select wire:model="clienteOProveedor" class="border-gray-300 rounded-md"><option value="C">Cliente (C)</option><option value="P">Proveedor (P)</option></select></label>
+                <label class="text-xs text-gray-500">Añadir además códigos ya creados (p. ej. 430277)<br>
+                    <input type="text" wire:model="codigosExtra" placeholder="430277, 430278" class="border-gray-300 rounded-md"></label>
+                <button type="button" wire:click="generarExcel" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-white">Preparar el Excel</button>
+                @if ($excel)<button type="button" wire:click="descargar" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Descargar «{{ $excel }}»</button>@endif
+            </div>
+            @if ($error)<p class="mt-1 text-red-700">⚠️ {{ $error }}</p>@endif
+        </div>
     @endif
     @if ($creada)
         <p class="text-green-700">✓ Entidad creada.
@@ -15,7 +26,7 @@
             <a href="{{ route('entidad.historial', $creada) }}" target="_blank" class="underline text-indigo-600">Ver su historial ↗</a></p>
         @if ($error)<p class="mt-2 text-red-700">⚠️ {{ $error }}</p>@endif
         @if ($excel)
-            <p class="mt-2">📥 Excel de clientes para SAGE (listado de Suma con una fila por cada cliente nuevo pendiente):
+            <p class="mt-2">📥 Excel de importación para SAGE (una fila por cada cliente nuevo pendiente):
                 <button type="button" wire:click="descargar" class="px-3 py-1 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Descargar «{{ $excel }}»</button></p>
         @else
             <button type="button" wire:click="generarExcel" class="px-3 py-1 mt-2 border border-gray-300 rounded-md hover:bg-gray-50">Preparar el Excel para SAGE</button>
@@ -60,7 +71,7 @@
                     ['direccion', 'Dirección'], ['codpostal', 'C.P.'], ['localidad', 'Localidad'],
                     ['banco1', 'Banco 1'], ['iban1', 'IBAN 1'], ['banco2', 'Banco 2'], ['iban2', 'IBAN 2'], ['banco3', 'Banco 3'], ['iban3', 'IBAN 3'],
                     ['cuentacontable', 'Cta. contable'], ['digitos_cuenta', 'Dígitos de cuenta (6-12)'], ['codigo_cliente', 'Cód. cliente'], ['referenciacliente', 'Ref. cliente'],
-                    ['cnae', 'CNAE'], ['epigrafe_iae', 'Epígrafe IAE'], ['diafactura', 'Día factura'], ['diavencimiento', 'Día vencimiento'],
+                    ['cnae', 'CNAE'], ['epigrafe_iae', 'Epígrafe IAE'], ['diafactura', 'Día factura'], ['diavencimiento', 'Día vencimiento'], ['retencion', '% Retención (7 o 15)'],
                     ['porcentajemarta', '% Marta'], ['porcentajesusana', '% Susana'], ['importe', 'Importe (€) → historial']];
                 $ciclos = \App\Models\Entidad::CICLOS;
                 $checks = [['cliente', 'Cliente'], ['proveedor', 'Proveedor'], ['contacto', 'Contacto'], ['facturar', 'Facturar'], ['enviar', 'Enviar'], ['favorito', 'Favorito']];
@@ -68,7 +79,7 @@
             <div class="grid gap-2 mt-2" style="grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))">
                 @foreach ($texto as [$k, $etq])
                     <label class="block"><span class="text-xs text-gray-500">{{ $etq }}</span>
-                        <input type="{{ in_array($k, ['porcentajemarta', 'porcentajesusana']) ? 'number' : 'text' }}" @if (in_array($k, ['porcentajemarta', 'porcentajesusana'])) step="any" @endif wire:model="campos.{{ $k }}" class="w-full border-gray-300 rounded-md"></label>
+                        <input type="{{ in_array($k, ['porcentajemarta', 'porcentajesusana', 'retencion']) ? 'number' : 'text' }}" @if (in_array($k, ['porcentajemarta', 'porcentajesusana', 'retencion'])) step="any" @endif wire:model="campos.{{ $k }}" class="w-full border-gray-300 rounded-md"></label>
                 @endforeach
                 <label class="block"><span class="text-xs text-gray-500">Provincia</span>
                     <select wire:model="campos.provincia_id" class="w-full border-gray-300 rounded-md"><option value="">—</option>
@@ -76,6 +87,8 @@
                 <label class="block"><span class="text-xs text-gray-500">País</span>
                     <select wire:model="campos.pais_id" class="w-full border-gray-300 rounded-md"><option value="">—</option>
                         @foreach ($paises as $id => $n)<option value="{{ $id }}">{{ $n }}</option>@endforeach</select></label>
+                <label class="block"><span class="text-xs text-gray-500">Persona</span>
+                    <select wire:model="campos.persona_fj" class="w-full border-gray-300 rounded-md"><option value="J">Jurídica</option><option value="F">Física</option></select></label>
                 <label class="block"><span class="text-xs text-gray-500">Idioma</span>
                     <select wire:model="campos.idioma" class="w-full border-gray-300 rounded-md"><option value="ES">Español</option><option value="CA">Catalán</option><option value="EN">Inglés</option></select></label>
                 <label class="block"><span class="text-xs text-gray-500">IVA</span>

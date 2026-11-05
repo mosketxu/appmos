@@ -44,6 +44,10 @@ class NuevoCliente extends Component
     public array $codigoInfo = [];
     /** Excel de clientes para SAGE ya generado (nombre dentro de storage/app/nuevo-cliente). */
     public string $excel = '';
+    /** C = cliente, P = proveedor: se elige antes de preparar el Excel de importación. */
+    public string $clienteOProveedor = 'C';
+    /** Códigos (430277…) de entidades YA dadas de alta que también se quieren en el Excel (p. ej. para repetir una prueba). */
+    public string $codigosExtra = '';
 
     protected function puede(): bool
     {
@@ -145,7 +149,7 @@ class NuevoCliente extends Component
         $r = AltaClienteCorreo::interpretar($html);
         // Lo que trae el correo, más los valores con los que Entidades crea una ficha nueva; el resto de campos de la ficha queda para rellenar.
         $this->campos = array_filter($r['campos'], fn ($v) => $v !== null) + [
-            'pais_id' => 'ES', 'idioma' => 'ES', 'tipoiva' => '0.21', 'digitos_cuenta' => 6, 'diafactura' => 1, 'diavencimiento' => 10,
+            'pais_id' => 'ES', 'idioma' => 'ES', 'tipoiva' => '0.21', 'digitos_cuenta' => 6, 'persona_fj' => 'J', 'diafactura' => 1, 'diavencimiento' => 10,
             'cliente' => true, 'estado' => 1, 'facturar' => isset($r['campos']['importe']), 'proveedor' => false, 'contacto' => false, 'favorito' => false, 'enviar' => false,
         ];
         $this->extra = $r['extra'];
@@ -182,7 +186,7 @@ class NuevoCliente extends Component
             return;
         }
         try {
-            $this->excel = AltaClienteSage::excelPendientes();
+            $this->excel = AltaClienteSage::excelGestion($this->clienteOProveedor, $this->codigosExtra);
             $this->error = '';
         } catch (\Throwable $e) {
             $this->error = 'No he podido preparar el Excel para SAGE: '.$e->getMessage();
@@ -251,9 +255,11 @@ class NuevoCliente extends Component
                 $datos = ['entidad' => $nombre, 'nif' => $nif ?: null];
                 foreach (['direccion', 'codpostal', 'localidad', 'provincia_id', 'pais_id', 'idioma', 'tfno', 'web', 'emailgral', 'emailadm', 'banco1', 'banco2', 'banco3',
                     'iban1', 'iban2', 'iban3', 'referenciacliente', 'cuentacontable', 'codigo_cliente', 'alias', 'cnae', 'epigrafe_iae', 'observaciones',
-                    'digitos_cuenta', 'suma_id', 'grupo_id', 'cicloimpuesto_id'] as $k) {
+                    'digitos_cuenta', 'suma_id', 'grupo_id', 'cicloimpuesto_id', 'persona_fj'] as $k) {
                     $datos[$k] = $v($k);
                 }
+                $datos['persona_fj'] = $datos['persona_fj'] === 'F' ? 'F' : 'J';
+                $datos['retencion'] = is_numeric($c['retencion'] ?? null) && (float) $c['retencion'] > 0 ? (float) $c['retencion'] : null;
                 $datos['direccion'] = $datos['direccion'] ? mb_substr($datos['direccion'], 0, 100) : null;
                 $datos['observaciones'] = $datos['observaciones'] ? mb_substr($datos['observaciones'], 0, 255) : null;
                 foreach (['tipoiva' => 0.21, 'diafactura' => 1, 'diavencimiento' => 10, 'metodopago_id' => 1, 'estado' => 1] as $k => $def) {

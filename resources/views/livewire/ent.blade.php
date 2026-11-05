@@ -240,6 +240,21 @@
             </div>
             <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
                 <div class="w-full form-item">
+                    <x-jet-label for="codigo_empresa_sage" title="Código de esta empresa en SAGE (Suma = 1017). Va en la primera columna del Excel de importación de clientes y proveedores.">{{ __('Cód. empresa Sage') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.codigo_empresa_sage" type="text" maxlength="10" id="codigo_empresa_sage" class="w-full"/>
+                </div>
+                <div class="w-full form-item">
+                    <x-jet-label for="retencion" title="Porcentaje de retención de sus facturas (7 o 15). Vacío = sin retención. En el Excel de SAGE: 15 → código 18, 7 → código 7.">{{ __('% Retención') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.retencion" type="number" step="any" id="retencion" class="w-full"/>
+                    <x-jet-input-error for="retencion" class="mt-2" />
+                </div>
+                <div class="w-full form-item">
+                    <x-jet-label for="persona_fj">{{ __('Persona física/jurídica') }}</x-jet-label>
+                    <select wire:model.defer="entidad.persona_fj" id="persona_fj" class="w-full border-gray-300 rounded-md"><option value="J">Jurídica</option><option value="F">Física</option></select>
+                </div>
+            </div>
+            <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
+                <div class="w-full form-item">
                     <x-jet-label for="digitos_cuenta" title="Cuántas cifras tienen las cuentas de proveedor y cliente en SAGE de esta empresa (Fashion 7, Neteges 9, el resto 6). Lo usan Facturas OCR, LeoyBra y Bancos para crear cuentas nuevas.">{{ __('Nº Dígitos Sage') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.digitos_cuenta" type="number" min="6" max="12" id="digitos_cuenta" name="digitos_cuenta" class="w-full"/>
                     <x-jet-input-error for="digitos_cuenta" class="mt-2" />

@@ -19,6 +19,8 @@ class FicherosBase
         'plan' => ['titulo' => 'Plan de cuentas', 'icono' => '📘', 'ayuda' => 'Plan de cuentas de SAGE (Excel).'],
         'clientes' => ['titulo' => 'Clientes', 'icono' => '👥', 'ayuda' => 'Listado de clientes de SAGE (Excel).'],
         'proveedores' => ['titulo' => 'Proveedores', 'icono' => '🏭', 'ayuda' => 'Listado de proveedores de SAGE (Excel).'],
+        // Plantilla de importación de SAGE «Gestión de clientes y proveedores» (GES_ClientesProveedores): solo la pide «Nuevo cliente» (5-nov-2026)
+        'gestion' => ['titulo' => 'Importación Gestión (GES_ClientesProveedores)', 'icono' => '📥', 'ayuda' => 'Excel base de importación de clientes y proveedores de SAGE (hoja ClientesProveedores).', 'extra' => true],
         'mayor' => ['titulo' => 'Mayor', 'icono' => '📒', 'ayuda' => 'Mayor de SAGE (Excel). Se puede subir uno nuevo en cualquier momento: los procesos usan el último.'],
         'sys' => ['titulo' => 'Sumas y saldos', 'icono' => '⚖️', 'ayuda' => 'Balance de sumas y saldos de SAGE (Excel), del mes al que llega.', 'por_periodo' => true],
         // Solo los ofrece quien los pide por nombre (informes de Balerga, 4-nov-2026): no salen en el recuadro estándar de las demás pantallas

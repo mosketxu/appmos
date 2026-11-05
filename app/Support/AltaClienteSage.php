@@ -183,4 +183,131 @@ class AltaClienteSage
 
         return $nombre;
     }
+
+    /** Código de municipio del INE tal como lo pide SAGE (provincia*1000+municipio, p. ej. Barcelona = 8019), por provincia y nombre; '' si no se encuentra. */
+    public static function codigoMunicipio(?string $provinciaId, ?string $localidad): string
+    {
+        $prov = ltrim((string) $provinciaId, '0');
+        $n = self::normMun((string) $localidad);
+        $ruta = resource_path('data/municipios_ine.csv');
+        if ($prov === '' || $n === '' || ! is_file($ruta)) {
+            return '';
+        }
+        $fh = fopen($ruta, 'r');
+        while (($f = fgetcsv($fh, 0, ';', '"', '')) !== false) {
+            if (ltrim($f[0], '0') !== $prov) {
+                continue;
+            }
+            $nombre = (string) $f[2];
+            $variantes = [$nombre];
+            foreach (explode('/', $nombre) as $parte) {
+                $variantes[] = $parte;
+            }
+            foreach ($variantes as $v) {
+                if (preg_match('/^(.+), (el|la|los|las|l\'|a|o|os|as|els|les|sa|es|ses|na)$/iu', trim($v), $m)) {
+                    $variantes[] = $m[2].' '.$m[1];
+                }
+            }
+            foreach ($variantes as $v) {
+                if (self::normMun($v) === $n) {
+                    fclose($fh);
+
+                    return (string) ((int) $f[0] * 1000 + (int) $f[1]);
+                }
+            }
+        }
+        fclose($fh);
+
+        return '';
+    }
+
+    protected static function normMun(string $t): string
+    {
+        return trim(preg_replace('/\s+/', ' ', str_replace("'", "' ", AltaClienteCorreo::norm($t))));
+    }
+
+    /**
+     * Excel de importación «Gestión de clientes y proveedores» de SAGE (5-nov-2026): COPIA de la plantilla base (GES_ClientesProveedores, sin sus filas de ejemplo)
+     * con una fila por cada entidad pendiente (+ las de $codigosExtra, ya creadas, p. ej. para repetir una prueba). $tipo: C cliente / P proveedor.
+     * Devuelve el nombre del fichero (dentro de dirSalida()).
+     */
+    public static function excelGestion(string $tipo = 'C', string $codigosExtra = ''): string
+    {
+        $tipo = strtoupper($tipo) === 'P' ? 'P' : 'C';
+        $suma = Entidad::withoutGlobalScopes()->find(self::sumaId());
+        $u = $suma ? FicherosBase::ultimo($suma->id, 'gestion') : null;
+        if (! $u) {
+            throw new \RuntimeException('Falta subir la plantilla de importación de SAGE (GES_ClientesProveedores) en «Ficheros base».');
+        }
+        $ents = self::pendientes()->keyBy('id');
+        $extra = array_filter(array_map('trim', preg_split('/[\s,;]+/', $codigosExtra)));
+        if ($extra) {
+            foreach (Entidad::withoutGlobalScopes()->get() as $e) {
+                if (in_array(trim((string) ($e->codigo_cliente ?: $e->cuentacontable)), $extra, true)) {
+                    $ents[$e->id] = $e;
+                }
+            }
+        }
+        $ents = $ents->sortBy(fn ($e) => (string) ($e->codigo_cliente ?: $e->cuentacontable))->values();
+        if ($ents->isEmpty()) {
+            throw new \RuntimeException('No hay clientes nuevos pendientes (y no has indicado ningún código para añadir).');
+        }
+        $libro = IOFactory::load($u['ruta']);
+        $hoja = $libro->getActiveSheet();
+        $cab = [];
+        foreach ($hoja->getRowIterator(1, 1) as $fila) {
+            foreach ($fila->getCellIterator() as $celda) {
+                $cab[trim((string) $celda->getValue())] = $celda->getColumn();
+            }
+        }
+        foreach (['CodigoEmpresa', 'ClienteOProveedor', 'CodigoClienteProveedor', 'CifDni', 'RazonSocial', 'Domicilio'] as $obligada) {
+            if (! isset($cab[$obligada])) {
+                throw new \RuntimeException("La plantilla no tiene la columna «{$obligada}».");
+            }
+        }
+        if ($hoja->getHighestDataRow() > 1) {
+            $hoja->removeRow(2, $hoja->getHighestDataRow() - 1); // las filas de ejemplo de la plantilla no se usan
+        }
+        $fila = 1;
+        foreach ($ents as $e) {
+            $fila++;
+            $codigo = trim((string) ($e->codigo_cliente ?: $e->cuentacontable));
+            $nif = AltaClienteCorreo::nifLimpio((string) $e->nif);
+            $cp = preg_replace('/\D/', '', (string) $e->codpostal);
+            $prov = $e->provincia_id ? (string) Provincia::whereKey($e->provincia_id)->value('provincia') : '';
+            $provCod = strlen($cp) === 5 ? substr($cp, 0, 2) : (string) $e->provincia_id; // «los dos primeros dígitos del CP»
+            $ret = (float) $e->retencion;
+            $emailAdm = trim((string) preg_split('/[;,\s]+/', (string) $e->emailadm)[0]);
+            $n = fn ($v) => [$v, DataType::TYPE_NUMERIC];
+            $t = fn ($v) => [(string) $v, DataType::TYPE_STRING];
+            $v = [
+                'CodigoEmpresa' => $suma->codigo_empresa_sage ? $n((int) $suma->codigo_empresa_sage) : $t(''),
+                'ClienteOProveedor' => $t($tipo), 'CodigoClienteProveedor' => $codigo !== '' ? $n((int) $codigo) : $t(''),
+                'SiglaNacion' => $t('ES'), 'CifDni' => $t($nif), 'CodigoCategoriaCliente_' => $t($tipo === 'P' ? 'PRO' : 'CLI'),
+                'CifEuropeo' => $t($nif !== '' ? 'ES'.$nif : ''), 'RazonSocial' => $t(mb_substr((string) $e->entidad, 0, 40)),
+                'Domicilio' => $t((string) $e->direccion), 'CodigoPostal' => $cp !== '' ? $n((int) $cp) : $t(''),
+                'CodigoMunicipio' => ($m = self::codigoMunicipio($provCod, $e->localidad)) !== '' ? $n((int) $m) : $t(''),
+                'Municipio' => $t(mb_strtoupper((string) $e->localidad)), 'CodigoProvincia' => $provCod !== '' ? $n((int) $provCod) : $t(''),
+                'Provincia' => $t(mb_strtoupper($prov)), 'CodigoNacion' => $n(108), 'Nacion' => $t('ESPAÑA'),
+                'Telefono' => $t((string) $e->tfno), 'Email1' => $t(trim((string) $e->emailgral) ?: $emailAdm),
+                'IBAN' => $t(preg_replace('/\s+/', '', (string) $e->iban1)),
+                'NumeroPlazos' => $n(1), 'DiasFijos1' => $n((int) ($e->diavencimiento ?: 10)),
+                'CodigoCuenta' => $codigo !== '' ? $n((int) $codigo) : $t(''),
+                'CodigoIdioma_' => $t(strtoupper((string) ($e->idioma ?: 'ES'))), 'CodigoIva' => $n(21),
+                'CodigoRetencion' => $ret >= 15 ? $n(18) : ($ret > 0 ? $n((int) round($ret)) : $t('')),
+                'CodigoTransaccion' => $n((int) $e->metodopago_id === 2 ? 2 : 1), 'Deducible' => $n(-1),
+                'PersonaFisicaJuridica' => $t($e->persona_fj === 'F' ? 'F' : 'J'),
+            ];
+            foreach ($v as $nombre => [$valor, $tipoDato]) {
+                if (isset($cab[$nombre])) {
+                    $hoja->getCell($cab[$nombre].$fila)->setValueExplicit($valor, $tipoDato);
+                }
+            }
+        }
+        @mkdir(self::dirSalida(), 0775, true);
+        $nombre = date('Ymd-His').' GES_ClientesProveedores '.$tipo.' + '.$ents->count().' nuevos.xlsx';
+        IOFactory::createWriter($libro, 'Xlsx')->save(self::dirSalida().'/'.$nombre);
+
+        return $nombre;
+    }
 }

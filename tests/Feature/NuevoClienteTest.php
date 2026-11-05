@@ -157,6 +157,34 @@ class NuevoClienteTest extends TestCase
         $this->assertSame('BARCELONA', $ult[8]);
         $this->assertSame('CLI', $ult[11]);
         $this->assertCount(8, $filas);
+
+        // Plantilla de importación «Gestión»: sin sus filas de ejemplo, con las pendientes + una ya creada pedida por código
+        $suma->update(['codigo_empresa_sage' => '1017']);
+        $e->update(['retencion' => 15, 'persona_fj' => 'J', 'codpostal' => '08010', 'direccion' => 'C/ Casp 39', 'iban1' => 'ES12 3456', 'metodopago_id' => 2]);
+        $g = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $cabG = ['CodigoEmpresa', 'ClienteOProveedor', 'CodigoClienteProveedor', 'SiglaNacion', 'CifDni', 'CodigoCategoriaCliente_', 'CifEuropeo', 'RazonSocial', 'Domicilio', 'CodigoPostal', 'CodigoMunicipio', 'Municipio',
+            'CodigoProvincia', 'Provincia', 'IBAN', 'NumeroPlazos', 'DiasFijos1', 'CodigoCuenta', 'CodigoIva', 'CodigoRetencion', 'CodigoTransaccion', 'Deducible', 'PersonaFisicaJuridica'];
+        $g->getActiveSheet()->fromArray([$cabG, array_fill(0, count($cabG), 'ejemplo'), array_fill(0, count($cabG), 'ejemplo')]);
+        $f3 = $tmp.'/GES.xlsx';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($g))->save($f3);
+        \App\Support\FicherosBase::guardar($suma->id, 'gestion', $f3, 'GES.xlsx');
+        $n2 = \App\Support\AltaClienteSage::excelGestion('C', '430100');
+        $r = \PhpOffice\PhpSpreadsheet\IOFactory::load(\App\Support\AltaClienteSage::dirSalida().'/'.$n2)->getActiveSheet()->toArray(null, false, false, false);
+        $this->assertCount(4, $r);   // cabecera + 430100 + 430251 + 430252
+        $c = array_combine($r[0], $r[2]);
+        $this->assertEquals(1017, $c['CodigoEmpresa']);
+        $this->assertSame('C', $c['ClienteOProveedor']);
+        $this->assertEquals(430251, $c['CodigoClienteProveedor']);
+        $this->assertEquals(430251, $c['CodigoCuenta']);
+        $this->assertEquals(8019, $c['CodigoMunicipio']);
+        $this->assertEquals(8, $c['CodigoProvincia']);
+        $this->assertEquals(18, $c['CodigoRetencion']);
+        $this->assertEquals(2, $c['CodigoTransaccion']);
+        $this->assertEquals(-1, $c['Deducible']);
+        $this->assertSame('CLI', $c['CodigoCategoriaCliente_']);
+        $this->assertSame('J', $c['PersonaFisicaJuridica']);
+        $this->assertEquals(10, $c['DiasFijos1']);
+        $this->assertSame('ESB05622055', $c['CifEuropeo']);
     }
 
     public function test_sin_permiso_no_hace_nada(): void

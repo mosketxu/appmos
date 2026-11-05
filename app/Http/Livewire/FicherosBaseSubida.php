@@ -57,7 +57,8 @@ class FicherosBaseSubida extends Component
             return;
         }
         $ruta = $f->getRealPath();
-        $reglas = ['proveedores' => [['CifDni'], 'el listado de proveedores de SAGE (con CifDni y CodigoPostal)'],
+        $reglas = ['gestion' => [['CodigoClienteProveedor', 'ClienteOProveedor'], 'la plantilla de importación de SAGE (GES_ClientesProveedores, con CodigoClienteProveedor)'],
+            'proveedores' => [['CifDni'], 'el listado de proveedores de SAGE (con CifDni y CodigoPostal)'],
             'clientes' => [['CifDni'], 'el listado de clientes de SAGE'],
             'plan' => [['Código cuenta', 'Descripción'], 'el plan de cuentas de SAGE (Código cuenta y Descripción)']];
         // El listado de clientes de SAGE (EU_Clientes_GRID) trae «CIF/DNI»; el de proveedores, «CifDni»
