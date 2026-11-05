@@ -66,6 +66,15 @@ class NuevoClienteTest extends TestCase
         $this->assertSame('30/11/2026', $r['nota']['Primera factura']);
     }
 
+    public function test_el_cp_manda_sobre_una_provincia_incoherente(): void
+    {
+        $this->datos();
+        $html = '<table><tr><td>Cliente</td><td>ZURUMANA, S.L.</td></tr><tr><td>NIF</td><td>B-25949769</td></tr><tr><td>CP</td><td>28004 Madrid</td></tr><tr><td>Provincia</td><td>Barcelona</td></tr></table>';
+        $i = \App\Support\AltaClienteCorreo::interpretar($html);
+        $this->assertSame('28', $i['campos']['provincia_id']);
+        $this->assertNotEmpty(array_filter($i['avisos'], fn ($a) => str_contains($a, 'provincia')));
+    }
+
     public function test_lee_un_eml(): void
     {
         $eml = "Subject: =?UTF-8?Q?Alta_cliente_FORZA?=\r\nContent-Type: multipart/alternative; boundary=\"b1\"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nhola\r\n--b1\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Direcci=C3=B3n</p>\r\n--b1--\r\n";

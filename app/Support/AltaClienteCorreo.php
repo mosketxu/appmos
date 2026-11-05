@@ -124,6 +124,14 @@ class AltaClienteCorreo
         if (! $campos['provincia_id'] && ! empty($campos['codpostal']) && strlen($campos['codpostal']) === 5 && isset($todas[substr($campos['codpostal'], 0, 2)])) {
             $campos['provincia_id'] = substr($campos['codpostal'], 0, 2);
         }
+        // Si el CP apunta a otra provincia que la escrita en el correo, manda el CP (suele ser un descuido de quien rellena) y se avisa.
+        if ($campos['provincia_id'] && ! empty($campos['codpostal']) && strlen($campos['codpostal']) === 5) {
+            $porCp = substr($campos['codpostal'], 0, 2);
+            if ($porCp !== $campos['provincia_id'] && isset($todas[$porCp])) {
+                $avisos[] = "El correo dice provincia «{$prov}» pero el CP {$campos['codpostal']} es de {$todas[$porCp]}: he puesto {$todas[$porCp]}. Revísalo.";
+                $campos['provincia_id'] = $porCp;
+            }
+        }
         if ($prov && ! $campos['provincia_id']) {
             $avisos[] = "No encuentro la provincia «{$prov}»: elígela a mano.";
         }
