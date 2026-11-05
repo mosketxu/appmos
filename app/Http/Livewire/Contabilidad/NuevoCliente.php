@@ -283,11 +283,18 @@ class NuevoCliente extends Component
                     $partes[] = trim($this->extra);
                 }
                 $importe = $v('importe') !== null ? (float) $c['importe'] : null;
+                $fecha = AltaClienteCorreo::fechaDelCorreo($this->nota['Fecha del correo'] ?? null) ?? now()->toDateString();
                 EntidadHistorico::create([
-                    'entidad_id' => $e->id, 'tipo' => 'alta', 'fecha' => now()->toDateString(),
+                    'entidad_id' => $e->id, 'tipo' => 'alta', 'fecha' => $fecha,
                     'comentario' => mb_substr(implode(' ', $partes), 0, 2000), 'user_id' => auth()->id(),
-                    'importe_facturacion' => $importe, 'periodo_facturacion' => $importe !== null && ! empty($c['ciclo']) ? (int) $c['ciclo'] : null,
                 ]);
+                if ($importe !== null) {
+                    EntidadHistorico::create([
+                        'entidad_id' => $e->id, 'tipo' => 'comentario', 'fecha' => $fecha, 'user_id' => auth()->id(),
+                        'comentario' => 'Facturación al dar de alta.'.(isset($this->nota['Primera factura']) ? ' Primera factura: '.$this->nota['Primera factura'].'.' : ''),
+                        'importe_facturacion' => $importe, 'periodo_facturacion' => ! empty($c['ciclo']) ? (int) $c['ciclo'] : null,
+                    ]);
+                }
 
                 return $e->id;
             });

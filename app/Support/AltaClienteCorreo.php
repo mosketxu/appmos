@@ -16,6 +16,22 @@ use DOMXPath;
 class AltaClienteCorreo
 {
     /** Quita acentos y signos, minúsculas: «Dirección » → «direccion». */
+    /** «oct-26», «nov-2026», «octubre 2026» → primer día de ese mes (Y-m-d); null si no se entiende. Un año absurdo («nov-06») se toma como el año en curso. */
+    public static function fechaDelCorreo(?string $t): ?string
+    {
+        $meses = ['ene' => 1, 'feb' => 2, 'mar' => 3, 'abr' => 4, 'may' => 5, 'jun' => 6, 'jul' => 7, 'ago' => 8, 'sep' => 9, 'set' => 9, 'oct' => 10, 'nov' => 11, 'dic' => 12];
+        if (! preg_match('/^\s*([[:alpha:]]{3,})\.?[\s\-\/]+(\d{2,4})\s*$/u', self::norm((string) $t), $m) || ! isset($meses[substr($m[1], 0, 3)])) {
+            return null;
+        }
+        $anio = (int) $m[2];
+        $anio = $anio >= 100 ? $anio : 2000 + $anio;
+        if ($anio < 2020 || $anio > 2100) {
+            $anio = (int) date('Y');
+        }
+
+        return sprintf('%04d-%02d-01', $anio, $meses[substr($m[1], 0, 3)]);
+    }
+
     public static function norm(string $t): string
     {
         $t = mb_strtolower(trim($t));

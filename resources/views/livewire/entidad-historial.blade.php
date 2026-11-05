@@ -32,6 +32,9 @@
                                     @if ($h->tipo === 'estado')
                                         <b>{{ \App\Models\Entidad::ESTADOS[$h->estado_anterior] ?? '—' }} → {{ \App\Models\Entidad::ESTADOS[$h->estado_nuevo] ?? '—' }}</b>
                                     @endif
+                                    @if ($h->tipo === 'alta')
+                                        <b>Alta</b>
+                                    @endif
                                     @if ($h->importe_facturacion !== null)
                                         <b>Facturación: {{ number_format($h->importe_facturacion, 2, ',', '.') }} €{{ $h->periodo_facturacion !== null ? ' / '.(\App\Models\Entidad::CICLOS[$h->periodo_facturacion] ?? $h->periodo_facturacion) : '' }}</b>
                                     @endif

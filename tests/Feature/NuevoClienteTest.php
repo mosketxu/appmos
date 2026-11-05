@@ -79,6 +79,14 @@ class NuevoClienteTest extends TestCase
         $this->assertNotEmpty(array_filter($i['avisos'], fn ($a) => str_contains($a, 'provincia')));
     }
 
+    public function test_fecha_del_correo(): void
+    {
+        $this->assertSame('2026-10-01', \App\Support\AltaClienteCorreo::fechaDelCorreo('oct-26'));
+        $this->assertSame('2026-11-01', \App\Support\AltaClienteCorreo::fechaDelCorreo('Noviembre 2026'));
+        $this->assertSame(date('Y').'-11-01', \App\Support\AltaClienteCorreo::fechaDelCorreo('nov-06'));
+        $this->assertNull(\App\Support\AltaClienteCorreo::fechaDelCorreo('ayer'));
+    }
+
     public function test_lee_un_eml(): void
     {
         $eml = "Subject: =?UTF-8?Q?Alta_cliente_FORZA?=\r\nContent-Type: multipart/alternative; boundary=\"b1\"\r\n\r\n--b1\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nhola\r\n--b1\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Direcci=C3=B3n</p>\r\n--b1--\r\n";
