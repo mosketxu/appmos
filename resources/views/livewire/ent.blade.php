@@ -244,6 +244,10 @@
                     <x-jet-input  wire:model.defer="entidad.codigo_empresa_sage" type="text" maxlength="10" id="codigo_empresa_sage" class="w-full"/>
                 </div>
                 <div class="w-full form-item">
+                    <x-jet-label for="contrapartida" title="Contrapartida de SAGE para el Excel de importación de clientes/proveedores. En la ficha de Suma: la de sus clientes (705000). Vacía en el resto, salvo que se indique.">{{ __('Contrapartida') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.contrapartida" type="text" maxlength="12" id="contrapartida" class="w-full"/>
+                </div>
+                <div class="w-full form-item">
                     <x-jet-label for="retencion" title="Porcentaje de retención de sus facturas (7 o 15). Vacío = sin retención. En el Excel de SAGE: 15 → código 18, 7 → código 7.">{{ __('% Retención') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.retencion" type="number" step="any" id="retencion" class="w-full"/>
                     <x-jet-input-error for="retencion" class="mt-2" />
