@@ -254,7 +254,10 @@
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="persona_fj">{{ __('Persona física/jurídica') }}</x-jet-label>
-                    <select wire:model.defer="entidad.persona_fj" id="persona_fj" class="w-full border-gray-300 rounded-md"><option value="J">Jurídica</option><option value="F">Física</option></select>
+                    <x-select wire:model.defer="entidad.persona_fj" class="w-full" selectname="persona_fj">
+                        <option value="J">Jurídica</option>
+                        <option value="F">Física</option>
+                    </x-select>
                 </div>
             </div>
             <div class="flex flex-col mx-2 space-y-4 md:space-y-0 md:flex-row md:space-x-4">
