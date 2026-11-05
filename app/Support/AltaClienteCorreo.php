@@ -143,6 +143,20 @@ class AltaClienteCorreo
                 $campos['localidad'] = $ult;
             }
         }
+        // Sin población: la que ya usan otras entidades con ese mismo CP (la más repetida).
+        if (empty($campos['localidad']) && ! empty($campos['codpostal']) && strlen($campos['codpostal']) === 5) {
+            $cuentas = [];
+            foreach (\App\Models\Entidad::withoutGlobalScopes()->where('codpostal', $campos['codpostal'])->pluck('localidad') as $l) {
+                $l = trim((string) $l);
+                if ($l !== '' && strtoupper($l) !== 'NULL') {
+                    $cuentas[$l] = ($cuentas[$l] ?? 0) + 1;
+                }
+            }
+            if ($cuentas) {
+                arsort($cuentas);
+                $campos['localidad'] = array_key_first($cuentas);
+            }
+        }
 
         // Cobro: transferencia (1) / recibo domiciliado (2); sin decir, transferencia.
         $cobro = self::norm((string) $dame(['cobro', 'forma de pago', 'metodo de pago']));

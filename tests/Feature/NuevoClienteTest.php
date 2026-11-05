@@ -72,6 +72,10 @@ class NuevoClienteTest extends TestCase
         $html = '<table><tr><td>Cliente</td><td>ZURUMANA, S.L.</td></tr><tr><td>NIF</td><td>B-25949769</td></tr><tr><td>CP</td><td>28004 Madrid</td></tr><tr><td>Provincia</td><td>Barcelona</td></tr></table>';
         $i = \App\Support\AltaClienteCorreo::interpretar($html);
         $this->assertSame('28', $i['campos']['provincia_id']);
+        \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'X SL', 'nif' => 'B00000001', 'codpostal' => '08010', 'localidad' => 'Barcelona']);
+        $j = \App\Support\AltaClienteCorreo::interpretar('<table><tr><td>Cliente</td><td>Y SL</td></tr><tr><td>CP</td><td>08010</td></tr></table>');
+        $this->assertSame('Barcelona', $j['campos']['localidad']);
+        $this->assertSame('08', $j['campos']['provincia_id']);
         $this->assertNotEmpty(array_filter($i['avisos'], fn ($a) => str_contains($a, 'provincia')));
     }
 
