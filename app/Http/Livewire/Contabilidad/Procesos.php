@@ -425,6 +425,15 @@ class Procesos extends Component
                 'timeout' => 1500,
                 'ayuda' => 'Pasa los settlement de Adyen a Bat MM DD importe N.xlsx y los añade a Totals Batch Adyen.xlsx.',
             ],
+            // 2026-11-06: abonos de American Express -> asiento de cada abono del mes (Amex/PLAN.md). Lee los DDMM Amex.xlsx de la carpeta del mes.
+            'amex' => [
+                'label' => 'Amex',
+                'script' => 'Amex/amex.py',
+                'python' => true,
+                'soportaReal' => true,
+                'timeout' => 300,
+                'ayuda' => 'Prepara el asiento de cada abono de Amex del mes (5720001 / 6260003 / 44000102-103-106) a partir de los DDMM Amex.xlsx de la carpeta del mes.',
+            ],
             // 2026-10-27: Recargas de Ticket Restaurant (Edenred) desde la Imputación de costes. Excel por COM; trabajadores nuevos desde el Outlook de Alex.
             'edenred' => [
                 'label' => 'EDENRED',
