@@ -70,7 +70,7 @@
                         @if($pu->observaciones)
                             <div class="min-w-0">
                                 <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Observaciones') }}</span>
-                                <span class="block text-gray-700 pu-valor">{{ $pu->observaciones }}</span>
+                                <span class="block text-gray-700 pu-valor" style="white-space:pre-line">{{ $pu->observaciones }}</span>
                             </div>
                         @endif
                     </div>
@@ -188,7 +188,7 @@
                     </x-input.group>
 
                     <x-input.group for="observaciones" label="observaciones" :error="$errors->first('editing.observaciones')">
-                        <x-input.text wire:model="editing.observaciones" id="observaciones" />
+                        <textarea wire:model="editing.observaciones" id="observaciones" rows="3" class="block w-full border border-gray-300 rounded-md form-textarea sm:text-sm sm:leading-5" style="resize:vertical; min-height:4.5rem"></textarea>
                     </x-input.group>
 
                 </x-slot>
