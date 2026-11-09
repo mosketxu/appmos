@@ -390,13 +390,15 @@
                             </span>
                         </div>
                         <table class="focr-tabla">
+                            @php $conCanal = $analitica || collect($validadas)->contains(fn ($v) => trim((string) ($v['datos']['canal'] ?? '')) !== ''); @endphp
                             @php $idsValidadas = collect($validadas)->where('estado', 'validada')->pluck('id')->values()->all(); @endphp
                             <thead><tr>
                                 <th style="width:1.4rem"><input type="checkbox" title="Marcar / desmarcar todas las validadas de la lista"
                                     x-data x-on:click.stop x-on:change="$wire.set('marcadasValidadas', $event.target.checked ? @js($idsValidadas) : [])"
                                     @checked(count($idsValidadas) > 0 && count(array_intersect($idsValidadas, $marcadasValidadas)) === count($idsValidadas))></th>
                                 <th>Proveedor</th><th>Factura<div class="focr-sub">Nº · F. fact. · F. reg.</div></th>
-                                <th>Contabilidad<div class="focr-sub">Contrap. · C.trans · Clave · Canal</div></th>
+                                <th>Contabilidad<div class="focr-sub">Contrap. · C.trans · Clave</div></th>
+                                @if ($conCanal)<th>Canal</th>@endif
                                 <th style="text-align:right">Importes<div class="focr-sub">Base · %IVA · IVA</div></th><th style="text-align:right">Total</th>
                                 <th>Excel</th><th>Fichero</th><th>Validada</th>
                             </tr></thead>
@@ -425,11 +427,15 @@
                                         <td x-data x-on:click.stop style="white-space:nowrap">
                                             <input type="text" wire:model="editForm.contrapartida" class="focr-in" style="width:6rem;display:block" inputmode="numeric" title="Contrapartida" wire:keydown.enter="guardarEdicionValidada">
                                             <input type="text" wire:model="editForm.codigo_transaccion" class="focr-in" style="width:3.5rem;display:block" inputmode="numeric" title="C. trans." wire:keydown.enter="guardarEdicionValidada">
-                                            <input type="text" wire:model="editForm.clave_operacion" class="focr-in" style="width:3.5rem;display:block" title="Clave" wire:keydown.enter="guardarEdicionValidada">
-                                            <input type="text" wire:model="editForm.canal" class="focr-in" style="width:3.5rem;display:block" inputmode="numeric" title="Canal" wire:keydown.enter="guardarEdicionValidada"></td>
+                                            <input type="text" wire:model="editForm.clave_operacion" class="focr-in" style="width:3.5rem;display:block" title="Clave" wire:keydown.enter="guardarEdicionValidada"></td>
+                                        @if ($conCanal)
+                                            <td x-data x-on:click.stop><input type="text" wire:model="editForm.canal" list="focr-canales" class="focr-in" style="width:4rem" inputmode="numeric" title="Canal (analítica)" wire:keydown.enter="guardarEdicionValidada">
+                                                <datalist id="focr-canales">@foreach ($this->canalesCliente() as $cn)<option value="{{ $cn }}">@endforeach</datalist></td>
+                                        @endif
                                     @else
                                         <td style="white-space:nowrap"><div>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
-                                        <td style="white-space:nowrap"><div>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción">{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación">{{ $d['clave_operacion'] ?? '' }}&nbsp;</div><div title="Canal">{{ $d['canal'] ?? '' }}&nbsp;</div></td>
+                                        <td style="white-space:nowrap"><div>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción">{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación">{{ $d['clave_operacion'] ?? '' }}&nbsp;</div></td>
+                                        @if ($conCanal)<td style="text-align:center" title="Canal (analítica)">{{ $d['canal'] ?? '' }}</td>@endif
                                     @endif
                                     <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div>{{ $eur($im['base']) }}</div><div>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</div><div>{{ $eur($im['iva']) }}</div></td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
@@ -448,7 +454,7 @@
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="9" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso || $filtroDesde || $filtroHasta ? ' con ese filtro' : '').'.' }}</td></tr>
+                                <tr><td colspan="10" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso || $filtroDesde || $filtroHasta ? ' con ese filtro' : '').'.' }}</td></tr>
                             @endforelse
                             </tbody>
                         </table>
