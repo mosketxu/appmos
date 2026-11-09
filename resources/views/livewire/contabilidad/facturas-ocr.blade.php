@@ -739,9 +739,9 @@
                         <div style="grid-column:1 / -1; display:flex; gap:.45rem; align-items:flex-end">
                             <div style="flex:0 0 4.2rem"><label class="focr-lbl" title="Clave de operación (M)">Clave Ope</label><input type="text" wire:model.blur="form.clave_operacion" maxlength="2" class="focr-in" style="text-align:center" placeholder="—"></div>
                             <div style="flex:0 0 4.2rem"><label class="focr-lbl" title="Código de transacción">Cod.Trans</label><input type="text" wire:model.blur="form.codigo_transaccion" maxlength="2" class="focr-in" style="text-align:center"></div>
-                            <div style="flex:0 0 auto; min-width:0; max-width:100%">
+                            <div style="flex:1 1 0; min-width:6rem">
                                 <label class="focr-lbl">Contrapartida</label>
-                                <div class="focr-busc" wire:ignore wire:key="bcontrapartida-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)" :style="{ width: ancho }">
+                                <div class="focr-busc" wire:ignore wire:key="bcontrapartida-{{ $actual['id'] }}" x-data="buscador('cuentas', 'contrapartida', false)" style="width:100%">
                                     <input type="text" x-ref="q" class="focr-in {{ ($form['contrapartida'] ?? '') === '' ? 'falta' : '' }}" style="padding-right:1.4rem" x-model="q" placeholder="cuenta / nombre"
                                            x-on:focus="$el.select(); abrir()" x-on:click="abrir()" x-on:input="abrir()" x-on:keydown.down.prevent="mover(1)" x-on:keydown.up.prevent="mover(-1)"
                                            x-on:keydown.enter.prevent="intro()" x-on:keydown.escape.stop="cerrar()" x-on:blur="salir()">
