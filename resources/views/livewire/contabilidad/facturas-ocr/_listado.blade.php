@@ -292,9 +292,9 @@
                         @endif
                         <table class="focr-tabla">
                             <thead><tr>
-                                <th></th><th>Fichero</th><th>Proveedor</th><th>Factura<div class="focr-sub">Nº · F. fact. · F. reg.</div></th>
-                                <th>Contabilidad<div class="focr-sub">Contrap. · C.trans · Clave</div></th>
-                                <th style="text-align:right">Importes<div class="focr-sub">Base · %IVA · IVA</div></th>
+                                <th></th><th>Fichero</th><th>Proveedor</th><th>Factura</th>
+                                <th>Contabilidad</th>
+                                <th style="text-align:right">Importes</th>
                                 <th style="text-align:right">Total</th><th>Lectura</th><th>Avisos</th>
                             </tr></thead>
                             <tbody>
@@ -313,9 +313,9 @@
                                         @if (! empty($f['editada'])) <span class="focr-chip c-gris" title="Tocada a mano el {{ $f['editada'] }}; se guarda sola">✎ a medias</span> @endif</td>
                                     @php $im = $importes($d); $provTxt = trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')); @endphp
                                     <td><div class="focr-cut" style="max-width:13rem" title="{{ $provTxt }}">{{ $provTxt }}</div> @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
-                                    <td style="white-space:nowrap"><div>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
-                                    <td style="white-space:nowrap"><div>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción">{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación">{{ $d['clave_operacion'] ?? '' }}&nbsp;</div></td>
-                                    <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div>{{ $eur($im['base']) }}</div><div>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</div><div>{{ $eur($im['iva']) }}</div></td>
+                                    <td style="white-space:nowrap"><div><span class="focr-sub" style="margin-right:.3rem">Nº</span>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div><span class="focr-sub" style="margin-right:.3rem">Fact.</span>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div><span class="focr-sub" style="margin-right:.3rem">Reg.</span>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
+                                    <td style="white-space:nowrap"><div><span class="focr-sub" style="margin-right:.3rem">Contrap.</span>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción"><span class="focr-sub" style="margin-right:.3rem">C.trans</span>{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación"><span class="focr-sub" style="margin-right:.3rem">Clave</span>{{ $d['clave_operacion'] ?? '' }}&nbsp;</div></td>
+                                    <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">Base</span><span>{{ $eur($im['base']) }}</span></div><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">IVA %</span><span>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</span></div><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">IVA</span><span>{{ $eur($im['iva']) }}</span></div></td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
                                     <td style="width:4.2rem">
                                         @foreach (($f['confianza'] ?? []) as $k => $v)
@@ -396,10 +396,10 @@
                                 <th style="width:1.4rem"><input type="checkbox" title="Marcar / desmarcar todas las validadas de la lista"
                                     x-data x-on:click.stop x-on:change="$wire.set('marcadasValidadas', $event.target.checked ? @js($idsValidadas) : [])"
                                     @checked(count($idsValidadas) > 0 && count(array_intersect($idsValidadas, $marcadasValidadas)) === count($idsValidadas))></th>
-                                <th>Proveedor</th><th>Factura<div class="focr-sub">Nº · F. fact. · F. reg.</div></th>
-                                <th>Contabilidad<div class="focr-sub">Contrap. · C.trans · Clave</div></th>
+                                <th>Proveedor</th><th>Factura</th>
+                                <th>Contabilidad</th>
                                 @if ($conCanal)<th>Canal</th>@endif
-                                <th style="text-align:right">Importes<div class="focr-sub">Base · %IVA · IVA</div></th><th style="text-align:right">Total</th>
+                                <th style="text-align:right">Importes</th><th style="text-align:right">Total</th>
                                 <th>Excel</th><th>Fichero</th><th>Validada</th>
                             </tr></thead>
                             <tbody>
@@ -421,23 +421,23 @@
                                     <td><div class="focr-cut" style="max-width:13rem" title="{{ $provTxt }}">{{ $provTxt }}</div> @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
                                     @if ($edit)
                                         <td x-data x-on:click.stop style="white-space:nowrap">
-                                            <input type="text" wire:model="editForm.su_factura" class="focr-in" style="width:8rem;display:block" placeholder="Nº" wire:keydown.enter="guardarEdicionValidada">
-                                            <input type="date" wire:model="editForm.fecha_expedicion" class="focr-in" style="width:8.5rem;display:block" title="F. factura" wire:keydown.enter="guardarEdicionValidada">
-                                            <input type="date" wire:model="editForm.fecha_registro" class="focr-in" style="width:8.5rem;display:block" title="F. registro" wire:keydown.enter="guardarEdicionValidada"></td>
+                                            <label style="display:flex;align-items:center;gap:.3rem"><span class="focr-sub" style="margin-right:.3rem">Nº</span><input type="text" wire:model="editForm.su_factura" class="focr-in" style="width:8rem;display:block" placeholder="Nº" wire:keydown.enter="guardarEdicionValidada"></label>
+                                            <label style="display:flex;align-items:center;gap:.3rem"><span class="focr-sub" style="margin-right:.3rem">Fact.</span><input type="date" wire:model="editForm.fecha_expedicion" class="focr-in" style="width:8.5rem;display:block" title="F. factura" wire:keydown.enter="guardarEdicionValidada"></label>
+                                            <label style="display:flex;align-items:center;gap:.3rem"><span class="focr-sub" style="margin-right:.3rem">Reg.</span><input type="date" wire:model="editForm.fecha_registro" class="focr-in" style="width:8.5rem;display:block" title="F. registro" wire:keydown.enter="guardarEdicionValidada"></label></td>
                                         <td x-data x-on:click.stop style="white-space:nowrap">
-                                            <input type="text" wire:model="editForm.contrapartida" class="focr-in" style="width:6rem;display:block" inputmode="numeric" title="Contrapartida" wire:keydown.enter="guardarEdicionValidada">
-                                            <input type="text" wire:model="editForm.codigo_transaccion" class="focr-in" style="width:3.5rem;display:block" inputmode="numeric" title="C. trans." wire:keydown.enter="guardarEdicionValidada">
-                                            <input type="text" wire:model="editForm.clave_operacion" class="focr-in" style="width:3.5rem;display:block" title="Clave" wire:keydown.enter="guardarEdicionValidada"></td>
+                                            <label style="display:flex;align-items:center;gap:.3rem"><span class="focr-sub" style="margin-right:.3rem">Contrap.</span><input type="text" wire:model="editForm.contrapartida" class="focr-in" style="width:6rem;display:block" inputmode="numeric" title="Contrapartida" wire:keydown.enter="guardarEdicionValidada"></label>
+                                            <label style="display:flex;align-items:center;gap:.3rem"><span class="focr-sub" style="margin-right:.3rem">C.trans</span><input type="text" wire:model="editForm.codigo_transaccion" class="focr-in" style="width:3.5rem;display:block" inputmode="numeric" title="C. trans." wire:keydown.enter="guardarEdicionValidada"></label>
+                                            <label style="display:flex;align-items:center;gap:.3rem"><span class="focr-sub" style="margin-right:.3rem">Clave</span><input type="text" wire:model="editForm.clave_operacion" class="focr-in" style="width:3.5rem;display:block" title="Clave" wire:keydown.enter="guardarEdicionValidada"></label></td>
                                         @if ($conCanal)
                                             <td x-data x-on:click.stop><input type="text" wire:model="editForm.canal" list="focr-canales" class="focr-in" style="width:4rem" inputmode="numeric" title="Canal (analítica)" wire:keydown.enter="guardarEdicionValidada">
                                                 <datalist id="focr-canales">@foreach ($this->canalesCliente() as $cn)<option value="{{ $cn }}">@endforeach</datalist></td>
                                         @endif
                                     @else
-                                        <td style="white-space:nowrap"><div>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
-                                        <td style="white-space:nowrap"><div>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción">{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación">{{ $d['clave_operacion'] ?? '' }}&nbsp;</div></td>
+                                        <td style="white-space:nowrap"><div><span class="focr-sub" style="margin-right:.3rem">Nº</span>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div><span class="focr-sub" style="margin-right:.3rem">Fact.</span>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div><span class="focr-sub" style="margin-right:.3rem">Reg.</span>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
+                                        <td style="white-space:nowrap"><div><span class="focr-sub" style="margin-right:.3rem">Contrap.</span>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción"><span class="focr-sub" style="margin-right:.3rem">C.trans</span>{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación"><span class="focr-sub" style="margin-right:.3rem">Clave</span>{{ $d['clave_operacion'] ?? '' }}&nbsp;</div></td>
                                         @if ($conCanal)<td style="text-align:center" title="Canal (analítica)">{{ $d['canal'] ?? '' }}</td>@endif
                                     @endif
-                                    <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div>{{ $eur($im['base']) }}</div><div>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</div><div>{{ $eur($im['iva']) }}</div></td>
+                                    <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">Base</span><span>{{ $eur($im['base']) }}</span></div><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">IVA %</span><span>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</span></div><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">IVA</span><span>{{ $eur($im['iva']) }}</span></div></td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
                                     <td class="text-xs" style="white-space:nowrap">
                                         @if (str_starts_with($f['excel'] ?? '', 'Guardados/'))
