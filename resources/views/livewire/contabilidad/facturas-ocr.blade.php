@@ -51,6 +51,8 @@
         /* Fila de botones/filtros de cada pestaña del listado: se queda arriba al desplazarse (la caja de la lista tiene su propio scroll) */
         .focr-barra-fija { position:sticky; top:0; z-index:6; background:#fff; }
         .focr-card .focr-tabla th { top:var(--focr-barra, 0px); }   /* la cabecera de la tabla se pega justo debajo de la barra fija (altura medida abajo) */
+        .focr-cut { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .focr-sub { font-weight:400; font-size:.65rem; color:#9ca3af; white-space:nowrap; }
         .focr-tabla td { padding:.35rem .5rem; border-bottom:1px solid #f3f4f6; vertical-align:top; }
         .focr-tabla tr.clic:hover td { background:#eef2ff; cursor:pointer; }
         .focr-chip { display:inline-block; padding:0 .4rem; border-radius:9999px; font-size:.7rem; font-weight:600; line-height:1.3rem; }

@@ -291,8 +291,9 @@
                         @endif
                         <table class="focr-tabla">
                             <thead><tr>
-                                <th></th><th>Fichero</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>F. registro</th>
-                                <th>Contrap.</th><th title="Código de transacción">C. trans.</th><th title="Clave de operación">Clave</th><th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th>
+                                <th></th><th>Fichero</th><th>Proveedor</th><th>Factura<div class="focr-sub">Nº · F. fact. · F. reg.</div></th>
+                                <th>Contabilidad<div class="focr-sub">Contrap. · C.trans · Clave</div></th>
+                                <th style="text-align:right">Importes<div class="focr-sub">Base · %IVA · IVA</div></th>
                                 <th style="text-align:right">Total</th><th>Lectura</th><th>Avisos</th>
                             </tr></thead>
                             <tbody>
@@ -306,22 +307,16 @@
                                                     class="focr-btn b-verde" style="padding:.05rem .4rem; font-size:.75rem" title="Validarla tal como está, sin abrirla (si no cuadra o es duplicada, no lo hace y te lo dice)">✅</button>
                                         @endif
                                     </td>
-                                    <td style="max-width:260px; word-break:break-all">{{ basename($f['ruta']) }} @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
+                                    <td><div class="focr-cut" style="max-width:14rem" title="{{ basename($f['ruta']) }}">{{ basename($f['ruta']) }}</div> @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
                                         @if (collect($f['avisos'] ?? [])->contains(fn ($a) => str_starts_with($a, 'DUPLICADA'))) <span class="focr-chip c-falta">DUPLICADA</span> @endif
                                         @if (! empty($f['editada'])) <span class="focr-chip c-gris" title="Tocada a mano el {{ $f['editada'] }}; se guarda sola">✎ a medias</span> @endif</td>
-                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }} @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
-                                    <td>{{ $d['su_factura'] ?? '' }}</td>
-                                    <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
-                                    <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
-                                    @php $im = $importes($d); @endphp
-                                    <td>{{ $d['contrapartida'] ?? '' }}</td>
-                                    <td style="text-align:center">{{ $d['codigo_transaccion'] ?? '' }}</td>
-                                    <td style="text-align:center">{{ $d['clave_operacion'] ?? '' }}</td>
-                                    <td style="text-align:right">{{ $eur($im['base']) }}</td>
-                                    <td style="text-align:right" title="{{ $im['detalle'] }}">{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']) !!}</td>
-                                    <td style="text-align:right">{{ $eur($im['iva']) }}</td>
+                                    @php $im = $importes($d); $provTxt = trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')); @endphp
+                                    <td><div class="focr-cut" style="max-width:13rem" title="{{ $provTxt }}">{{ $provTxt }}</div> @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
+                                    <td style="white-space:nowrap"><div>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
+                                    <td style="white-space:nowrap"><div>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción">{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación">{{ $d['clave_operacion'] ?? '' }}&nbsp;</div></td>
+                                    <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div>{{ $eur($im['base']) }}</div><div>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</div><div>{{ $eur($im['iva']) }}</div></td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
-                                    <td style="white-space:nowrap">
+                                    <td style="width:4.2rem">
                                         @foreach (($f['confianza'] ?? []) as $k => $v)
                                             <span class="focr-chip {{ $chip($v) }}" title="{{ $k }}: {{ $v }}">{{ ['proveedor' => 'P', 'su_factura' => 'Nº', 'fecha' => 'F', 'importes' => '€'][$k] ?? $k }}</span>
                                         @endforeach
@@ -337,7 +332,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="15" class="p-4 text-center text-gray-500">No hay facturas por revisar. Elige la carpeta y pulsa «Leer las facturas».</td></tr>
+                                <tr><td colspan="9" class="p-4 text-center text-gray-500">No hay facturas por revisar. Elige la carpeta y pulsa «Leer las facturas».</td></tr>
                             @endforelse
                             </tbody>
                         </table>
