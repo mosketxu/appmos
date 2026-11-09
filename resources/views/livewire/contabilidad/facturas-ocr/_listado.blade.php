@@ -243,13 +243,14 @@
                             @foreach ($duplicadas as $f)
                                 @php $d = $f['datos'] ?? []; @endphp
                                 <tr wire:key="d-{{ $f['id'] }}">
-                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }} @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
+                                    @php $provTxt = trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')); @endphp
+                                    <td><div class="focr-cut" style="max-width:14rem" title="{{ $provTxt }}">{{ $provTxt }}</div> @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
                                     <td>{{ $d['su_factura'] ?? '' }}</td>
                                     <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
                                     <td class="text-xs">{{ $f['motivo_rechazo'] ?? '' }} {{ collect($f['avisos'] ?? [])->filter(fn ($a) => str_starts_with($a, 'DUPLICADA'))->implode(' · ') }}</td>
-                                    <td class="text-xs" style="max-width:260px; word-break:break-all">
-                                        <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline" title="{{ $f['ruta'] }}">{{ basename($f['ruta']) }}</a>
+                                    <td class="text-xs"><div class="focr-cut" style="max-width:16rem">
+                                        <a href="{{ route('contabilidad.facturas-ocr.pdf', [$cliente, $f['id']]) }}" target="_blank" class="text-indigo-600 underline" title="{{ basename($f['ruta']) }}">{{ basename($f['ruta']) }}</a></div>
                                     </td>
                                     <td class="text-xs">{{ $f['duplicada_el'] ?? '' }}</td>
                                     <td><button type="button" wire:click="reabrir('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.15rem .5rem; font-size:.72rem" title="Vuelve a la carpeta de la que se leyó y a pendientes">↺ No es duplicada</button>
@@ -394,8 +395,9 @@
                                 <th style="width:1.4rem"><input type="checkbox" title="Marcar / desmarcar todas las validadas de la lista"
                                     x-data x-on:click.stop x-on:change="$wire.set('marcadasValidadas', $event.target.checked ? @js($idsValidadas) : [])"
                                     @checked(count($idsValidadas) > 0 && count(array_intersect($idsValidadas, $marcadasValidadas)) === count($idsValidadas))></th>
-                                <th>F. registro</th><th>Proveedor</th><th>Nº factura</th><th>F. factura</th><th>Contrap.</th><th title="Código de transacción">C. trans.</th><th title="Clave de operación">Clave</th><th title="Código de canal">Canal</th>
-                                <th style="text-align:right">Base</th><th style="text-align:right">% IVA</th><th style="text-align:right">IVA</th><th style="text-align:right">Total</th>
+                                <th>Proveedor</th><th>Factura<div class="focr-sub">Nº · F. fact. · F. reg.</div></th>
+                                <th>Contabilidad<div class="focr-sub">Contrap. · C.trans · Clave · Canal</div></th>
+                                <th style="text-align:right">Importes<div class="focr-sub">Base · %IVA · IVA</div></th><th style="text-align:right">Total</th>
                                 <th>Excel</th><th>Fichero</th><th>Validada</th>
                             </tr></thead>
                             <tbody>
@@ -413,30 +415,23 @@
                                             <button type="button" wire:click="editarValidada('{{ $f['id'] }}')" class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.72rem" title="Corregir fechas, nº, contrapartida, códigos o canal aquí mismo; se actualiza también su fila del Excel para SAGE">✎</button>
                                         @endif
                                     @endif</td>
+                                    @php $im = $importes($d); $provTxt = trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')); @endphp
+                                    <td><div class="focr-cut" style="max-width:13rem" title="{{ $provTxt }}">{{ $provTxt }}</div> @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
                                     @if ($edit)
-                                        <td x-data x-on:click.stop><input type="date" wire:model="editForm.fecha_registro" class="focr-in" style="width:8.5rem" wire:keydown.enter="guardarEdicionValidada"></td>
-                                        <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }}</td>
-                                        <td x-data x-on:click.stop><input type="text" wire:model="editForm.su_factura" class="focr-in" style="width:8rem" wire:keydown.enter="guardarEdicionValidada"></td>
-                                        <td x-data x-on:click.stop><input type="date" wire:model="editForm.fecha_expedicion" class="focr-in" style="width:8.5rem" wire:keydown.enter="guardarEdicionValidada"></td>
-                                        @php $im = $importes($d); @endphp
-                                        <td x-data x-on:click.stop><input type="text" wire:model="editForm.contrapartida" class="focr-in" style="width:6rem" inputmode="numeric" wire:keydown.enter="guardarEdicionValidada"></td>
-                                        <td x-data x-on:click.stop><input type="text" wire:model="editForm.codigo_transaccion" class="focr-in" style="width:3.5rem" inputmode="numeric" wire:keydown.enter="guardarEdicionValidada"></td>
-                                        <td x-data x-on:click.stop><input type="text" wire:model="editForm.clave_operacion" class="focr-in" style="width:3rem" wire:keydown.enter="guardarEdicionValidada"></td>
-                                        <td x-data x-on:click.stop><input type="text" wire:model="editForm.canal" class="focr-in" style="width:3rem" inputmode="numeric" wire:keydown.enter="guardarEdicionValidada"></td>
+                                        <td x-data x-on:click.stop style="white-space:nowrap">
+                                            <input type="text" wire:model="editForm.su_factura" class="focr-in" style="width:8rem;display:block" placeholder="Nº" wire:keydown.enter="guardarEdicionValidada">
+                                            <input type="date" wire:model="editForm.fecha_expedicion" class="focr-in" style="width:8.5rem;display:block" title="F. factura" wire:keydown.enter="guardarEdicionValidada">
+                                            <input type="date" wire:model="editForm.fecha_registro" class="focr-in" style="width:8.5rem;display:block" title="F. registro" wire:keydown.enter="guardarEdicionValidada"></td>
+                                        <td x-data x-on:click.stop style="white-space:nowrap">
+                                            <input type="text" wire:model="editForm.contrapartida" class="focr-in" style="width:6rem;display:block" inputmode="numeric" title="Contrapartida" wire:keydown.enter="guardarEdicionValidada">
+                                            <input type="text" wire:model="editForm.codigo_transaccion" class="focr-in" style="width:3.5rem;display:block" inputmode="numeric" title="C. trans." wire:keydown.enter="guardarEdicionValidada">
+                                            <input type="text" wire:model="editForm.clave_operacion" class="focr-in" style="width:3.5rem;display:block" title="Clave" wire:keydown.enter="guardarEdicionValidada">
+                                            <input type="text" wire:model="editForm.canal" class="focr-in" style="width:3.5rem;display:block" inputmode="numeric" title="Canal" wire:keydown.enter="guardarEdicionValidada"></td>
                                     @else
-                                    <td>{{ $fmt($d['fecha_registro'] ?? '') }}</td>
-                                    <td>{{ $d['cuenta'] ?? '' }} {{ $d['proveedor'] ?? '' }} @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
-                                    <td>{{ $d['su_factura'] ?? '' }}</td>
-                                    <td>{{ $fmt($d['fecha_expedicion'] ?? '') }}</td>
-                                    @php $im = $importes($d); @endphp
-                                    <td>{{ $d['contrapartida'] ?? '' }}</td>
-                                    <td style="text-align:center">{{ $d['codigo_transaccion'] ?? '' }}</td>
-                                    <td style="text-align:center">{{ $d['clave_operacion'] ?? '' }}</td>
-                                    <td style="text-align:center">{{ $d['canal'] ?? '' }}</td>
+                                        <td style="white-space:nowrap"><div>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
+                                        <td style="white-space:nowrap"><div>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción">{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación">{{ $d['clave_operacion'] ?? '' }}&nbsp;</div><div title="Canal">{{ $d['canal'] ?? '' }}&nbsp;</div></td>
                                     @endif
-                                    <td style="text-align:right">{{ $eur($im['base']) }}</td>
-                                    <td style="text-align:right" title="{{ $im['detalle'] }}">{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']) !!}</td>
-                                    <td style="text-align:right">{{ $eur($im['iva']) }}</td>
+                                    <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div>{{ $eur($im['base']) }}</div><div>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</div><div>{{ $eur($im['iva']) }}</div></td>
                                     <td style="text-align:right">{{ $eur($d['total'] ?? null) }}</td>
                                     <td class="text-xs" style="white-space:nowrap">
                                         @if (str_starts_with($f['excel'] ?? '', 'Guardados/'))
@@ -453,7 +448,7 @@
                                         @if (! empty($f['automatica'])) <span class="focr-chip c-ok" title="Validada sola: el proveedor se validó 3 veces seguidas sin tocar nada">auto</span> @endif</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="16" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso || $filtroDesde || $filtroHasta ? ' con ese filtro' : '').'.' }}</td></tr>
+                                <tr><td colspan="9" class="p-4 text-center text-gray-500">@if ($filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' && array_sum($procesos))<button type="button" wire:click="$set('filtroProceso', 'todas')" class="mr-2 text-indigo-600 underline">Ver las {{ array_sum($procesos) }} ya guardadas (con su fecha)</button>@endif{{ $filtroProceso === '' && ! $filtro && ! $filtroMes && $filtroDesde === '' && $filtroHasta === '' ? 'Nada validado en este proceso todavía.' : 'Ninguna factura validada'.($filtro || $filtroMes || $filtroProceso || $filtroDesde || $filtroHasta ? ' con ese filtro' : '').'.' }}</td></tr>
                             @endforelse
                             </tbody>
                         </table>
