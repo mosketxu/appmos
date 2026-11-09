@@ -514,13 +514,12 @@
                         <span wire:loading.remove wire:target="reproponer">↻ Volver a proponer</span>
                         <span wire:loading wire:target="reproponer">Proponiendo…</span>
                     </button>
-                    @if (collect($actual['avisos'] ?? [])->contains(fn ($a) => str_contains($a, 'usa «Separar»')))
-                        <button type="button" wire:click="separar" wire:loading.attr="disabled" class="focr-btn" style="background:#d97706; color:#fff; padding:.2rem .6rem"
-                                title="Parte este PDF en uno por factura y deja el original en la subcarpeta Separadas">
-                            <span wire:loading.remove wire:target="separar">✂️ Separar</span>
-                            <span wire:loading wire:target="separar">Separando…</span>
-                        </button>
-                    @endif
+                    @php($variasFacturas = collect($actual['avisos'] ?? [])->contains(fn ($a) => str_contains($a, 'usa «Separar»')))
+                    <button type="button" wire:click="separar" wire:loading.attr="disabled" class="focr-btn {{ $variasFacturas ? '' : 'b-gris' }}" style="{{ $variasFacturas ? 'background:#d97706; color:#fff; ' : '' }}padding:.2rem .6rem"
+                            title="Parte este PDF en uno por factura (si lleva varias) y deja el original en la subcarpeta Separadas">
+                        <span wire:loading.remove wire:target="separar">✂️ Separar</span>
+                        <span wire:loading wire:target="separar">Separando…</span>
+                    </button>
                     <button @disabled($lecturaDesde) type="button" wire:click="releerOcr" wire:loading.attr="disabled" class="focr-btn b-gris" style="padding:.2rem .6rem"
                             title="Vuelve a leer el PDF con el OCR de Windows (para escaneados o mal leídos; tarda unos segundos)">
                         <span wire:loading.remove wire:target="releerOcr">🔍 Leer con OCR</span>
