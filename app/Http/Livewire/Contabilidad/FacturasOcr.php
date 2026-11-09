@@ -72,6 +72,7 @@ class FacturasOcr extends Component
     // Pestaña Proveedores: buscar y editar lo contable de cada proveedor (va a patrones.json)
     public string $filtroProv = '';
     public string $provSel = '';
+    public string $provCuentaNueva = '';
     public array $provOriginal = [];
     public string $provAviso = '';
     public array $provForm = [];
@@ -2369,8 +2370,45 @@ class FacturasOcr extends Component
         }, 'Proveedores_'.$this->cliente.'_'.date('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    /** Elimina un proveedor nuevo de aquí (no el de SAGE: ese se cambia en SAGE y se sube el listado). */
+    public function eliminarProveedor(): void
+    {
+        $this->accionProveedor(['eliminar' => true], 'Eliminar proveedor');
+    }
+
+    /** Cambia el nº de cuenta de un proveedor nuevo de aquí. */
+    public function cambiarCuentaProveedor(): void
+    {
+        $nueva = trim($this->provCuentaNueva);
+        if (! ctype_digit($nueva) || strlen($nueva) < 3) {
+            $this->addError('proveedor', 'La cuenta nueva son solo números.');
+            return;
+        }
+        $this->accionProveedor(['cuenta_nueva' => $nueva], 'Cambiar cuenta de proveedor');
+    }
+
+    protected function accionProveedor(array $datos, string $titulo): void
+    {
+        $this->resetErrorBag('proveedor');
+        if ($this->provSel === '') {
+            return;
+        }
+        $tmp = tempnam(sys_get_temp_dir(), 'focr-prov-');
+        file_put_contents($tmp, json_encode($datos, JSON_UNESCAPED_UNICODE));
+        $this->salida = '';
+        $ok = $this->ejecutar(['proveedor', $this->provSel, '--datos', $tmp], 300, $titulo);
+        @unlink($tmp);
+        if ($ok) {
+            $this->cerrarProveedor();
+            $this->dispatch('focr-listas');
+        } else {
+            $this->addError('proveedor', trim($this->salida));
+        }
+    }
+
     public function cerrarProveedor(): void
     {
+        $this->provCuentaNueva = '';
         $this->provSel = '';
         $this->provForm = [];
         $this->provAviso = '';

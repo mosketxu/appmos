@@ -201,6 +201,17 @@
                                     </button>
                                     <button type="button" wire:click="cerrarProveedor" class="focr-btn b-gris">Cancelar</button>
                                 </div>
+                                @if ($esNuevoProv)
+                                    <div class="flex flex-wrap gap-2 items-end" style="margin-top:.5rem; padding-top:.5rem; border-top:1px dashed #c7d2fe">
+                                        <label class="text-xs">Nº de cuenta nuevo<br><input type="text" wire:model="provCuentaNueva" class="focr-in" style="width:110px" inputmode="numeric" placeholder="{{ $provSel }}"></label>
+                                        <button type="button" wire:click="cambiarCuentaProveedor" wire:loading.attr="disabled" class="focr-btn b-gris"
+                                                title="Cambia el número de cuenta de este proveedor (solo de los nuevos de aquí; los pendientes sin validar pasan a la cuenta nueva)">🔢 Cambiar nº de cuenta</button>
+                                        <button type="button" wire:click="eliminarProveedor" wire:confirm="¿Eliminar el proveedor {{ $provSel }}? Las facturas pendientes se vuelven a proponer sin él." wire:loading.attr="disabled" class="focr-btn b-rojo" style="color:#b91c1c"
+                                                title="Lo quita de esta lista (no toca SAGE ni las facturas ya validadas)">🗑 Eliminar</button>
+                                    </div>
+                                @else
+                                    <div class="text-xs text-gray-500" style="margin-top:.35rem">Viene del listado de SAGE: para eliminarlo o cambiarle la cuenta, hazlo en SAGE y sube el listado de proveedores.</div>
+                                @endif
                                 <datalist id="focr-cuentas-prov">
                                     @foreach ($nombresCuentas as $c => $n) <option value="{{ $c }}">{{ $n }}</option> @endforeach
                                 </datalist>
