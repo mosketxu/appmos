@@ -514,7 +514,7 @@
                         <span wire:loading.remove wire:target="reproponer">↻ Volver a proponer</span>
                         <span wire:loading wire:target="reproponer">Proponiendo…</span>
                     </button>
-                    @php($variasFacturas = collect($actual['avisos'] ?? [])->contains(fn ($a) => str_contains($a, 'usa «Separar»')))
+                    @php $variasFacturas = collect($actual['avisos'] ?? [])->contains(fn ($a) => str_contains($a, 'usa «Separar»')); @endphp
                     <button type="button" wire:click="separar" wire:loading.attr="disabled" class="focr-btn {{ $variasFacturas ? '' : 'b-gris' }}" style="{{ $variasFacturas ? 'background:#d97706; color:#fff; ' : '' }}padding:.2rem .6rem"
                             title="Parte este PDF en uno por factura (si lleva varias) y deja el original en la subcarpeta Separadas">
                         <span wire:loading.remove wire:target="separar">✂️ Separar</span>
