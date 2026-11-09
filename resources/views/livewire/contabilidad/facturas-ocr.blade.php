@@ -84,6 +84,7 @@
         .focr-imp .focr-in { text-align:right; }
         .focr-nocuadra { margin-bottom:.45rem; padding:.45rem .6rem; border:3px solid #dc2626; border-radius:.4rem; background:#fee2e2; color:#7f1d1d; font-weight:700; font-size:.8rem; line-height:1.35; animation:focr-parpadeo 1s ease-in-out 3; }
         @keyframes focr-parpadeo { 50% { background:#fca5a5; } }
+        @keyframes focr-paginas { 50% { background:#fef08a; color:#713f12; } }
         .focr-in.mal { border:2px solid #dc2626 !important; background:#fee2e2 !important; }
         .focr-busc { position:relative; }
         .focr-flecha { position:absolute; right:.3rem; top:.35rem; color:#6b7280; font-size:.8rem; }
@@ -282,13 +283,13 @@
         window.visorPdf = function (url, miniatura, siguiente) {
             let pdf = null;   // fuera del objeto de Alpine: su proxy rompe los campos privados de PDF.js
             return {
-                url, zoom: 'ancho', escala: 1, modo: null,
+                url, zoom: 'ancho', escala: 1, modo: null, paginas: 0,
                 init() {
                     try { this.zoom = localStorage.getItem('focr-zoom') || 'ancho'; } catch (e) {}
                     this.$nextTick(() => this.previa());   // $refs aún no está en init()
                     this.lib()
                         .then(() => pdfjsLib.getDocument({ url: this.url, disableRange: true, disableStream: true }).promise)
-                        .then((d) => { pdf = d; return this.pintar(); })
+                        .then((d) => { pdf = d; this.paginas = d.numPages; return this.pintar(); })
                         .then(() => {
                             // Mientras se revisa esta, se precarga la siguiente (PDF y miniatura quedan en la caché)
                             (siguiente || []).forEach((u) => fetch(u, { credentials: 'same-origin' }).catch(() => {}));
@@ -594,6 +595,9 @@
                         <span x-text="etiqueta" style="min-width:3.5rem; text-align:center"></span>
                         <button type="button" x-on:click="mas(1)" title="Más zoom (también Ctrl + rueda)">+</button>
                         <button type="button" x-on:click="ajustar()">Ajustar al ancho</button>
+                        <span x-show="paginas > 0" x-text="paginas + (paginas === 1 ? ' página' : ' páginas')"
+                              :style="paginas > 1 ? 'background:#facc15; color:#422006; font-weight:700; padding:.15rem .55rem; border-radius:.3rem; animation:focr-paginas 1s infinite' : 'color:#9ca3af; padding:.15rem .4rem'"
+                              :title="paginas > 1 ? 'Este PDF tiene varias páginas: puede llevar varias facturas (usa Separar)' : ''"></span>
                         <span style="flex:1"></span>
                         <span class="focr-recuadro" x-show="!modo">Recuadrar en el PDF:
                             <button type="button" x-on:click="modo='cif'">NIF</button>
