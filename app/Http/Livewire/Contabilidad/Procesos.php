@@ -184,7 +184,7 @@ class Procesos extends Component
         return [
             'BCN' => [
                 'to' => 'ahernandez@mohg.com',
-                'cc' => 'xruano@mohg.com, mfernandez@mohg.com',
+                'cc' => 'mgallen@mohg.com, mfernandez@mohg.com',
                 'correccion' => false,
             ],
             'MAL' => [
