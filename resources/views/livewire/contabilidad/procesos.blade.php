@@ -929,17 +929,7 @@
                     </label>
                 </div>
 
-                <div class="mt-3">
-                    <x-button.secondary
-                        wire:click="ejecutarRvCalculosYDeclaracion"
-                        wire:loading.attr="disabled"
-                        wire:target="ejecutarRvCalculosYDeclaracion"
-                        wire:confirm="Cálculos (4 tiendas) + Turnover de las tiendas marcadas, para el mes seleccionado. Escribe sobre los ficheros reales. ¿Seguro?"
-                    >
-                        <span wire:loading.remove wire:target="ejecutarRvCalculosYDeclaracion">Cálculos + Turnover</span>
-                        <span wire:loading wire:target="ejecutarRvCalculosYDeclaracion">⏳ Ejecutando…</span>
-                    </x-button.secondary>
-                </div>
+                <p class="mt-3 text-xs text-gray-500">Se lanza con «▶ Provisión» y «▶ Certificación» de la fila «Alquiler». Las tiendas marcadas son las de la Certificación.</p>
 
                 @if (! empty($resultados['rv']))
                     <div class="flex flex-col mt-2 gap-y-1">
