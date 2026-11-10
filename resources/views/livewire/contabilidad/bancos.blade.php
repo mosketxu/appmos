@@ -43,39 +43,19 @@
             <div class="p-4 bg-gray-50" :class="abierto ? 'border-b border-gray-200' : ''">
                 <h2 class="mb-1 text-sm font-semibold text-gray-700">
                     <button type="button" x-on:click="abierto = ! abierto" class="font-semibold">
-                        <span x-text="abierto ? '▾' : '▸'"></span> Ficheros base (de SAGE)
+                        <span x-text="abierto ? '▾' : '▸'"></span> Base de bancos (lo acumulado de los ficheros base)
                     </button>
                 </h2>
                 <p class="text-xs text-gray-500" x-show="abierto">
-                    El plan de cuentas y el mayor, exportados de SAGE. Cada uno va en su fila (arrástralo encima o pulsa ⬆):
-                    se acumulan en la base de {{ $cliente }} y lo repetido no se duplica. El mayor puede traer todas las
-                    cuentas: solo se guardan las de banco (las 572… y las que marques abajo).
-                    El listado de proveedores sirve para cruzar las cuentas creadas en Appmos con las que ya existen en SAGE.
+                    Lo que Bancos ha acumulado del plan, los proveedores y el mayor que subes arriba, en «Ficheros base de SAGE de esta empresa».
+                    Del mayor solo se guardan las cuentas de banco (las 572… y las que marques aquí).
                     <b>Los extractos del banco no van aquí</b>, van abajo en «Extracto a procesar».
                 </p>
             </div>
 
             <div class="divide-y" x-show="abierto">
                 @foreach ($filasBase as $fb)
-                    <div wire:key="fila-base-{{ $cliente }}-{{ $fb['clave'] }}"
-                         x-data="{
-                             encima: false, subiendo: false, progreso: 0,
-                             subir(files) {
-                                 if (! files || ! files.length) return;
-                                 this.subiendo = true; this.progreso = 0;
-                                 $wire.uploadMultiple('subidas', files,
-                                     () => { this.subiendo = false; $wire.procesarSubidas(@js($fb['clave'])); },
-                                     () => { this.subiendo = false; },
-                                     (e) => { this.progreso = e.detail.progress; });
-                             },
-                         }"
-                         x-on:dragover.prevent="encima = true"
-                         x-on:dragleave.prevent="encima = false"
-                         x-on:drop.prevent="encima = false; subir($event.dataTransfer.files)"
-                         :class="encima ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-400' : ''"
-                         class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
-                        <input type="file" multiple accept=".xlsx,.xls" class="hidden" x-ref="input"
-                               x-on:change="subir($event.target.files); $event.target.value = ''">
+                    <div wire:key="fila-base-{{ $cliente }}-{{ $fb['clave'] }}" class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
                         <div class="w-64 text-sm font-medium text-gray-800">{{ $fb['icono'] }} {{ $fb['titulo'] }}</div>
                         {{-- Ancho fijo (igual que en «Otras cuentas de banco»): los botones ⬆ quedan en columna con «Añadir» --}}
                         <div class="text-xs text-gray-600" style="width:34rem; max-width:100%">
@@ -104,11 +84,6 @@
                                 <span class="text-gray-400">último: {{ $fb['datos']['recibido']['fichero'] }}
                                     ({{ \Illuminate\Support\Carbon::parse($fb['datos']['recibido']['fecha'])->format('d/m/Y H:i') }})</span>
                             @endif
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span x-show="subiendo" x-cloak class="text-xs text-gray-500">Subiendo… <span x-text="progreso"></span>%</span>
-                            @php $hayFb = ($fb['clave'] === 'plan' && $fb['datos']) || ($fb['clave'] === 'proveedores' && ! empty($fb['datos']['cuentas'])) || ($fb['clave'] === 'mayor' && $cuentas); @endphp
-                            <x-boton-subir :vacio="! $hayFb" cargando="subiendo" x-on:click="$refs.input.click()">{{ ['plan' => 'Subir plan', 'proveedores' => 'Subir proveedores'][$fb['clave']] ?? 'Subir mayor' }}</x-boton-subir>
                         </div>
                     </div>
                 @endforeach
