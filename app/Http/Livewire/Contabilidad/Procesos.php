@@ -2119,11 +2119,19 @@ class Procesos extends Component
         if (! empty($cfg['correccion'])) {
             $args[] = '--correction';
         }
-        array_push($args, '--real', '--to', $to, '--cc', $cc);
+        array_push($args, '--real', '--to', $to, '--cc', $cc, ...$this->rvArgsPeriodo());
 
         $this->lanzar([['script' => 'enviarRentasVariables.py', 'args' => $args, 'timeout' => 120,
             'etiqueta' => "RentasVariables · Envío {$tienda} (REAL, a {$to})"]],
             ['post' => 'postRvEnvio', 'ctx' => ['mes' => $this->mes]]);
+    }
+
+    /** Mes y año del título → el texto del correo («Q4», «as of 31/10/2026») sale de ahí, no de valores fijos (10-nov-2026). */
+    protected function rvArgsPeriodo(): array
+    {
+        $mes = max(1, min(12, (int) $this->mes));
+
+        return ['--mes', (string) $mes, '--year', (string) ($this->anio ?: \App\Support\Anio::paraMes($mes))];
     }
 
     protected function postRvEnvio(array $ctx, int $desde, array $oks): void
@@ -2157,7 +2165,7 @@ class Procesos extends Component
             if (! empty($cfg['correccion'])) {
                 $args[] = '--correction';
             }
-            array_push($args, '--to', trim($cfg['to'] ?? ''), '--cc', trim($cfg['cc'] ?? ''));
+            array_push($args, '--to', trim($cfg['to'] ?? ''), '--cc', trim($cfg['cc'] ?? ''), ...$this->rvArgsPeriodo());
             $pasos[] = ['script' => 'enviarRentasVariables.py', 'args' => $args, 'timeout' => 120,
                 'etiqueta' => "RentasVariables · Envío PRUEBA {$tienda} (a {$email})"];
         }
