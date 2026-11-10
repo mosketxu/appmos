@@ -526,6 +526,7 @@
                                         <span class="whitespace-nowrap" title="Extracto «{{ $uu['archivo'] ?? '' }}»: {{ $uu['filas'] ?? 0 }} movimientos, {{ $uu['nuevas'] ?? 0 }} nuevos en UBS BANCOS.xlsx">
                                             Último: <b>{{ $uuCuando }}</b> ·
                                             <span class="px-1 rounded" style="{{ $uuManual ? 'background:#e0e7ff;color:#3730a3' : 'background:#f3f4f6;color:#374151' }}">{{ $uuManual ? 'manual' : 'automático' }}</span>
+                                            <span class="text-gray-500">· el sistema captura el extracto cada 15 min y reenvía el plugin por correo</span>
                                         </span>
                                         @if (! empty($uu['plugin']))
                                             <x-contabilidad.resultado-fichero :r="['ruta' => $uu['plugin'], 'tarea' => $uu['tarea'] ?? null, 'nombre' => $uu['plugin_nombre'] ?? '']" compacto />
