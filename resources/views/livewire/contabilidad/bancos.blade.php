@@ -546,7 +546,7 @@
                         <span wire:loading.remove wire:target="juntarBancos">⧉ Juntar y descargar</span>
                         <span wire:loading wire:target="juntarBancos">⏳ Juntando…</span>
                     </x-button.secondary>
-                    <x-button.primary x-on:click="$wire.generarTodosYJuntar(typeof window.bancosPayload === 'function' ? window.bancosPayload(@js($cliente)) : {})"
+                    <x-button.primary x-on:click="$wire.generarTodosYJuntar(window.bancosPayload($wire.cliente))"
                                       wire:loading.attr="disabled" wire:target="generarTodosYJuntar" class="ml-2">
                         <span wire:loading.remove wire:target="generarTodosYJuntar">⚡ Generar todos y juntar</span>
                         <span wire:loading wire:target="generarTodosYJuntar">⏳ Generando…</span>
