@@ -98,9 +98,10 @@
         /* La barra Validar/Rechazar queda pegada abajo: si al corregir un importe desaparece el aviso «no cuadra», no se mueve y el clic no se pierde */
         .focr-rev-form { display:flex; flex-direction:column; }
         .focr-rev-form > * { flex-shrink:0; }
-        .focr-acciones { margin-top:auto; position:sticky; bottom:-.75rem; padding:.55rem 0 .75rem; background:#f9fafb; box-shadow:0 -6px 8px -6px rgba(0,0,0,.18); }
+        /* En pantallas medianas los botones no caben en una fila: bajan a la siguiente en vez de quedar fuera (11-nov) */
+        .focr-acciones { flex-wrap:wrap; row-gap:.4rem; margin-top:auto; position:sticky; bottom:-.75rem; padding:.55rem 0 .75rem; background:#f9fafb; box-shadow:0 -6px 8px -6px rgba(0,0,0,.18); }
         .focr-acciones .focr-btn { padding:.35rem .95rem; font-size:.8rem; justify-content:center; }
-        .focr-acciones .focr-btn.acc-validar { min-width:14rem; }
+        .focr-acciones .focr-btn.acc-validar { min-width:min(14rem, 100%); }
         @media (min-width:1280px) { .focr-acciones .focr-btn { padding-top:.85rem; padding-bottom:.85rem; } .focr-acciones .focr-in { padding-top:.6rem; padding-bottom:.6rem; } }
         .focr-rev-form { flex:0 0 var(--focr-form-ancho, 45%); min-width:300px; background:#f9fafb; overflow-y:auto; padding:.75rem; border-left:1px solid #374151; }
         /* Pantallas anchas (apaisadas): mitad y mitad; en las normales 55/45 */
