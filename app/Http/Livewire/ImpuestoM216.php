@@ -29,7 +29,7 @@ class ImpuestoM216 extends Component
         $this->verTodos = Imp::esGestor() && (bool) ($g['verTodos'] ?? false);
         $this->ejercicio = (int) ($g['ejercicio'] ?? now()->format('Y'));
         $emp = $this->empresas();
-        $this->entidadId = isset($emp[$g['entidad'] ?? 0]) ? (int) $g['entidad'] : ((int) (array_key_first($emp) ?? 0) ?: null);
+        $this->entidadId = \App\Support\EntidadActiva::entre(array_keys($emp)) ?? (isset($emp[$g['entidad'] ?? 0]) ? (int) $g['entidad'] : ((int) (array_key_first($emp) ?? 0) ?: null));
         $this->periodo = (string) ($g['periodo'] ?? '');
         $this->ajustarPeriodo();
     }
@@ -40,6 +40,7 @@ class ImpuestoM216 extends Component
             $this->entidadId = (int) (array_key_first($this->empresas()) ?? 0) ?: null;
         }
         $this->ajustarPeriodo();
+        \App\Support\EntidadActiva::poner($this->entidadId);
         session(['m216' => ['entidad' => (string) $this->entidadId, 'ejercicio' => (string) $this->ejercicio, 'periodo' => $this->periodo, 'verTodos' => $this->verTodos]]);
     }
 

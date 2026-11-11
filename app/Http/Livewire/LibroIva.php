@@ -45,7 +45,7 @@ class LibroIva extends Component
         $g = (array) session('libro_iva', []);
         $this->verTodos = $this->puedeTodos() && (bool) ($g['verTodos'] ?? false);
         $emp = $this->empresas();
-        $this->entidadId = isset($emp[$g['entidad'] ?? '']) ? (string) $g['entidad'] : (string) ($emp ? array_key_first($emp) : '');
+        $this->entidadId = (string) (\App\Support\EntidadActiva::entre(array_keys($emp)) ?? (isset($emp[$g['entidad'] ?? '']) ? $g['entidad'] : ($emp ? array_key_first($emp) : '')));
         $m = (int) date('n');
         $t = intdiv($m - 1, 3);   // trimestre natural ya terminado
         $this->ejercicio = (string) ($g['ejercicio'] ?? ($t === 0 ? date('Y') - 1 : date('Y')));
@@ -69,6 +69,7 @@ class LibroIva extends Component
             $this->alCambiarEmpresa();
         }
         if (in_array($prop, ['entidadId', 'ejercicio', 'periodo', 'verTodos'], true)) {
+            \App\Support\EntidadActiva::poner($this->entidadId);
             session(['libro_iva' => ['entidad' => $this->entidadId, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'verTodos' => $this->verTodos]]);
             $this->libro = null;
             $this->mensaje = $this->error = '';

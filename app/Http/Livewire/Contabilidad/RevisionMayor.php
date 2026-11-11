@@ -45,7 +45,7 @@ class RevisionMayor extends Component
 
             return;
         }
-        $this->entidadId = (int) session('revisionmayor.entidad', 0) ?: ($this->empresas()->first()->id ?? null);
+        $this->entidadId = \App\Support\EntidadActiva::entre($this->empresas()->pluck('id')->all()) ?? (int) session('revisionmayor.entidad', 0) ?: ($this->empresas()->first()->id ?? null);
         if ($this->entidadId && ! $this->empresas()->contains('id', $this->entidadId)) {
             $this->entidadId = $this->empresas()->first()->id ?? null;
         }
@@ -66,6 +66,7 @@ class RevisionMayor extends Component
     public function updatedEntidadId(): void
     {
         abort_unless($this->empresas()->contains('id', (int) $this->entidadId), 403);
+        \App\Support\EntidadActiva::poner($this->entidadId);
         session(['revisionmayor.entidad' => (int) $this->entidadId]);
         $this->salida = $this->error = '';
     }

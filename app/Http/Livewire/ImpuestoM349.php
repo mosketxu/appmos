@@ -69,7 +69,7 @@ class ImpuestoM349 extends Component
         $this->verTodos = Imp::esGestor() && (bool) ($g['verTodos'] ?? false);
         $this->ejercicio = (int) ($g['ejercicio'] ?? now()->format('Y'));
         $emp = $this->empresas();
-        $this->entidadId = isset($emp[$g['entidad'] ?? 0]) ? (int) $g['entidad'] : null;
+        $this->entidadId = \App\Support\EntidadActiva::entre(array_keys($emp)) ?? (isset($emp[$g['entidad'] ?? 0]) ? (int) $g['entidad'] : null);
         $this->periodo = (string) ($g['periodo'] ?? '');
         $this->alCambiarEmpresa();
     }
@@ -148,6 +148,7 @@ class ImpuestoM349 extends Component
 
     protected function recordar(): void
     {
+        \App\Support\EntidadActiva::poner($this->entidadId);
         session(['m349' => ['entidad' => $this->entidadId, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'verTodos' => $this->verTodos]]);
     }
 

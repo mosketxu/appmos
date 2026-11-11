@@ -55,7 +55,7 @@ class ImpuestoM111 extends Component
         $this->verTodos = Imp::esGestor() && (bool) ($g['verTodos'] ?? false);
         $this->ejercicio = (int) ($g['ejercicio'] ?? now()->format('Y'));
         $emp = $this->empresas();
-        $this->entidadId = isset($emp[$g['entidad'] ?? 0]) ? (int) $g['entidad'] : ((int) (array_key_first($emp) ?? 0) ?: null);
+        $this->entidadId = \App\Support\EntidadActiva::entre(array_keys($emp)) ?? (isset($emp[$g['entidad'] ?? 0]) ? (int) $g['entidad'] : ((int) (array_key_first($emp) ?? 0) ?: null));
         $this->periodo = (string) ($g['periodo'] ?? '');
         $this->ajustarPeriodo();
         $this->cargar();
@@ -106,6 +106,7 @@ class ImpuestoM111 extends Component
 
     protected function recordar(): void
     {
+        \App\Support\EntidadActiva::poner($this->entidadId);
         session(['m111' => ['entidad' => $this->entidadId, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'verTodos' => $this->verTodos]]);
     }
 

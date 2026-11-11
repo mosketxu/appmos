@@ -65,7 +65,7 @@ class Is extends Component
     public function mount(): void
     {
         $this->ejercicio = (int) date('Y') - 1;
-        $this->entidadId = (string) ($this->entidades()->first()->id ?? '');
+        $this->entidadId = (string) (\App\Support\EntidadActiva::entre($this->entidades()->pluck('id')->all()) ?? $this->entidades()->first()->id ?? '');
         $this->cargar();
     }
 
@@ -106,6 +106,7 @@ class Is extends Component
 
     public function updatedEntidadId(): void
     {
+        \App\Support\EntidadActiva::poner($this->entidadId);
         $this->cargar();
     }
 

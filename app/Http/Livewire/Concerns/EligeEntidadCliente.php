@@ -48,6 +48,9 @@ trait EligeEntidadCliente
     /** Cliente con el que se abre la pantalla: el último que se eligió (en Facturas OCR o Bancos) si sigue en la lista; si no, el primero. */
     protected function clienteInicial(array $lista): string
     {
+        if ($a = \App\Support\EntidadActiva::cliente($lista, $this->baseDir())) {   // la entidad elegida en cualquier otra pestaña
+            return $a;
+        }
         $c = (string) session('contabilidad_cliente', '');
 
         return in_array($c, $lista, true) ? $c : ($lista[0] ?? '');
@@ -58,6 +61,7 @@ trait EligeEntidadCliente
     {
         if (! str_starts_with($this->cliente, 'e:')) {
             $this->clienteOk = $this->cliente;
+            \App\Support\EntidadActiva::ponerCliente($this->cliente, $this->baseDir());
             session(['contabilidad_cliente' => $this->cliente]);   // al refrescar o volver a esta pantalla se sigue en el mismo cliente
 
             return false;
@@ -127,6 +131,7 @@ trait EligeEntidadCliente
         }
         $this->modalNuevo = false;
         $this->cliente = $this->clienteOk = $nombre;
+        \App\Support\EntidadActiva::poner($this->nuevoEid);
         session(['contabilidad_cliente' => $nombre]);
         $this->alElegirCliente();
     }
