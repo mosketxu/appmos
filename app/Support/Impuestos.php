@@ -97,7 +97,7 @@ class Impuestos
 
     public static function siguiente(string $estado, ?string $codigo = null): string
     {
-        if (in_array($codigo, ['MAYOR', 'BANC'], true)) {
+        if (in_array($codigo, ['MAYOR', 'BANC', '303C', '111C', 'DURCAL'], true)) {
             return $estado === 'revisado' ? 'pendiente' : 'revisado';   // Revisión del mayor y Bancos: solo pendiente ↔ revisado (validado en Bancos; 18-oct-2026)
         }
         if ($estado === 'nopresenta') {
