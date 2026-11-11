@@ -158,7 +158,9 @@ class LibroIva extends Component
     protected function alCambiarEmpresa(): void
     {
         $this->ajustarPeriodo();
-        $this->devolver = (bool) DB::table('entidades')->where('id', (int) $this->entidadId)->value('redeme');
+        // Gran empresa (impuestos mensuales, devolución mensual) o inscrita en REDEME: lo que sale a favor se DEVUELVE, no se compensa
+        $marcas = DB::table('entidades')->where('id', (int) $this->entidadId)->first(['redeme', 'gran_empresa']);
+        $this->devolver = (bool) ($marcas->redeme ?? false) || (bool) ($marcas->gran_empresa ?? false);
         $this->carpeta = (string) (DB::table('libro_iva_carpetas')->where('entidad_id', (int) $this->entidadId)->value('carpeta') ?? '');
         $this->listado = null;
         $this->libro = null;
