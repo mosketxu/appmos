@@ -505,7 +505,15 @@
         <div class="focr-rev" x-data x-on:keydown.escape.window="$wire.cerrar()">
             <div class="focr-rev-bar">
                 <button type="button" wire:click="mover(-1)" class="focr-btn b-gris" style="padding:.2rem .6rem" title="Anterior">◀</button>
-                <span>{{ $posicion !== false ? $posicion + 1 : '?' }} / {{ count($cola) }}</span>
+                {{-- Contador: solo las pendientes (antes contaba también rechazadas e ilegibles, y al rechazar no bajaba; 11-nov) --}}
+                @php
+                    $idsPend = array_column(array_filter($cola, fn ($c) => $c['estado'] === 'pendiente'), 'id');
+                    $posPend = array_search($actual['id'], $idsPend, true);
+                    $otrasCola = count($cola) - count($idsPend);
+                @endphp
+                <span title="Pendientes de revisar{{ $otrasCola ? ' (además hay '.$otrasCola.' rechazadas/ilegibles al final de la cola)' : '' }}">
+                    {{ $posPend !== false ? $posPend + 1 : '–' }} / {{ count($idsPend) }} pend.@if ($otrasCola)<small style="opacity:.7"> · {{ $otrasCola }} rech.</small>@endif
+                </span>
                 <button type="button" wire:click="mover(1)" class="focr-btn b-gris" style="padding:.2rem .6rem" title="Siguiente">▶</button>
                 <span class="focr-chip {{ $e[2] }}">{{ $e[0] }} {{ $e[1] }}</span>
                 <span class="truncate" style="flex:1" title="{{ $actual['ruta'] }}">{{ basename($actual['ruta']) }}</span>
