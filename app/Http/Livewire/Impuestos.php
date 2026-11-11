@@ -874,9 +874,22 @@ class Impuestos extends Component
         $tiene = ['M' => [], 'T' => [], 'P' => [], 'A' => []];
         $porEnt = [];
         foreach ($obs as $ob) {
-            $modelosVis[$ob->codigo] ??= (object) ['codigo' => $ob->codigo, 'nombre' => $ob->modelo_nombre, 'orden' => $ob->orden, 'mes_anual' => $ob->mes_anual, 'despues_de' => $ob->despues_de];
-            $tiene[$ob->periodicidad][$ob->codigo] = true;
-            $porEnt[$ob->entidad_id][$ob->codigo][] = $ob;
+            // Las casillas «para el cliente» (303C, 111C) van en la misma columna que su impuesto (303, 111), cada una con su periodo
+            $col = ['303C' => '303', '111C' => '111'][$ob->codigo] ?? $ob->codigo;
+            $modelo = (object) ['codigo' => $col, 'nombre' => $ob->modelo_nombre, 'orden' => $ob->orden, 'mes_anual' => $ob->mes_anual, 'despues_de' => $ob->despues_de];
+            if ($col === $ob->codigo) {
+                $modelosVis[$col] = $modelo;   // el propio impuesto manda sobre su casilla de cliente (nombre y orden)
+            } else {
+                $modelosVis[$col] ??= $modelo;
+            }
+            $tiene[$ob->periodicidad][$col] = true;
+            $porEnt[$ob->entidad_id][$col][] = $ob;
+        }
+        foreach ($porEnt as $e => $porCod) {   // en la celda, primero el impuesto y luego su casilla de cliente
+            foreach ($porCod as $c => $lista) {
+                usort($lista, fn ($x, $y) => (int) ($x->codigo !== $c) <=> (int) ($y->codigo !== $c));
+                $porEnt[$e][$c] = $lista;
+            }
         }
         uasort($modelosVis, fn ($x, $y) => $x->orden <=> $y->orden);
         $bloques = $this->bloques($modelosVis, $tiene);
