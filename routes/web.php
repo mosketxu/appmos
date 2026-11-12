@@ -75,7 +75,8 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
         abort_unless(preg_match('/^[a-z0-9_]+$/', $cliente) && preg_match('/^\d{4}-\d{2}$/', $periodo), 404);
         $ruta = rtrim(config('contabilidad.intrastat_datos') ?: storage_path('app/intrastat'), '/').'/'.$cliente.'/'.$periodo.'/salida/'.basename($nombre);
         abort_unless(is_file($ruta), 404);
-        return response()->download($ruta, basename($ruta));
+        // sin caché: el nombre del CSV es siempre el mismo y el navegador servía el de la generación anterior (12-nov-2026)
+        return response()->download($ruta, basename($ruta), ['Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 'Pragma' => 'no-cache']);
     })->name('impuestos.intrastat.descargar')->middleware(['can:impuestos.ver', 'can:proceso.imp.intrastat']);
     // Pago a cuenta (modelo 202): fichero .202 para la AEAT. Como el IS: se usa desde la web (en un PC redirige)
     Route::get('/impuestos/pago-cuenta', function () {
