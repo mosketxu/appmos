@@ -42,8 +42,8 @@
                 @if ($per !== 'M')
                     @foreach (['1T','2T','3T','4T'] as $p)<option>{{ $p }}</option>@endforeach
                 @endif
-                @if ($per === '')<option disabled>── mensual ──</option>@endif
-                @if ($per !== 'T')
+                @if ($per === '' || ($per === 'T' && $this->conControlMensual()))<option disabled>── mensual ──</option>@endif
+                @if ($per !== 'T' || $this->conControlMensual())
                     @foreach (range(1, 12) as $m)<option>{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>@endforeach
                 @endif
             </select>

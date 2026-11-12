@@ -104,6 +104,13 @@ class LibroIva extends Component
         return in_array($p, ['M', 'T'], true) ? $p : '';
     }
 
+    /** ¿Lleva la casilla mensual «303 · informe al cliente» (303C)? Entonces, aunque presente trimestral, se le puede hacer el libro de un mes. */
+    public function conControlMensual(): bool
+    {
+        return DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where('ei.entidad_id', (int) $this->entidadId)->where('m.codigo', '303C')->whereNull('ei.baja_ejercicio')->exists();
+    }
+
     /** Cambia la periodicidad del 303 de la empresa (M/T) en Impuestos (entidad_impuestos), que es de donde sale al abrir esta pantalla. */
     public function cambiarPeriodicidad(string $nueva): void
     {
@@ -136,7 +143,7 @@ class LibroIva extends Component
             if ($m === 1 && (int) $this->ejercicio === (int) date('Y')) {
                 $this->ejercicio = (string) ((int) date('Y') - 1);
             }
-        } elseif ($per === 'T' && ! $esTrimestre) {
+        } elseif ($per === 'T' && ! $esTrimestre && ! $this->conControlMensual()) {
             $t = intdiv($m - 1, 3);
             $this->periodo = $t === 0 ? '4T' : $t.'T';
             if ($t === 0 && (int) $this->ejercicio === (int) date('Y')) {
