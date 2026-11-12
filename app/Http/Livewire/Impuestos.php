@@ -956,7 +956,7 @@ class Impuestos extends Component
                 unset($bloques[$i]);
             }
         }
-        $modelos = DB::table('impuesto_modelos')->where('activo', true)->orderBy('orden')->get(['codigo', 'nombre']);
+        $modelos = DB::table('impuesto_modelos')->where('activo', true)->get(['codigo', 'nombre'])->sortBy('codigo', SORT_NATURAL | SORT_FLAG_CASE)->values();   // alfabético por código
 
         return ['filas' => $filas, 'bloques' => $bloques, 'pet' => $this->peticiones(array_keys($filas)), 'coment' => $coment, 'avisos' => $avisos, 'avisoCom' => $avisoCom, 'obsPorId' => $obs->keyBy('id'), 'estados' => $estados, 'docs' => $docs, 'cuenta' => $cuenta, 'modelos' => $modelos,
             'grupos' => DB::table('entidad_grupos')->orderBy('nombre')->get(['id', 'nombre'])];

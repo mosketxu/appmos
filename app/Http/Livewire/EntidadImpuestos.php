@@ -232,7 +232,7 @@ class EntidadImpuestos extends Component
         $obs = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
             ->where('ei.entidad_id', $this->entidadId)->orderBy('m.orden')->orderBy('ei.etiqueta')
             ->get(['ei.id', 'ei.etiqueta', 'ei.periodicidad', 'ei.baja_ejercicio', 'ei.baja_periodo', 'ei.alta_ejercicio', 'ei.alta_periodo', 'ei.observaciones', 'm.codigo', 'm.nombre']);
-        $modelos = ImpuestoModelo::where('activo', true)->orderBy('orden')->get();
+        $modelos = ImpuestoModelo::where('activo', true)->get()->sortBy('codigo', SORT_NATURAL | SORT_FLAG_CASE)->values();   // alfabético por código: 111, 111C, 115… 303, 303C…, BANC, D2…
 
         $suma = DB::table('entidades')->join('sumas', 'sumas.id', '=', 'entidades.suma_id')->where('entidades.id', $this->entidadId)->value('sumas.nombre');
         $co = DB::table('entidad_user')->join('users', 'users.id', '=', 'entidad_user.user_id')->where('entidad_user.entidad_id', $this->entidadId)->pluck('users.name');
