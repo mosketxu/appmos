@@ -439,7 +439,7 @@
                                         <td class="{{ $loop->first ? 'imp-qb' : ($barra ? '' : 'imp-mod') }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
                                             @php
                                                 $celdas = $f['matriz'][$bl['k']][$ci] ?? [];
-                                                $doble = in_array($col['cod'], ['303', '111'], true);   // impuesto + check de control mensual: el check cae siempre en la misma vertical
+                                                $doble = ! in_array($col['cod'], ['MAYOR', 'VENC', 'BANC', 'DURCAL'], true);   // todos los impuestos (y los que se añadan): huecos fijos; los procesos mensuales quedan como estaban   // impuesto + check de control mensual: el check cae siempre en la misma vertical
                                                 $hijas = fn ($x) => in_array($x[0]->codigo, ['303C', '111C'], true);
                                                 $hayPropio = collect($celdas)->contains(fn ($x) => ! $hijas($x));   // ya tiene el check del impuesto este mes: no se añade el de control
                                                 $mostrar = array_values(array_filter($celdas, fn ($x) => $hayPropio ? ! $hijas($x) : true));
