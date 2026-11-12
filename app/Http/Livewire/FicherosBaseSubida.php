@@ -87,6 +87,12 @@ class FicherosBaseSubida extends Component
             return;
         }
         $this->msg = FicherosBase::TIPOS[$tipo]['titulo'].' guardado: «'.$nombre.'». Lo ven todos los procesos de esta empresa.';
+        // Las cifras de las cuentas del fichero tienen que coincidir con Entidades («Nº Dígitos Sage»): si no, se corrige avisando
+        if (in_array($tipo, ['mayor', 'plan', 'proveedores', 'clientes', 'gestion'], true) && ($n = \App\Support\DigitosCuenta::detectar($ruta))) {
+            if ($aviso = \App\Support\DigitosCuenta::aplicar($this->entidadId, $n)) {
+                $this->msg .= ' ⚠️ '.$aviso;
+            }
+        }
         $this->dispatch('ficheros-base-cambiados', tipo: $tipo);
     }
 
