@@ -441,14 +441,14 @@
                                                 $doble = in_array($col['cod'], ['303', '111'], true);   // impuesto + su casilla «para el cliente»: dos huecos fijos para que queden alineados
                                                 $hijas = fn ($x) => in_array($x[0]->codigo, ['303C', '111C'], true);
                                             @endphp
-                                            @if ($doble)<div style="display:flex; align-items:center"><span style="display:inline-flex; align-items:center; min-width:200px">@endif
+                                            @if ($doble)<div style="display:flex; align-items:center"><span style="display:inline-flex; align-items:center; min-width:165px">@endif
                                             @if ($loop->first && $conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
                                             @foreach ($celdas as [$ob, $per, $e])
                                                 @if (! $doble || ! $hijas([$ob]))
                                                     @include('livewire._impuesto-celda-fila')
                                                 @endif
                                             @endforeach
-                                            @if ($doble)</span><span style="display:inline-flex; align-items:center; border-left:1px dotted #94a3b8; padding-left:6px" title="Informe al cliente (mensual)">@foreach ($celdas as [$ob, $per, $e])@if ($hijas([$ob]))@include('livewire._impuesto-celda-fila')@endif @endforeach</span></div>@endif
+                                            @if ($doble)</span><span style="display:inline-flex; align-items:center">@foreach ($celdas as [$ob, $per, $e])@if ($hijas([$ob]))@include('livewire._impuesto-celda-fila')@endif @endforeach</span></div>@endif
                                         </td>
                                     @endforeach
                                 @endif
