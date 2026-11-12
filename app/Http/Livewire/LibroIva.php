@@ -379,16 +379,29 @@ class LibroIva extends Component
     protected function anteriorDeImpuesto(): array
     {
         $ej = (int) $this->ejercicio;
+        // Periodos candidatos del anterior, por orden: el mismo tipo y, si la empresa cambió de trimestral a mensual (o al revés), el otro
+        // (septiembre → el 3T; el 4T → diciembre). Así el primer mes de una empresa que pasa a REDEME arrastra lo pendiente del último trimestre.
         if (preg_match('/^([1-4])T$/', $this->periodo, $m)) {
-            [$ejA, $perA] = $m[1] === '1' ? [$ej - 1, 'T4'] : [$ej, 'T'.($m[1] - 1)];
+            [$ejA, $ultT, $ultM] = $m[1] === '1' ? [$ej - 1, 'T4', '12'] : [$ej, 'T'.($m[1] - 1), sprintf('%02d', 3 * ($m[1] - 1))];
+            $candidatos = [[$ejA, $ultT], [$ejA, $ultM]];
         } else {
             $mes = (int) $this->periodo;
-            [$ejA, $perA] = $mes === 1 ? [$ej - 1, '12'] : [$ej, sprintf('%02d', $mes - 1)];
+            [$ejA, $mesA] = $mes === 1 ? [$ej - 1, 12] : [$ej, $mes - 1];
+            $candidatos = [[$ejA, sprintf('%02d', $mesA)]];
+            if ($mesA % 3 === 0) {
+                $candidatos[] = [$ejA, 'T'.($mesA / 3)];
+            }
         }
-        $doc = \App\Models\ImpuestoDocumento::where('entidad_id', (int) $this->entidadId)->where('modelo', '303')->where('tipo', 'presentado')
-            ->where('ejercicio', $ejA)->where('periodo', $perA)->whereNull('quitado_at')->orderByDesc('id')->first();
+        $doc = null;
+        foreach ($candidatos as [$ejA, $perA]) {
+            $doc = \App\Models\ImpuestoDocumento::where('entidad_id', (int) $this->entidadId)->where('modelo', '303')->where('tipo', 'presentado')
+                ->where('ejercicio', $ejA)->where('periodo', $perA)->whereNull('quitado_at')->orderByDesc('id')->first();
+            if ($doc) {
+                break;
+            }
+        }
         if (! $doc) {
-            return ['aviso' => "no hay 303 presentado de $perA $ejA en Impuestos"];
+            return ['aviso' => 'no hay 303 presentado de '.collect($candidatos)->map(fn ($c) => $c[1].' '.$c[0])->implode(' ni de ').' en Impuestos'];
         }
         $ruta = storage_path('app/'.$doc->almacen);
         $script = rtrim((string) config('contabilidad.facturasocr_dir'), '/').'/leer_303.py';
