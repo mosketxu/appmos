@@ -436,13 +436,19 @@
                                     @foreach ($bl['cols'] as $ci => $col)
                                         @php $barra = $gAnt !== null && $col['g'] !== $gAnt; $gAnt = $col['g']; @endphp
                                         <td class="{{ $loop->first ? 'imp-qb' : ($barra ? '' : 'imp-mod') }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
+                                            @php
+                                                $celdas = $f['matriz'][$bl['k']][$ci] ?? [];
+                                                $doble = in_array($col['cod'], ['303', '111'], true);   // impuesto + su casilla «para el cliente»: dos huecos fijos para que queden alineados
+                                                $hijas = fn ($x) => in_array($x[0]->codigo, ['303C', '111C'], true);
+                                            @endphp
+                                            @if ($doble)<div style="display:flex; align-items:center"><span style="display:inline-flex; align-items:center; min-width:200px">@endif
                                             @if ($loop->first && $conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
-                                            @foreach ($f['matriz'][$bl['k']][$ci] ?? [] as [$ob, $per, $e])
-                                                @if ($ob->etiqueta !== '')
-                                                    <span class="text-xs font-semibold text-indigo-700" title="{{ $ob->etiqueta }}">{{ mb_substr($ob->etiqueta, 0, 3) }}</span>
+                                            @foreach ($celdas as [$ob, $per, $e])
+                                                @if (! $doble || ! $hijas([$ob]))
+                                                    @include('livewire._impuesto-celda-fila')
                                                 @endif
-                                                @include('livewire._impuesto-celda', ['ob' => $ob, 'per' => $per, 'e' => $e, 'docs' => $docs, 'coment' => $coment, 'color' => $color, 'letra' => $letra, 'etq' => $etq])
                                             @endforeach
+                                            @if ($doble)</span><span style="display:inline-flex; align-items:center; border-left:1px dotted #94a3b8; padding-left:6px" title="Informe al cliente (mensual)">@foreach ($celdas as [$ob, $per, $e])@if ($hijas([$ob]))@include('livewire._impuesto-celda-fila')@endif @endforeach</span></div>@endif
                                         </td>
                                     @endforeach
                                 @endif
