@@ -444,10 +444,11 @@
                                                 $hayPropio = collect($celdas)->contains(fn ($x) => ! $hijas($x));   // ya tiene el check del impuesto este mes: no se añade el de control
                                                 $mostrar = array_values(array_filter($celdas, fn ($x) => $hayPropio ? ! $hijas($x) : true));
                                             @endphp
-                                            @if ($loop->first && $doble)<span style="display:inline-flex; align-items:center; min-width:56px">@endif
-                                            @if ($loop->first && $conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
-                                            @if ($loop->first && $doble)</span>@endif
-                                            @if ($doble)<span style="display:inline-flex; align-items:center; min-width:150px">@endif
+                                            @if ($loop->first && $doble)
+                                                {{-- huecos fijos: documento ▢ sobre, para que alineen aunque falte alguno --}}
+                                                <span style="display:inline-flex; align-items:center; min-width:26px">@if ($conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @endif</span><span style="display:inline-flex; align-items:center; min-width:30px">@if ($conImp($bl['k'])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif</span>
+                                            @elseif ($loop->first && $conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
+                                            @if ($doble)<span style="display:inline-flex; align-items:center">@endif
                                             @foreach ($mostrar as [$ob, $per, $e])
                                                 @include('livewire._impuesto-celda-fila')
                                             @endforeach

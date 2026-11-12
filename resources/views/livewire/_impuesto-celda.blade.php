@@ -44,6 +44,7 @@
             </div>
         </span>
     @endif
+    @if ($alinear ?? false)<span style="display:inline-flex; align-items:center; min-width:26px">@endif
     @if ($conPdf)
         @if (count($lista) === 1 && $principal)
             <span class="imp-pdfw imp-qw">
@@ -76,6 +77,7 @@
             <button type="button" class="imp-pdf gris" x-on:click="{!! $subir !!}" title="Sin PDF: pulsa para subir {{ $tipoPdf === 'presentado' ? 'el presentado' : 'el borrador' }}">@include('livewire._impuesto-pdf')</button>
         @endif
     @endif
+    @if ($alinear ?? false)</span><span style="display:inline-flex; align-items:center; min-width:26px">@endif
     @if ($e !== 'no' && ! in_array($ob->codigo, ['MAYOR', 'BANC', '303C', '111C', 'DURCAL'], true))
         {{-- Excel de la casilla (cálculos, listados...): otro icono; con documentos abre su lista, sin ellos sube uno --}}
         @if ($listaX)
@@ -102,6 +104,7 @@
             <button type="button" class="imp-pdf gris imp-xl" x-on:click="{!! $subir !!}" title="Subir un Excel de esta casilla">@include('livewire._impuesto-xls')</button>
         @endif
     @endif
+    @if ($alinear ?? false)</span>@endif
     <button type="button" class="imp-com {{ $cm ? 'tiene' : ($e === 'no' ? 'oculta' : '') }}" @if (collect($cm)->contains(fn ($x) => $x[4] ?? false)) style="color:#dc2626" @endif wire:click="abrirComentarios({{ $ob->id }}, '{{ $per }}')"
         title="{{ $cm ? (collect($cm)->contains(fn ($x) => $x[4] ?? false) ? '⚠ LECTURA OBLIGATORIA SIN VALIDAR'."\n" : '').$cmTitulo : 'Añadir un comentario' }}">@include('livewire._impuesto-globo', ['n' => count($cm)])</button>
 </span>
