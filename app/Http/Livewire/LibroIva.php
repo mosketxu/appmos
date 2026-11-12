@@ -379,7 +379,8 @@ class LibroIva extends Component
         $idx = fn (int $anio, int $mes) => $anio * 12 + $mes - 1;   // mes absoluto
         $h = $idx((int) $hoy->format('Y'), (int) $hoy->format('n'));
         if (preg_match('/^([1-4])T$/', $p, $m)) {
-            $ok = $h >= $idx($y, 3 * (int) $m[1] - 2) && $h <= $idx($y, 3 * (int) $m[1]) + 1;   // en curso, o el mes siguiente a su cierre
+            $ok = $h === $idx($y, 3 * (int) $m[1]) + 1;   // un trimestre solo se hace ya cerrado, en el mes siguiente a su cierre (3T en octubre, 4T en enero)
+            $abierto = $h <= $idx($y, 3 * (int) $m[1]);
         } elseif (preg_match('/^(0[1-9]|1[0-2])$/', $p)) {
             $mi = $idx($y, (int) $p);
             $ok = $mi === $h || $mi === $h - 1;   // el mes en curso o el anterior
@@ -390,13 +391,13 @@ class LibroIva extends Component
             return '';
         }
         $trim = fn (int $i) => (intdiv($i % 12, 3) + 1).'T '.intdiv($i, 12);
-        $normales = [$trim($h)];
-        if ($h % 12 % 3 === 0) {   // primer mes de un trimestre: el anterior todavía puede estar en preparación
+        $normales = [];
+        if ($h % 12 % 3 === 0) {   // primer mes de un trimestre: se hace el que acaba de cerrarse
             $normales[] = $trim($h - 1);
         }
         $normales[] = 'el mes de '.$meses[($h - 1) % 12].' '.intdiv($h - 1, 12);
 
-        return 'Hoy es '.$hoy->format('d/m/Y').' y has elegido '.$p.' '.$y.'. Lo normal sería '.implode(' o ', $normales).'. '
+        return 'Hoy es '.$hoy->format('d/m/Y').' y has elegido '.$p.' '.$y.'. Lo normal sería '.implode(' o ', $normales).'.'.(($abierto ?? false) ? ' El '.$p.' '.$y.' todavía no ha terminado.' : '').' '
             .'Si el periodo no es el que toca, el resultado del periodo anterior que se arrastra al Excel tampoco será el correcto.';
     }
 
