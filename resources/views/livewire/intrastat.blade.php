@@ -84,7 +84,7 @@
                     <div class="text-xs text-gray-500">{{ $res['pesos_minimos'] }} partidas con peso inferior a 1 kg (se declara 1 kg) · de: {{ implode(', ', $res['entradas']) }}</div>
                 </div>
                 <div>
-                    <a class="in-btn pri" href="{{ route('impuestos.intrastat.descargar', [$cliente, $periodo, $res['fichero']]) }}">⬇ {{ $res['fichero'] }}</a>
+                    <a class="in-btn pri" href="{{ route('impuestos.intrastat.descargar', [$cliente, $periodo, $res['fichero'], 'v' => md5(json_encode($res))]) }}">⬇ {{ $res['fichero'] }}</a>
                     <div class="text-xs text-gray-500" style="margin-top:4px">Es el que se sube en la Sede: Aduanas → Intrastat → Gestiones → Presentación por fichero (CSV).</div>
                 </div>
             </div>
