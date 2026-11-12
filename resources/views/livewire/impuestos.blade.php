@@ -444,6 +444,7 @@
                                                 $hayPropio = collect($celdas)->contains(fn ($x) => ! $hijas($x));   // ya tiene el check del impuesto este mes: no se añade el de control
                                                 $mostrar = array_values(array_filter($celdas, fn ($x) => $hayPropio ? ! $hijas($x) : true));
                                             @endphp
+                                            @if ($doble)<div style="display:flex; align-items:center">@endif
                                             @if ($loop->first && $doble)
                                                 {{-- huecos fijos: documento ▢ sobre, para que alineen aunque falte alguno --}}
                                                 <span style="display:inline-flex; align-items:center; min-width:26px">@if ($conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @endif</span><span style="display:inline-flex; align-items:center; min-width:30px">@if ($conImp($bl['k'])) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif</span>
@@ -453,6 +454,7 @@
                                                 @include('livewire._impuesto-celda-fila')
                                             @endforeach
                                             @if ($doble)</span>@endif
+                                            @if ($doble)</div>@endif
                                         </td>
                                     @endforeach
                                 @endif
