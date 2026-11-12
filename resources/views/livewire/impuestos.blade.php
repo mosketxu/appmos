@@ -130,6 +130,7 @@
             {{-- Leyenda: botón junto a los meses; el detalle en un modal --}}
             <div x-data="{ ley: false }" x-on:keydown.escape.window="ley = false" class="imp-noprint">
                 <button type="button" x-on:click="ley = true" class="imp-btn" style="border-radius:6px" title="Qué significa cada color y cómo se usa">❓ Leyenda</button>
+                <template x-teleport="body">
                 <div x-show="ley" x-cloak style="display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.35); align-items:center; justify-content:center" x-bind:style="ley ? 'display:flex' : 'display:none'" x-on:click.self="ley = false">
                     <div class="p-4 bg-white rounded-lg shadow-xl" style="width:560px; max-width:94vw; max-height:90vh; overflow:auto">
                         <div class="flex items-center justify-between mb-2">
@@ -149,6 +150,7 @@
                 💬 = comentarios de la casilla.</div>
                     </div>
                 </div>
+                </template>
             </div>
             @if ($this->puedeTodos() && $sinAsignar->count())
                 <button type="button" wire:click="$toggle('mostrarSinAsignar')" class="imp-btn {{ $mostrarSinAsignar ? 'on' : '' }}" style="border-radius:6px; border-color:#f59e0b; margin-left:auto"
