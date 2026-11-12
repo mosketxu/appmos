@@ -215,7 +215,7 @@ class Impuestos extends Component
             ->leftJoin('sumas as s', 's.id', '=', 'e.suma_id')
             ->leftJoin('entidad_grupos as g', 'g.id', '=', 'e.grupo_id')
             ->where('m.activo', true)
-            ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 's.nombre as resp', 'g.nombre as grupo',
+            ->select('ei.id', 'ei.entidad_id', 'ei.etiqueta', 'ei.periodicidad', 'e.entidad', 'e.alias', 'e.estado as estado_ent', 'e.redeme', 'e.gran_empresa', 's.nombre as resp', 'g.nombre as grupo',
                 'm.codigo', 'm.nombre as modelo_nombre', 'm.orden', 'm.mes_anual', 'm.despues_de', 'm.desfase')
             ->orderBy('e.entidad')->orderBy('m.orden');   // siempre alfabético (13-oct: Alex prefiere filtrar por grupo a verlos agrupados)
         Imp::soloVisibles($q, null, $this->verTodos);

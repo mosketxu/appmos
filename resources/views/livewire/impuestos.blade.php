@@ -415,6 +415,8 @@
                                 <button type="button" wire:click="abrirEntidad({{ $entId }})" class="font-medium text-left text-gray-900 hover:underline" style="background:none; border:0; padding:0; cursor:pointer"
                                     title="Añadir o quitar los impuestos de este cliente. Responsable: {{ $ent->resp ?: '—' }}">{{ $ent->entidad }}</button>
                                 <button type="button" wire:click="abrirFicherosBase({{ $entId }})" title="Subir los ficheros base de SAGE de este cliente" class="text-xs" style="background:none; border:0; padding:0 2px; cursor:pointer">📂</button>
+                                @if ($ent->redeme) <span class="text-xs text-teal-800" style="background:#ccfbf1; border-radius:4px; padding:0 4px" title="Inscrita en el registro de devolución mensual (REDEME)">REDEME</span> @endif
+                                @if ($ent->gran_empresa) <span class="text-xs text-teal-800" style="background:#ccfbf1; border-radius:4px; padding:0 4px" title="Gran empresa (impuestos mensuales)">Gran empresa</span> @endif
                                 @if ($ent->estado_ent != 1) <span class="text-xs text-amber-700">(baja)</span> @endif
                                 @if ($ent->grupo) <span class="text-xs text-indigo-700" style="background:#eef2ff; border-radius:4px; padding:0 4px" title="Grupo">{{ $ent->grupo }}</span> @endif
                             </td>
