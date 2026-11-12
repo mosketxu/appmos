@@ -440,6 +440,7 @@
                                                 $celdas = $f['matriz'][$bl['k']][$ci] ?? [];
                                                 $doble = in_array($col['cod'], ['303', '111'], true);   // impuesto + su casilla «para el cliente»: dos huecos fijos para que queden alineados
                                                 $hijas = fn ($x) => in_array($x[0]->codigo, ['303C', '111C'], true);
+                                                $hayPropio = collect($celdas)->contains(fn ($x) => ! $hijas($x));   // ya tiene el check del impuesto este mes: no se añade el de control
                                             @endphp
                                             @if ($doble)<div style="display:flex; align-items:center"><span style="display:inline-flex; align-items:center; min-width:165px">@endif
                                             @if ($loop->first && $conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
@@ -448,7 +449,7 @@
                                                     @include('livewire._impuesto-celda-fila')
                                                 @endif
                                             @endforeach
-                                            @if ($doble)</span><span style="display:inline-flex; align-items:center">@foreach ($celdas as [$ob, $per, $e])@if ($hijas([$ob]))@include('livewire._impuesto-celda-fila')@endif @endforeach</span></div>@endif
+                                            @if ($doble)</span><span style="display:inline-flex; align-items:center">@foreach ($celdas as [$ob, $per, $e])@if (! $hayPropio && $hijas([$ob]))@include('livewire._impuesto-celda-fila')@endif @endforeach</span></div>@endif
                                         </td>
                                     @endforeach
                                 @endif
