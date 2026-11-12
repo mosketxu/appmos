@@ -2529,45 +2529,47 @@ class FacturasOcr extends Component
         return $mal;
     }
 
-    /** Otra factura de este proveedor con el mismo nº: en SAGE, validada aquí o pendiente (misma regla que duplicados() en Python). */
+    /**
+     * ¿Es duplicada? Una sola lógica, la de duplicados() de facturas_ocr.py (SAGE, validadas aquí, pendientes, mismo importe → Amazon -1/-2).
+     * Devuelve los textos que FRENAN Validar; los avisos que solo informan van a $avisosDup y las pendientes gemelas a $gemelas.
+     * Se pregunta a Python solo cuando cambia la factura, sus datos o el estado (no en cada pintado).
+     */
     protected function duplicados(): array
     {
-        $this->gemelas = [];
+        $this->gemelas = $this->avisosDup = [];
         $a = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($this->form['su_factura'] ?? '')));
         $cta = (string) ($this->form['cuenta'] ?? '');
-        if ($a === '' || $cta === '') {
+        if ($a === '' || $cta === '' || ! $this->ejecutaAqui()) {
             return [];
         }
-        $norm = fn ($v) => strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $v));
-        $out = [];
-        foreach ($this->terceros()[$cta]['facturas'] ?? [] as $f) {
-            if ($norm($f['num'] ?? '') === $a) {
-                $out[] = "Ya contabilizada en SAGE: nº {$f['num']} del {$f['fecha']} ({$f['total']} €)";
-                break;
+        $datos = ['cuenta' => $cta, 'su_factura' => $a, 'cif' => (string) ($this->form['cif'] ?? ''), 'total' => $this->num($this->form['total'] ?? ''), 'tipo' => $this->esEmitida() ? 'E' : 'R'];
+        $clave = md5(json_encode([$this->sel, $datos, @filemtime($this->dirDatos().'/facturas.json')]));
+        if (($this->dupCache['clave'] ?? '') !== $clave) {
+            $cmd = [$this->pythonBin(), 'facturas_ocr.py', $this->cliente, 'duplicados', (string) $this->sel, '--datos', json_encode($datos, JSON_UNESCAPED_UNICODE)];
+            try {
+                $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(60)->run($cmd);
+                $j = json_decode(trim($r->output()), true);
+            } catch (\Throwable $e) {
+                report($e);
+                $j = null;
             }
+            if (! is_array($j)) {
+                return $this->dupCache['val'] ?? [];   // no se pudo preguntar: lo último que se sabía (no se frena por un fallo técnico)
+            }
+            $this->dupCache = ['clave' => $clave, 'val' => $j];
         }
-        $pendientes = [];
-        foreach ($this->estado()['facturas'] as $f) {
-            if ($f['id'] === $this->sel || (string) ($f['datos']['cuenta'] ?? '') !== $cta || $norm($f['datos']['su_factura'] ?? '') !== $a) {
-                continue;
-            }
-            if (in_array($f['estado'], ['validada', 'validando'], true)) {
-                $out[] = 'Ya validada aquí el '.($f['validada_el'] ?? 'ahora').' ('.basename($f['ruta']).')';
-            } elseif ($f['estado'] === 'pendiente') {
-                $pendientes[] = basename($f['ruta']);
-            }
-        }
-        // Varias pendientes con el mismo nº: la primera de la lista es la buena y las demás sus duplicadas
-        if ($pendientes) {
-            usort($pendientes, 'strnatcasecmp');
-            if (strnatcasecmp(basename($this->factura($this->sel)['ruta'] ?? ''), $pendientes[0]) < 0) {
-                $this->gemelas = $pendientes;
-            } else {
-                $out[] = 'Es copia de '.$pendientes[0].', pendiente, que va antes en la lista';
-            }
-        }
-        return $out;
+        $j = $this->dupCache['val'];
+        $this->gemelas = $j['gemelas'] ?? [];
+        $this->avisosDup = $j['avisos'] ?? [];
+
+        return $j['duplicadas'] ?? [];
     }
+
+    /** Último resultado de duplicados() de Python (con la clave de lo que se preguntó). */
+    public array $dupCache = [];
+
+    /** Avisos de «mismo nº pero importe distinto»: informan, no frenan. */
+    protected array $avisosDup = [];
 
     /** Pendientes con el mismo nº que la abierta cuando la abierta es la primera: se avisa, no es duplicada. */
     protected array $gemelas = [];
@@ -3278,6 +3280,7 @@ class FacturasOcr extends Component
             'planCp' => $this->sel ? $this->cuentasContables() : [],
             'choqueCuenta' => $this->sel ? $this->choqueCuenta() : null,   // para preguntar al validar si la contrapartida no está en el plan
             'gemelas' => $this->gemelas,
+            'avisosDup' => $this->avisosDup,
             'duplicadas' => array_values(array_filter($todas, fn ($f) => $f['estado'] === 'duplicada')),
             'totalNum' => $this->sel ? ($this->num($this->form['total'] ?? '') ?? 0) : 0,
             'entidad' => $valido ? $this->entidad() : null,

@@ -642,6 +642,11 @@
                             <b>{{ implode(', ', $gemelas) }}</b>. Esta es la primera: al validarla, {{ count($gemelas) > 1 ? 'esas quedarán' : 'esa quedará' }} como duplicada.
                         </div>
                     @endif
+                    @if (! empty($avisosDup))
+                        <div class="focr-avisos" style="max-height:none; border-color:#fcd34d; background:#fffbeb; color:#78350f">
+                            @foreach ($avisosDup as $m) <div>ℹ️ {{ $m }}</div> @endforeach
+                        </div>
+                    @endif
                     @if ($duplicados)
                         <div class="focr-nocuadra">
                             <div style="font-size:1.05rem">⚠️ FACTURA DUPLICADA</div>
