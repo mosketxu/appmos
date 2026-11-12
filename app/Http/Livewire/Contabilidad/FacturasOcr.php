@@ -279,6 +279,7 @@ class FacturasOcr extends Component
             default => '',
         };
         $this->analitica = $e && $this->hayColumnaAnalitica() ? (bool) $e->contabilidad_analitica : (bool) ($this->cfg()['analitica'] ?? false);
+        $this->ponerEnClienteJson('analitica', $this->analitica ?: null);   // Python (reproponer sin pantalla, Proveedores) la lee de aquí: el Canal no se pierde
         $ult = $this->estado()['ultimo_analisis'] ?? [];
         $this->carpeta = $this->web() ? $this->dirEntrada() : ($ult['carpeta'] ?? ($this->cfg()['carpeta_entrada'] ?? ''));
         $this->leyendo = $this->web() && $this->lecturaEnCurso() !== null;
@@ -2051,15 +2052,21 @@ class FacturasOcr extends Component
 
     protected function ponerDigitosEnClienteJson(?int $n): void
     {
+        $this->ponerEnClienteJson('digitos_cuenta', $n);
+    }
+
+    /** Copia a cliente.json un dato de Entidades que Python necesita (null = quitarlo). Solo escribe si cambia. */
+    protected function ponerEnClienteJson(string $clave, $valor): void
+    {
         $f = $this->dirCliente().'/cliente.json';
         $cfg = json_decode((string) @file_get_contents($f), true);
-        if (! is_array($cfg) || ($n !== null && (int) ($cfg['digitos_cuenta'] ?? 0) === $n) || ($n === null && ! isset($cfg['digitos_cuenta']))) {
+        if (! is_array($cfg) || ($valor === null ? ! array_key_exists($clave, $cfg) : (($cfg[$clave] ?? null) === $valor))) {
             return;
         }
-        if ($n === null) {
-            unset($cfg['digitos_cuenta']);
+        if ($valor === null) {
+            unset($cfg[$clave]);
         } else {
-            $cfg['digitos_cuenta'] = $n;
+            $cfg[$clave] = $valor;
         }
         @file_put_contents($f, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
