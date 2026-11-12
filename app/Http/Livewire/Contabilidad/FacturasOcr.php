@@ -1983,36 +1983,85 @@ class FacturasOcr extends Component
                 }
             }
         }
-        $serie = $this->esEmitida() ? '430' : '410';
-        $usadas = array_filter(array_map('strval', array_keys($this->terceros())), fn ($k) => preg_match('/^'.$serie.'\d{3}$/', $k));
-        foreach ($this->patrones() as $k => $pat) {
-            if (! empty($pat['nuevo']) && str_starts_with((string) $k, '430') === $this->esEmitida()) {
-                if ($cif !== '' && in_array($cif, $pat['nifs'] ?? [], true)) {
-                    $this->form['cuenta'] = (string) $k;
-                    $this->updatedFormCuenta();
-                    return;
-                }
-                $usadas[] = (string) $k;
-            }
+        // Una sola lógica para la cuenta nueva (la de facturas_ocr.py, también la que usa al proponer): aquí solo se le pregunta.
+        // Las cifras salen de Entidades («Nº Dígitos Sage»); si no está informado se avisa, y si el listado de SAGE dice otro largo se corrige avisando.
+        $this->sincronizarDigitosCuenta();
+        $r = $this->cuentaNuevaPython($cif);
+        if (! $r || empty($r['cuenta'])) {
+            return;
         }
-        foreach ($this->estado()['facturas'] as $f) {
-            if ($f['id'] !== $this->sel && ! empty($f['datos']['proveedor_nuevo']) && ! empty($f['datos']['cuenta'])) {
-                $usadas[] = (string) $f['datos']['cuenta'];
-            }
+        if (! empty($r['detectado']) && ($r['configurado'] ?? null) !== null && (int) $r['detectado'] !== (int) $r['configurado']) {
+            $this->corregirDigitosCuenta((int) $r['detectado'], (int) $r['configurado']);
+            $r['aviso'] = '';
         }
-        // Las creadas en Bancos tampoco se repiten (mismo CIF -> esa)
-        foreach ($this->cuentasBancos() as $k => $b) {
-            if ($cif !== '' && strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $b['cif'] ?? '')) === $cif) {
-                $this->form['cuenta'] = (string) $k;
-                $this->updatedFormCuenta();
-                return;
-            }
-            $usadas[] = (string) $k;
+        if (! empty($r['aviso'])) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ '.$r['aviso']);
         }
-        $nums = array_map('intval', array_filter($usadas, fn ($k) => preg_match('/^'.$serie.'\d{3}$/', $k) && ! str_ends_with($k, '900')));
-        $this->form['cuenta'] = (string) ($nums ? max($nums) + 1 : (int) ($serie.'001'));
+        if (($r['cuenta'] ?? '') !== '' && $cif !== '' && isset($this->patrones()[$r['cuenta']]['nifs']) && in_array($cif, $this->patrones()[$r['cuenta']]['nifs'], true)) {
+            $this->form['cuenta'] = (string) $r['cuenta'];
+            $this->updatedFormCuenta();
+            return;
+        }
+        $this->form['cuenta'] = (string) $r['cuenta'];
         $this->sucio = true;
         $this->altaProveedorNuevo();
+    }
+
+    /** Pregunta a facturas_ocr.py (`cuenta_nueva`) la siguiente cuenta libre; devuelve su JSON o null si falla. */
+    protected function cuentaNuevaPython(string $cif): ?array
+    {
+        if (! $this->ejecutaAqui()) {
+            $this->salida .= '⚠️ Opción no válida. Solo ejecutable desde un terminal autorizado.';
+            return null;
+        }
+        $cmd = [$this->pythonBin(), 'facturas_ocr.py', $this->cliente, 'cuenta_nueva', '--datos', json_encode(['cif' => $cif, 'tipo' => $this->esEmitida() ? 'E' : 'R', 'excluir' => $this->sel], JSON_UNESCAPED_UNICODE)];
+        try {
+            $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(120)->run($cmd);
+            $j = json_decode(trim($r->output()), true);
+            if (! $r->successful() || ! is_array($j)) {
+                $this->salida .= trim($r->output()."\n".$r->errorOutput())."\n";
+                $this->dispatch('proceso-terminado', mensaje: "⚠️ No he podido calcular la cuenta nueva\n".trim($r->errorOutput() ?: $r->output()));
+                return null;
+            }
+            return $j;
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
+    }
+
+    /** Lo informado en Entidades («Nº Dígitos Sage») manda: se copia a cliente.json, que es lo que lee Python. */
+    protected function sincronizarDigitosCuenta(): void
+    {
+        $eid = (int) ($this->cfg()['entidad_id'] ?? 0);
+        $n = (int) (\App\Models\Entidad::whereKey($eid)->value('digitos_cuenta') ?? 0);
+        $this->ponerDigitosEnClienteJson($n >= 6 ? $n : null);
+    }
+
+    /** El listado/mayor de SAGE tiene otro largo que Entidades: se corrige Entidades y cliente.json, y se avisa. */
+    protected function corregirDigitosCuenta(int $real, int $antes): void
+    {
+        $eid = (int) ($this->cfg()['entidad_id'] ?? 0);
+        if ($eid > 0 && $real >= 6 && $real <= 12) {
+            \App\Models\Entidad::whereKey($eid)->update(['digitos_cuenta' => $real]);
+            $this->ponerDigitosEnClienteJson($real);
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ Las cuentas de SAGE de esta empresa tienen {$real} cifras y Entidades decía {$antes}. Lo he corregido a {$real} (Entidades → Nº Dígitos Sage). Revísalo.");
+        }
+    }
+
+    protected function ponerDigitosEnClienteJson(?int $n): void
+    {
+        $f = $this->dirCliente().'/cliente.json';
+        $cfg = json_decode((string) @file_get_contents($f), true);
+        if (! is_array($cfg) || ($n !== null && (int) ($cfg['digitos_cuenta'] ?? 0) === $n) || ($n === null && ! isset($cfg['digitos_cuenta']))) {
+            return;
+        }
+        if ($n === null) {
+            unset($cfg['digitos_cuenta']);
+        } else {
+            $cfg['digitos_cuenta'] = $n;
+        }
+        @file_put_contents($f, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     /**
