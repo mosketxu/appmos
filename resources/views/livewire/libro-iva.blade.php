@@ -107,7 +107,31 @@
             Si sale a favor:
             <select wire:model="devolver" style="font-size:13px" @disabled($this->soloCuarto())><option value="1" @selected(! $this->soloCuarto() && $devolver)>A DEVOLVER</option><option value="0" @selected($this->soloCuarto() || ! $devolver)>A COMPENSAR</option></select></label>
         @if ($this->soloCuarto())<span class="li-gris" style="font-size:12px">En trimestral solo se devuelve en el 4T.</span>@endif
-        <button type="button" wire:click="generar" wire:loading.attr="disabled" class="li-btn pri" @disabled($espera !== '' || $carpeta === '')>▶ Generar libro de IVA {{ $periodo }} {{ $ejercicio }}</button>
+        <button type="button" wire:click="generar(false)" wire:loading.attr="disabled" class="li-btn pri" @disabled($espera !== '' || $carpeta === '')>▶ Generar libro de IVA {{ $periodo }} {{ $ejercicio }}</button>
+        @if ($avisoSinLibro !== '')
+            <div style="position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center" wire:key="aviso-sin-libro">
+                <div style="background:#fff; border-radius:10px; padding:18px 20px; width:480px; max-width:94vw; box-shadow:0 10px 30px rgba(0,0,0,.25)">
+                    <div style="font-weight:700; font-size:16px; margin-bottom:8px">⚠ Falta el libro del periodo</div>
+                    <div style="font-size:14px; color:#374151; line-height:1.4">{{ $avisoSinLibro }}</div>
+                    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px">
+                        <button type="button" class="li-btn" wire:click="volverAComprobar">Volver a comprobar la carpeta</button>
+                        <button type="button" class="li-btn" wire:click="$set('avisoSinLibro', '')">Entendido</button>
+                    </div>
+                </div>
+            </div>
+        @endif
+        @if ($avisoPeriodo !== '')
+            <div style="position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center" wire:key="aviso-periodo">
+                <div style="background:#fff; border-radius:10px; padding:18px 20px; width:480px; max-width:94vw; box-shadow:0 10px 30px rgba(0,0,0,.25)">
+                    <div style="font-weight:700; font-size:16px; margin-bottom:8px">⚠ ¿Es este el periodo?</div>
+                    <div style="font-size:14px; color:#374151; line-height:1.4">{{ $avisoPeriodo }}</div>
+                    <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px">
+                        <button type="button" class="li-btn" wire:click="$set('avisoPeriodo', '')">Revisar el periodo</button>
+                        <button type="button" class="li-btn" wire:click="generar(true)">Generar de todos modos</button>
+                    </div>
+                </div>
+            </div>
+        @endif
         @if ($this->presentaM216())<span style="font-size:12px;color:#4338ca">Esta empresa presenta el M216: el libro llevará la tabla por proveedor junto al bloque ISP.</span>@endif
         <span class="li-gris" style="font-size:12px">Lo hace un PC con OneDrive y deja el Excel «IVA …» en la misma carpeta, junto al original.</span>
     </div>

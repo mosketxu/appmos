@@ -330,14 +330,74 @@ class LibroIva extends Component
         $this->lanzar('listar');
     }
 
-    public function generar(): void
+    public function volverAComprobar(): void
+    {
+        $this->avisoSinLibro = '';
+        $this->comprobar();
+    }
+
+    /** Texto del aviso «¿seguro?» cuando el periodo elegido no pega con la fecha de hoy; vacío = no se pregunta. */
+    public string $avisoPeriodo = '';
+
+    /** Aviso (modal) de que no está el Excel de SAGE del periodo en la carpeta ni se ha subido uno: sin él no hay libro que hacer. */
+    public string $avisoSinLibro = '';
+
+    public function generar(bool $confirmado = false): void
     {
         if (! $this->periodoValido()) {
             $this->error = 'Periodo no válido.';
 
             return;
         }
+        $this->avisoSinLibro = '';
+        if (! $this->excelSubido && $this->listado !== null && ! $this->originalDelPeriodo()) {   // según el último listado de la carpeta
+            $this->avisoSinLibro = 'No encuentro en la carpeta el Excel del libro de IVA de '.$this->periodo.' '.$this->ejercicio.' (el export de SAGE, tipo «'
+                .(preg_match('/^[1-4]T$/', $this->periodo) ? 'T'.$this->periodo[0] : $this->periodo).' '.$this->ejercicio.' …»). Sin él no se puede generar: súbelo con «Excel del libro de IVA» o cópialo a la carpeta y vuelve a comprobarla.';
+
+            return;
+        }
+        if (! $confirmado && ($aviso = $this->periodoIlogico()) !== '') {
+            $this->avisoPeriodo = $aviso;   // modal: revisar el periodo o generar de todos modos
+
+            return;
+        }
+        $this->avisoPeriodo = '';
         $this->lanzar('generar');
+    }
+
+    /**
+     * ¿Tiene sentido hacer hoy el libro de este periodo? Lo normal: el mes en curso o el anterior; el trimestre en curso o el anterior mientras
+     * estamos en el mes siguiente a su cierre (octubre para el 3T). Cualquier otro (3T en noviembre, un mes futuro…) hace que el resultado del
+     * periodo anterior que se arrastra no sea el que toca; se avisa y se deja decidir.
+     */
+    protected function periodoIlogico(): string
+    {
+        $hoy = now();
+        $y = (int) $this->ejercicio;
+        $p = $this->periodo;
+        $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        $idx = fn (int $anio, int $mes) => $anio * 12 + $mes - 1;   // mes absoluto
+        $h = $idx((int) $hoy->format('Y'), (int) $hoy->format('n'));
+        if (preg_match('/^([1-4])T$/', $p, $m)) {
+            $ok = $h >= $idx($y, 3 * (int) $m[1] - 2) && $h <= $idx($y, 3 * (int) $m[1]) + 1;   // en curso, o el mes siguiente a su cierre
+        } elseif (preg_match('/^(0[1-9]|1[0-2])$/', $p)) {
+            $mi = $idx($y, (int) $p);
+            $ok = $mi === $h || $mi === $h - 1;   // el mes en curso o el anterior
+        } else {
+            return '';
+        }
+        if ($ok) {
+            return '';
+        }
+        $trim = fn (int $i) => (intdiv($i % 12, 3) + 1).'T '.intdiv($i, 12);
+        $normales = [$trim($h)];
+        if ($h % 12 % 3 === 0) {   // primer mes de un trimestre: el anterior todavía puede estar en preparación
+            $normales[] = $trim($h - 1);
+        }
+        $normales[] = 'el mes de '.$meses[($h - 1) % 12].' '.intdiv($h - 1, 12);
+
+        return 'Hoy es '.$hoy->format('d/m/Y').' y has elegido '.$p.' '.$y.'. Lo normal sería '.implode(' o ', $normales).'. '
+            .'Si el periodo no es el que toca, el resultado del periodo anterior que se arrastra al Excel tampoco será el correcto.';
     }
 
     protected function lanzar(string $accion): void
