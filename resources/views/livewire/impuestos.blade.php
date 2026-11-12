@@ -440,18 +440,19 @@
                                         <td class="{{ $loop->first ? 'imp-qb' : ($barra ? '' : 'imp-mod') }}" style="text-align:left; white-space:nowrap{{ $barra ? '; border-left:1px solid #cbd5e1' : '' }}">
                                             @php
                                                 $celdas = $f['matriz'][$bl['k']][$ci] ?? [];
-                                                $doble = in_array($col['cod'], ['303', '111'], true);   // impuesto + su casilla «para el cliente»: dos huecos fijos para que queden alineados
+                                                $doble = in_array($col['cod'], ['303', '111'], true);   // impuesto + check de control mensual: el check cae siempre en la misma vertical
                                                 $hijas = fn ($x) => in_array($x[0]->codigo, ['303C', '111C'], true);
                                                 $hayPropio = collect($celdas)->contains(fn ($x) => ! $hijas($x));   // ya tiene el check del impuesto este mes: no se añade el de control
+                                                $mostrar = array_values(array_filter($celdas, fn ($x) => $hayPropio ? ! $hijas($x) : true));
                                             @endphp
-                                            @if ($doble)<div style="display:flex; align-items:center"><span style="display:inline-flex; align-items:center; min-width:165px">@endif
+                                            @if ($loop->first && $doble)<span style="display:inline-flex; align-items:center; min-width:56px">@endif
                                             @if ($loop->first && $conImp($bl['k'])) @include('livewire._impuesto-peticion', ['entId' => $entId, 'bl' => $bl, 'pet' => $pet]) @include('livewire._impuesto-aviso', ['entId' => $entId, 'bl' => $bl, 'avisos' => $avisos, 'avisoCom' => $avisoCom]) @endif
-                                            @foreach ($celdas as [$ob, $per, $e])
-                                                @if (! $doble || ! $hijas([$ob]))
-                                                    @include('livewire._impuesto-celda-fila')
-                                                @endif
+                                            @if ($loop->first && $doble)</span>@endif
+                                            @if ($doble)<span style="display:inline-flex; align-items:center; min-width:150px">@endif
+                                            @foreach ($mostrar as [$ob, $per, $e])
+                                                @include('livewire._impuesto-celda-fila')
                                             @endforeach
-                                            @if ($doble)</span><span style="display:inline-flex; align-items:center">@foreach ($celdas as [$ob, $per, $e])@if (! $hayPropio && $hijas([$ob]))@include('livewire._impuesto-celda-fila')@endif @endforeach</span></div>@endif
+                                            @if ($doble)</span>@endif
                                         </td>
                                     @endforeach
                                 @endif
