@@ -391,6 +391,14 @@ class LibroIva extends Component
             return '';
         }
         $trim = fn (int $i) => (intdiv($i % 12, 3) + 1).'T '.intdiv($i, 12);
+        if ($this->periodicidad() === 'T' && ! $this->conControlMensual()) {   // solo presenta trimestral: el libro es del trimestre ya cerrado
+            $ult = $h % 12 % 3 === 0 ? $trim($h - 1) : null;
+            $qAct = $trim($h);
+
+            return 'Hoy es '.$hoy->format('d/m/Y').' y has elegido '.$p.' '.$y.'. Esta empresa solo presenta el 303 trimestral y no lleva informe mensual al cliente: '
+                .($ult ? 'el libro se hace con el trimestre ya cerrado (ahora, el '.$ult.').' : 'el libro se hace cuando acaba el trimestre (el '.$qAct.' aún no ha terminado).').' '
+                .'Si necesitas hacerlo cada mes, añade la casilla «303 · informe al cliente» en Entidades → Impuestos.';
+        }
         $normales = [];
         if ($h % 12 % 3 === 0) {   // primer mes de un trimestre: se hace el que acaba de cerrarse
             $normales[] = $trim($h - 1);
