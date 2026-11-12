@@ -424,15 +424,15 @@ class LibroIva extends Component
         $dev73 = (float) ($cas['73'] ?? 0);
         $eligio = $comp72 > 0 || $dev73 > 0;
         $pend = (float) ($d['pendientes'] ?? 0) + ($eligio ? $comp72 : max(0.0, -$res));
-        $texto = "impuesto presentado: «{$doc->nombre}» (casilla 71 = ".number_format($res, 2, ',', '.')
-            .(isset($cas['87']) ? '; pendientes de periodos anteriores, casilla 87 = '.number_format((float) $cas['87'], 2, ',', '.') : '').')';
+        $texto = $doc->nombre.' · Cas.71 = '.number_format($res, 2, ',', '.')
+            .(isset($cas['87']) ? ' + Cas.87 = '.number_format((float) $cas['87'], 2, ',', '.') : '');
         if ($dev73 > 0) {
             $texto .= '; DEVOLUCIÓN SOLICITADA, casilla 73 = '.number_format($dev73, 2, ',', '.').' (no se compensa)';
         } elseif ($res < 0 && ! $eligio) {
             $texto .= '; ojo: no consta si se pidió devolución o compensación (casillas 72/73 vacías), se supone compensación';
         }
         if ($pend > 0.005) {
-            return ['valor' => -round($pend, 2), 'origen' => $texto.' → a compensar '.number_format($pend, 2, ',', '.')];
+            return ['valor' => -round($pend, 2), 'origen' => $texto.' → A compensar '.number_format($pend, 2, ',', '.')];
         }
 
         return ['valor' => max(0.0, $res), 'origen' => $texto];
