@@ -205,4 +205,35 @@ class FacturasOcrSyncController extends Controller
 
         return response()->json(['estado' => $estado]);
     }
+
+    /**
+     * Lectura automática (13-nov-2026): lanza en segundo plano, sin pantalla, «leer_auto» del cliente (lee lo nuevo de su Entrada con el ciclo
+     * de la última lectura). Si ya hay un facturas_ocr.py de ese cliente trabajando, no hace nada (la siguiente pasada recogerá lo nuevo).
+     */
+    public function entradaLeer(Request $r, string $cliente)
+    {
+        $this->autorizar($r);
+        abort_unless(array_key_exists($cliente, \App\Support\FacturasOcrEntrada::todosLosClientes()), 404);
+        $base = rtrim((string) config('contabilidad.facturasocr_dir'), '/');
+        $datos = FacturasOcr::rutaDatos($base.'/'.basename($cliente));
+        $lock = '/tmp/facturasocr-'.strtolower(preg_replace('/[^A-Za-z0-9]/', '', $cliente)).'.lock';
+        $f = @fopen($lock, 'c');
+        if ($f && ! flock($f, LOCK_EX | LOCK_NB)) {
+            return response()->json(['estado' => 'ocupado']);
+        }
+        if ($f) {
+            flock($f, LOCK_UN);
+        }
+        $python = config('contabilidad.facturasocr_python') ?: storage_path('app/venv-facturasocr/bin/python');
+        $env = 'ONEDRIVE_ROOT='.escapeshellarg(rtrim((string) config('contabilidad.facturasocr_onedrive'), '/')).' FACTURAS_OCR_MOTOR=tesseract OCR_CACHE_DIR='.escapeshellarg($datos.'/_ocr').' ';
+        $cola = $datos.'/_cola';
+        @mkdir($cola, 0775, true);
+        file_put_contents($cola.'/lectura.inicio', (string) time());
+        @unlink($cola.'/lectura.fin');
+        $cmd = 'cd '.escapeshellarg($base).' && ('.$env.escapeshellarg($python).' facturas_ocr.py '.escapeshellarg($cliente).' leer_auto > '.escapeshellarg($cola.'/lectura.log')
+            .' 2>&1; date +%s > '.escapeshellarg($cola.'/lectura.fin').') < /dev/null > /dev/null 2>&1 &';
+        \Illuminate\Support\Facades\Process::run(['bash', '-c', 'nohup setsid bash -c '.escapeshellarg($cmd).' &']);
+
+        return response()->json(['estado' => 'lanzada']);
+    }
 }
