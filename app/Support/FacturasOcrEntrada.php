@@ -37,6 +37,29 @@ class FacturasOcrEntrada
         return $out;
     }
 
+    /** Todos los clientes de Facturas OCR (sin mirar permisos de usuario): lo usa el PC trabajador con su X-Token. */
+    public static function todosLosClientes(): array
+    {
+        $out = [];
+        foreach (glob(self::baseDir().'/*', GLOB_ONLYDIR) ?: [] as $d) {
+            $n = basename($d);
+            if ($n === 'Doc_y_Config' || $n[0] === '.' || $n[0] === '_' || ! is_file($d.'/cliente.json')) {
+                continue;
+            }
+            $out[$n] = json_decode((string) @file_get_contents($d.'/cliente.json'), true) ?: [];
+        }
+
+        return $out;
+    }
+
+    /** ids (SHA-1[:12]) de las facturas de ese cliente ya contabilizadas (validadas). */
+    public static function idsValidadas(string $cliente): array
+    {
+        $estado = json_decode((string) @file_get_contents(FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/facturas.json'), true) ?: [];
+
+        return array_values(array_map(fn ($f) => $f['id'], array_filter($estado['facturas'] ?? [], fn ($f) => ($f['estado'] ?? '') === 'validada')));
+    }
+
     public static function dirEntrada(string $cliente): string
     {
         return FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/Entrada';
@@ -60,10 +83,12 @@ class FacturasOcrEntrada
      * @param  array  $archivos  [['ruta' => absoluta, 'nombre' => nombre con el que se guarda], …]
      * @return array{guardadas: string[], repetidas: string[], rechazadas: string[]}
      */
-    public static function importar(string $cliente, array $archivos): array
+    public static function importar(string $cliente, array $archivos, bool $comprobarAcceso = true): array
     {
         $res = ['guardadas' => [], 'repetidas' => [], 'rechazadas' => []];
-        abort_unless(array_key_exists($cliente, self::clientes()), 403);
+        if ($comprobarAcceso) {
+            abort_unless(array_key_exists($cliente, self::clientes()), 403);
+        }
         $entrada = self::dirEntrada($cliente);
         @mkdir($entrada, 0775, true);
         $conocidos = self::idsConocidos($cliente);

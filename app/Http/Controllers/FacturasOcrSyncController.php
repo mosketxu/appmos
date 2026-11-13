@@ -169,4 +169,40 @@ class FacturasOcrSyncController extends Controller
 
         return response()->file($ruta);
     }
+
+    /**
+     * Carpeta de entrada por PC (13-nov-2026): el PC trabajador mira «Facturas recibidas\Entrada» de cada cliente (cliente.json
+     * «carpeta_facturas_recibidas», con {OneDrive}/{AAAA}), sube los PDF nuevos y los mueve a «Subidas VPS». Esto le da los clientes
+     * con su plantilla y los ids de lo ya contabilizado (para vaciar «Subidas VPS» de lo que ya está en su ruta definitiva).
+     */
+    public function entradaConfig(Request $r)
+    {
+        $this->autorizar($r);
+        $out = [];
+        foreach (\App\Support\FacturasOcrEntrada::todosLosClientes() as $n => $cfg) {
+            if (! empty($cfg['carpeta_facturas_recibidas'])) {
+                $out[] = ['cliente' => $n, 'carpeta' => $cfg['carpeta_facturas_recibidas'], 'validadas' => \App\Support\FacturasOcrEntrada::idsValidadas($n)];
+            }
+        }
+
+        return response()->json(['clientes' => $out]);
+    }
+
+    /** Un PDF de la carpeta de entrada (cuerpo = el fichero, X-Nombre = nombre en base64). Misma regla de duplicados que la subida de la web. */
+    public function entradaSubir(Request $r, string $cliente)
+    {
+        $this->autorizar($r);
+        $nombre = basename((string) base64_decode((string) $r->header('X-Nombre'), true));
+        abort_if($nombre === '' || ! array_key_exists($cliente, \App\Support\FacturasOcrEntrada::todosLosClientes()), 404);
+        $tmp = tempnam(sys_get_temp_dir(), 'focr');
+        file_put_contents($tmp, $r->getContent());
+        try {
+            $res = \App\Support\FacturasOcrEntrada::importar($cliente, [['ruta' => $tmp, 'nombre' => $nombre]], false);
+        } finally {
+            @unlink($tmp);
+        }
+        $estado = $res['guardadas'] ? 'guardada' : ($res['repetidas'] ? 'repetida' : 'rechazada');
+
+        return response()->json(['estado' => $estado]);
+    }
 }
