@@ -74,6 +74,22 @@ class FacturasOcrEntrada
         return $out;
     }
 
+    /** id => nombre del proveedor leído (para nombrar el PDF devuelto al tampón: «<Proveedor> <original>_<fecha>_A MANO»). */
+    public static function proveedoresAMano(string $cliente): array
+    {
+        $estado = json_decode((string) @file_get_contents(FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/facturas.json'), true) ?: [];
+        $out = [];
+        foreach (self::idsAMano($cliente) as $id => $suf) {
+            foreach ($estado['facturas'] ?? [] as $f) {
+                if (($f['id'] ?? '') === $id && trim((string) ($f['datos']['proveedor'] ?? '')) !== '') {
+                    $out[$id] = trim((string) $f['datos']['proveedor']);
+                }
+            }
+        }
+
+        return $out;
+    }
+
     public static function dirEntrada(string $cliente): string
     {
         return FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/Entrada';
