@@ -239,7 +239,16 @@ class ImpuestosPdfs
             return;
         }
         $per = Impuestos::periodicidadDe($doc->periodo);
-        $ob = DB::table('entidad_impuestos')->where('entidad_id', $doc->entidad_id)->where('modelo_id', $modelo->id)->where('etiqueta', (string) $doc->etiqueta)->first();
+        $obs = DB::table('entidad_impuestos')->where('entidad_id', $doc->entidad_id)->where('modelo_id', $modelo->id)->get();
+        $ob = $obs->firstWhere('etiqueta', (string) $doc->etiqueta);
+        if ($ob && $ob->periodicidad !== $per) {
+            // Mismo modelo con dos declaraciones de distinta periodicidad (Aldribo: 303 trimestral hasta T4 y 303 «REDEME» mensual desde octubre): el PDF mensual
+            // «Aldribo M303 10 2026» no lleva etiqueta y caía en la trimestral (y no se tocaba). Si hay una sola declaración con la periodicidad del PDF, es esa.
+            $alt = $obs->where('periodicidad', $per);
+            if ($alt->count() === 1) {
+                $ob = $alt->first();
+            }
+        }
         $ahora = now();
         if (! $ob) {
             $id = DB::table('entidad_impuestos')->insertGetId(['entidad_id' => $doc->entidad_id, 'modelo_id' => $modelo->id, 'etiqueta' => (string) $doc->etiqueta, 'periodicidad' => $per,
