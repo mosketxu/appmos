@@ -302,8 +302,8 @@
                             </div>
                         @endif
                         <style>
-                            .focr-wrap3 { max-width:14rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3; overflow:hidden; overflow-wrap:anywhere; line-height:1.375rem; }
-                            @media (max-width:1535px) { .focr-wrap3 { max-width:12.5rem; } }
+                            .focr-wrap3 { max-width:17rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3; overflow:hidden; overflow-wrap:anywhere; line-height:1.375rem; }
+                            @media (max-width:1535px) { .focr-wrap3 { max-width:15rem; } }
                         </style>
                         <table class="focr-tabla">
                             <thead><tr>
@@ -318,7 +318,7 @@
                                 <tr class="clic" wire:click="abrir('{{ $f['id'] }}')" wire:key="c-{{ $f['id'] }}">
                                     <td style="white-space:nowrap"><span class="focr-chip {{ $e[2] }}">{{ $e[0] }} {{ $e[1] }}</span>
                                         @if ($f['estado'] === 'pendiente')
-                                            <div style="margin-top:.2rem">
+                                            <div style="margin-top:.2rem; text-align:center">
                                             <input type="checkbox" wire:model.live="marcadas" value="{{ $f['id'] }}" wire:click.stop title="Marcar para validar varias de una vez">
                                             <button type="button" wire:click.stop="validarFila('{{ $f['id'] }}')" wire:loading.attr="disabled" wire:target="validarFila('{{ $f['id'] }}')"
                                                     class="focr-btn b-verde" style="padding:.05rem .4rem; font-size:.75rem" title="Validarla tal como está, sin abrirla (si no cuadra o es duplicada, no lo hace y te lo dice)">✅</button>
