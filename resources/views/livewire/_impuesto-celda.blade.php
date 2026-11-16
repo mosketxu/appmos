@@ -37,7 +37,7 @@
         {{-- Vencimientos: desplegable con los pasos del proceso (hoy: preparar la propuesta; el volcado al fichero del grupo se añadirá tras revisarla) --}}
         <span class="imp-pdfw" x-data="{ o: false }" x-on:click.outside="o = false">
             <button type="button" class="imp-pdf" style="color:{{ $color[$e] }}" x-on:click="o = !o" title="Vencimientos de {{ $cab }}">📅</button>
-            <div class="imp-pop" x-show="o" x-cloak>
+            <div class="imp-pop" x-show="o" x-cloak style="display:none">
                 <button type="button" wire:click="vtAbrir({{ $ob->entidad_id }}, '{{ $per }}')" x-on:click="o = false">1 · Preparar vencimientos (propuesta)</button>
                 <button type="button" wire:click="vtAbrir({{ $ob->entidad_id }}, '{{ $per }}', true)" x-on:click="o = false">📜 Notarios y otros</button>
                 <button type="button" disabled style="color:#9ca3af; cursor:not-allowed" title="Se activará cuando revises la propuesta">2 · Llevar al fichero del grupo (pendiente)</button>
@@ -59,7 +59,7 @@
                 <button type="button" class="imp-pdf {{ $principal ? '' : 'gris' }}" @if ($principal) style="color:{{ $color[$e] }}" @endif x-on:click="o = !o" title="{{ count($lista) }} documentos">
                     @if (count($lista) > 1) @include('livewire._impuesto-pdf-varios') @else @include('livewire._impuesto-pdf') @endif
                 </button>
-                <div class="imp-pop" x-show="o" x-cloak>
+                <div class="imp-pop" x-show="o" x-cloak style="display:none">
                     @foreach ($lista as $d)
                         <label style="display:flex; gap:6px; align-items:center; padding:3px 6px; font-size:12px; cursor:pointer">
                             <input type="checkbox" value="{{ route('impuestos.documento', $d->id) }}" x-model="sel" class="border-gray-300 rounded">
@@ -83,7 +83,7 @@
         @if ($listaX)
             <span class="imp-pdfw imp-xl" x-data="{ o: false }" x-on:click.outside="o = false">
                 <button type="button" class="imp-pdf" style="color:#107c41" x-on:click="o = !o" title="{{ count($listaX) }} Excel">@include('livewire._impuesto-xls')</button>
-                <div class="imp-pop" x-show="o" x-cloak>
+                <div class="imp-pop" x-show="o" x-cloak style="display:none">
                     @foreach ($listaX as $d)
                         <div style="display:flex; gap:6px; align-items:center; padding:3px 6px; font-size:12px">
                             <a href="{{ route('impuestos.documento', $d->id) }}" style="padding:0; width:auto" @if ($d->tipo === 'libro_iva') title="Libro de IVA · actualizado {{ \Illuminate\Support\Carbon::parse($d->updated_at)->format('d/m/Y H:i') }} (se actualiza solo si lo modificas en OneDrive)" @endif>@if ($d->tipo === 'libro_iva')📒 @endif{{ $d->nombre }}</a>

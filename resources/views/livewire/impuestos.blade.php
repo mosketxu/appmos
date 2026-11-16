@@ -198,7 +198,7 @@
             <div class="imp-pdfw" style="position:relative" x-data="{ o: false }" x-on:click.outside="o = false">
                 <button type="button" x-on:click="o = !o" class="py-1 text-sm bg-white border border-gray-300 rounded-md" style="padding-left:.6rem; padding-right:.6rem; {{ $nEst ? 'border-color:#4f46e5; color:#4338ca; font-weight:600' : '' }}"
                     title="Ver solo las casillas de los estados marcados">Estados: {{ $nEst ? collect($filtroEstados)->map(fn ($k) => $letra[$k])->implode(' ') : 'todos' }} ▾</button>
-                <div class="imp-pop imp-avp" x-show="o" x-cloak style="width:260px">
+                <div class="imp-pop imp-avp" x-show="o" x-cloak style="display:none; width:260px">
                     @foreach ($todosEst as $k)
                         <label style="display:flex; align-items:center; gap:6px; padding:2px 4px; cursor:pointer">
                             <input type="checkbox" value="{{ $k }}" wire:model.live="filtroEstados" class="border-gray-300 rounded">

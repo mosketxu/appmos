@@ -20,7 +20,7 @@
     @endphp
     <span class="imp-pdfw" wire:key="pet-{{ $entId }}-{{ $bl['k'] }}-{{ $est->implode(',') }}-{{ (int) $pide }}" x-data="{ o: false, ver: '' }" x-on:click.outside="o = false">
         <button type="button" class="imp-pet" style="color:{{ $color }}; {{ ! $pide && ! $hechas ? 'opacity:.3' : ($peor === null ? 'opacity:.75' : '') }}" x-on:click="o = !o" title="{{ $tit }}"><svg viewBox="0 0 24 24" aria-hidden="true" width="17" height="17" style="vertical-align:middle"><path fill="currentColor" d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5L13 3.5zM7 12v1.6h10V12H7zm0 3.4V17h10v-1.6H7z"/></svg>@if ($peor === 'recibido')<b class="ok">✔</b>@elseif ($peor === null && $hechas)<sup style="font-size:9px">{{ $hechas }}/{{ $est->count() }}</sup>@endif</button>
-        <div class="imp-pop imp-avp" x-show="o" x-cloak>
+        <div class="imp-pop imp-avp" x-show="o" x-cloak style="display:none">
             <div style="font-weight:600; margin-bottom:4px">Petición de documentación · {{ $bl['titulo'] }}</div>
             @if (! $pide)
                 <div style="color:#6b7280; margin-bottom:4px">A este cliente no se le pide la documentación.</div>
