@@ -333,7 +333,7 @@
                                             <span class="focr-chip {{ $chip($v) }}" title="{{ $k }}: {{ $v }}">{{ ['proveedor' => 'P', 'su_factura' => 'Nº', 'fecha' => 'F', 'importes' => '€'][$k] ?? $k }}</span>
                                         @endforeach
                                     </td>
-                                    <td class="text-xs text-gray-600">{{ implode(' · ', $f['avisos'] ?? []) }}
+                                    <td class="text-xs text-gray-600" style="min-width:16rem"><div class="focr-avisos-celda" title="{{ implode(' · ', $f['avisos'] ?? []) }}" style="max-height:3.7rem; overflow-y:auto; line-height:1.2rem">{{ implode(' · ', $f['avisos'] ?? []) }}
                                         @if ($f['estado'] === 'rechazada')
                                             @php $mr = trim((string) ($f['motivo_rechazo'] ?? '')); $tipoR = preg_match('/^(ISP|ADC)\b/u', $mr, $mm) ? $mm[1] : 'Otros'; @endphp
                                             <span class="focr-chip {{ $tipoR === 'Otros' ? 'c-gris' : 'c-revisar' }}" title="{{ $mr !== '' ? $mr : 'Sin motivo indicado' }}" style="cursor:help">Rechazo: {{ $tipoR }}</span>
@@ -341,6 +341,7 @@
                                         <button type="button" wire:click.stop="quitarDeLista('{{ $f['id'] }}')"
                                                 @if ($f['estado'] === 'pendiente') wire:confirm="¿Quitar {{ basename($f['ruta']) }} de la lista? (p.ej. si la contabilizas a mano en SAGE). El PDF no se toca." @endif
                                                 class="focr-btn b-gris" style="padding:.05rem .4rem; font-size:.7rem" title="Quitarla de la lista (el PDF no se toca)">✕ Quitar</button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
