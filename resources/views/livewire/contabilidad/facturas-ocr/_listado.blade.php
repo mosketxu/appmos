@@ -301,6 +301,10 @@
                                 @endif
                             </div>
                         @endif
+                        <style>
+                            .focr-wrap3 { max-width:14rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3; overflow:hidden; overflow-wrap:anywhere; line-height:1.375rem; }
+                            @media (max-width:1535px) { .focr-wrap3 { max-width:10rem; } }
+                        </style>
                         <table class="focr-tabla">
                             <thead><tr>
                                 <th></th><th>Fichero</th><th>Proveedor</th><th>Factura</th>
@@ -319,11 +323,11 @@
                                                     class="focr-btn b-verde" style="padding:.05rem .4rem; font-size:.75rem" title="Validarla tal como está, sin abrirla (si no cuadra o es duplicada, no lo hace y te lo dice)">✅</button>
                                         @endif
                                     </td>
-                                    <td><div class="focr-cut" style="max-width:14rem" title="{{ basename($f['ruta']) }}">{{ basename($f['ruta']) }}</div> @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
+                                    <td><div class="focr-wrap3" title="{{ basename($f['ruta']) }}">{{ basename($f['ruta']) }}</div> @if (! empty($f['ocr'])) <span class="focr-chip c-revisar">OCR</span> @endif
                                         @if (collect($f['avisos'] ?? [])->contains(fn ($a) => str_starts_with($a, 'DUPLICADA'))) <span class="focr-chip c-falta">DUPLICADA</span> @endif
                                         @if (! empty($f['editada'])) <span class="focr-chip c-gris" title="Tocada a mano el {{ $f['editada'] }}; se guarda sola">✎ a medias</span> @endif</td>
                                     @php $im = $importes($d); $provTxt = trim(($d['cuenta'] ?? '').' '.($d['proveedor'] ?? '')); @endphp
-                                    <td><div class="focr-cut" style="max-width:13rem" title="{{ $provTxt }}">{{ $provTxt }}</div> @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
+                                    <td><div class="focr-wrap3" title="{{ $provTxt }}">{{ $provTxt }}</div> @if (($d['tipo'] ?? 'R') === 'E') <span class="focr-chip c-ok" title="Factura emitida: cliente, pestaña Emitidas del plugin">emitida</span> @endif</td>
                                     <td style="white-space:nowrap"><div><span class="focr-sub" style="margin-right:.3rem">Nº</span>{{ $d['su_factura'] ?? '' }}&nbsp;</div><div><span class="focr-sub" style="margin-right:.3rem">Fact.</span>{{ $fmt($d['fecha_expedicion'] ?? '') }}&nbsp;</div><div><span class="focr-sub" style="margin-right:.3rem">Reg.</span>{{ $fmt($d['fecha_registro'] ?? '') }}&nbsp;</div></td>
                                     <td style="white-space:nowrap"><div><span class="focr-sub" style="margin-right:.3rem">Contrap.</span>{{ $d['contrapartida'] ?? '' }}&nbsp;</div><div title="Código de transacción"><span class="focr-sub" style="margin-right:.3rem">C.trans</span>{{ $d['codigo_transaccion'] ?? '' }}&nbsp;</div><div title="Clave de operación"><span class="focr-sub" style="margin-right:.3rem">Clave</span>{{ $d['clave_operacion'] ?? '' }}&nbsp;</div></td>
                                     <td style="text-align:right; white-space:nowrap" title="{{ $im['detalle'] }}"><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">Base</span><span>{{ $eur($im['base']) }}</span></div><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">IVA %</span><span>{!! $im['pct'] === 'varios' ? '<span class="focr-chip c-revisar">varios</span>' : e($im['pct']).'&nbsp;%' !!}</span></div><div style="display:flex;justify-content:space-between;gap:.5rem"><span class="focr-sub">IVA</span><span>{{ $eur($im['iva']) }}</span></div></td>
