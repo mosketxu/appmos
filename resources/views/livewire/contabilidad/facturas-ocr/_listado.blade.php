@@ -302,8 +302,8 @@
                             </div>
                         @endif
                         <style>
-                            .focr-wrap3 { max-width:17rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3; overflow:hidden; overflow-wrap:anywhere; line-height:1.375rem; }
-                            @media (max-width:1535px) { .focr-wrap3 { max-width:15rem; } }
+                            .focr-wrap3 { min-width:14rem; max-width:17rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3; overflow:hidden; overflow-wrap:anywhere; line-height:1.375rem; }
+                            @media (max-width:1535px) { .focr-wrap3 { min-width:12rem; max-width:15rem; } }
                         </style>
                         <table class="focr-tabla">
                             <thead><tr>
