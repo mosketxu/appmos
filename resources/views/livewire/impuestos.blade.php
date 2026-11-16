@@ -220,6 +220,20 @@
                     title="Un PC busca en OneDrive los PDF de impuestos de {{ $ejercicio }} y los sube aquí">🔄 Buscar PDF en OneDrive</button>
                 <button type="button" wire:click="actualizarLibros" class="imp-btn" style="border-radius:6px"
                     title="Un PC mira si has modificado a mano algún libro de IVA (Excel «IVA …») en OneDrive y actualiza la copia de la casilla 303. Se hace solo cada pocos minutos; el botón lo fuerza.">📒 Actualizar libros IVA</button>
+                @if (preg_match('/^\d{2}$/', (string) $vista))
+                    <button type="button" wire:click="agruparVencimientos" wire:loading.attr="disabled" class="imp-btn" style="border-radius:6px"
+                        title="Junta en un solo Excel los vencimientos de este mes de las empresas del Grupo, con el formato de Z:\VENCIMIENTOS\Vencimientos _MM_AAAA.xlsx. Toma el «MM Vtos …» que has repasado en la carpeta Vtos de cada empresa (el más reciente) y lo deja en Grupo/Vencimientos/MM AAAA.">📅 Agrupar vencimientos del Grupo</button>
+                    @php $tg = $this->tareaVencGrupo; $rg = $tg ? json_decode($tg->resultado ?? 'null', true) : null; @endphp
+                    @if ($tg)
+                        @if (in_array($tg->estado, ['pendiente', 'en_curso']))<span wire:poll.5s class="text-xs text-indigo-700">⏳ agrupando…</span>@endif
+                        <x-neteges-info>
+                            Último agrupado de vencimientos: {{ \Illuminate\Support\Carbon::parse($tg->terminada_at ?? $tg->created_at)->diffForHumans() }} ·
+                            {{ ['pendiente' => 'en cola', 'en_curso' => 'en marcha…', 'ok' => 'terminado', 'error' => 'con error'][$tg->estado] ?? $tg->estado }}
+                            @if (is_array($rg) && isset($rg['resumen'])) · {{ $rg['resumen'] }} @endif
+                            @if (is_array($rg) && ! empty($rg['fichero'])) <br>Fichero: <b>{{ $rg['fichero'] }}</b> @endif
+                        </x-neteges-info>
+                    @endif
+                @endif
                 @if ($tarea)
                     @if (in_array($tarea->estado, ['pendiente', 'en_curso']))<span wire:poll.5s class="text-xs text-indigo-700">⏳ buscando…</span>@endif
                     <x-neteges-info>

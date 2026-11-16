@@ -790,6 +790,29 @@ class Impuestos extends Component
         $this->aviso = 'Pedido a un PC: mirará si has modificado algún libro de IVA en OneDrive y lo actualizará aquí.';
     }
 
+    /** Botón «Agrupar vencimientos» (mes elegido): un PC junta los «MM Vtos …xlsx» repasados de cada empresa del Grupo en un Excel con el formato de Z:\\VENCIMIENTOS. */
+    public function agruparVencimientos(): void
+    {
+        abort_unless($this->puedeTodos(), 403);
+        if (! preg_match('/^\d{2}$/', (string) $this->vista)) {
+            $this->aviso = 'Elige primero un mes (ene…dic) para agrupar sus vencimientos.';
+
+            return;
+        }
+        if (DB::table('tareas')->where('proceso', 'pc.vencimientos_grupo')->whereIn('estado', ['pendiente', 'en_curso'])->exists()) {
+            $this->aviso = 'Ya hay un agrupado de vencimientos en marcha.';
+
+            return;
+        }
+        ColaTareas::crear('pc.vencimientos_grupo', ['mes' => $this->ejercicio.'-'.$this->vista], ColaTareas::pcElegido() ?: null, auth()->id());
+        $this->aviso = 'Pedido a un PC: agrupará los vencimientos de '.$this->vista.'/'.$this->ejercicio.' del Grupo (unos segundos).';
+    }
+
+    public function getTareaVencGrupoProperty(): ?object
+    {
+        return DB::table('tareas')->where('proceso', 'pc.vencimientos_grupo')->orderByDesc('id')->first(['id', 'estado', 'resultado', 'terminada_at', 'created_at']);
+    }
+
     public function getTareaPdfsEstadoProperty(): ?object
     {
         return DB::table('tareas')->where('proceso', 'pc.impuestos_pdfs')->orderByDesc('id')->first(['id', 'estado', 'resultado', 'terminada_at', 'created_at']);
