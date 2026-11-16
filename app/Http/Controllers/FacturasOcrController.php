@@ -45,8 +45,8 @@ class FacturasOcrController extends Controller
     public function miniatura(string $cliente, string $id)
     {
         [$dir, $f] = $this->factura($cliente, $id);
-        // En la subcarpeta _miniaturas de la carpeta de facturas que se está tratando (ruta_miniatura() en Python)
-        $jpg = ($f['carpeta_origen'] ?? dirname($f['ruta'])).'/_miniaturas/'.$id.'.jpg';
+        // En la carpeta de datos del cliente, fuera de las facturas de Alex (ruta_miniatura() en Python)
+        $jpg = $dir.'/_miniaturas/'.$id.'.jpg';
         if (! is_file($jpg)) {
             $rapido = storage_path('app/venv-facturasocr/bin/python');
             $python = config('contabilidad.facturasocr_python') ?: (is_executable($rapido) ? $rapido : dirname($dir).'/.venv/bin/python');
