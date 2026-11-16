@@ -1,5 +1,6 @@
 {{-- IVA, periodo, cierre, analítica, botones de lectura y salida (parte izquierda de la tarjeta de arriba en la web) --}}
-<div class="focr-grid">
+<style>.focr-grid-c { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.3rem .75rem; align-items:end; } .focr-grid-c .focr-lbl { font-size:.68rem; margin-bottom:0; } .focr-grid-c .focr-in { font-size:.8rem; padding:.15rem .4rem; }</style>
+<div class="focr-grid-c">
                     <div>
                         <label class="focr-lbl">IVA del cliente
                             <x-neteges-info>
@@ -50,7 +51,7 @@
                         <label class="focr-lbl">Analítica
                             <x-neteges-info>Contabilidad analítica: marca la casilla para que cada factura lleve el canal del proveedor por defecto (el código de canal que tenga en su ficha). Se guarda en la entidad.</x-neteges-info>
                         </label>
-                        <label class="flex items-center gap-2 mt-1 text-sm">
+                        <label class="flex items-center gap-2 text-sm" style="padding:.15rem 0">
                             <input type="checkbox" wire:model.live="analitica" class="rounded" aria-label="Analítica: canal del proveedor por defecto" title="Canal del proveedor por defecto">
                         </label>
                         @unless ($hayAnalitica)
@@ -59,7 +60,7 @@
                     </div>
 </div>
 
-                <div class="flex flex-wrap items-center gap-3 mt-4">
+                <div class="flex flex-wrap items-center gap-2 mt-2">
                     @if (! $web)
                     <button type="button" wire:click="analizar" wire:loading.attr="disabled" class="focr-btn b-indigo" @disabled($ciclo === '')>
                         <span wire:loading.remove wire:target="analizar">📄 Leer las facturas de la carpeta</span>
@@ -73,7 +74,7 @@
                         @if ($ciclo === '') <span class="text-xs text-red-600">Elige antes el IVA del cliente.</span> @endif
                     @endif
                     @if ($primeraAbierta)
-                        <span class="text-sm">Fecha de registro = fecha de la factura; si es anterior, el <b>{{ $primeraAbierta->format('d/m/Y') }}</b></span>
+                        <span class="text-xs text-gray-600">Fecha de registro = fecha de la factura; si es anterior, el <b>{{ $primeraAbierta->format('d/m/Y') }}</b></span>
                     @endif
                 </div>
                 @if (trim($salida) !== '')
