@@ -2801,8 +2801,8 @@ class FacturasOcr extends Component
         $this->salida = '';
         $antes = array_column($this->cola(), 'id');
         $args = ['rechazar', $this->sel, '--motivo', $this->motivo];
-        if (in_array($sufijo, ['ISP', 'ADC', 'EMITIDA'], true)) {
-            $args[3] = trim($sufijo.' '.trim(preg_replace('/^'.$sufijo.'\b\s*/u', '', $this->motivo)));
+        if (in_array($sufijo, ['ISP', 'ADC', 'A MANO', 'EMITIDA'], true)) {
+            $args[3] = trim($sufijo.' '.trim(preg_replace('/^'.preg_quote($sufijo, '/').'\b\s*/u', '', $this->motivo)));
             array_push($args, '--sufijo', $sufijo);
         }
         if ($this->ejecutar($args, 60, 'Rechazar', false)) {

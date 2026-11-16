@@ -181,7 +181,7 @@ class FacturasOcrSyncController extends Controller
         $out = [];
         foreach (\App\Support\FacturasOcrEntrada::todosLosClientes() as $n => $cfg) {
             if (! empty($cfg['carpeta_facturas_recibidas'])) {
-                $out[] = ['cliente' => $n, 'carpeta' => $cfg['carpeta_facturas_recibidas'], 'validadas' => \App\Support\FacturasOcrEntrada::idsValidadas($n)];
+                $out[] = ['cliente' => $n, 'carpeta' => $cfg['carpeta_facturas_recibidas'], 'validadas' => \App\Support\FacturasOcrEntrada::idsValidadas($n), 'a_mano' => (object) \App\Support\FacturasOcrEntrada::idsAMano($n)];
             }
         }
 

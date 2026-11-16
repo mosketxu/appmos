@@ -341,7 +341,7 @@
                                     </td>
                                     <td class="text-xs text-gray-600" style="min-width:16rem"><div class="focr-avisos-celda" title="{{ implode(' · ', $f['avisos'] ?? []) }}" style="max-height:3.7rem; overflow-y:auto; line-height:1.2rem">{{ implode(' · ', $f['avisos'] ?? []) }}
                                         @if ($f['estado'] === 'rechazada')
-                                            @php $mr = trim((string) ($f['motivo_rechazo'] ?? '')); $tipoR = preg_match('/^(ISP|ADC)\b/u', $mr, $mm) ? $mm[1] : 'Otros'; @endphp
+                                            @php $mr = trim((string) ($f['motivo_rechazo'] ?? '')); $tipoR = preg_match('/^(ISP|ADC|A MANO)\b/u', $mr, $mm) ? $mm[1] : 'Otros'; @endphp
                                             <span class="focr-chip {{ $tipoR === 'Otros' ? 'c-gris' : 'c-revisar' }}" title="{{ $mr !== '' ? $mr : 'Sin motivo indicado' }}" style="cursor:help">Rechazo: {{ $tipoR }}</span>
                                         @elseif (! empty($f['motivo_rechazo'])) <b>Rechazo:</b> {{ $f['motivo_rechazo'] }} @endif
                                         <button type="button" wire:click.stop="quitarDeLista('{{ $f['id'] }}')"

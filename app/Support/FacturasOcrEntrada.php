@@ -60,6 +60,20 @@ class FacturasOcrEntrada
         return array_values(array_map(fn ($f) => $f['id'], array_filter($estado['facturas'] ?? [], fn ($f) => ($f['estado'] ?? '') === 'validada')));
     }
 
+    /** id (SHA-1[:12]) => sufijo (ISP / ADC / A MANO) de las rechazadas que Alex lleva a mano: el PC las pasa de «Subidas VPS» al tampón. */
+    public static function idsAMano(string $cliente): array
+    {
+        $estado = json_decode((string) @file_get_contents(FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/facturas.json'), true) ?: [];
+        $out = [];
+        foreach ($estado['facturas'] ?? [] as $f) {
+            if (($f['estado'] ?? '') === 'rechazada' && preg_match('/^(ISP|ADC|A MANO)\b/ui', trim((string) ($f['motivo_rechazo'] ?? '')), $m)) {
+                $out[$f['id']] = mb_strtoupper($m[1]);
+            }
+        }
+
+        return $out;
+    }
+
     public static function dirEntrada(string $cliente): string
     {
         return FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/Entrada';
