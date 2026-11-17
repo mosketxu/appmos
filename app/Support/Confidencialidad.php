@@ -24,6 +24,14 @@ class Confidencialidad
 
     private const ETIQUETAS = 'Persona|Empresa|Mail|Telefono|Iban|Cuenta|Tarjeta|Nif|Cif|Direccion|Poblacion|Ref';
 
+    public const MENSAJE_CERRADO = 'El almacén cifrado de Confidencialidad está CERRADO (el VPS se ha reiniciado): no se guarda nada hasta abrirlo. Desde un PC: bash Confidencialidad/almacen_cifrado.sh abrir';
+
+    /** El almacén cifrado (LUKS, ver Confidencialidad/almacen_cifrado.sh) está montado: lleva una marca dentro. Sin él no se guarda NADA (si no, iría al disco sin cifrar). */
+    public static function almacenAbierto(): bool
+    {
+        return is_file(storage_path('app/confidencialidad/.cifrado'));
+    }
+
     public static function dir(ConfidencialidadDoc $d): string
     {
         return storage_path('app/confidencialidad/'.$d->id);
@@ -81,6 +89,9 @@ class Confidencialidad
      */
     public static function crear(User $u, array $archivos, array $nombres, array $empresas, string $perfil, ?string $titulo): ConfidencialidadDoc
     {
+        if (! self::almacenAbierto()) {
+            throw new \RuntimeException(self::MENSAJE_CERRADO);
+        }
         $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'titulo' => $titulo ?: null, 'estado' => 'procesando']);
         $dir = self::dir($d);
         mkdir($dir.'/_orig', 0700, true);

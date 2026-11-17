@@ -100,6 +100,11 @@ class Confidencialidad extends Component
         }
         $primero = pathinfo($this->subidas[0]->getClientOriginalName(), PATHINFO_FILENAME);   // título por defecto: el nombre del fichero
         $titulo = trim($this->titulo) ?: (count($this->subidas) > 1 ? $primero.' y '.(count($this->subidas) - 1).' más' : $primero);
+        if (! Conf::almacenAbierto()) {
+            $this->aviso = Conf::MENSAJE_CERRADO;
+
+            return;
+        }
         $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, mb_substr($titulo, 0, 120));
         $this->subidas = [];
         $this->nombres = $this->empresas = $this->titulo = '';
@@ -142,6 +147,11 @@ class Confidencialidad extends Component
         $m = collect($this->resultadosCorreo)->firstWhere('id', $id);
         abort_unless($m, 422);
         $archivos = Conf::archivosDeCorreo($this->buzon(), $id);
+        if (! Conf::almacenAbierto()) {
+            $this->aviso = Conf::MENSAJE_CERRADO;
+
+            return;
+        }
         $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, trim($this->titulo) ?: 'Correo');
         $this->resultadosCorreo = [];
         $this->consultaCorreo = '';
@@ -279,6 +289,7 @@ class Confidencialidad extends Component
         $quien = $sel && in_array($sel->estado, ['borrador', 'listo'], true) ? Conf::quienEsQuien($sel) : [];
         $progreso = $sel && $sel->estado === 'procesando' ? Conf::progreso($sel) : [];
         $hayProcesando = $docs->contains('estado', 'procesando');
+        $almacenCerrado = ! Conf::almacenAbierto();
         if ($sel && $sel->estado !== 'error') {
             foreach ($sel->archivos ?? [] as $n => $a) {
                 if (str_ends_with($a, '.txt')) {
@@ -314,6 +325,6 @@ class Confidencialidad extends Component
             $deClaude = array_values(array_unique($deClaude));
         }
 
-        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude', 'progreso', 'hayProcesando', 'quien'));
+        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude', 'progreso', 'hayProcesando', 'quien', 'almacenCerrado'));
     }
 }

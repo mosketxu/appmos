@@ -4,6 +4,9 @@
         {{-- ============ Columna izquierda: subir y lista ============ --}}
         <div style="flex:0 1 24rem; min-width:min(100%, 20rem)">
             <h1 class="mb-1 text-lg font-semibold text-gray-800">🔒 Confidencialidad</h1>
+            @if ($almacenCerrado)
+                <div class="p-2 mb-2 text-sm text-red-800 bg-red-100 border border-red-300 rounded">{{ \App\Support\Confidencialidad::MENSAJE_CERRADO }}</div>
+            @endif
             <p class="mb-3 text-xs text-gray-500">
                 Sube un documento: el servidor hace una <b>primera anonimización automática</b> (los datos personales pasan a ser <b>Persona1, Empresa1, Mail1…</b>; la relación se guarda solo aquí).
                 Verás el <b>original</b> junto al <b>anonimizado</b> para ocultar lo que falte. Al darlo por bueno el original se borra y entonces le dices a Claude qué hacer.
