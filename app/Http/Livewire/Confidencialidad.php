@@ -32,6 +32,7 @@ class Confidencialidad extends Component
     public string $edNombres = '';
     public string $edEmpresas = '';
     public string $edPerfil = 'estricto';
+    public bool $edSinCabecera = false;
 
     public function hydrate(): void
     {
@@ -67,6 +68,7 @@ class Confidencialidad extends Component
         $this->edNombres = implode("\n", $m['nombres']);
         $this->edEmpresas = implode("\n", $m['empresas']);
         $this->edPerfil = $m['perfil'];
+        $this->edSinCabecera = ! empty($m['sin_cabecera']);
     }
 
     /** Al terminar de subir, se anonimiza solo (sin botón): enseguida salen los visores. */
@@ -189,7 +191,7 @@ class Confidencialidad extends Component
     {
         $d = $this->doc();
         abort_unless($d->estado === 'borrador', 422);
-        $d = Conf::actualizar($d, $this->lineas($this->edNombres), $this->lineas($this->edEmpresas), $this->edPerfil);
+        $d = Conf::actualizar($d, $this->lineas($this->edNombres), $this->lineas($this->edEmpresas), $this->edPerfil, $this->edSinCabecera);
         $this->aviso = $d->estado === 'error' ? '' : 'Rehaciendo el anonimizado en segundo plano…';
     }
 

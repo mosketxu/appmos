@@ -132,6 +132,9 @@
                                     <option value="contable">Contable (deja los CIF)</option>
                         <option value="mercantil">Sociedad (CIF, nombre y domicilio públicos visibles)</option>
                                 </select>
+                                <label class="inline-flex items-center gap-1 text-xs text-gray-600" title="Por seguridad, si no se reconoce un extracto bancario se tapa el 22 % de arriba de la página 1. Si el documento no es un extracto, márcalo y se verá la cabecera (lo detectado dentro se sigue etiquetando).">
+                                    <input type="checkbox" wire:model.defer="edSinCabecera" class="border-gray-300 rounded"> no tapar la parte alta de la página 1
+                                </label>
                                 <button type="button" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar" class="px-3 py-1 text-white bg-indigo-600 rounded hover:bg-indigo-700">Actualizar el anonimizado</button>
                                 <span wire:loading wire:target="actualizar" class="text-xs text-amber-700">⏳ Rehaciendo…</span>
                                 <label class="inline-flex items-center gap-1 text-xs text-gray-600" title="Por defecto el original se borra. Si lo conservas, se queda en el servidor {{ \App\Support\Confidencialidad::CONSERVA_DIAS }} días.">
