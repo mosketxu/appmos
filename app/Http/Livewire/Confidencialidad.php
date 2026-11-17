@@ -264,6 +264,6 @@ class Confidencialidad extends Component
             $deClaude = array_values(array_unique($deClaude));
         }
 
-        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude'));
+        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude', 'progreso', 'hayProcesando'));
     }
 }
