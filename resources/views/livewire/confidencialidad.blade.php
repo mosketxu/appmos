@@ -77,17 +77,9 @@
                     <div class="text-sm text-gray-400">Todavía no hay documentos.</div>
                 @endforelse
             </div>
-        </div>
 
-        {{-- ============ Zona de trabajo: original | anonimizado ============ --}}
-        <div style="flex:1 1 40rem; min-width:min(100%, 24rem)">
-            @if ($sel)
-                @if ($sel->estado === 'error')
-                    <div class="p-3 text-sm text-red-800 bg-red-100 border border-red-300 rounded">No se ha enviado nada y no se ha guardado nada: {{ $sel->error }}</div>
-                @else
-                    <div class="flex flex-wrap items-start gap-3">
-                    @if ($sel->estado === 'borrador')
-                        <div class="p-3 bg-white border rounded shadow-sm" style="flex:0 1 20rem; min-width:min(100%, 16rem)">
+                    @if ($sel && $sel->estado === 'borrador')
+                        <div class="p-3 mt-4 bg-white border rounded shadow-sm">
                             <div class="mb-1 text-sm font-semibold text-gray-700">Qué ocultar</div>
                             <div class="flex flex-col gap-2">
                                 <div >
@@ -144,6 +136,15 @@
                         </div>
                     @endif
 
+        </div>
+
+        {{-- ============ Zona de trabajo: original | anonimizado ============ --}}
+        <div style="flex:1 1 40rem; min-width:min(100%, 24rem)">
+            @if ($sel)
+                @if ($sel->estado === 'error')
+                    <div class="p-3 text-sm text-red-800 bg-red-100 border border-red-300 rounded">No se ha enviado nada y no se ha guardado nada: {{ $sel->error }}</div>
+                @else
+                    <div class="flex flex-wrap items-start gap-3">
                         @if (in_array($sel->estado, ['procesando', 'borrador']))
                             <div class="p-2 bg-white border rounded shadow-sm" style="flex:1 1 26rem; min-width:min(100%, 20rem)">
                                 <div class="mb-1 text-sm font-semibold text-gray-700">Original <span class="font-normal text-amber-700">(se borra al darlo por bueno o a las {{ \App\Support\Confidencialidad::HORAS_ORIGINAL }} h)</span></div>
