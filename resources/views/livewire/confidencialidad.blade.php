@@ -86,6 +86,64 @@
                     <div class="p-3 text-sm text-red-800 bg-red-100 border border-red-300 rounded">No se ha enviado nada y no se ha guardado nada: {{ $sel->error }}</div>
                 @else
                     <div class="flex flex-wrap items-start gap-3">
+                    @if ($sel->estado === 'borrador')
+                        <div class="p-3 bg-white border rounded shadow-sm" style="flex:0 1 20rem; min-width:min(100%, 16rem)">
+                            <div class="mb-1 text-sm font-semibold text-gray-700">Qué ocultar</div>
+                            <div class="flex flex-col gap-2">
+                                <div >
+                                    <label class="block text-xs font-semibold text-gray-600">Personas (una por línea)</label>
+                                    <textarea wire:model.defer="edNombres" rows="4" class="w-full text-sm border-gray-300 rounded"></textarea>
+                                </div>
+                                <div >
+                                    <label class="block text-xs font-semibold text-gray-600">Empresas (una por línea)</label>
+                                    <textarea wire:model.defer="edEmpresas" rows="4" class="w-full text-sm border-gray-300 rounded"></textarea>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                                <select wire:model.defer="edPerfil" class="py-0.5 text-sm border-gray-300 rounded">
+                                    <option value="estricto">Estricto</option>
+                                    <option value="contable">Contable (deja los CIF)</option>
+                        <option value="mercantil">Sociedad (CIF, nombre y domicilio públicos visibles)</option>
+                                </select>
+                                <button type="button" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar" class="px-3 py-1 text-white bg-indigo-600 rounded hover:bg-indigo-700">Actualizar el anonimizado</button>
+                                <span wire:loading wire:target="actualizar" class="text-xs text-amber-700">⏳ Rehaciendo…</span>
+                                <button type="button" wire:click="darPorBueno" wire:confirm="¿Dar por bueno? Se borra el original del servidor y ya no podrás afinar qué ocultar."
+                                        class="px-3 py-1 text-white bg-green-600 rounded hover:bg-green-700">✔ Dar por bueno (borra el original)</button>
+                            </div>
+
+                            <div class="mt-3 text-xs font-semibold text-gray-600">Posibles nombres que siguen a la vista <span class="font-normal text-gray-400">(sugerencias locales sobre el original; pulsa para añadir y luego «Actualizar»)</span></div>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                @forelse ($candidatos as $c)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded" wire:key="cand-{{ md5($c['texto']) }}">
+                                        {{ $c['texto'] }}@if ($c['veces'] > 1) <span class="text-gray-400">×{{ $c['veces'] }}</span>@endif
+                                        <button type="button" wire:click='agregar(@js($c['texto']), "persona")' class="text-indigo-600 hover:underline" title="Añadir a personas">+persona</button>
+                                        <button type="button" wire:click='agregar(@js($c['texto']), "empresa")' class="text-indigo-600 hover:underline" title="Añadir a empresas">+empresa</button>
+                                    </span>
+                                @empty
+                                    <span class="text-xs text-gray-400">Ninguna sugerencia.</span>
+                                @endforelse
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-3 mt-3">
+                                <button type="button" wire:click="revisionClaude" wire:loading.attr="disabled" wire:target="revisionClaude" class="px-3 py-1 text-sm text-indigo-700 bg-white border border-indigo-300 rounded hover:bg-indigo-50"
+                                        title="Claude mira SOLO el documento ya anonimizado y dice qué datos personales siguen visibles. No ve el original.">🤖 Que Claude revise lo anonimizado</button>
+                                <span class="text-xs text-gray-400">Claude solo ve lo anonimizado, nunca el original.</span>
+                            </div>
+                            @if ($deClaude)
+                                <div class="mt-2 text-xs font-semibold text-gray-600">Claude ve sin ocultar:</div>
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    @foreach ($deClaude as $c)
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-indigo-50 border border-indigo-200 rounded" wire:key="dc-{{ md5($c) }}">
+                                            {{ $c }}
+                                            <button type="button" wire:click='agregar(@js($c), "persona")' class="text-indigo-600 hover:underline">+persona</button>
+                                            <button type="button" wire:click='agregar(@js($c), "empresa")' class="text-indigo-600 hover:underline">+empresa</button>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
                         @if (in_array($sel->estado, ['procesando', 'borrador']))
                             <div class="p-2 bg-white border rounded shadow-sm" style="flex:1 1 26rem; min-width:min(100%, 20rem)">
                                 <div class="mb-1 text-sm font-semibold text-gray-700">Original <span class="font-normal text-amber-700">(se borra al darlo por bueno o a las {{ \App\Support\Confidencialidad::HORAS_ORIGINAL }} h)</span></div>
@@ -138,64 +196,6 @@
                             @endif
                         </div>
                     </div>
-
-                    @if ($sel->estado === 'borrador')
-                        <div class="p-3 mt-3 bg-white border rounded shadow-sm">
-                            <div class="mb-1 text-sm font-semibold text-gray-700">Qué ocultar</div>
-                            <div class="flex flex-wrap gap-3">
-                                <div style="flex:1 1 14rem">
-                                    <label class="block text-xs font-semibold text-gray-600">Personas (una por línea)</label>
-                                    <textarea wire:model.defer="edNombres" rows="4" class="w-full text-sm border-gray-300 rounded"></textarea>
-                                </div>
-                                <div style="flex:1 1 14rem">
-                                    <label class="block text-xs font-semibold text-gray-600">Empresas (una por línea)</label>
-                                    <textarea wire:model.defer="edEmpresas" rows="4" class="w-full text-sm border-gray-300 rounded"></textarea>
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-3 mt-2 text-sm">
-                                <select wire:model.defer="edPerfil" class="py-0.5 text-sm border-gray-300 rounded">
-                                    <option value="estricto">Estricto</option>
-                                    <option value="contable">Contable (deja los CIF)</option>
-                        <option value="mercantil">Sociedad (CIF, nombre y domicilio públicos visibles)</option>
-                                </select>
-                                <button type="button" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar" class="px-3 py-1 text-white bg-indigo-600 rounded hover:bg-indigo-700">Actualizar el anonimizado</button>
-                                <span wire:loading wire:target="actualizar" class="text-xs text-amber-700">⏳ Rehaciendo…</span>
-                                <button type="button" wire:click="darPorBueno" wire:confirm="¿Dar por bueno? Se borra el original del servidor y ya no podrás afinar qué ocultar."
-                                        class="px-3 py-1 text-white bg-green-600 rounded hover:bg-green-700">✔ Dar por bueno (borra el original)</button>
-                            </div>
-
-                            <div class="mt-3 text-xs font-semibold text-gray-600">Posibles nombres que siguen a la vista <span class="font-normal text-gray-400">(sugerencias locales sobre el original; pulsa para añadir y luego «Actualizar»)</span></div>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                                @forelse ($candidatos as $c)
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 border rounded" wire:key="cand-{{ md5($c['texto']) }}">
-                                        {{ $c['texto'] }}@if ($c['veces'] > 1) <span class="text-gray-400">×{{ $c['veces'] }}</span>@endif
-                                        <button type="button" wire:click='agregar(@js($c['texto']), "persona")' class="text-indigo-600 hover:underline" title="Añadir a personas">+persona</button>
-                                        <button type="button" wire:click='agregar(@js($c['texto']), "empresa")' class="text-indigo-600 hover:underline" title="Añadir a empresas">+empresa</button>
-                                    </span>
-                                @empty
-                                    <span class="text-xs text-gray-400">Ninguna sugerencia.</span>
-                                @endforelse
-                            </div>
-
-                            <div class="flex flex-wrap items-center gap-3 mt-3">
-                                <button type="button" wire:click="revisionClaude" wire:loading.attr="disabled" wire:target="revisionClaude" class="px-3 py-1 text-sm text-indigo-700 bg-white border border-indigo-300 rounded hover:bg-indigo-50"
-                                        title="Claude mira SOLO el documento ya anonimizado y dice qué datos personales siguen visibles. No ve el original.">🤖 Que Claude revise lo anonimizado</button>
-                                <span class="text-xs text-gray-400">Claude solo ve lo anonimizado, nunca el original.</span>
-                            </div>
-                            @if ($deClaude)
-                                <div class="mt-2 text-xs font-semibold text-gray-600">Claude ve sin ocultar:</div>
-                                <div class="flex flex-wrap gap-2 mt-1">
-                                    @foreach ($deClaude as $c)
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-indigo-50 border border-indigo-200 rounded" wire:key="dc-{{ md5($c) }}">
-                                            {{ $c }}
-                                            <button type="button" wire:click='agregar(@js($c), "persona")' class="text-indigo-600 hover:underline">+persona</button>
-                                            <button type="button" wire:click='agregar(@js($c), "empresa")' class="text-indigo-600 hover:underline">+empresa</button>
-                                        </span>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
-                    @endif
 
                     @if ($sel->estado === 'listo')
                         <div class="p-3 mt-3 bg-white border rounded shadow-sm">
