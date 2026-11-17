@@ -110,7 +110,7 @@ class TrabajadorApiController extends Controller
     public function anonimo(Request $r, int $id, int $doc, int $n)
     {
         $t = $this->tareaClaude($r, $id);
-        $d = \App\Models\ConfidencialidadDoc::where('id', $doc)->where('tarea_id', $t->id)->where('estado', 'listo')->firstOrFail();
+        $d = \App\Models\ConfidencialidadDoc::where('id', $doc)->where('tarea_id', $t->id)->whereIn('estado', ['borrador', 'listo'])->firstOrFail();
         $a = ($d->archivos ?? [])[$n] ?? null;
         abort_unless($a && preg_match('#^f\d+/[\w.-]+\.(jpg|png|txt)$#', $a), 404);
         $ruta = \App\Support\Confidencialidad::dir($d).'/'.$a;

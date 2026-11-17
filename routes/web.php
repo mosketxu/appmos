@@ -59,6 +59,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     // Confidencialidad (17-nov-2026): anonimizar un documento y pedirle a Claude (tarea del TO-DO) que trabaje con él ya anonimizado. Solo Admin.
     Route::get('/confidencialidad', fn () => view('confidencialidad'))->name('confidencialidad')->middleware('can:confidencialidad.ver');
     Route::get('/confidencialidad/{id}/archivo/{n}', [\App\Http\Controllers\ConfidencialidadArchivoController::class, 'ver'])->whereNumber(['id', 'n'])->name('confidencialidad.archivo')->middleware('can:confidencialidad.ver');
+    Route::get('/confidencialidad/{id}/original/{n}', [\App\Http\Controllers\ConfidencialidadArchivoController::class, 'original'])->whereNumber(['id', 'n'])->name('confidencialidad.original')->middleware('can:confidencialidad.ver');
     Route::get('/todo/mejoras', fn () => view('todo.mejoras'))->name('todo.mejoras')->middleware('can:todo.ver');
 
     // Impuestos (pestaña del TO-DO): qué tiene pendiente cada cliente; datos en la BD de Appmos (en un PC redirige a la web)
