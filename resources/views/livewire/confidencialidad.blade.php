@@ -116,9 +116,23 @@
                                 @foreach (collect($sel->informe ?? [])->except('avisos') as $k => $n) <span class="mr-2">{{ $k }} {{ $n }}</span> @endforeach
                                 @foreach (($sel->informe['avisos'] ?? []) as $av) <div class="text-amber-700">⚠ {{ $av }}</div> @endforeach
                             </div>
-                            @foreach ($imagenes as $n)
-                                <img src="{{ route('confidencialidad.archivo', [$sel->id, $n]) }}" class="mb-2 border rounded" style="max-width:100%" loading="lazy">
-                            @endforeach
+                            @if (count($imagenes))
+                                <div x-data="{ z: 100 }">
+                                    <div class="sticky top-0 z-10 flex items-center gap-2 py-1 mb-1 text-xs bg-white border-b">
+                                        <span class="text-gray-500">{{ count($imagenes) }} {{ count($imagenes) === 1 ? 'página' : 'páginas' }}</span>
+                                        <button type="button" @click="z = Math.max(40, z - 20)" class="px-2 border rounded hover:bg-gray-100" title="Alejar">−</button>
+                                        <span x-text="z + ' %'" class="w-10 text-center"></span>
+                                        <button type="button" @click="z = Math.min(300, z + 20)" class="px-2 border rounded hover:bg-gray-100" title="Acercar">+</button>
+                                        <button type="button" @click="z = 100" class="px-2 border rounded hover:bg-gray-100" title="Ajustar al ancho">Ajustar</button>
+                                    </div>
+                                    <div style="max-height:75vh; overflow:auto">
+                                        @foreach ($imagenes as $i => $n)
+                                            <div class="mb-1 text-xs text-gray-500">Página {{ $i + 1 }} de {{ count($imagenes) }}</div>
+                                            <img src="{{ route('confidencialidad.archivo', [$sel->id, $n]) }}" class="mb-3 border rounded" :style="'width:' + z + '%; max-width:none'" loading="lazy">
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
                             @if ($texto)
                                 <pre class="p-2 overflow-auto text-xs bg-gray-50 border rounded" style="max-height:75vh; white-space:pre-wrap">{{ $texto }}</pre>
                             @endif
