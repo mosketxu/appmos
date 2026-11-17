@@ -78,6 +78,13 @@
                 @endforelse
             </div>
 
+            @if ($sel && \App\Support\Confidencialidad::originalConservado($sel))
+                <div class="p-3 mt-4 text-sm bg-amber-50 border border-amber-200 rounded">
+                    📎 Original conservado en el servidor ({{ \App\Support\Confidencialidad::CONSERVA_DIAS }} días):
+                    <a href="{{ route('confidencialidad.original', [$sel->id, 1]) }}" target="_blank" class="text-indigo-700 underline">abrir</a>
+                </div>
+            @endif
+
             @if ($sel && count($quien))
                 <details wire:ignore.self class="p-3 mt-4 text-sm bg-white border rounded shadow-sm" open>
                     <summary class="font-semibold text-gray-700 cursor-pointer">🔑 Quién es quién ({{ count($quien) }})</summary>
@@ -111,7 +118,10 @@
                                 </select>
                                 <button type="button" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar" class="px-3 py-1 text-white bg-indigo-600 rounded hover:bg-indigo-700">Actualizar el anonimizado</button>
                                 <span wire:loading wire:target="actualizar" class="text-xs text-amber-700">⏳ Rehaciendo…</span>
-                                <button type="button" wire:click="darPorBueno" wire:confirm="¿Dar por bueno? Se borra el original del servidor y ya no podrás afinar qué ocultar."
+                                <label class="inline-flex items-center gap-1 text-xs text-gray-600" title="Por defecto el original se borra. Si lo conservas, se queda en el servidor {{ \App\Support\Confidencialidad::CONSERVA_DIAS }} días.">
+                                    <input type="checkbox" wire:model.defer="conservarOriginal" class="border-gray-300 rounded"> conservar el original ({{ \App\Support\Confidencialidad::CONSERVA_DIAS }} días)
+                                </label>
+                                <button type="button" wire:click="darPorBueno" wire:confirm="¿Dar por bueno? Se borra el original del servidor (salvo que hayas marcado «conservar») y ya no podrás afinar qué ocultar."
                                         class="px-3 py-1 text-white bg-green-600 rounded hover:bg-green-700">✔ Dar por bueno (borra el original)</button>
                             </div>
 

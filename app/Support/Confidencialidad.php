@@ -208,12 +208,26 @@ class Confidencialidad
     }
 
     /** Se da por bueno el anonimizado: se borran los originales y las sugerencias (que salen del original). Ya no se pueden afinar las listas. */
-    public static function finalizar(ConfidencialidadDoc $d): void
+    public static function finalizar(ConfidencialidadDoc $d, bool $conservar = false): void
     {
         $dir = self::dir($d);
-        self::borrarDir($dir.'/_orig');
         @unlink($dir.'/candidatos.json');
+        if ($conservar) {          // decisión de Alex: el original se queda (solo el fichero; sin caché de OCR) hasta CONSERVA_DIAS días
+            self::borrarDir($dir.'/_orig/ocr');
+            $meta = self::leerMeta($d);
+            $meta['conservado'] = now()->toDateString();
+            self::guardarMeta($d, $meta);
+        } else {
+            self::borrarDir($dir.'/_orig');
+        }
         $d->update(['estado' => 'listo']);
+    }
+
+    public const CONSERVA_DIAS = 30;
+
+    public static function originalConservado(ConfidencialidadDoc $d): bool
+    {
+        return $d->estado === 'listo' && ! empty(self::leerMeta($d)['conservado']) && is_dir(self::dir($d).'/_orig');
     }
 
     /** Palabras que quedan sin ocultar en el original (sugerencias locales), [{texto, veces}]. */
@@ -240,6 +254,11 @@ class Confidencialidad
     public static function limpiarAbandonados(): int
     {
         $n = 0;
+        foreach (ConfidencialidadDoc::where('estado', 'listo')->where('updated_at', '<', now()->subDays(self::CONSERVA_DIAS))->get() as $d) {   // originales conservados a propósito: caducan
+            if (is_dir(self::dir($d).'/_orig')) {
+                self::borrarDir(self::dir($d).'/_orig');
+            }
+        }
         foreach (ConfidencialidadDoc::whereIn('estado', ['borrador', 'procesando'])->where('created_at', '<', now()->subHours(self::HORAS_ORIGINAL))->get() as $d) {
             self::borrar($d);
             $n++;

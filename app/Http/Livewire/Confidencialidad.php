@@ -183,12 +183,17 @@ class Confidencialidad extends Component
         $this->aviso = $d->estado === 'error' ? '' : 'Rehaciendo el anonimizado en segundo plano…';
     }
 
+    public bool $conservarOriginal = false;
+
     public function darPorBueno(): void
     {
         $d = $this->doc();
         abort_unless($d->estado === 'borrador', 422);
-        Conf::finalizar($d);
-        $this->aviso = 'Hecho: el original se ha borrado del servidor. Ya puedes pedirle algo a Claude con el documento anonimizado.';
+        Conf::finalizar($d, $this->conservarOriginal);
+        $this->aviso = $this->conservarOriginal
+            ? 'Hecho. El original se queda guardado en el servidor '.Conf::CONSERVA_DIAS.' días (o hasta que borres el documento). Ya puedes pedirle algo a Claude con el documento anonimizado.'
+            : 'Hecho: el original se ha borrado del servidor. Ya puedes pedirle algo a Claude con el documento anonimizado.';
+        $this->conservarOriginal = false;
     }
 
     /** Pide a Claude que mire SOLO lo anonimizado y diga qué datos personales siguen a la vista (sus respuestas se convierten en sugerencias). */
