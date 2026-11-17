@@ -563,12 +563,10 @@
                             <span x-text="abierto ? '▾' : '▸'"></span> Cuentas creadas aquí o en Facturas OCR, aún no en SAGE
                             <span class="font-normal text-gray-400">({{ count($cuentasNuevas) }})</span>
                         </button>
-                        <span wire:loading.flex wire:target="buscarDatosCuenta" class="inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-300 rounded-full animate-pulse">⏳ Buscando en internet… (unos segundos)</span>
                     </div>
                     <div x-show="abierto" class="p-4 space-y-2">
                         <p class="text-xs text-gray-500">
-                            Se comparten con Facturas OCR (no se repiten números y sus facturas se reconocen por el nombre). 🔎 busca en
-                            internet el CIF y el código postal (unos céntimos por búsqueda): es una propuesta; revisa la fuente y acéptala o corrígela.
+                            Se comparten con Facturas OCR (no se repiten números y sus facturas se reconocen por el nombre). El CIF y el código postal se escriben a mano.
                         </p>
                         <table class="min-w-full text-xs">
                             <thead class="text-gray-600 bg-gray-100">
@@ -580,16 +578,14 @@
                             </thead>
                             <tbody>
                                 @foreach ($cuentasNuevas as $c)
-                                    @php $prop = $propuestasCif[$c['cuenta']] ?? null; @endphp
-                                    <tr class="border-t align-top" wire:key="cn-{{ $cliente }}-{{ $c['cuenta'] }}-{{ md5(json_encode($c).json_encode($prop)) }}"
-                                        x-data="{ cif: @js($prop['cif'] ?? $c['cif']), cp: @js($prop['cp'] ?? ($c['cp'] ?? '')) }">
+                                    <tr class="border-t align-top" wire:key="cn-{{ $cliente }}-{{ $c['cuenta'] }}-{{ md5(json_encode($c)) }}"
+                                        x-data="{ cif: @js($c['cif']), cp: @js($c['cp'] ?? '') }">
                                         <td class="px-2 py-1 font-mono">{{ $c['cuenta'] }}</td>
                                         <td class="px-2 py-1">{{ $c['nombre'] }}</td>
                                         <td class="px-2 py-1"><input type="text" x-model="cif" class="w-28 py-0.5 text-xs font-mono border-gray-300 rounded" placeholder="(sin CIF)"></td>
                                         <td class="px-2 py-1"><input type="text" x-model="cp" class="w-20 py-0.5 text-xs font-mono border-gray-300 rounded"></td>
                                         <td class="px-2 py-1 text-gray-500">{{ $c['origen'] }}</td>
                                         <td class="px-2 py-1 text-right whitespace-nowrap">
-                                            <button type="button" wire:click="buscarDatosCuenta(@js($c['cuenta']))" class="text-blue-700 hover:underline">🔎 Buscar</button>
                                             <button type="button" x-show="cif !== @js($c['cif']) || cp !== @js($c['cp'] ?? '')"
                                                     x-on:click="$wire.guardarDatosCuenta(@js($c['cuenta']), cif, cp)"
                                                     class="ml-2 text-green-700 hover:underline">✔ Guardar</button>

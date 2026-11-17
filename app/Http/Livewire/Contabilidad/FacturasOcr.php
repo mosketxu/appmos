@@ -262,7 +262,6 @@ class FacturasOcr extends Component
     protected function cargarCliente(bool $aplazarSync = false): void
     {
         $this->sel = '';
-        $this->propuestaCif = null;
         $this->form = [];
         if (! $this->clienteValido()) {
             return;
@@ -1682,7 +1681,6 @@ class FacturasOcr extends Component
         }
         $this->resetErrorBag();
         $this->sel = $id;
-        $this->propuestaCif = null;
         $this->motivo = (string) ($f['motivo_rechazo'] ?? '');
         $d = $f['datos'] ?? [];
         $lineas = array_values($d['lineas'] ?? []);
@@ -1798,7 +1796,6 @@ class FacturasOcr extends Component
     public function cerrar(): void
     {
         $this->sel = '';
-        $this->propuestaCif = null;
         $this->form = [];
         $this->avisarHistoria('');
     }
@@ -2107,45 +2104,6 @@ class FacturasOcr extends Component
             $this->form['cod_provincia'] = substr($cp, 0, 2);
             $this->form['provincia'] = $prov;
         }
-    }
-
-    /** Propuesta de internet para el proveedor de la factura abierta (facturas_ocr.py buscar_cif). */
-    public ?array $propuestaCif = null;
-
-    public function buscarCif(): void
-    {
-        $this->propuestaCif = null;
-        if (! $this->sel || trim($this->form['proveedor'] ?? '') === '') {
-            $this->propuestaCif = ['error' => 'Pon primero el nombre del proveedor.'];
-            return;
-        }
-        if (! $this->ejecutaAqui()) {
-            return;
-        }
-        $cmd = [$this->pythonBin(), 'facturas_ocr.py', $this->cliente, 'buscar_cif', $this->sel, '--nombre', trim($this->form['proveedor'])];
-        try {
-            $r = Process::path($this->baseDir())->env($this->entornoPython())->timeout(200)->run($cmd);
-            $datos = json_decode($r->output(), true);
-            $this->propuestaCif = is_array($datos) ? $datos : ['error' => trim($r->output()."\n".$r->errorOutput())];
-        } catch (\Throwable $e) {
-            $this->propuestaCif = ['error' => $e->getMessage()];
-        }
-    }
-
-    public function aceptarCif(): void
-    {
-        $p = $this->propuestaCif ?? [];
-        if (! empty($p['cif'])) {
-            $this->form['cif'] = $p['cif'];
-        }
-        if (! empty($p['cp'])) {
-            $this->ponerCp($p['cp']);
-        }
-        if (trim($this->form['proveedor'] ?? '') === '' && ! empty($p['nombre_oficial'])) {
-            $this->form['proveedor'] = $p['nombre_oficial'];
-        }
-        $this->propuestaCif = null;
-        $this->sucio = true;
     }
 
     public const PROVINCIAS = [
@@ -3254,8 +3212,6 @@ class FacturasOcr extends Component
             'validadas' => $validadas,
             'provs' => $provs,
             'esNuevoProv' => $this->provSel !== '' && ! isset($this->proveedores()[$this->provSel]),
-            // Factura abierta con proveedor que no está en SAGE: se puede buscar su CIF/CP en internet
-            'provFueraSage' => $this->sel !== '' && ! isset($this->terceros()[$this->form['cuenta'] ?? '']),
             'nombresCuentas' => $this->vista === 'proveedores' && $valido
                 ? $this->cuentasContables() : [],
             'mesesReg' => $mesesReg,

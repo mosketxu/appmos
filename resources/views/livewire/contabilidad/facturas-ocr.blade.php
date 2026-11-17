@@ -710,12 +710,6 @@
                         <div style="grid-column:span 2"><label class="focr-lbl">Nombre</label><input type="text" wire:model.blur="form.proveedor" class="focr-in"></div>
                         <div>
                             <label class="focr-lbl">CIF europeo
-                                @if ($provFueraSage)
-                                    <button @disabled($lecturaDesde) type="button" wire:click="buscarCif" wire:loading.attr="disabled" wire:target="buscarCif"
-                                            title="Buscar en internet el CIF y el código postal de este proveedor (unos céntimos)" style="margin-left:.3rem; color:#1d4ed8">
-                                        <span wire:loading.remove wire:target="buscarCif">🔎 buscar</span><span wire:loading wire:target="buscarCif">⏳</span>
-                                    </button>
-                                @endif
                             </label>
                             <input type="text" wire:model.blur="form.cif" class="focr-in {{ $cifAviso ? 'mal' : '' }}">
                             @if ($cifAviso)
@@ -726,27 +720,6 @@
                             @endif
                         </div>
                         @unless ($esEm)<div><label class="focr-lbl">Nombre corto fichero</label><input type="text" wire:model.blur="form.nombre_fichero" class="focr-in" placeholder="p.ej. Aquaservice"></div>@endunless
-                        @if ($propuestaCif)
-                            <div style="grid-column:1 / -1; font-size:.72rem; padding:.3rem .5rem; border:1px solid #c7d2fe; background:#eef2ff; border-radius:.3rem">
-                                @if (! empty($propuestaCif['error']))
-                                    <span style="color:#b91c1c">⚠️ {{ $propuestaCif['error'] }}</span>
-                                @else
-                                    Internet{{ ! empty($propuestaCif['de_cache']) ? ' (ya buscado antes)' : '' }}:
-                                    <b>{{ $propuestaCif['nombre_oficial'] ?: '—' }}</b> · CIF <b>{{ $propuestaCif['cif'] ?: '—' }}</b>
-                                    · CP <b>{{ $propuestaCif['cp'] ?: '—' }}</b> {{ $propuestaCif['poblacion'] ?? '' }}
-                                    · confianza {{ $propuestaCif['confianza'] ?: '?' }}
-                                    @if (! empty($propuestaCif['fuente']))
-                                        · <a href="{{ $propuestaCif['fuente'] }}" target="_blank" rel="noopener" style="color:#1d4ed8; text-decoration:underline">fuente</a>
-                                    @endif
-                                    @if (! empty($propuestaCif['nota']))
-                                        <div style="color:#6b7280">{{ $propuestaCif['nota'] }}</div>
-                                    @endif
-                                    @if (! empty($propuestaCif['cif']) || ! empty($propuestaCif['cp']))
-                                        <button type="button" wire:click="aceptarCif" class="focr-btn b-gris" style="margin-top:.2rem; padding:.1rem .5rem; font-size:.72rem">✔ Poner CIF y CP</button>
-                                    @endif
-                                @endif
-                            </div>
-                        @endif
 
                         <div><label class="focr-lbl" style="font-size:.62rem">Serie</label><input type="text" wire:model.blur="form.serie" class="focr-in" style="font-size:.75rem; padding:.2rem .3rem"></div>
                         <div style="grid-column:span {{ $esEm ? 1 : 3 }}"><label class="focr-lbl" @if ($esEm) title="Solo el número; la serie va en su casilla" @endif>Nº factura</label><input type="text" wire:model.blur="form.su_factura" class="focr-in {{ $cl('su_factura') }}"></div>
@@ -877,7 +850,6 @@
         <x-contabilidad.procesando target="releerOcr" titulo="Leyendo la factura con OCR…" nota="Puede tardar unos segundos." />
         <x-contabilidad.procesando target="escaneoDeCalidad" titulo="Pidiendo el escaneo de calidad a un PC…" nota="Un momento." />
         <x-contabilidad.procesando target="leerZona" titulo="Leyendo la zona marcada…" nota="Un momento." />
-        <x-contabilidad.procesando target="buscarCif" titulo="Buscando el CIF en internet…" nota="Unos segundos." />
         <x-contabilidad.procesando target="validar" titulo="Guardando la factura…" nota="Un momento." />
     @endif
 

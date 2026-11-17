@@ -44,12 +44,8 @@ class Bancos extends Component
      */
     public array $subidas = [];
 
-    /**
-     * Cuentas del plan de la base creadas fuera de SAGE (aquí o por Facturas OCR): [{cuenta, nombre, cif,
-     * cp, origen}] y, por cuenta, la propuesta de CIF/CP buscada en internet (buscar_cif.py).
-     */
+    /** Cuentas del plan de la base creadas fuera de SAGE (aquí o por Facturas OCR): [{cuenta, nombre, cif, cp, origen}]. */
     public array $cuentasNuevas = [];
-    public array $propuestasCif = [];
 
     /** Fichero de Output en revisión, sus líneas y aviso si no se han podido leer (ver cargarRevision). */
     public string $revisar = '';
@@ -657,24 +653,8 @@ class Bancos extends Component
         return $archivos ? $this->descargar('Output/'.$this->revisar) : null;
     }
 
-    /** Busca en internet el CIF y el CP de una cuenta creada aquí (propuesta, no guarda). */
-    public function buscarDatosCuenta(string $cuenta): void
-    {
-        if (! config('contabilidad.bancos_ejecucion') || ! $this->clienteValido()) {
-            return;
-        }
-        try {
-            $r = Process::path($this->baseDir())->timeout(200)->run([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'buscar_datos', $cuenta]);
-            $datos = json_decode($r->output(), true);
-            $this->propuestasCif[$cuenta] = is_array($datos) ? $datos : ['error' => trim($r->output()."\n".$r->errorOutput())];
-        } catch (\Throwable $e) {
-            $this->propuestasCif[$cuenta] = ['error' => $e->getMessage()];
-        }
-    }
-
     public function guardarDatosCuenta(string $cuenta, string $cif, string $cp): void
     {
-        unset($this->propuestasCif[$cuenta]);
         $this->editarMaestro([$this->pythonBin(), 'bancos_maestro.py', $this->cliente, 'guardar_datos', $cuenta, trim($cif), trim($cp)]);
     }
 
