@@ -185,6 +185,42 @@ class Confidencialidad extends Component
 
     public bool $conservarOriginal = false;
 
+    /** Recuadro manual: texto leído bajo lo dibujado (editable) y página. */
+    public string $recuadroTexto = '';
+    public ?int $recuadroPagina = null;
+    public bool $recuadroHecho = false;
+
+    public function recuadro(int $pagina, float $x1, float $y1, float $x2, float $y2): void
+    {
+        $d = $this->doc();
+        abort_unless($d->estado === 'borrador', 422);
+        $this->recuadroTexto = Conf::textoEnRecuadro($d, $pagina, $x1, $y1, $x2, $y2);
+        $this->recuadroPagina = $pagina;
+        $this->recuadroHecho = true;
+    }
+
+    public function cancelarRecuadro(): void
+    {
+        $this->recuadroTexto = '';
+        $this->recuadroPagina = null;
+        $this->recuadroHecho = false;
+    }
+
+    /** Tapa lo que hay bajo el recuadro en TODO el documento: se añade a las listas, entra en «Quién es quién» y se rehace (rápido, con la caché). */
+    public function taparRecuadro(string $tipo): void
+    {
+        $texto = trim($this->recuadroTexto);
+        if (mb_strlen($texto) < 3) {
+            $this->aviso = 'Escribe el nombre que hay bajo el recuadro (mínimo 3 letras).';
+
+            return;
+        }
+        $this->agregar($texto, $tipo === 'empresa' ? 'empresa' : 'persona');
+        $this->cancelarRecuadro();
+        $this->actualizar();
+    }
+
+
     public function darPorBueno(): void
     {
         $d = $this->doc();
@@ -260,7 +296,7 @@ class Confidencialidad extends Component
                         'tipo' => in_array($o['ext'], ['pdf'], true) ? 'pdf' : (in_array($o['ext'], ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true) ? 'imagen' : 'texto'),
                         'texto' => is_file($vista) ? mb_substr((string) file_get_contents($vista), 0, 30000) : null];
                 }
-                $candidatos = $sel->estado === 'borrador' ? array_slice(Conf::candidatos($sel), 0, 25) : [];
+                $candidatos = $sel->estado === 'borrador' ? array_slice(Conf::candidatos($sel), 0, 10) : [];
             }
             // Sugerencias de la revisión de Claude: líneas «- texto» de su última respuesta
             $ultima = '';

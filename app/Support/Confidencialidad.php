@@ -280,6 +280,44 @@ class Confidencialidad
     }
 
     /** Pone los datos reales en un texto con etiquetas (solo para mostrarlo; no se guarda). */
+    /**
+     * Texto que hay bajo un recuadro dibujado sobre la página entregada `$n` (fracciones 0-1 del ancho y alto de la imagen), leído de la caché local del OCR
+     * (no vuelve a leer nada). Sirve para tapar a mano un nombre: se propone lo que hay bajo el recuadro y se añade a las listas.
+     */
+    public static function textoEnRecuadro(ConfidencialidadDoc $d, int $n, float $x1, float $y1, float $x2, float $y2): string
+    {
+        $a = ($d->archivos ?? [])[$n] ?? null;
+        if (! $a || ! preg_match('#^(f\d+)/([\w.-]+\.jpg)$#', $a, $m)) {
+            return '';
+        }
+        $dir = self::dir($d);
+        $hash = trim((string) @file_get_contents($dir.'/_orig/ocr/'.$m[1].'_'.$m[2].'.hash'));
+        $lineas = $hash !== '' && preg_match('/^[0-9a-f]{40}$/', $hash) ? json_decode((string) @file_get_contents($dir.'/_orig/ocr/'.$hash.'.json'), true) : null;
+        $tam = @getimagesize($dir.'/'.$a);
+        if (! is_array($lineas) || ! $tam) {
+            return '';
+        }
+        [$W, $H] = $tam;
+        [$l, $r] = [min($x1, $x2) * $W, max($x1, $x2) * $W];
+        [$t, $b] = [min($y1, $y2) * $H, max($y1, $y2) * $H];
+        $salida = [];
+        foreach ($lineas as $pal) {
+            $dentro = [];
+            foreach ($pal as $w) {
+                $cx = ($w['l'] + $w['r']) / 2;
+                $cy = ($w['t'] + $w['b']) / 2;
+                if ($cx >= $l && $cx <= $r && $cy >= $t && $cy <= $b) {
+                    $dentro[] = $w['x'];
+                }
+            }
+            if ($dentro) {
+                $salida[] = implode(' ', $dentro);
+            }
+        }
+
+        return trim(preg_replace('/\s+/u', ' ', implode(' ', $salida)), " \t.,;:");
+    }
+
     /** Tabla «quién es quién» (etiqueta => dato real) para enseñársela a su dueño en la pantalla; ordenada por tipo y número. */
     public static function quienEsQuien(ConfidencialidadDoc $d): array
     {

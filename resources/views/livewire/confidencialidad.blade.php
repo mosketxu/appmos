@@ -197,19 +197,39 @@
                                 @foreach (collect($sel->informe ?? [])->except('avisos') as $k => $n) <span class="mr-2">{{ $k }} {{ $n }}</span> @endforeach
                                 @foreach (($sel->informe['avisos'] ?? []) as $av) <div class="text-amber-700">⚠ {{ $av }}</div> @endforeach
                             </div>
+                            @if ($sel->estado === 'borrador' && $recuadroHecho)
+                                <div class="p-2 mb-2 text-sm bg-indigo-50 border border-indigo-200 rounded">
+                                    <div class="text-xs text-gray-600">Bajo el recuadro (página {{ ($recuadroPagina ?? 0) + 1 }}) se lee lo siguiente. Corrígelo si hace falta: se tapará <b>en todo el documento</b> y pasará a «Quién es quién».</div>
+                                    <input type="text" wire:model.defer="recuadroTexto" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="Nombre a tapar (si no se ha leído nada, escríbelo)">
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <button type="button" wire:click='taparRecuadro("persona")' wire:loading.attr="disabled" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Tapar como persona</button>
+                                        <button type="button" wire:click='taparRecuadro("empresa")' wire:loading.attr="disabled" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Tapar como empresa</button>
+                                        <button type="button" wire:click="cancelarRecuadro" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-100">Cancelar</button>
+                                    </div>
+                                </div>
+                            @endif
                             @if (count($imagenes))
-                                <div x-data="{ z: 100 }">
-                                    <div class="sticky top-0 z-10 flex items-center gap-2 py-1 mb-1 text-xs bg-white border-b">
+                                <div x-data="{ z: 100, d: null, puede: {{ $sel->estado === 'borrador' ? 'true' : 'false' }},
+                                        ini(e, n) { if (!this.puede) return; const r = e.currentTarget.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; this.d = { n: n, el: e.currentTarget, w: r.width, h: r.height, x0: x, y0: y, x1: x, y1: y }; },
+                                        mov(e) { if (!this.d) return; const r = this.d.el.getBoundingClientRect(); this.d.x1 = Math.min(Math.max(e.clientX - r.left, 0), r.width); this.d.y1 = Math.min(Math.max(e.clientY - r.top, 0), r.height); },
+                                        fin() { const d = this.d; this.d = null; if (!d || Math.abs(d.x1 - d.x0) < 8 || Math.abs(d.y1 - d.y0) < 6) return; $wire.recuadro(d.n, d.x0 / d.w, d.y0 / d.h, d.x1 / d.w, d.y1 / d.h); } }"
+                                     @mousemove.window="mov($event)" @mouseup.window="fin()">
+                                    <div class="sticky top-0 z-10 flex flex-wrap items-center gap-2 py-1 mb-1 text-xs bg-white border-b">
                                         <span class="text-gray-500">{{ count($imagenes) }} {{ count($imagenes) === 1 ? 'página' : 'páginas' }}</span>
                                         <button type="button" @click="z = Math.max(40, z - 20)" class="px-2 border rounded hover:bg-gray-100" title="Alejar">−</button>
                                         <span x-text="z + ' %'" class="w-10 text-center"></span>
                                         <button type="button" @click="z = Math.min(300, z + 20)" class="px-2 border rounded hover:bg-gray-100" title="Acercar">+</button>
                                         <button type="button" @click="z = 100" class="px-2 border rounded hover:bg-gray-100" title="Ajustar al ancho">Ajustar</button>
+                                        @if ($sel->estado === 'borrador')<span class="text-indigo-600">✏ Arrastra un recuadro sobre un nombre que siga a la vista para tapar</span>@endif
                                     </div>
                                     <div style="max-height:75vh; overflow:auto">
                                         @foreach ($imagenes as $i => $n)
                                             <div class="mb-1 text-xs text-gray-500">Página {{ $i + 1 }} de {{ count($imagenes) }}</div>
-                                            <img src="{{ route('confidencialidad.archivo', [$sel->id, $n, 'v' => optional($sel->updated_at)->timestamp]) }}" class="mb-3 border rounded" :style="'width:' + z + '%; max-width:none'" loading="lazy">
+                                            <div class="relative mb-3" :style="'width:' + z + '%; ' + (puede ? 'cursor:crosshair; user-select:none' : '')" @mousedown.prevent="ini($event, {{ $n }})">
+                                                <img src="{{ route('confidencialidad.archivo', [$sel->id, $n, 'v' => optional($sel->updated_at)->timestamp]) }}" class="block w-full border rounded" style="max-width:none" loading="lazy" draggable="false">
+                                                <div x-show="d && d.n === {{ $n }}" class="absolute border-2 border-indigo-600 pointer-events-none" style="background:rgba(79,70,229,.2)"
+                                                     :style="d ? 'left:' + Math.min(d.x0, d.x1) + 'px; top:' + Math.min(d.y0, d.y1) + 'px; width:' + Math.abs(d.x1 - d.x0) + 'px; height:' + Math.abs(d.y1 - d.y0) + 'px' : ''"></div>
+                                            </div>
                                         @endforeach
                                     </div>
                                 </div>
