@@ -131,7 +131,7 @@ class Confidencialidad
         foreach ($meta['originales'] as $k => $o) {
             $orig = $dir.'/_orig/'.$o['n'].'.'.$o['ext'];
             file_put_contents($dir.'/progreso_doc.json', json_encode(['doc' => $k + 1, 'de' => count($meta['originales'])]));
-            $r = Process::timeout(1800)->env(['APPMOS_PROGRESO' => $dir.'/progreso.json'])->run(array_merge(
+            $r = Process::timeout(1800)->env(['APPMOS_PROGRESO' => $dir.'/progreso.json', 'APPMOS_OCR_CACHE' => $dir.'/_orig/ocr'])->run(array_merge(
                 [self::python(), self::script(), '--carpeta', $orig, $dir.'/f'.$o['n'], '--mapa', $dir.'/mapa.json'],
                 self::opciones($meta)
             ));
@@ -160,7 +160,7 @@ class Confidencialidad
             self::borrarDir($dir.'/_orig');          // si falla, no se guarda nada del original
             $d->update(['estado' => 'error', 'error' => $error]);
 
-            return $d->fresh();
+            return $d->fresh() ?? $d;      // si lo borraron mientras se procesaba, fresh() da null
         }
         arsort($candidatos);
         file_put_contents($dir.'/candidatos.json', json_encode(array_map(fn ($t, $n) => ['texto' => $t, 'veces' => $n], array_keys($candidatos), array_values($candidatos)), JSON_UNESCAPED_UNICODE));
@@ -169,7 +169,7 @@ class Confidencialidad
         @unlink($dir.'/progreso_doc.json');
         $d->update(['estado' => 'borrador', 'error' => null, 'informe' => $informe, 'archivos' => $lista]);
 
-        return $d->fresh();
+        return $d->fresh() ?? $d;
     }
 
     /** Cambia lo que hay que ocultar y rehace el anonimizado. */
