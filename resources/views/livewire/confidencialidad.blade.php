@@ -225,10 +225,10 @@
                                     <div style="max-height:75vh; overflow:auto">
                                         @foreach ($imagenes as $i => $n)
                                             <div class="mb-1 text-xs text-gray-500">Página {{ $i + 1 }} de {{ count($imagenes) }}</div>
-                                            <div class="relative mb-3" :style="'width:' + z + '%; ' + (puede ? 'cursor:crosshair; user-select:none' : '')" @mousedown.prevent="ini($event, {{ $n }})">
-                                                <img src="{{ route('confidencialidad.archivo', [$sel->id, $n, 'v' => optional($sel->updated_at)->timestamp]) }}" class="block w-full border rounded" style="max-width:none" loading="lazy" draggable="false">
-                                                <div x-show="d && d.n === {{ $n }}" class="absolute border-2 border-indigo-600 pointer-events-none" style="background:rgba(79,70,229,.2)"
-                                                     :style="d ? 'left:' + Math.min(d.x0, d.x1) + 'px; top:' + Math.min(d.y0, d.y1) + 'px; width:' + Math.abs(d.x1 - d.x0) + 'px; height:' + Math.abs(d.y1 - d.y0) + 'px' : ''"></div>
+                                            <div style="position:relative; margin-bottom:.75rem" :style="{ width: z + '%', cursor: puede ? 'crosshair' : 'auto', userSelect: 'none' }" @mousedown.prevent="ini($event, {{ $n }})">
+                                                <img src="{{ route('confidencialidad.archivo', [$sel->id, $n, 'v' => optional($sel->updated_at)->timestamp]) }}" class="block w-full border rounded" style="max-width:none; display:block; width:100%" loading="lazy" draggable="false">
+                                                <div x-show="d && d.n === {{ $n }}" x-cloak style="position:absolute; pointer-events:none; border:2px solid #4f46e5; background:rgba(79,70,229,.25); z-index:5"
+                                                     :style="d ? { left: Math.min(d.x0, d.x1) + 'px', top: Math.min(d.y0, d.y1) + 'px', width: Math.abs(d.x1 - d.x0) + 'px', height: Math.abs(d.y1 - d.y0) + 'px' } : {}"></div>
                                             </div>
                                         @endforeach
                                     </div>
