@@ -254,7 +254,7 @@ class Confidencialidad extends Component
     }
 
     /** Tapa lo que hay bajo el recuadro en TODO el documento: se añade a las listas, entra en «Quién es quién» y se rehace (rápido, con la caché). */
-    public function taparRecuadro(string $tipo): void
+    public function taparRecuadro(): void
     {
         $texto = trim($this->recuadroTexto);
         if (mb_strlen($texto) < 3) {
@@ -270,11 +270,14 @@ class Confidencialidad extends Component
 
             return;
         }
-        if ($etiqueta !== '') {      // etiqueta con el nombre elegido: Etiqueta1, Etiqueta2… en todo el documento
+        $etiqueta = $etiqueta ?: 'Dato';      // sin etiqueta elegida: Dato1, Dato2…
+        if ($etiqueta === 'Persona') {
+            $this->agregar($texto, 'persona');
+        } elseif ($etiqueta === 'Empresa') {
+            $this->agregar($texto, 'empresa');
+        } else {                               // etiqueta con el nombre elegido: Etiqueta1, Etiqueta2… en todo el documento
             $d = $this->doc();
             Conf::ponerEtiquetasPropias($d, array_merge(Conf::etiquetasPropias($d), [['texto' => $texto, 'etiqueta' => $etiqueta]]));
-        } else {
-            $this->agregar($texto, $tipo === 'empresa' ? 'empresa' : 'persona');
         }
         $this->cancelarRecuadro();
         $this->actualizar();

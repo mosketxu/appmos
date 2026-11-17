@@ -220,11 +220,15 @@
                                 <div class="p-2 mb-2 text-sm bg-indigo-50 border border-indigo-200 rounded">
                                     <div class="text-xs text-gray-600">Bajo el recuadro (página {{ ($recuadroPagina ?? 0) + 1 }}) se lee lo siguiente. Corrígelo si hace falta: se tapará <b>en todo el documento</b> y pasará a «Quién es quién».</div>
                                     <input type="text" wire:model.defer="recuadroTexto" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="Lo que hay que tapar (si no se ha leído nada, escríbelo)">
-                                    <div class="mt-1 text-xs text-gray-600">Etiqueta con la que sustituirlo <span class="text-gray-400">(opcional; si la dejas vacía será Persona1/Empresa1…)</span></div>
+                                    <div class="mt-1 text-xs text-gray-600">Etiqueta con la que sustituirlo <span class="text-gray-400">(opcional; si la dejas vacía será Dato1, Dato2…)</span></div>
                                     <input type="text" wire:model.defer="recuadroEtiqueta" maxlength="20" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="p. ej. NifFashion  →  saldrá NifFashion1 en todo el documento">
+                                    <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
+                                        Atajos:
+                                        <button type="button" wire:click="$set('recuadroEtiqueta', 'Persona')" class="px-1.5 border rounded hover:bg-white">Persona</button>
+                                        <button type="button" wire:click="$set('recuadroEtiqueta', 'Empresa')" class="px-1.5 border rounded hover:bg-white">Empresa</button>
+                                    </div>
                                     <div class="flex items-center gap-2 mt-1">
-                                        <button type="button" wire:click='taparRecuadro("persona")' wire:loading.attr="disabled" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Tapar como persona</button>
-                                        <button type="button" wire:click='taparRecuadro("empresa")' wire:loading.attr="disabled" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Tapar como empresa</button>
+                                        <button type="button" wire:click="taparRecuadro" wire:loading.attr="disabled" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Tapar</button>
                                         <button type="button" wire:click="cancelarRecuadro" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-100">Cancelar</button>
                                     </div>
                                 </div>
