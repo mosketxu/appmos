@@ -61,6 +61,14 @@ class Confidencialidad extends Component
         $this->edPerfil = $m['perfil'];
     }
 
+    /** Al terminar de subir, se anonimiza solo (sin botón): enseguida salen los visores. */
+    public function updatedSubidas(): void
+    {
+        if (count(array_filter((array) $this->subidas))) {
+            $this->anonimizar();
+        }
+    }
+
     public function anonimizar(): void
     {
         $this->aviso = '';
@@ -82,7 +90,9 @@ class Confidencialidad extends Component
                 $archivos[] = $f;
             }
         }
-        $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, trim($this->titulo));
+        $primero = pathinfo($this->subidas[0]->getClientOriginalName(), PATHINFO_FILENAME);   // título por defecto: el nombre del fichero
+        $titulo = trim($this->titulo) ?: (count($this->subidas) > 1 ? $primero.' y '.(count($this->subidas) - 1).' más' : $primero);
+        $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, mb_substr($titulo, 0, 120));
         $this->subidas = [];
         $this->nombres = $this->empresas = $this->titulo = '';
         $this->docSel = $d->id;

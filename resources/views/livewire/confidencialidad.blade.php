@@ -17,19 +17,15 @@
             <div class="p-3 mb-4 bg-white border rounded shadow-sm">
                 <div class="mb-2 text-sm font-semibold text-gray-700">Nuevo documento</div>
                 <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1">
-                    <x-subir-fichero wire:model="subidas" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.tif,.tiff,.txt,.csv,.md,.eml,.json,.html,.htm,.xml,.log,.xlsx,.xlsm,.docx"
-                        texto="Documento a anonimizar" title="PDF, imágenes, Excel, Word, texto, CSV o correo (.eml). Se pueden elegir o arrastrar varios; comparten las mismas etiquetas." />
-                    @if (count(array_filter((array) $subidas)))
-                        <span class="text-green-700">✓ {{ count(array_filter((array) $subidas)) }} documento(s) listo(s)</span>
-                        <button type="button" wire:click="$set('subidas', [])" class="text-gray-500 underline">quitar</button>
-                    @else
-                        <span class="text-gray-500">Falta subir un documento</span>
-                    @endif
+                    <x-subir-fichero wire:model="subidas" multiple :elegido="$sel ? ($sel->titulo ?: 'Documento #'.$sel->id) : null" quitar="$wire.seleccionar(0)"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.tif,.tiff,.txt,.csv,.md,.eml,.json,.html,.htm,.xml,.log,.xlsx,.xlsm,.docx"
+                        texto="Subir documento" title="PDF, imágenes, Excel, Word, texto, CSV o correo (.eml). Se anonimiza solo al subirlo. Se pueden elegir o arrastrar varios; comparten las mismas etiquetas." />
+                    <span wire:loading wire:target="subidas,anonimizar" class="text-amber-700">⏳ Subiendo y anonimizando… (los escaneados tardan)</span>
+                    <span wire:loading.remove wire:target="subidas,anonimizar" class="text-gray-500">{{ $sel ? 'Abierto: #'.$sel->id : 'Se anonimiza solo al subirlo' }}</span>
                 </div>
-                @error('subidas') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
-                @error('subidas.*') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
+                @foreach ($errors->get('subidas*') as $msgs) @foreach ((array) $msgs as $m) <div class="text-xs text-red-600">{{ $m }}</div> @endforeach @endforeach
                 <details class="mt-2 text-xs text-gray-600">
-                    <summary class="cursor-pointer">Si ya sabes qué ocultar (opcional; se puede hacer después)</summary>
+                    <summary class="cursor-pointer">Si ya sabes qué ocultar, indícalo ANTES de subir (opcional; se puede hacer después)</summary>
                     <label class="block mt-1 font-semibold">Personas (una por línea)</label>
                     <textarea wire:model.defer="nombres" rows="2" class="w-full text-sm border-gray-300 rounded"></textarea>
                     <label class="block mt-1 font-semibold">Empresas (una por línea)</label>
@@ -41,10 +37,7 @@
                         <option value="contable">Contable (deja los CIF)</option>
                         <option value="mercantil">Sociedad (CIF, nombre y domicilio públicos visibles)</option>
                     </select>
-                    <input type="text" wire:model.defer="titulo" maxlength="120" placeholder="Nombre (sin datos reales)" class="flex-1 min-w-0 py-0.5 text-sm border-gray-300 rounded">
-                    <button type="button" wire:click="anonimizar" wire:loading.attr="disabled" wire:target="anonimizar,subidas"
-                            class="px-3 py-1 text-white bg-indigo-600 rounded hover:bg-indigo-700">Anonimizar</button>
-                    <span wire:loading wire:target="anonimizar" class="text-xs text-amber-700">⏳ Anonimizando… (los escaneados tardan)</span>
+                    <input type="text" wire:model.defer="titulo" maxlength="120" placeholder="Nombre (por defecto, el del fichero)" class="flex-1 min-w-0 py-0.5 text-sm border-gray-300 rounded">
                 </div>
             </div>
 
