@@ -47,7 +47,7 @@ class Confidencialidad
     /** Opciones comunes de la línea de comandos: nombres, empresas y perfil. */
     protected static function opciones(array $meta): array
     {
-        $o = ['--perfil', in_array($meta['perfil'] ?? '', ['estricto', 'contable'], true) ? $meta['perfil'] : 'estricto'];
+        $o = ['--perfil', in_array($meta['perfil'] ?? '', ['estricto', 'contable', 'mercantil'], true) ? $meta['perfil'] : 'estricto'];
         foreach ($meta['nombres'] ?? [] as $n) {
             array_push($o, '--nombre', $n);
         }
@@ -173,7 +173,7 @@ class Confidencialidad
         $meta = self::leerMeta($d);
         $meta['nombres'] = array_values($nombres);
         $meta['empresas'] = array_values($empresas);
-        $meta['perfil'] = in_array($perfil, ['estricto', 'contable'], true) ? $perfil : 'estricto';
+        $meta['perfil'] = in_array($perfil, ['estricto', 'contable', 'mercantil'], true) ? $perfil : 'estricto';
         self::guardarMeta($d, $meta);
 
         return self::procesar($d);
@@ -266,6 +266,7 @@ class Confidencialidad
                 .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.',
             'creador_id' => $u->id,
             'prioridad' => 'normal',
+            'oculta' => true,      // el chat vive en esta pantalla, no en el TO-DO
         ]);
         $t->asignados()->attach($claude->id, ['orden' => TodoTarea::siguienteOrden($claude->id)]);
         TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $u->id, 'tipo' => 'evento', 'fecha' => $hoy, 'texto' => 'creó la tarea desde Confidencialidad y la asignó a Claude']);
@@ -290,6 +291,104 @@ class Confidencialidad
 
         return TodoComentario::where('tarea_id', $t->id)->where('user_id', $claude->id)->where('tipo', 'respuesta')->orderBy('id')->get()
             ->map(fn ($c) => ['fecha' => $c->created_at?->format('d/m H:i') ?? $c->fecha->format('d/m'), 'texto' => self::restaurar($d, $c->texto)])->all();
+    }
+
+    /**
+     * Conversación completa con Claude, con los datos reales puestos (solo para mostrarla): [{quien: yo|claude, fecha, texto}].
+     * Lo primero es la petición inicial (descripción de la tarea sin el pie técnico); después los comentarios de ambos.
+     */
+    public static function conversacion(ConfidencialidadDoc $d): array
+    {
+        $t = $d->tarea_id ? TodoTarea::find($d->tarea_id) : null;
+        $claude = TodoClaude::usuario();
+        if (! $t || ! $claude) {
+            return [];
+        }
+        $out = [];
+        $primera = trim(explode("\n\n---\n", (string) $t->descripcion)[0]);
+        if (! str_starts_with($primera, 'REVISIÓN DE FUGAS')) {       // la revisión de fugas es un paso técnico, no parte de la conversación
+            $out[] = ['quien' => 'yo', 'fecha' => $t->created_at?->format('d/m H:i') ?? '', 'texto' => self::restaurar($d, $primera)];
+        }
+        foreach (TodoComentario::where('tarea_id', $t->id)->where('tipo', 'respuesta')->orderBy('id')->get() as $c) {
+            if (preg_match('/^\s*(REVISI[ÓO]N)/iu', $c->texto) || str_starts_with($c->texto, 'REVISIÓN DE FUGAS')) {
+                continue;
+            }
+            $out[] = ['quien' => $c->user_id === $claude->id ? 'claude' : 'yo', 'fecha' => $c->created_at?->format('d/m H:i') ?? $c->fecha->format('d/m'), 'texto' => self::restaurar($d, $c->texto)];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Correo en .eml -> ficheros sueltos (cuerpo.txt + adjuntos) en una carpeta temporal. Python con la librería estándar; no hace falta nada instalado.
+     *
+     * @return ArchivoLocal[]
+     */
+    public static function expandirEml(string $ruta): array
+    {
+        $tmp = sys_get_temp_dir().'/conf_eml_'.bin2hex(random_bytes(6));
+        mkdir($tmp, 0700, true);
+        $py = <<<'PY'
+import sys, os, email, re, html
+from email import policy
+m = email.message_from_binary_file(open(sys.argv[1], 'rb'), policy=policy.default)
+out = sys.argv[2]
+cab = "De: %s\nPara: %s\nAsunto: %s\nFecha: %s\n\n" % (m['from'], m['to'], m['subject'], m['date'])
+cuerpo = m.get_body(preferencelist=('plain', 'html'))
+t = cuerpo.get_content() if cuerpo else ''
+if cuerpo is not None and cuerpo.get_content_type() == 'text/html':
+    t = re.sub(r'(?is)<(script|style).*?</\1>', ' ', t); t = re.sub(r'(?i)<br\s*/?>|</p>|</div>|</tr>', '\n', t); t = html.unescape(re.sub(r'<[^>]+>', ' ', t))
+open(os.path.join(out, '00_cuerpo.txt'), 'w', encoding='utf-8').write(cab + re.sub(r'\n\s*\n+', '\n\n', t))
+i = 0
+for p in m.iter_attachments():
+    nombre = p.get_filename() or 'adjunto'
+    datos = p.get_payload(decode=True) or b''
+    if not datos: continue
+    i += 1
+    open(os.path.join(out, '%02d_%s' % (i, re.sub(r'[^A-Za-z0-9._-]', '_', nombre))), 'wb').write(datos)
+PY;
+        $r = Process::timeout(60)->run(['python3', '-I', '-c', $py, $ruta, $tmp]);
+        abort_unless($r->successful(), 422, 'No se ha podido leer el correo (.eml).');
+        $lista = [];
+        foreach (glob($tmp.'/*') ?: [] as $f) {
+            $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
+            if (in_array($ext, self::EXTENSIONES, true) && ! (in_array($ext, ['png', 'jpg', 'jpeg', 'gif'], true) && filesize($f) < 6000)) {   // sin logos/iconos minúsculos
+                $lista[] = new ArchivoLocal($f, preg_replace('/^\d+_/', '', basename($f)));
+            } else {
+                @unlink($f);
+            }
+        }
+
+        return $lista;
+    }
+
+    /** Correo del buzón (Graph) -> ficheros: el cuerpo en texto y todos los adjuntos, también las imágenes incrustadas (Graph a veces dice que no hay adjuntos). @return ArchivoLocal[] */
+    public static function archivosDeCorreo(string $buzon, string $id): array
+    {
+        $m = GraphMail::mensaje($buzon, $id);
+        $tmp = sys_get_temp_dir().'/conf_msg_'.bin2hex(random_bytes(6));
+        mkdir($tmp, 0700, true);
+        $texto = $m['html'];
+        if (($m['tipo'] ?? 'html') === 'html') {
+            $texto = preg_replace('/(?is)<(script|style).*?<\/\1>/', ' ', $texto);
+            $texto = preg_replace('/(?i)<br\s*\/?>|<\/p>|<\/div>|<\/tr>/', "\n", $texto);
+            $texto = html_entity_decode(strip_tags($texto), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        $f = $tmp.'/00_cuerpo.txt';
+        file_put_contents($f, 'De: '.$m['de']."\nAsunto: ".$m['asunto']."\nFecha: ".substr($m['fecha'], 0, 16)."\n\n".preg_replace('/\n\s*\n+/', "\n\n", $texto));
+        $lista = [new ArchivoLocal($f, 'correo.txt')];
+        foreach (GraphMail::adjuntos($buzon, $id) as $i => $a) {
+            $ext = strtolower(pathinfo($a['nombre'], PATHINFO_EXTENSION));
+            $datos = base64_decode($a['bytes'], true) ?: '';
+            if ($datos === '' || ! in_array($ext, self::EXTENSIONES, true) || (in_array($ext, ['png', 'jpg', 'jpeg', 'gif'], true) && strlen($datos) < 6000)) {
+                continue;
+            }
+            $ruta = $tmp.'/'.sprintf('%02d', $i + 1).'.'.$ext;
+            file_put_contents($ruta, $datos);
+            $lista[] = new ArchivoLocal($ruta, $a['nombre']);
+        }
+
+        return $lista;
     }
 
     public static function borrar(ConfidencialidadDoc $d): void

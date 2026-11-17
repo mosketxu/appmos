@@ -39,12 +39,32 @@
                     <select wire:model.defer="perfil" class="py-0.5 text-sm border-gray-300 rounded" title="Estricto también etiqueta los CIF de empresa">
                         <option value="estricto">Estricto</option>
                         <option value="contable">Contable (deja los CIF)</option>
+                        <option value="mercantil">Sociedad (CIF, nombre y domicilio públicos visibles)</option>
                     </select>
                     <input type="text" wire:model.defer="titulo" maxlength="120" placeholder="Nombre (sin datos reales)" class="flex-1 min-w-0 py-0.5 text-sm border-gray-300 rounded">
                     <button type="button" wire:click="anonimizar" wire:loading.attr="disabled" wire:target="anonimizar,subidas"
                             class="px-3 py-1 text-white bg-indigo-600 rounded hover:bg-indigo-700">Anonimizar</button>
                     <span wire:loading wire:target="anonimizar" class="text-xs text-amber-700">⏳ Anonimizando… (los escaneados tardan)</span>
                 </div>
+            </div>
+
+            <div class="p-3 mb-4 bg-white border rounded shadow-sm">
+                <div class="mb-1 text-sm font-semibold text-gray-700">✉ Traer un correo</div>
+                <p class="mb-1 text-xs text-gray-500">Busca por asunto o texto: se trae el cuerpo y los adjuntos (también las imágenes incrustadas) y se anonimizan igual. También puedes subir arriba un <b>.eml</b>; los <b>.msg</b> de Outlook aún no se leen (usa esta búsqueda).</p>
+                <form wire:submit.prevent="buscarCorreo" class="flex gap-2">
+                    <input type="text" wire:model.defer="consultaCorreo" placeholder="Asunto o texto del correo" class="flex-1 min-w-0 py-0.5 text-sm border-gray-300 rounded">
+                    <button type="submit" wire:loading.attr="disabled" wire:target="buscarCorreo" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">Buscar</button>
+                </form>
+                <span wire:loading wire:target="buscarCorreo,usarCorreo" class="text-xs text-amber-700">⏳ Un momento…</span>
+                @foreach ($resultadosCorreo as $c)
+                    <div class="flex items-center gap-2 py-1 mt-1 text-sm border-t" wire:key="mail-{{ md5($c['id']) }}">
+                        <div class="flex-1 min-w-0">
+                            <div class="truncate">{{ $c['asunto'] ?: '(sin asunto)' }}</div>
+                            <div class="text-xs text-gray-400">{{ substr($c['fecha'], 0, 10) }} · {{ $c['de'] }}{{ $c['adjuntos'] ? ' · 📎' : '' }}</div>
+                        </div>
+                        <button type="button" wire:click="usarCorreo({{ json_encode($c['id']) }})" wire:loading.attr="disabled" wire:target="usarCorreo" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Traer y anonimizar</button>
+                    </div>
+                @endforeach
             </div>
 
             <div class="p-3 bg-white border rounded shadow-sm">
@@ -121,6 +141,7 @@
                                 <select wire:model.defer="edPerfil" class="py-0.5 text-sm border-gray-300 rounded">
                                     <option value="estricto">Estricto</option>
                                     <option value="contable">Contable (deja los CIF)</option>
+                        <option value="mercantil">Sociedad (CIF, nombre y domicilio públicos visibles)</option>
                                 </select>
                                 <button type="button" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar" class="px-3 py-1 text-white bg-indigo-600 rounded hover:bg-indigo-700">Actualizar el anonimizado</button>
                                 <span wire:loading wire:target="actualizar" class="text-xs text-amber-700">⏳ Rehaciendo…</span>
@@ -163,28 +184,27 @@
 
                     @if ($sel->estado === 'listo')
                         <div class="p-3 mt-3 bg-white border rounded shadow-sm">
-                            <div class="text-sm font-semibold text-gray-700">{{ $sel->tarea_id ? 'Otra indicación para Claude' : '¿Qué quieres que haga Claude con este documento?' }}</div>
-                            <textarea wire:model.defer="instruccion" rows="3" class="w-full text-sm border-gray-300 rounded"
-                                      placeholder="Se anonimiza igual que el documento (mismas etiquetas). Escribe con normalidad o usa las etiquetas."></textarea>
+                            <div class="mb-1 text-sm font-semibold text-gray-700">💬 Conversación con Claude <span class="font-normal text-gray-400">(solo ve lo anonimizado; aquí se muestra con los datos reales y no se guarda así)</span></div>
+                            @foreach ($conversacion as $r)
+                                <div class="p-2 mt-1 text-sm rounded border {{ $r['quien'] === 'yo' ? 'bg-gray-50 border-gray-200 ml-8' : 'bg-indigo-50 border-indigo-200 mr-8' }}" style="white-space:pre-wrap"><div class="text-xs text-gray-400">{{ $r['quien'] === 'yo' ? 'Tú' : 'Claude' }} · {{ $r['fecha'] }}</div>{{ $r['texto'] }}</div>
+                            @endforeach
+                            @if ($sel->tarea_id && (count($conversacion) === 0 || end($conversacion)['quien'] === 'yo'))
+                                <div class="mt-1 text-sm text-gray-400">⏳ Claude está en ello (esta pantalla se actualiza sola; puede tardar unos minutos).</div>
+                            @endif
+                            <textarea wire:model.defer="instruccion" rows="3" class="w-full mt-2 text-sm border-gray-300 rounded"
+                                      placeholder="{{ $sel->tarea_id ? 'Escribe tu siguiente mensaje…' : '¿Qué quieres que haga Claude con este documento? Se anonimiza igual que el documento (mismas etiquetas).' }}"></textarea>
                             @error('instruccion') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
                             <div class="flex items-center gap-3 mt-1">
-                                <button type="button" wire:click="pedir" wire:loading.attr="disabled" wire:target="pedir" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">Pedir a Claude</button>
+                                <button type="button" wire:click="pedir" wire:loading.attr="disabled" wire:target="pedir" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">Enviar</button>
                                 <span wire:loading wire:target="pedir" class="text-xs text-amber-700">⏳</span>
-                                @if ($sel->tarea_id)
-                                    <a href="{{ route('todo') }}?t={{ $sel->tarea_id }}" class="text-xs text-indigo-600 hover:underline">ver la tarea en el TO-DO →</a>
-                                @endif
                             </div>
                         </div>
-                    @endif
-
-                    @if ($sel->tarea_id)
+                    @elseif ($sel->tarea_id && $respuestas)
                         <div class="p-3 mt-3 bg-white border rounded shadow-sm">
-                            <div class="text-sm font-semibold text-gray-700">Respuestas de Claude <span class="font-normal text-gray-400">(con los datos reales; no se guardan así)</span></div>
-                            @forelse ($respuestas as $r)
+                            <div class="text-sm font-semibold text-gray-700">Respuestas de Claude</div>
+                            @foreach ($respuestas as $r)
                                 <div class="p-2 mt-1 text-sm bg-indigo-50 border border-indigo-200 rounded" style="white-space:pre-wrap"><div class="text-xs text-gray-400">{{ $r['fecha'] }}</div>{{ $r['texto'] }}</div>
-                            @empty
-                                <div class="mt-1 text-sm text-gray-400">Todavía no ha respondido (esta pantalla se actualiza sola).</div>
-                            @endforelse
+                            @endforeach
                         </div>
                     @endif
                 @endif

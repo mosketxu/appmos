@@ -94,6 +94,15 @@ class GraphMail
             'fecha' => $m['receivedDateTime'] ?? '', 'html' => $m['body']['content'] ?? '', 'tipo' => $m['body']['contentType'] ?? 'html'];
     }
 
+    /** Adjuntos de fichero de un correo con su contenido, incluidas las imágenes incrustadas (lectura): [nombre, tipo, bytes (base64)]. */
+    public static function adjuntos(string $buzon, string $id): array
+    {
+        $r = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments?$top=50');
+
+        return collect($r['value'] ?? [])->filter(fn ($a) => ($a['@odata.type'] ?? '') === '#microsoft.graph.fileAttachment')
+            ->map(fn ($a) => ['nombre' => $a['name'] ?? 'adjunto', 'tipo' => $a['contentType'] ?? '', 'bytes' => $a['contentBytes'] ?? ''])->values()->all();
+    }
+
     /** Id de la carpeta $ruta (['2026', '___Suma 2026', 'Eric 2026']) del buzón, o null. */
     public static function carpetaId(string $buzon, array $ruta): ?string
     {

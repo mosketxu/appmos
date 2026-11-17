@@ -24,6 +24,9 @@ class Confidencialidad extends Component
     public ?int $docSel = null;
     public string $instruccion = '';
     public string $aviso = '';
+    /** Búsqueda de un correo del buzón por asunto/texto (Graph; solo lectura). */
+    public string $consultaCorreo = '';
+    public array $resultadosCorreo = [];
     /** Lo que se oculta en el documento abierto (se editan aquí y se aplican con «Actualizar»). */
     public string $edNombres = '';
     public string $edEmpresas = '';
@@ -64,15 +67,69 @@ class Confidencialidad extends Component
         $this->validate([
             'subidas' => 'required|array|min:1|max:10',
             'subidas.*' => 'file|max:30720|extensions:'.implode(',', Conf::EXTENSIONES),
-            'perfil' => 'required|in:estricto,contable',
+            'perfil' => 'required|in:estricto,contable,mercantil',
             'titulo' => 'nullable|string|max:120',
         ], ['subidas.required' => 'Elige al menos un documento.', 'subidas.*.extensions' => 'Tipo de fichero no admitido.', 'subidas.*.max' => 'Cada documento puede pesar hasta 30 MB.']);
-        $d = Conf::crear(auth()->user(), $this->subidas, $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, trim($this->titulo));
+        $archivos = [];
+        foreach ($this->subidas as $f) {               // un correo .eml se abre: su cuerpo y sus adjuntos pasan a ser documentos sueltos
+            if (strtolower($f->getClientOriginalExtension()) === 'eml') {
+                try {
+                    array_push($archivos, ...Conf::expandirEml($f->getRealPath()));
+                } finally {
+                    $f->delete();
+                }
+            } else {
+                $archivos[] = $f;
+            }
+        }
+        $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, trim($this->titulo));
         $this->subidas = [];
         $this->nombres = $this->empresas = $this->titulo = '';
         $this->docSel = $d->id;
         $this->cargarListas($d);
         $this->aviso = $d->estado === 'error' ? '' : 'Primera anonimización automática hecha. Compara con el original, añade lo que falte y pulsa «Actualizar»; cuando esté bien, «Dar por bueno».';
+    }
+
+    protected function buzon(): string
+    {
+        return (string) config('contabilidad.graph.sender');
+    }
+
+    public function buscarCorreo(): void
+    {
+        $this->aviso = '';
+        $this->resultadosCorreo = [];
+        if (trim($this->consultaCorreo) === '') {
+            return;
+        }
+        if (! \App\Support\GraphMail::configurado()) {
+            $this->aviso = 'El correo (Graph) no está configurado en este servidor.';
+
+            return;
+        }
+        try {
+            $this->resultadosCorreo = \App\Support\GraphMail::buscarMensajes($this->buzon(), $this->consultaCorreo, 15);
+        } catch (\Throwable $e) {
+            $this->aviso = 'No se ha podido buscar en el correo.';
+        }
+        if (! $this->resultadosCorreo && ! $this->aviso) {
+            $this->aviso = 'No hay correos con ese texto.';
+        }
+    }
+
+    /** Trae el correo (cuerpo + adjuntos, también imágenes incrustadas) y lo anonimiza como cualquier documento. */
+    public function usarCorreo(string $id): void
+    {
+        $this->aviso = '';
+        $m = collect($this->resultadosCorreo)->firstWhere('id', $id);
+        abort_unless($m, 422);
+        $archivos = Conf::archivosDeCorreo($this->buzon(), $id);
+        $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, trim($this->titulo) ?: 'Correo');
+        $this->resultadosCorreo = [];
+        $this->consultaCorreo = '';
+        $this->docSel = $d->id;
+        $this->cargarListas($d);
+        $this->aviso = $d->estado === 'error' ? '' : 'Correo traído y anonimizado. Compara con el original, añade lo que falte y pulsa «Actualizar»; cuando esté bien, «Dar por bueno».';
     }
 
     public function seleccionar(int $id): void
@@ -146,7 +203,7 @@ class Confidencialidad extends Component
         if ($this->docSel === $id) {
             $this->docSel = null;
         }
-        $this->aviso = 'Documento y mapa borrados. La tarea del TO-DO (si la hay) se queda, ya sin posibilidad de recuperar los datos reales.';
+        $this->aviso = 'Documento y mapa borrados. La conversación con Claude se queda con etiquetas, ya sin posibilidad de recuperar los datos reales.';
     }
 
     public function render()
@@ -156,6 +213,7 @@ class Confidencialidad extends Component
         $texto = null;
         $imagenes = [];
         $respuestas = [];
+        $conversacion = [];
         $originales = [];
         $candidatos = [];
         $deClaude = [];
@@ -168,6 +226,7 @@ class Confidencialidad extends Component
                 }
             }
             $respuestas = Conf::respuestas($sel);
+            $conversacion = Conf::conversacion($sel);
             if ($sel->estado === 'borrador') {
                 foreach (Conf::leerMeta($sel)['originales'] as $o) {
                     $vista = Conf::dir($sel).'/_orig/'.$o['n'].'.vista.txt';
@@ -193,6 +252,6 @@ class Confidencialidad extends Component
             $deClaude = array_values(array_unique($deClaude));
         }
 
-        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'originales', 'candidatos', 'deClaude'));
+        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude'));
     }
 }

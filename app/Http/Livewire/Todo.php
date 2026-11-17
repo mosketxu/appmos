@@ -482,7 +482,8 @@ class Todo extends Component
     {
         $yo = $this->usuarioVisto();
         $q = TodoTarea::with(['creador:id,name', 'asignados:id,name', 'prioridadPedidaPor:id,name'])->withCount(['comentarios' => fn ($c) => $c->where('tipo', 'respuesta')])->select('todo_tareas.*', 'mi.orden as mi_orden')
-            ->leftJoin('todo_tarea_user as mi', fn ($j) => $j->on('mi.tarea_id', '=', 'todo_tareas.id')->where('mi.user_id', $yo));
+            ->leftJoin('todo_tarea_user as mi', fn ($j) => $j->on('mi.tarea_id', '=', 'todo_tareas.id')->where('mi.user_id', $yo))
+            ->where('todo_tareas.oculta', false);   // las internas (chat de Confidencialidad) no salen en el TO-DO
 
         $q->where(function ($q) use ($yo) {
             match ($this->vista) {

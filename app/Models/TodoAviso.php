@@ -32,6 +32,9 @@ class TodoAviso extends Model
     /** Avisa a $userIds (menos a quien hace la acción) de algo de la tarea. */
     public static function para(TodoTarea $t, array $userIds, string $texto, ?int $actor = null): void
     {
+        if ($t->oculta) {
+            return;      // tarea interna (Confidencialidad): sin avisos en la campana
+        }
         $actor ??= auth()->id();
         $claude = \App\Support\TodoClaude::usuario()?->id;
         foreach (array_unique(array_map('intval', $userIds)) as $uid) {
