@@ -216,7 +216,9 @@
                             @if ($sel->estado === 'borrador' && $recuadroHecho)
                                 <div class="p-2 mb-2 text-sm bg-indigo-50 border border-indigo-200 rounded">
                                     <div class="text-xs text-gray-600">Bajo el recuadro (página {{ ($recuadroPagina ?? 0) + 1 }}) se lee lo siguiente. Corrígelo si hace falta: se tapará <b>en todo el documento</b> y pasará a «Quién es quién».</div>
-                                    <input type="text" wire:model.defer="recuadroTexto" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="Nombre a tapar (si no se ha leído nada, escríbelo)">
+                                    <input type="text" wire:model.defer="recuadroTexto" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="Lo que hay que tapar (si no se ha leído nada, escríbelo)">
+                                    <div class="mt-1 text-xs text-gray-600">Etiqueta con la que sustituirlo <span class="text-gray-400">(opcional; si la dejas vacía será Persona1/Empresa1…)</span></div>
+                                    <input type="text" wire:model.defer="recuadroEtiqueta" maxlength="20" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="p. ej. NifFashion  →  saldrá NifFashion1 en todo el documento">
                                     <div class="flex items-center gap-2 mt-1">
                                         <button type="button" wire:click='taparRecuadro("persona")' wire:loading.attr="disabled" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Tapar como persona</button>
                                         <button type="button" wire:click='taparRecuadro("empresa")' wire:loading.attr="disabled" class="px-2 py-0.5 text-xs text-white bg-indigo-600 rounded hover:bg-indigo-700">Tapar como empresa</button>
@@ -224,7 +226,7 @@
                                     </div>
                                 </div>
                             @endif
-                            @if (count($imagenes))
+                            @if (count($imagenes) && $sel->estado !== 'procesando')
                                 <div x-data="{ z: 100, d: null, puede: {{ $sel->estado === 'borrador' ? 'true' : 'false' }},
                                         ini(e, n) { if (!this.puede) return; const r = e.currentTarget.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; this.d = { n: n, el: e.currentTarget, w: r.width, h: r.height, x0: x, y0: y, x1: x, y1: y }; },
                                         mov(e) { if (!this.d) return; const r = this.d.el.getBoundingClientRect(); this.d.x1 = Math.min(Math.max(e.clientX - r.left, 0), r.width); this.d.y1 = Math.min(Math.max(e.clientY - r.top, 0), r.height); },

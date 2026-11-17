@@ -142,7 +142,7 @@ class Confidencialidad
         foreach ($meta['originales'] as $k => $o) {
             $orig = $dir.'/_orig/'.$o['n'].'.'.$o['ext'];
             file_put_contents($dir.'/progreso_doc.json', json_encode(['doc' => $k + 1, 'de' => count($meta['originales'])]));
-            $r = Process::timeout(1800)->env(['APPMOS_PROGRESO' => $dir.'/progreso.json', 'APPMOS_OCR_CACHE' => $dir.'/_orig/ocr', 'APPMOS_TIEMPOS' => $dir.'/tiempos.log', 'APPMOS_VISIBLES' => json_encode(array_values($meta['visibles'] ?? []), JSON_UNESCAPED_UNICODE)])->run(array_merge(
+            $r = Process::timeout(1800)->env(['APPMOS_PROGRESO' => $dir.'/progreso.json', 'APPMOS_OCR_CACHE' => $dir.'/_orig/ocr', 'APPMOS_TIEMPOS' => $dir.'/tiempos.log', 'APPMOS_VISIBLES' => json_encode(array_values($meta['visibles'] ?? []), JSON_UNESCAPED_UNICODE), 'APPMOS_ETIQUETAS' => self::etiquetasPropiasJson($meta)])->run(array_merge(
                 [self::python(), self::script(), '--carpeta', $orig, $dir.'/f'.$o['n'], '--mapa', $dir.'/mapa.json'],
                 self::opciones($meta)
             ));
@@ -184,6 +184,37 @@ class Confidencialidad
     }
 
     /** Cambia lo que hay que ocultar y rehace el anonimizado. */
+    /** Etiquetas con nombre propio elegido por quien revisa: meta['etiquetas'] = [['texto' => 'B659…', 'etiqueta' => 'NifFashion'], …] -> {"NifFashion": ["B659…"]} */
+    public static function etiquetasPropiasJson(array $meta): string
+    {
+        $g = [];
+        foreach ($meta['etiquetas'] ?? [] as $e) {
+            $g[$e['etiqueta']][] = $e['texto'];
+        }
+
+        return json_encode((object) $g, JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Nombre de etiqueta válido: solo letras (sin tildes ni espacios), 3-20, primera en mayúscula. '' si no vale. */
+    public static function limpiarEtiqueta(string $e): string
+    {
+        $e = preg_replace('/[^A-Za-z]/', '', \Illuminate\Support\Str::ascii($e));
+
+        return strlen($e) >= 3 && strlen($e) <= 20 ? ucfirst($e) : '';
+    }
+
+    public static function etiquetasPropias(ConfidencialidadDoc $d): array
+    {
+        return array_values(self::leerMeta($d)['etiquetas'] ?? []);
+    }
+
+    public static function ponerEtiquetasPropias(ConfidencialidadDoc $d, array $lista): void
+    {
+        $meta = self::leerMeta($d);
+        $meta['etiquetas'] = array_values($lista);
+        self::guardarMeta($d, $meta);
+    }
+
     /** Datos que se dejan a la vista a propósito (también los detectados solos). */
     public static function visibles(ConfidencialidadDoc $d): array
     {
@@ -356,7 +387,13 @@ class Confidencialidad
         $mapa = (json_decode((string) @file_get_contents(self::dir($d).'/mapa.json'), true) ?: [])['mapa'] ?? [];
         $bajo = array_change_key_case($mapa, CASE_LOWER);
 
-        return preg_replace_callback('/\b(?:'.self::ETIQUETAS.')\d+\b/iu', fn ($m) => $bajo[mb_strtolower($m[0])] ?? $m[0], (string) $texto);
+        if (! $bajo) {
+            return (string) $texto;
+        }
+        $claves = array_map(fn ($k) => preg_quote($k, '/'), array_keys($bajo));
+        usort($claves, fn ($a, $b) => strlen($b) <=> strlen($a));
+
+        return preg_replace_callback('/\b(?:'.implode('|', $claves).')\b/iu', fn ($m) => $bajo[mb_strtolower($m[0])] ?? $m[0], (string) $texto);
     }
 
     /**

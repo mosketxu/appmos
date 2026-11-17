@@ -199,6 +199,8 @@ class Confidencialidad extends Component
     public string $recuadroTexto = '';
     public ?int $recuadroPagina = null;
     public bool $recuadroHecho = false;
+    /** Nombre de etiqueta que elige quien revisa (opcional): «NifFashion» -> NifFashion1 en todo el documento. */
+    public string $recuadroEtiqueta = '';
 
     public function recuadro(int $pagina, float $x1, float $y1, float $x2, float $y2): void
     {
@@ -214,7 +216,7 @@ class Confidencialidad extends Component
     {
         $r = mb_strtolower(trim($real));
 
-        return $r !== '' && collect(array_merge($this->lineas($this->edNombres), $this->lineas($this->edEmpresas)))
+        return $r !== '' && collect(array_merge($this->lineas($this->edNombres), $this->lineas($this->edEmpresas), array_column(Conf::etiquetasPropias($this->doc()), 'texto')))
             ->contains(fn ($l) => ($x = mb_strtolower($l)) === $r || str_contains($x, $r) || str_contains($r, $x));
     }
 
@@ -227,6 +229,7 @@ class Confidencialidad extends Component
         $quitar = fn ($l) => ($x = mb_strtolower($l)) === $r || str_contains($x, $r) || str_contains($r, $x);
         $this->edNombres = implode("\n", array_filter($this->lineas($this->edNombres), fn ($l) => ! $quitar($l)));
         $this->edEmpresas = implode("\n", array_filter($this->lineas($this->edEmpresas), fn ($l) => ! $quitar($l)));
+        Conf::ponerEtiquetasPropias($d, array_filter(Conf::etiquetasPropias($d), fn ($e) => ! $quitar($e['texto'])));
         Conf::ponerVisibles($d, array_merge(Conf::visibles($d), [$real]));   // también lo detectado solo (IBAN, correo, CIF…): se deja a la vista
         $this->actualizar();
     }
@@ -243,6 +246,7 @@ class Confidencialidad extends Component
     public function cancelarRecuadro(): void
     {
         $this->recuadroTexto = '';
+        $this->recuadroEtiqueta = '';
         $this->recuadroPagina = null;
         $this->recuadroHecho = false;
     }
@@ -256,7 +260,20 @@ class Confidencialidad extends Component
 
             return;
         }
-        $this->agregar($texto, $tipo === 'empresa' ? 'empresa' : 'persona');
+        $dd = $this->doc();      // si estaba a la vista a propósito y ahora se tapa, deja de estarlo
+        Conf::ponerVisibles($dd, array_filter(Conf::visibles($dd), fn ($v) => mb_strtolower(trim($v)) !== mb_strtolower($texto)));
+        $etiqueta = Conf::limpiarEtiqueta($this->recuadroEtiqueta);
+        if (trim($this->recuadroEtiqueta) !== '' && $etiqueta === '') {
+            $this->aviso = 'La etiqueta debe tener entre 3 y 20 letras, sin espacios ni números (p. ej. NifFashion).';
+
+            return;
+        }
+        if ($etiqueta !== '') {      // etiqueta con el nombre elegido: Etiqueta1, Etiqueta2… en todo el documento
+            $d = $this->doc();
+            Conf::ponerEtiquetasPropias($d, array_merge(Conf::etiquetasPropias($d), [['texto' => $texto, 'etiqueta' => $etiqueta]]));
+        } else {
+            $this->agregar($texto, $tipo === 'empresa' ? 'empresa' : 'persona');
+        }
         $this->cancelarRecuadro();
         $this->actualizar();
     }
