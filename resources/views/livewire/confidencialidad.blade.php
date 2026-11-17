@@ -24,7 +24,7 @@
                     <span wire:loading.remove wire:target="subidas,anonimizar" class="text-gray-500">{{ $sel ? 'Abierto: #'.$sel->id : 'Se anonimiza solo al subirlo' }}</span>
                 </div>
                 @foreach ($errors->get('subidas*') as $msgs) @foreach ((array) $msgs as $m) <div class="text-xs text-red-600">{{ $m }}</div> @endforeach @endforeach
-                <details class="mt-2 text-xs text-gray-600">
+                <details wire:ignore.self class="mt-2 text-xs text-gray-600">
                     <summary class="cursor-pointer">Si ya sabes qué ocultar, indícalo ANTES de subir (opcional; se puede hacer después)</summary>
                     <label class="block mt-1 font-semibold">Personas (una por línea)</label>
                     <textarea wire:model.defer="nombres" rows="2" class="w-full text-sm border-gray-300 rounded"></textarea>
