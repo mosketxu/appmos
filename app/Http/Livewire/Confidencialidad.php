@@ -235,6 +235,7 @@ class Confidencialidad extends Component
         $originales = [];
         $candidatos = [];
         $deClaude = [];
+        $quien = $sel && in_array($sel->estado, ['borrador', 'listo'], true) ? Conf::quienEsQuien($sel) : [];
         $progreso = $sel && $sel->estado === 'procesando' ? Conf::progreso($sel) : [];
         $hayProcesando = $docs->contains('estado', 'procesando');
         if ($sel && $sel->estado !== 'error') {
@@ -272,6 +273,6 @@ class Confidencialidad extends Component
             $deClaude = array_values(array_unique($deClaude));
         }
 
-        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude', 'progreso', 'hayProcesando'));
+        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude', 'progreso', 'hayProcesando', 'quien'));
     }
 }

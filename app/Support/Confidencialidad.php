@@ -261,6 +261,15 @@ class Confidencialidad
     }
 
     /** Pone los datos reales en un texto con etiquetas (solo para mostrarlo; no se guarda). */
+    /** Tabla «quién es quién» (etiqueta => dato real) para enseñársela a su dueño en la pantalla; ordenada por tipo y número. */
+    public static function quienEsQuien(ConfidencialidadDoc $d): array
+    {
+        $mapa = (json_decode((string) @file_get_contents(self::dir($d).'/mapa.json'), true) ?: [])['mapa'] ?? [];
+        uksort($mapa, 'strnatcasecmp');
+
+        return $mapa;
+    }
+
     public static function restaurar(ConfidencialidadDoc $d, ?string $texto): string
     {
         $mapa = (json_decode((string) @file_get_contents(self::dir($d).'/mapa.json'), true) ?: [])['mapa'] ?? [];

@@ -78,6 +78,18 @@
                 @endforelse
             </div>
 
+            @if ($sel && count($quien))
+                <details wire:ignore.self class="p-3 mt-4 text-sm bg-white border rounded shadow-sm" open>
+                    <summary class="font-semibold text-gray-700 cursor-pointer">🔑 Quién es quién ({{ count($quien) }})</summary>
+                    <div class="mt-1 text-xs text-gray-400">Solo lo ves tú; se lee del mapa guardado en el servidor. Claude no lo ve.</div>
+                    <table class="mt-1 w-full text-xs">
+                        @foreach ($quien as $et => $real)
+                            <tr class="border-t" wire:key="q-{{ $et }}"><td class="py-0.5 pr-2 font-mono text-indigo-700 whitespace-nowrap">{{ $et }}</td><td class="py-0.5 break-all">{{ $real }}</td></tr>
+                        @endforeach
+                    </table>
+                </details>
+            @endif
+
                     @if ($sel && $sel->estado === 'borrador')
                         <div class="p-3 mt-4 bg-white border rounded shadow-sm">
                             <div class="mb-1 text-sm font-semibold text-gray-700">Qué ocultar</div>
