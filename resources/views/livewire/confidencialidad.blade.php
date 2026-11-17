@@ -94,7 +94,16 @@
                     <div class="mt-1 text-xs text-gray-400">Solo lo ves tú; se lee del mapa guardado en el servidor. Claude no lo ve.</div>
                     <table class="mt-1 w-full text-xs">
                         @foreach ($quien as $et => $real)
-                            <tr class="border-t" wire:key="q-{{ $et }}"><td class="py-0.5 pr-2 font-mono text-indigo-700 whitespace-nowrap">{{ $et }}</td><td class="py-0.5 break-all">{{ $real }}</td></tr>
+                            <tr class="border-t" wire:key="q-{{ $et }}"><td class="py-0.5 pr-2 font-mono text-indigo-700 whitespace-nowrap">{{ $et }}</td><td class="py-0.5 break-all">{{ $real }}</td>
+                                <td class="py-0.5 pl-1 text-right whitespace-nowrap">
+                                    @if ($sel->estado === 'borrador')
+                                        @if ($this->enListas($real))
+                                            <button type="button" wire:click='destapar(@js($real))' class="text-indigo-600 hover:underline" title="Quitarlo de las listas y rehacer: se ve otra vez">destapar</button>
+                                        @else
+                                            <span class="text-gray-300" title="Lo ha detectado el programa solo (IBAN, correo, teléfono…): no está en las listas">auto</span>
+                                        @endif
+                                    @endif
+                                </td></tr>
                         @endforeach
                     </table>
                 </details>

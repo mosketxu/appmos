@@ -209,6 +209,27 @@ class Confidencialidad extends Component
         $this->recuadroHecho = true;
     }
 
+    /** ¿Alguna línea de las listas de personas/empresas cubre este dato real? (para ofrecer «destapar»). */
+    public function enListas(string $real): bool
+    {
+        $r = mb_strtolower(trim($real));
+
+        return $r !== '' && collect(array_merge($this->lineas($this->edNombres), $this->lineas($this->edEmpresas)))
+            ->contains(fn ($l) => ($x = mb_strtolower($l)) === $r || str_contains($x, $r) || str_contains($r, $x));
+    }
+
+    /** Destapar: quita de las listas lo que cubre ese dato y rehace el anonimizado (los datos detectados solos —IBAN, correo…— no se destapan desde aquí). */
+    public function destapar(string $real): void
+    {
+        $d = $this->doc();
+        abort_unless($d->estado === 'borrador', 422);
+        $r = mb_strtolower(trim($real));
+        $quitar = fn ($l) => ($x = mb_strtolower($l)) === $r || str_contains($x, $r) || str_contains($r, $x);
+        $this->edNombres = implode("\n", array_filter($this->lineas($this->edNombres), fn ($l) => ! $quitar($l)));
+        $this->edEmpresas = implode("\n", array_filter($this->lineas($this->edEmpresas), fn ($l) => ! $quitar($l)));
+        $this->actualizar();
+    }
+
     public function cancelarRecuadro(): void
     {
         $this->recuadroTexto = '';
