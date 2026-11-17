@@ -106,6 +106,19 @@ class TrabajadorApiController extends Controller
         return response()->json(\App\Support\TodoClaude::detalle($this->tareaClaude($r, $id)));
     }
 
+    /** Un fichero ANONIMIZADO de un documento de Confidencialidad ligado a la tarea del TO-DO que Claude tiene en curso (nunca el mapa ni el original). */
+    public function anonimo(Request $r, int $id, int $doc, int $n)
+    {
+        $t = $this->tareaClaude($r, $id);
+        $d = \App\Models\ConfidencialidadDoc::where('id', $doc)->where('tarea_id', $t->id)->where('estado', 'listo')->firstOrFail();
+        $a = ($d->archivos ?? [])[$n] ?? null;
+        abort_unless($a && preg_match('#^f\d+/[\w.-]+\.(jpg|png|txt)$#', $a), 404);
+        $ruta = \App\Support\Confidencialidad::dir($d).'/'.$a;
+        abort_unless(is_file($ruta), 404);
+
+        return response()->file($ruta);
+    }
+
     /** Resultado de una pasada de Claude: estado (hecha | bloqueada | en_curso), respuesta y uso. */
     public function todoResultado(Request $r, int $id)
     {

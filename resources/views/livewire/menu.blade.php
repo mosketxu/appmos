@@ -61,6 +61,11 @@
                         Formación
                     </x-jet-nav-link>
                     @endcan
+                    @can('confidencialidad.ver')
+                    <x-jet-nav-link href="{{ route('confidencialidad') }}" :active="request()->routeIs('confidencialidad')">
+                        🔒 Confidencialidad
+                    </x-jet-nav-link>
+                    @endcan
                     @if ($rutaImpuestos)
                         <x-jet-nav-link href="{{ route($rutaImpuestos) }}" :active="request()->routeIs('impuestos', 'impuestos.*', 'contabilidad.is')">
                             Impuestos
@@ -221,6 +226,11 @@
             @can('formacion.ver')
             <x-jet-responsive-nav-link href="{{ route('formacion') }}" :active="request()->routeIs('formacion')">
                 Formación
+            </x-jet-responsive-nav-link>
+            @endcan
+            @can('confidencialidad.ver')
+            <x-jet-responsive-nav-link href="{{ route('confidencialidad') }}" :active="request()->routeIs('confidencialidad')">
+                🔒 Confidencialidad
             </x-jet-responsive-nav-link>
             @endcan
             @if ($rutaImpuestos)

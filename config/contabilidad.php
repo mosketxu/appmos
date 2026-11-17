@@ -47,6 +47,10 @@ return [
     |            -> la pestaña Bancos lleva a la web y la pantalla local no ejecuta.
     */
 
+    // Confidencialidad (17-nov-2026): carpeta con anonimizador.py (copia de Contabilidad/_comun) y Python que lo ejecuta (con Pillow y openpyxl)
+    'confidencialidad_dir' => env('CONFIDENCIALIDAD_DIR', '/var/www/confidencialidad'),
+    'confidencialidad_python' => env('CONFIDENCIALIDAD_PYTHON', 'python3'),
+
     'bancos_ejecucion' => env('BANCOS_EJECUCION', false),
     'bancos_dir' => env('BANCOS_DIR', '/mnt/e/Claude/Contabilidad/Bancos'),
     'bancos_url' => env('BANCOS_URL'),

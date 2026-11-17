@@ -39,6 +39,7 @@ Route::prefix('trabajador')->group(function () {
     Route::get('/mmcontrol-bd', [\App\Http\Controllers\TrabajadorApiController::class, 'mmcontrolBdEstado']);
     Route::post('/mmcontrol-bd', [\App\Http\Controllers\TrabajadorApiController::class, 'mmcontrolBdResultado']);
     Route::post('/claude-uso', [\App\Http\Controllers\TrabajadorApiController::class, 'claudeUso']);
+    Route::get('/tareas/{id}/anonimo/{doc}/{n}', [\App\Http\Controllers\TrabajadorApiController::class, 'anonimo'])->whereNumber(['doc', 'n']);   // documentos anonimizados de una tarea de Claude (Confidencialidad)
     Route::get('/tareas/{id}/entrada/{nombre}', [\App\Http\Controllers\TrabajadorApiController::class, 'entrada']);
     Route::get('/facturasocr/{cliente}/manifest', [\App\Http\Controllers\FacturasOcrSyncController::class, 'manifest']);
     Route::get('/facturasocr/{cliente}/archivo', [\App\Http\Controllers\FacturasOcrSyncController::class, 'archivo'])->withoutMiddleware('throttle:api');   // el trabajador baja un PDF por petición (decenas seguidas): sin el límite de 60/min
