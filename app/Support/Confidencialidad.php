@@ -81,7 +81,7 @@ class Confidencialidad
      */
     public static function crear(User $u, array $archivos, array $nombres, array $empresas, string $perfil, ?string $titulo): ConfidencialidadDoc
     {
-        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'titulo' => $titulo ?: null, 'estado' => 'borrador']);
+        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'titulo' => $titulo ?: null, 'estado' => 'procesando']);
         $dir = self::dir($d);
         mkdir($dir.'/_orig', 0700, true);
         $meta = ['nombres' => array_values($nombres), 'empresas' => array_values($empresas), 'perfil' => $perfil, 'originales' => []];
@@ -110,7 +110,7 @@ class Confidencialidad
         }
         self::guardarMeta($d, $meta);
 
-        return self::procesar($d);
+        return self::lanzar($d);
     }
 
     /** (Re)hace la anonimización de los originales con las listas de nombres/empresas y el perfil de meta.json. Empieza de cero: el mapa se rehace. */
@@ -118,6 +118,8 @@ class Confidencialidad
     {
         $dir = self::dir($d);
         $meta = self::leerMeta($d);
+        $d->update(['estado' => 'procesando', 'error' => null]);
+        @unlink($dir.'/progreso.json');
         foreach (glob($dir.'/f*', GLOB_ONLYDIR) ?: [] as $x) {
             self::borrarDir($x);
         }
@@ -126,9 +128,10 @@ class Confidencialidad
         $lista = [];
         $candidatos = [];
         $error = null;
-        foreach ($meta['originales'] as $o) {
+        foreach ($meta['originales'] as $k => $o) {
             $orig = $dir.'/_orig/'.$o['n'].'.'.$o['ext'];
-            $r = Process::timeout(600)->run(array_merge(
+            file_put_contents($dir.'/progreso_doc.json', json_encode(['doc' => $k + 1, 'de' => count($meta['originales'])]));
+            $r = Process::timeout(1800)->env(['APPMOS_PROGRESO' => $dir.'/progreso.json'])->run(array_merge(
                 [self::python(), self::script(), '--carpeta', $orig, $dir.'/f'.$o['n'], '--mapa', $dir.'/mapa.json'],
                 self::opciones($meta)
             ));
@@ -162,7 +165,9 @@ class Confidencialidad
         arsort($candidatos);
         file_put_contents($dir.'/candidatos.json', json_encode(array_map(fn ($t, $n) => ['texto' => $t, 'veces' => $n], array_keys($candidatos), array_values($candidatos)), JSON_UNESCAPED_UNICODE));
         chmod($dir.'/candidatos.json', 0600);
-        $d->update(['estado' => $d->estado === 'listo' ? 'listo' : 'borrador', 'error' => null, 'informe' => $informe, 'archivos' => $lista]);
+        @unlink($dir.'/progreso.json');
+        @unlink($dir.'/progreso_doc.json');
+        $d->update(['estado' => 'borrador', 'error' => null, 'informe' => $informe, 'archivos' => $lista]);
 
         return $d->fresh();
     }
@@ -175,8 +180,31 @@ class Confidencialidad
         $meta['empresas'] = array_values($empresas);
         $meta['perfil'] = in_array($perfil, ['estricto', 'contable', 'mercantil'], true) ? $perfil : 'estricto';
         self::guardarMeta($d, $meta);
+        $d->update(['estado' => 'procesando', 'error' => null]);
 
-        return self::procesar($d);
+        return self::lanzar($d);
+    }
+
+    /**
+     * Anonimizar un escaneado tarda (OCR por página, 1 CPU): se hace en SEGUNDO PLANO con `php artisan confidencialidad:procesar <id>` y la pantalla enseña el progreso.
+     * Así la petición web no se queda colgada ni caduca.
+     */
+    public static function lanzar(ConfidencialidadDoc $d): ConfidencialidadDoc
+    {
+        $php = (new \Symfony\Component\Process\PhpExecutableFinder)->find(false) ?: 'php';
+        Process::path(base_path())->run('nohup '.escapeshellarg($php).' artisan confidencialidad:procesar '.(int) $d->id.' > /dev/null 2>&1 &');
+
+        return $d->fresh();
+    }
+
+    /** Progreso del procesado en curso: ['doc' => k, 'de' => M, 'pagina' => i, 'total' => N] (lo que se sepa). */
+    public static function progreso(ConfidencialidadDoc $d): array
+    {
+        $dir = self::dir($d);
+        $a = json_decode((string) @file_get_contents($dir.'/progreso_doc.json'), true) ?: [];
+        $b = json_decode((string) @file_get_contents($dir.'/progreso.json'), true) ?: [];
+
+        return $a + $b;
     }
 
     /** Se da por bueno el anonimizado: se borran los originales y las sugerencias (que salen del original). Ya no se pueden afinar las listas. */
@@ -212,7 +240,7 @@ class Confidencialidad
     public static function limpiarAbandonados(): int
     {
         $n = 0;
-        foreach (ConfidencialidadDoc::where('estado', 'borrador')->where('created_at', '<', now()->subHours(self::HORAS_ORIGINAL))->get() as $d) {
+        foreach (ConfidencialidadDoc::whereIn('estado', ['borrador', 'procesando'])->where('created_at', '<', now()->subHours(self::HORAS_ORIGINAL))->get() as $d) {
             self::borrar($d);
             $n++;
         }

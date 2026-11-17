@@ -97,7 +97,7 @@ class Confidencialidad extends Component
         $this->nombres = $this->empresas = $this->titulo = '';
         $this->docSel = $d->id;
         $this->cargarListas($d);
-        $this->aviso = $d->estado === 'error' ? '' : 'Primera anonimización automática hecha. Compara con el original, añade lo que falte y pulsa «Actualizar»; cuando esté bien, «Dar por bueno».';
+        $this->aviso = $d->estado === 'error' ? '' : 'Subido. Se está anonimizando en segundo plano (los escaneados tardan: abajo verás el progreso). Mientras tanto ya puedes mirar el original.';
     }
 
     protected function buzon(): string
@@ -139,7 +139,7 @@ class Confidencialidad extends Component
         $this->consultaCorreo = '';
         $this->docSel = $d->id;
         $this->cargarListas($d);
-        $this->aviso = $d->estado === 'error' ? '' : 'Correo traído y anonimizado. Compara con el original, añade lo que falte y pulsa «Actualizar»; cuando esté bien, «Dar por bueno».';
+        $this->aviso = $d->estado === 'error' ? '' : 'Correo traído. Se está anonimizando en segundo plano: ya puedes mirar el original y, al terminar, afinar y dar por bueno.';
     }
 
     public function seleccionar(int $id): void
@@ -172,7 +172,7 @@ class Confidencialidad extends Component
         $d = $this->doc();
         abort_unless($d->estado === 'borrador', 422);
         $d = Conf::actualizar($d, $this->lineas($this->edNombres), $this->lineas($this->edEmpresas), $this->edPerfil);
-        $this->aviso = $d->estado === 'error' ? '' : 'Anonimizado actualizado.';
+        $this->aviso = $d->estado === 'error' ? '' : 'Rehaciendo el anonimizado en segundo plano…';
     }
 
     public function darPorBueno(): void
@@ -227,6 +227,8 @@ class Confidencialidad extends Component
         $originales = [];
         $candidatos = [];
         $deClaude = [];
+        $progreso = $sel && $sel->estado === 'procesando' ? Conf::progreso($sel) : [];
+        $hayProcesando = $docs->contains('estado', 'procesando');
         if ($sel && $sel->estado !== 'error') {
             foreach ($sel->archivos ?? [] as $n => $a) {
                 if (str_ends_with($a, '.txt')) {
@@ -237,14 +239,14 @@ class Confidencialidad extends Component
             }
             $respuestas = Conf::respuestas($sel);
             $conversacion = Conf::conversacion($sel);
-            if ($sel->estado === 'borrador') {
+            if (in_array($sel->estado, ['procesando', 'borrador'], true)) {
                 foreach (Conf::leerMeta($sel)['originales'] as $o) {
                     $vista = Conf::dir($sel).'/_orig/'.$o['n'].'.vista.txt';
                     $originales[] = ['n' => $o['n'], 'nombre' => $o['nombre'], 'ext' => $o['ext'],
                         'tipo' => in_array($o['ext'], ['pdf'], true) ? 'pdf' : (in_array($o['ext'], ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'], true) ? 'imagen' : 'texto'),
                         'texto' => is_file($vista) ? mb_substr((string) file_get_contents($vista), 0, 30000) : null];
                 }
-                $candidatos = array_slice(Conf::candidatos($sel), 0, 25);
+                $candidatos = $sel->estado === 'borrador' ? array_slice(Conf::candidatos($sel), 0, 25) : [];
             }
             // Sugerencias de la revisión de Claude: líneas «- texto» de su última respuesta
             $ultima = '';

@@ -22,7 +22,7 @@ class ConfidencialidadArchivoController extends Controller
     /** El ORIGINAL (solo mientras el documento está en borrador) para verlo junto al anonimizado: solo PDF e imágenes; el resto se ve como texto en la pantalla. */
     public function original(int $id, int $n)
     {
-        $d = ConfidencialidadDoc::where('user_id', auth()->id())->where('estado', 'borrador')->findOrFail($id);
+        $d = ConfidencialidadDoc::where('user_id', auth()->id())->whereIn('estado', ['procesando', 'borrador'])->findOrFail($id);
         $ruta = Confidencialidad::rutaOriginal($d, $n);
         abort_unless($ruta, 404);
         $tipos = ['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif', 'bmp' => 'image/bmp'];

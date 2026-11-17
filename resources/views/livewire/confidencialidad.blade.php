@@ -1,4 +1,4 @@
-<div wire:poll.15s>
+<div wire:poll.{{ $hayProcesando ? '3s' : '15s' }}>
     @livewire('menu', ['entidad' => new \App\Models\Entidad, 'ruta' => 'todo'])
     <div class="flex flex-wrap items-start gap-4 p-4">
         {{-- ============ Columna izquierda: subir y lista ============ --}}
@@ -68,8 +68,8 @@
                             #{{ $d->id }} · {{ $d->titulo ?: 'Documento' }}
                             <span class="text-xs text-gray-400">{{ $d->created_at->format('d/m H:i') }}</span>
                         </button>
-                        <span class="text-xs {{ $d->estado === 'error' ? 'text-red-600' : ($d->estado === 'borrador' ? 'text-amber-600' : ($d->tarea_id ? 'text-indigo-600' : 'text-gray-500')) }}">
-                            {{ $d->estado === 'error' ? 'error' : ($d->estado === 'borrador' ? 'revisando' : ($d->tarea_id ? '🤖 con Claude' : 'listo')) }}
+                        <span class="text-xs {{ $d->estado === 'error' ? 'text-red-600' : (in_array($d->estado, ['borrador', 'procesando']) ? 'text-amber-600' : ($d->tarea_id ? 'text-indigo-600' : 'text-gray-500')) }}">
+                            {{ $d->estado === 'error' ? 'error' : ($d->estado === 'procesando' ? '⏳ procesando' : ($d->estado === 'borrador' ? 'revisando' : ($d->tarea_id ? '🤖 con Claude' : 'listo'))) }}
                         </span>
                         <button type="button" wire:click="borrar({{ $d->id }})" wire:confirm="¿Borrar el documento y su mapa? Ya no se podrán recuperar los datos reales." class="text-xs text-red-600 hover:underline">borrar</button>
                     </div>
@@ -86,7 +86,7 @@
                     <div class="p-3 text-sm text-red-800 bg-red-100 border border-red-300 rounded">No se ha enviado nada y no se ha guardado nada: {{ $sel->error }}</div>
                 @else
                     <div class="flex flex-wrap items-start gap-3">
-                        @if ($sel->estado === 'borrador')
+                        @if (in_array($sel->estado, ['procesando', 'borrador']))
                             <div class="p-2 bg-white border rounded shadow-sm" style="flex:1 1 26rem; min-width:min(100%, 20rem)">
                                 <div class="mb-1 text-sm font-semibold text-gray-700">Original <span class="font-normal text-amber-700">(se borra al darlo por bueno o a las {{ \App\Support\Confidencialidad::HORAS_ORIGINAL }} h)</span></div>
                                 @foreach ($originales as $o)
@@ -103,6 +103,14 @@
                         @endif
                         <div class="p-2 bg-white border rounded shadow-sm" style="flex:1 1 26rem; min-width:min(100%, 20rem)">
                             <div class="mb-1 text-sm font-semibold text-gray-700">Anonimizado #{{ $sel->id }}</div>
+                            @if ($sel->estado === 'procesando')
+                                <div class="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded">
+                                    ⏳ Anonimizando en segundo plano…
+                                    @if (! empty($progreso['de']) && $progreso['de'] > 1) documento {{ $progreso['doc'] ?? 1 }} de {{ $progreso['de'] }}@endif
+                                    @if (! empty($progreso['total'])) · página {{ $progreso['pagina'] ?? 1 }} de {{ $progreso['total'] }}@endif
+                                    <div class="mt-1 text-xs text-amber-700">Un escaneado tarda más o menos un minuto por página. Puedes seguir mirando el original; esta pantalla se actualiza sola.</div>
+                                </div>
+                            @endif
                             <div class="mb-2 text-xs text-gray-500">
                                 Etiquetado:
                                 @foreach (collect($sel->informe ?? [])->except('avisos') as $k => $n) <span class="mr-2">{{ $k }} {{ $n }}</span> @endforeach
