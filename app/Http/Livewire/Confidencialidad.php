@@ -227,6 +227,16 @@ class Confidencialidad extends Component
         $quitar = fn ($l) => ($x = mb_strtolower($l)) === $r || str_contains($x, $r) || str_contains($r, $x);
         $this->edNombres = implode("\n", array_filter($this->lineas($this->edNombres), fn ($l) => ! $quitar($l)));
         $this->edEmpresas = implode("\n", array_filter($this->lineas($this->edEmpresas), fn ($l) => ! $quitar($l)));
+        Conf::ponerVisibles($d, array_merge(Conf::visibles($d), [$real]));   // también lo detectado solo (IBAN, correo, CIF…): se deja a la vista
+        $this->actualizar();
+    }
+
+    /** Volver a tapar algo que se había dejado a la vista. */
+    public function taparOtraVez(string $real): void
+    {
+        $d = $this->doc();
+        abort_unless($d->estado === 'borrador', 422);
+        Conf::ponerVisibles($d, array_filter(Conf::visibles($d), fn ($v) => mb_strtolower(trim($v)) !== mb_strtolower(trim($real))));
         $this->actualizar();
     }
 
@@ -311,6 +321,7 @@ class Confidencialidad extends Component
         $progreso = $sel && $sel->estado === 'procesando' ? Conf::progreso($sel) : [];
         $hayProcesando = $docs->contains('estado', 'procesando');
         $almacenCerrado = ! Conf::almacenAbierto();
+        $visibles = $sel && $sel->estado === 'borrador' ? Conf::visibles($sel) : [];
         if ($sel && $sel->estado !== 'error') {
             foreach ($sel->archivos ?? [] as $n => $a) {
                 if (str_ends_with($a, '.txt')) {
@@ -346,6 +357,6 @@ class Confidencialidad extends Component
             $deClaude = array_values(array_unique($deClaude));
         }
 
-        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude', 'progreso', 'hayProcesando', 'quien', 'almacenCerrado'));
+        return view('livewire.confidencialidad', compact('docs', 'sel', 'texto', 'imagenes', 'respuestas', 'conversacion', 'originales', 'candidatos', 'deClaude', 'progreso', 'hayProcesando', 'quien', 'almacenCerrado', 'visibles'));
     }
 }
