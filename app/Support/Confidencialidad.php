@@ -158,7 +158,7 @@ class Confidencialidad
             return $t;
         }
         $t = TodoTarea::create([
-            'titulo' => '🔒 Documento anonimizado #'.$d->id,
+            'titulo' => 'Documento anonimizado #'.$d->id,
             'descripcion' => $anon."\n\n---\nDocumento(s) ANONIMIZADO(S) de esta petición (documento #".$d->id.'): llegan como ficheros en la carpeta que se indica al trabajar la tarea. '
                 .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.',
             'creador_id' => $u->id,
