@@ -21,6 +21,7 @@ class Confidencialidad extends Component
     public string $empresas = '';
     public string $perfil = 'estricto';
     public string $titulo = '';
+    #[\Livewire\Attributes\Url(as: 'doc', history: false)]   // en la dirección: con F5 se vuelve a abrir el mismo documento
     public ?int $docSel = null;
     public string $instruccion = '';
     public string $aviso = '';
@@ -41,6 +42,13 @@ class Confidencialidad extends Component
     {
         abort_unless(auth()->user()?->can('confidencialidad.ver'), 403);
         Conf::limpiarAbandonados();
+        if ($this->docSel) {
+            $d = ConfidencialidadDoc::where('user_id', auth()->id())->where('id', $this->docSel)->first();
+            $this->docSel = $d?->id;
+            if ($d) {
+                $this->cargarListas($d);
+            }
+        }
     }
 
     protected function lineas(string $t): array
