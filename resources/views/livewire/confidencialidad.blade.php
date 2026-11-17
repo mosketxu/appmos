@@ -128,7 +128,7 @@
                                     <div style="max-height:75vh; overflow:auto">
                                         @foreach ($imagenes as $i => $n)
                                             <div class="mb-1 text-xs text-gray-500">Página {{ $i + 1 }} de {{ count($imagenes) }}</div>
-                                            <img src="{{ route('confidencialidad.archivo', [$sel->id, $n]) }}" class="mb-3 border rounded" :style="'width:' + z + '%; max-width:none'" loading="lazy">
+                                            <img src="{{ route('confidencialidad.archivo', [$sel->id, $n, 'v' => optional($sel->updated_at)->timestamp]) }}" class="mb-3 border rounded" :style="'width:' + z + '%; max-width:none'" loading="lazy">
                                         @endforeach
                                     </div>
                                 </div>
