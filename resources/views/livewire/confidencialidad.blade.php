@@ -15,8 +15,17 @@
 
             <div class="p-3 mb-4 bg-white border rounded shadow-sm">
                 <div class="mb-2 text-sm font-semibold text-gray-700">1 · Anonimizar un documento</div>
-                <input type="file" wire:model="subidas" multiple class="block w-full text-sm">
-                <div wire:loading wire:target="subidas" class="text-xs text-gray-500">Subiendo…</div>
+                {{-- Botón habitual de subir (x-subir-fichero): el estado va a la derecha --}}
+                <div class="flex flex-wrap items-center text-xs text-gray-600 gap-x-2 gap-y-1">
+                    <x-subir-fichero wire:model="subidas" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.tif,.tiff,.txt,.csv,.md,.eml,.json,.html,.htm,.xml,.log,.xlsx,.xlsm,.docx"
+                        texto="Documento a anonimizar" title="PDF, imágenes, Excel, Word, texto, CSV o correo (.eml). Se pueden elegir o arrastrar varios; comparten las mismas etiquetas." />
+                    @if (count(array_filter((array) $subidas)))
+                        <span class="text-green-700">✓ {{ count(array_filter((array) $subidas)) }} documento(s) listo(s)</span>
+                        <button type="button" wire:click="$set('subidas', [])" class="text-gray-500 underline">quitar</button>
+                    @else
+                        <span class="text-gray-500">Falta subir un documento</span>
+                    @endif
+                </div>
                 @error('subidas') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
                 @error('subidas.*') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
                 <p class="mt-1 text-xs text-gray-400">PDF, imágenes, Excel, Word, texto, CSV, correo (.eml). Varios a la vez comparten las mismas etiquetas.</p>
