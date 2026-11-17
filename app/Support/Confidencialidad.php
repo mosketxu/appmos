@@ -142,7 +142,7 @@ class Confidencialidad
         foreach ($meta['originales'] as $k => $o) {
             $orig = $dir.'/_orig/'.$o['n'].'.'.$o['ext'];
             file_put_contents($dir.'/progreso_doc.json', json_encode(['doc' => $k + 1, 'de' => count($meta['originales'])]));
-            $r = Process::timeout(1800)->env(['APPMOS_PROGRESO' => $dir.'/progreso.json', 'APPMOS_OCR_CACHE' => $dir.'/_orig/ocr', 'APPMOS_VISIBLES' => json_encode(array_values($meta['visibles'] ?? []), JSON_UNESCAPED_UNICODE)])->run(array_merge(
+            $r = Process::timeout(1800)->env(['APPMOS_PROGRESO' => $dir.'/progreso.json', 'APPMOS_OCR_CACHE' => $dir.'/_orig/ocr', 'APPMOS_TIEMPOS' => $dir.'/tiempos.log', 'APPMOS_VISIBLES' => json_encode(array_values($meta['visibles'] ?? []), JSON_UNESCAPED_UNICODE)])->run(array_merge(
                 [self::python(), self::script(), '--carpeta', $orig, $dir.'/f'.$o['n'], '--mapa', $dir.'/mapa.json'],
                 self::opciones($meta)
             ));
