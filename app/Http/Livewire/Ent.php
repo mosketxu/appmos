@@ -204,7 +204,7 @@ class Ent extends Component
             'codigo_empresa_sage'=>trim((string) ($this->entidad['codigo_empresa_sage'] ?? '')) ?: null,
             'contrapartida'=>trim((string) ($this->entidad['contrapartida'] ?? '')) ?: null,
             'retencion'=>($this->entidad['retencion'] ?? '') !== '' ? $this->entidad['retencion'] : null,
-            'persona_fj'=>in_array($this->entidad['persona_fj'] ?? 'J', ['F','J'], true) ? $this->entidad['persona_fj'] : 'J',
+            'persona_fj'=>(($this->entidad['persona_fj'] ?? null) === 'F') ? 'F' : 'J',
             'alias'=>trim((string) ($this->entidad['alias'] ?? '')) ?: null,
             'grupo_id'=>$this->resolverGrupo(),
             'cnae'=>$this->entidad['cnae'] ?? null,
