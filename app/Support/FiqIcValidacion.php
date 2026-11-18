@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 class FiqIcValidacion
 {
     public const TOL = 0.011;     // igual
+    public const TOL_TIENDA = 0.101;  // reparto por tienda: SAGE redondea línea a línea
     public const TOL_CENT = 0.5;  // diferencia de céntimos (ajustes a mano): se avisa, no es un error de fondo
 
     /** @param array<int,array> $filas filas del mayor (MayorLector::leer) */
@@ -46,7 +47,11 @@ class FiqIcValidacion
         $filasProv = array_values(array_filter($filas, fn ($f) => in_array($f['cuenta'], $prov, true)));
         $usadas = [];
         $compras = [];
-        $lineas = DB::table('fiq_ic_compras')->where('empresa', $emp)->where('periodo', $periodo)->orderBy('cuenta')->orderBy('id')->get();
+        // Las líneas de un abono (reversión de una factura) o de una factura «hecha mal» repiten compras que se contabilizaron una sola vez: no se validan.
+        $anuladas = DB::table('fiq_ic_emisiones')->where('empresa', $emp)->where(fn ($q) => $q->where('tipo', 'abono')->orWhere('nota', 'like', '%hizo mal%'))->pluck('id')->all();
+        $lineas = DB::table('fiq_ic_compras')->where('empresa', $emp)->where('periodo', $periodo)->orderBy('cuenta')->orderBy('id')->get()
+            ->reject(fn ($l) => in_array($l->emision_id, $anuladas, true))->values();
+        $importesAsiento = [];   // asiento|fecha → suma de lo apuntado en Appmos (varias facturas de Plein pueden ir en un asiento)
         foreach ($lineas as $l) {
             $dig = self::digitos($l->numero);
             $cand = [];
@@ -70,6 +75,11 @@ class FiqIcValidacion
                 $imp = round($f['haber'] - $f['debe'], 2);
                 $item['mayor_asiento'] = $f['asiento'];
                 $item['mayor_importe'] = $imp;
+                $item['_k'] = $f['asiento'].'|'.$f['fecha'];
+                $importesAsiento[$item['_k']] = round(($importesAsiento[$item['_k']] ?? 0) + (float) $l->importe, 2);
+                $item['_imp'] = $imp;
+                $item['_gasto'] = (string) $cuentas[(int) $l->cuenta]['gasto'];
+                $item['_contra'] = $f['contra'];
                 $d = abs($imp - (float) $l->importe);
                 if ($d > self::TOL) {
                     $item['estado'] = $d <= self::TOL_CENT ? 'cent' : 'importe';
@@ -79,25 +89,35 @@ class FiqIcValidacion
                     $item['estado'] = $item['estado'] === 'ok' ? 'tienda' : $item['estado'];
                     $item['detalle'][] = 'Tienda en el mayor: '.(FiqIc::TIENDAS[$f['canal']] ?? $f['canal']).' (Appmos '.(FiqIc::TIENDAS[$l->canal] ?? $l->canal).').';
                 }
-                $gasto = (string) $cuentas[(int) $l->cuenta]['gasto'];
-                $filasAs = $porAsiento[$f['asiento'].'|'.$f['fecha']] ?? [];
-                $enGasto = array_filter($filasAs, fn ($x) => $x['cuenta'] === $gasto);
-                if (! $enGasto) {
-                    $item['estado'] = in_array($item['estado'], ['ok', 'tienda'], true) ? 'gasto' : $item['estado'];
-                    $item['detalle'][] = 'La contrapartida es '.($f['contra'] !== '' ? $f['contra'] : 'otra cuenta').' en vez de '.$gasto.'.';
-                } else {
-                    $g = round(array_sum(array_map(fn ($x) => $x['debe'] - $x['haber'], $enGasto)), 2);
-                    if (abs($g - $imp) > self::TOL) {
-                        $item['estado'] = in_array($item['estado'], ['ok', 'tienda'], true) ? 'gasto' : $item['estado'];
-                        $item['detalle'][] = 'El gasto '.$gasto.' del asiento es '.self::eur($g).', no '.self::eur($imp).'.';
-                    }
-                }
             }
-            if ($item['estado'] !== 'ok') {
+            $item['_contado'] = $item['estado'] !== 'ok';
+            if ($item['_contado']) {
                 $problemas++;
             }
             $compras[] = $item;
         }
+        foreach ($compras as &$c) {   // gasto del asiento = suma de las facturas de Plein apuntadas en él
+            if (empty($c['_k'])) {
+                continue;
+            }
+            $filasAs = $porAsiento[$c['_k']] ?? [];
+            $enGasto = array_filter($filasAs, fn ($x) => $x['cuenta'] === $c['_gasto']);
+            if (! $enGasto) {
+                $c['estado'] = in_array($c['estado'], ['ok', 'tienda'], true) ? 'gasto' : $c['estado'];
+                $c['detalle'][] = 'La contrapartida es '.($c['_contra'] !== '' ? $c['_contra'] : 'otra cuenta').' en vez de '.$c['_gasto'].'.';
+            } else {
+                $g = round(array_sum(array_map(fn ($x) => $x['debe'] - $x['haber'], $enGasto)), 2);
+                $esperado = round(array_sum(array_map(fn ($x) => $x['haber'] - $x['debe'], array_filter($filasAs, fn ($x) => $x['cuenta'] === (string) $c['linea']->cuenta))), 2);
+                if (abs($g - $esperado) > self::TOL) {
+                    $c['estado'] = in_array($c['estado'], ['ok', 'tienda'], true) ? 'gasto' : $c['estado'];
+                    $c['detalle'][] = 'El gasto '.$c['_gasto'].' del asiento es '.self::eur($g).' y el proveedor '.self::eur($esperado).'.';
+                }
+            }
+            if ($c['estado'] !== 'ok' && ! $c['_contado']) {
+                $problemas++;
+            }
+        }
+        unset($c);
         // En el mayor (proveedores de esta empresa, asientos del mes) sin línea en Appmos
         $conocidas = [];
         foreach ($todasCompras as $c) {
@@ -107,6 +127,9 @@ class FiqIcValidacion
         foreach ($filasProv as $i => $f) {
             if (isset($usadas[$i]) || ! $f['fecha'] || substr($f['fecha'], 0, 7) !== $periodo) {
                 continue;
+            }
+            if (preg_match('/\d{5,}[a-z]{1,2}\b/i', $f['factura'] !== '' ? $f['factura'] : $f['comentario'])) {
+                continue;   // letra al final (b, r, rr…): es una corrección de otra factura
             }
             $dig = self::digitos($f['factura'] !== '' ? $f['factura'] : $f['comentario']);
             if ($dig === '' || isset($conocidas[$f['cuenta'].'|'.$dig])) {
@@ -120,7 +143,7 @@ class FiqIcValidacion
         $clientes = array_values(array_unique(array_map(fn ($c) => (string) $c['cliente'], $cuentas)));
         $todasVentas = array_values(array_unique(array_map(fn ($c) => (string) $c['ventas'], FiqIc::CUENTAS)));
         $ventasCtas = array_values(array_unique(array_map(fn ($c) => (string) $c['ventas'], $cuentas)));
-        $filasCli = array_values(array_filter($filas, fn ($f) => in_array($f['cuenta'], $clientes, true) && ! preg_match('/^ajuste/i', $f['comentario'])));
+        $filasCli = array_values(array_filter($filas, fn ($f) => in_array($f['cuenta'], $clientes, true) && preg_match('/^Inv/i', $f['comentario'])));
         $emisiones = DB::table('fiq_ic_emisiones')->where('empresa', $emp)->where('periodo', $periodo)->orderBy('id')->get();
         $ventas = [];
         $usadasCli = [];
@@ -186,7 +209,7 @@ class FiqIcValidacion
                 $a = $esp['tiendas'][$c]['total'] ?? 0.0;
                 $m = $mayorTi[$c] ?? 0.0;
                 $dd = round($m - $a, 2);
-                $est = abs($dd) <= self::TOL ? 'ok' : (abs($dd) <= self::TOL_CENT ? 'cent' : 'mal');
+                $est = abs($dd) <= self::TOL_TIENDA ? 'ok' : (abs($dd) <= self::TOL_CENT ? 'cent' : 'mal');   // ≤ 0,10 por tienda: redondeo de céntimos
                 $item['tiendas'][$c] = ['tienda' => FiqIc::TIENDAS[$c] ?? ($c < 0 ? 'sin tienda' : "canal {$c}"), 'appmos' => $a, 'mayor' => $m, 'dif' => $dd, 'estado' => $est];
                 if ($est !== 'ok' && $item['estado'] === 'ok') {
                     $item['estado'] = $est === 'cent' ? 'cent' : 'tienda';
@@ -236,7 +259,7 @@ class FiqIcValidacion
     /** «Inv  OMC26  8  Cream…» → ['OMC', 8]; «Inv BR26 11 …» → ['Breuninger', 11]; sin prefijo, el nº de «Su factura nº.». */
     public static function numeroVenta(array $f): array
     {
-        if (preg_match('/\b(BR|OMC|OCM)\s*\d{2}\s+(\d+)\b/i', $f['comentario'], $m)) {
+        if (preg_match('/\b(BR|OMC|OCM)\s*(?:\d{2})?\s+(\d+)\b/i', $f['comentario'], $m)) {   // «Inv OCM26 5…», «Inv OCM 1…» (la de dic-2025 va sin año)
             return [strtoupper($m[1]) === 'BR' ? 'Breuninger' : 'OMC', (int) $m[2]];
         }
 
