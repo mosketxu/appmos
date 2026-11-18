@@ -3025,6 +3025,15 @@ class Procesos extends Component
         }
     }
 
+    /** El panel de facturación Breuninger/OMC (componente hijo) avisa al emitir: marca «Emitir ventas» del mes. */
+    #[\Livewire\Attributes\On('ic-marcar')]
+    public function marcarDesdeIc(string $id, int $mes): void
+    {
+        if (in_array($id, ['breuninger_ventas', 'ocm_ventas'], true) && $this->autorizar($id)) {
+            $this->marcarChecklist($id, $mes);
+        }
+    }
+
     /** Botón «Marcar» de los procesos manuales: ✓ (o lo quita) en el mes del título. */
     public function marcarMesActual(string $id): void
     {

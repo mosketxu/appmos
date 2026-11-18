@@ -352,7 +352,7 @@
             $botones = $this->procesos;
             // Filas con «grupo» en checklist.json (17-oct-2026, Alex: «si son procesos diferentes, pon seguido varios botones»):
             // una sola fila con el nombre del grupo, un botón por proceso («boton») y un check pequeño por proceso en cada mes.
-            $grupos = collect($this->checklist)->filter(fn ($p) => ! empty($p['grupo']))->groupBy('grupo')->map(fn ($g) => $g->values()->all())->all();
+            $grupos = collect($this->checklist)->filter(fn ($p) => ! empty($p['grupo']))->groupBy('grupo')->map(fn ($g) => $g->sortBy(fn ($p) => $p['orden_grupo'] ?? 0)->values()->all())->all();
             $gruposPintados = [];
         @endphp
         <div class="overflow-x-auto">
@@ -402,7 +402,11 @@
                             </div>
                         </td>
                         <td class="px-2 py-1">
-                            @if ($grupo === 'Alquiler')
+                            @if (in_array($grupo, ['Facturación Breuninger', 'Facturación OMC'], true))
+                                {{-- 18-nov-2026: facturación Breuninger/OMC en Appmos (antes Excel); el panel se abre debajo --}}
+                                @php $panelIc = $grupo === 'Facturación OMC' ? 'fact-ic-omc' : 'fact-ic-breuninger'; @endphp
+                                <button type="button" x-data="{ ab: false }" x-on:panel-abierto.window="if ($event.detail.id === '{{ $panelIc }}') ab = $event.detail.open" x-on:click="$dispatch('alternar-panel', '{{ $panelIc }}')" x-text="ab ? '▴ Plegar' : 'abrir ↓'" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50">abrir ↓</button>
+                            @elseif ($grupo === 'Alquiler')
                                 <div class="flex flex-wrap items-center gap-1">
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50" x-on:click="$dispatch('abrir-panel', 'rentas-variables')"
                                         wire:click="ejecutarRvCalculos" wire:loading.attr="disabled" wire:target="ejecutarRvCalculos"
@@ -990,6 +994,19 @@
             </div>
         </div>
     </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
+                    @if (in_array($grupo, ['Facturación Breuninger', 'Facturación OMC'], true))
+                        @php $panelIc = $grupo === 'Facturación OMC' ? 'fact-ic-omc' : 'fact-ic-breuninger'; @endphp
+                        <tr wire:key="chk-{{ $panelIc }}-detalle" id="{{ $panelIc }}" x-data="{ open: false }" x-show="open && ver('facturacion {{ strtolower(str_replace('Facturación ', '', $grupo)) }} breuninger omc ventas compras')" style="display:none"
+                            x-effect="$dispatch('panel-abierto', { id: '{{ $panelIc }}', open })"
+                            x-on:alternar-panel.window="if ($event.detail === '{{ $panelIc }}') open = !open"
+                            x-on:abrir-panel.window="if ($event.detail === '{{ $panelIc }}') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-3">
+                                <div class="border border-gray-200 rounded">
+                                    @livewire('contabilidad.facturacion-ic', ['empresa' => $grupo === 'Facturación OMC' ? 'OMC' : 'Breuninger', 'anio' => $anio, 'mes' => $mes], key('ic-'.$panelIc.'-'.$anio.'-'.$mes))
                                 </div>
                             </td>
                         </tr>
