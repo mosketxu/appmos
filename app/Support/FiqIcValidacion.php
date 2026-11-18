@@ -44,23 +44,29 @@ class FiqIcValidacion
         $problemas = 0;
 
         // ── Compras ───────────────────────────────────────────────────────────────
+        // Se compara por nº de factura de Plein el NETO del mayor (la factura + sus correcciones b/r/rr…, que suman y restan) con el neto
+        // apuntado en Appmos para ese nº (todas las líneas, de cualquier mes). Así una factura corregida en SAGE con retrocesos no da falsos errores.
         $filasProv = array_values(array_filter($filas, fn ($f) => in_array($f['cuenta'], $prov, true)));
         $usadas = [];
         $compras = [];
         // Las líneas de un abono (reversión de una factura) o de una factura «hecha mal» repiten compras que se contabilizaron una sola vez: no se validan.
         $anuladas = DB::table('fiq_ic_emisiones')->where('empresa', $emp)->where(fn ($q) => $q->where('tipo', 'abono')->orWhere('nota', 'like', '%hizo mal%'))->pluck('id')->all();
-        $lineas = DB::table('fiq_ic_compras')->where('empresa', $emp)->where('periodo', $periodo)->orderBy('cuenta')->orderBy('id')->get()
-            ->reject(fn ($l) => in_array($l->emision_id, $anuladas, true))->values();
-        $importesAsiento = [];   // asiento|fecha → suma de lo apuntado en Appmos (varias facturas de Plein pueden ir en un asiento)
+        $todas = DB::table('fiq_ic_compras')->where('empresa', $emp)->orderBy('cuenta')->orderBy('id')->get()->reject(fn ($l) => in_array($l->emision_id, $anuladas, true))->values();
+        $netoAppmos = [];
+        foreach ($todas as $l) {
+            $k = $l->cuenta.'|'.self::digitos($l->numero);
+            $netoAppmos[$k] = round(($netoAppmos[$k] ?? 0) + (float) $l->importe, 2);
+        }
+        $lineas = $todas->where('periodo', $periodo)->values();
+        $contadas = [];
         foreach ($lineas as $l) {
             $dig = self::digitos($l->numero);
+            $k = $l->cuenta.'|'.$dig;
             $cand = [];
             foreach ($filasProv as $i => $f) {
-                if (isset($usadas[$i]) || $f['cuenta'] !== (string) $l->cuenta) {
-                    continue;
-                }
-                if ($dig !== '' && self::digitos($f['factura'] !== '' ? $f['factura'] : $f['comentario']) === $dig) {
+                if ($f['cuenta'] === (string) $l->cuenta && $dig !== '' && self::mismoNumero(self::digitos($f['factura'] !== '' ? $f['factura'] : $f['comentario']), $dig)) {
                     $cand[] = $i;
+                    $usadas[$i] = true;
                 }
             }
             $item = ['linea' => $l, 'estado' => 'ok', 'detalle' => [], 'mayor_asiento' => null, 'mayor_importe' => null];
@@ -68,56 +74,45 @@ class FiqIcValidacion
                 $item['estado'] = 'falta';
                 $item['detalle'][] = 'No está en el mayor (cuenta '.$l->cuenta.').';
             } else {
-                // el candidato con el mismo importe; si no, el primero
-                $sel = collect($cand)->first(fn ($i) => abs(round($filasProv[$i]['haber'] - $filasProv[$i]['debe'], 2) - (float) $l->importe) <= self::TOL) ?? $cand[0];
-                $usadas[$sel] = true;
-                $f = $filasProv[$sel];
-                $imp = round($f['haber'] - $f['debe'], 2);
-                $item['mayor_asiento'] = $f['asiento'];
-                $item['mayor_importe'] = $imp;
-                $item['_k'] = $f['asiento'].'|'.$f['fecha'];
-                $importesAsiento[$item['_k']] = round(($importesAsiento[$item['_k']] ?? 0) + (float) $l->importe, 2);
-                $item['_imp'] = $imp;
-                $item['_gasto'] = (string) $cuentas[(int) $l->cuenta]['gasto'];
-                $item['_contra'] = $f['contra'];
-                $d = abs($imp - (float) $l->importe);
+                $rows = array_map(fn ($i) => $filasProv[$i], $cand);
+                $neto = round(array_sum(array_map(fn ($f) => $f['haber'] - $f['debe'], $rows)), 2);
+                $item['mayor_asiento'] = implode(', ', array_unique(array_column($rows, 'asiento')));
+                $item['mayor_importe'] = $neto;
+                $d = abs($neto - $netoAppmos[$k]);
                 if ($d > self::TOL) {
                     $item['estado'] = $d <= self::TOL_CENT ? 'cent' : 'importe';
-                    $item['detalle'][] = 'Importe en el mayor '.self::eur($imp).' (Appmos '.self::eur((float) $l->importe).').';
+                    $item['detalle'][] = 'Neto en el mayor '.self::eur($neto).($netoAppmos[$k] != (float) $l->importe ? ' (Appmos, todas las líneas de esta factura: '.self::eur($netoAppmos[$k]).')' : ' (Appmos '.self::eur($netoAppmos[$k]).')').(count($rows) > 1 ? ', con '.count($rows).' apuntes' : '').'.';
                 }
-                if ($f['canal'] !== null && $f['canal'] !== (int) $l->canal) {
+                $canales = array_filter(array_unique(array_column($rows, 'canal')), fn ($c) => $c !== null);
+                if ($canales && ! in_array((int) $l->canal, $canales, true)) {
                     $item['estado'] = $item['estado'] === 'ok' ? 'tienda' : $item['estado'];
-                    $item['detalle'][] = 'Tienda en el mayor: '.(FiqIc::TIENDAS[$f['canal']] ?? $f['canal']).' (Appmos '.(FiqIc::TIENDAS[$l->canal] ?? $l->canal).').';
+                    $item['detalle'][] = 'Tienda en el mayor: '.implode('/', array_map(fn ($c) => FiqIc::TIENDAS[$c] ?? $c, $canales)).' (Appmos '.(FiqIc::TIENDAS[$l->canal] ?? $l->canal).').';
+                }
+                // Gasto: en cada asiento, lo cargado a la cuenta de gasto = lo abonado al proveedor (varias facturas pueden ir en un asiento)
+                $gasto = (string) $cuentas[(int) $l->cuenta]['gasto'];
+                foreach (array_unique(array_map(fn ($f) => $f['asiento'].'|'.$f['fecha'], $rows)) as $ka) {
+                    $as = $porAsiento[$ka] ?? [];
+                    $enGasto = array_filter($as, fn ($x) => $x['cuenta'] === $gasto);
+                    $prv = round(array_sum(array_map(fn ($x) => $x['haber'] - $x['debe'], array_filter($as, fn ($x) => $x['cuenta'] === (string) $l->cuenta))), 2);
+                    if (! $enGasto) {
+                        $item['estado'] = in_array($item['estado'], ['ok', 'tienda'], true) ? 'gasto' : $item['estado'];
+                        $ct = collect($as)->first(fn ($x) => $x['cuenta'] === (string) $l->cuenta)['contra'] ?? '';
+                        $item['detalle'][] = 'Asiento '.explode('|', $ka)[0].': la contrapartida es '.($ct !== '' ? $ct : 'otra cuenta').' en vez de '.$gasto.'.';
+                    } else {
+                        $g = round(array_sum(array_map(fn ($x) => $x['debe'] - $x['haber'], $enGasto)), 2);
+                        if (abs($g - $prv) > self::TOL) {
+                            $item['estado'] = in_array($item['estado'], ['ok', 'tienda'], true) ? 'gasto' : $item['estado'];
+                            $item['detalle'][] = 'Asiento '.explode('|', $ka)[0].': gasto '.$gasto.' '.self::eur($g).' y proveedor '.self::eur($prv).'.';
+                        }
+                    }
                 }
             }
-            $item['_contado'] = $item['estado'] !== 'ok';
-            if ($item['_contado']) {
+            if ($item['estado'] !== 'ok' && ! isset($contadas[$k])) {
                 $problemas++;
+                $contadas[$k] = true;
             }
             $compras[] = $item;
         }
-        foreach ($compras as &$c) {   // gasto del asiento = suma de las facturas de Plein apuntadas en él
-            if (empty($c['_k'])) {
-                continue;
-            }
-            $filasAs = $porAsiento[$c['_k']] ?? [];
-            $enGasto = array_filter($filasAs, fn ($x) => $x['cuenta'] === $c['_gasto']);
-            if (! $enGasto) {
-                $c['estado'] = in_array($c['estado'], ['ok', 'tienda'], true) ? 'gasto' : $c['estado'];
-                $c['detalle'][] = 'La contrapartida es '.($c['_contra'] !== '' ? $c['_contra'] : 'otra cuenta').' en vez de '.$c['_gasto'].'.';
-            } else {
-                $g = round(array_sum(array_map(fn ($x) => $x['debe'] - $x['haber'], $enGasto)), 2);
-                $esperado = round(array_sum(array_map(fn ($x) => $x['haber'] - $x['debe'], array_filter($filasAs, fn ($x) => $x['cuenta'] === (string) $c['linea']->cuenta))), 2);
-                if (abs($g - $esperado) > self::TOL) {
-                    $c['estado'] = in_array($c['estado'], ['ok', 'tienda'], true) ? 'gasto' : $c['estado'];
-                    $c['detalle'][] = 'El gasto '.$c['_gasto'].' del asiento es '.self::eur($g).' y el proveedor '.self::eur($esperado).'.';
-                }
-            }
-            if ($c['estado'] !== 'ok' && ! $c['_contado']) {
-                $problemas++;
-            }
-        }
-        unset($c);
         // En el mayor (proveedores de esta empresa, asientos del mes) sin línea en Appmos
         $conocidas = [];
         foreach ($todasCompras as $c) {
@@ -240,6 +235,12 @@ class FiqIcValidacion
 
         return ['compras' => $compras, 'compras_extra' => $comprasExtra, 'ventas' => $ventas, 'ventas_extra' => $ventasExtra, 'problemas' => $problemas,
             'sin_nada' => $lineas->isEmpty() && $emisiones->isEmpty() && ! $comprasExtra && ! $ventasExtra];
+    }
+
+    /** Mismo nº de factura: iguales, o uno prefijo del otro (≥ 8 cifras; «22017252br» es un «220172528r» mal tecleado). */
+    public static function mismoNumero(string $a, string $b): bool
+    {
+        return $a !== '' && $b !== '' && ($a === $b || (min(strlen($a), strlen($b)) >= 8 && (str_starts_with($a, $b) || str_starts_with($b, $a))));
     }
 
     /** Racha de dígitos más larga (≥ 5) de un nº de factura o comentario: «_120526216», «220172528rr», «Inv 120527361 PPI» → 120526216… */
