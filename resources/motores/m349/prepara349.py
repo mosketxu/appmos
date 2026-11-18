@@ -191,7 +191,7 @@ def generar(spec):
     avisos, errores = [], []
 
     hojas = leer_xlsx(spec['xlsx'])
-    ops, excluir = [], []
+    ops, ops_hojas, excluir_hojas = [], [], []
     usadas = []
     for nombre, filas in hojas.items():
         n = norm(nombre)
@@ -200,20 +200,24 @@ def generar(spec):
             continue
         usadas.append(f'{nombre} → clave {clave}')
         o, nd = leer_hoja(filas, clave, ejercicio, mes, avisos)
-        ops += o
-        excluir += nd
+        ops_hojas.append(o)
+        excluir_hojas.append(nd)
     if not usadas:
         errores.append('El Excel no tiene pestañas de ventas (emitidas) ni compras (recibidas) intracomunitarias.')
 
-    # «No declarar X»
+    # «No declarar X»: solo vale para la pestaña donde está escrito, y solo para operadores con nombre
+    # (en VENTAS el nombre suele estar vacío: '' está «dentro» de cualquier texto y se quitaba todo).
     quitadas = []
-    if excluir:
-        for op in list(ops):
-            if any(x in norm(op['nombre']) or norm(op['nombre']) in x for x in excluir if x):
-                ops.remove(op)
+    for o, nd in zip(ops_hojas, excluir_hojas):
+        nd = [x for x in nd if x]
+        for op in o:
+            nom = norm(op['nombre'])
+            if nom and any(x in nom or nom in x for x in nd):
                 quitadas.append(op)
-        for x in excluir:
-            n = sum(1 for q in quitadas if x in norm(q['nombre']) or norm(q['nombre']) in x)
+            else:
+                ops.append(op)
+        for x in nd:
+            n = sum(1 for q in quitadas if q['clave'] == (o[0]['clave'] if o else None) and norm(q['nombre']) and (x in norm(q['nombre']) or norm(q['nombre']) in x))
             if n:
                 avisos.append(f'El Excel dice «No declarar {x.title()}»: quitadas {n} líneas de este mes.')
 
