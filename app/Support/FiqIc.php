@@ -112,4 +112,16 @@ class FiqIc
 
         return ['base' => $base, 'recargo' => round($total - $base, 2), 'total' => $total, 'tiendas' => $por];
     }
+
+    /** Todas las cuentas del mayor que toca la facturación intercompañía (proveedores, gasto, clientes y ventas). */
+    public static function cuentasMayor(): array
+    {
+        $c = [];
+        foreach (self::CUENTAS as $cod => $x) {
+            array_push($c, (string) $cod, (string) $x['gasto'], (string) $x['cliente'], (string) $x['ventas']);
+        }
+        $c[] = '6000000';
+
+        return array_values(array_unique($c));
+    }
 }

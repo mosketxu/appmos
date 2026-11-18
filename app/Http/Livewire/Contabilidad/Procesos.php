@@ -2914,7 +2914,8 @@ class Procesos extends Component
         $d = $this->estadoFiq('fiq.checklist_def', $this->scriptDir() . '/checklist.json');
         $procesos = $d['procesos'] ?? [];
         $orden = array_flip($this->leerChecklistEstado()['orden'] ?? []);
-        $pos = fn ($p, $i) => $orden[$p['id']] ?? (count($orden) + $i);
+        // 'despues_de' (checklist.json): un proceso nuevo, aún sin sitio en el orden de Alex, se coloca justo detrás de ese otro
+        $pos = fn ($p, $i) => $orden[$p['id']] ?? (isset($p['despues_de'], $orden[$p['despues_de']]) ? $orden[$p['despues_de']] + 0.5 : count($orden) + $i);
         $conPos = [];
         foreach ($procesos as $i => $p) {
             $conPos[] = [$pos($p, $i), $p];
@@ -3029,7 +3030,7 @@ class Procesos extends Component
     #[\Livewire\Attributes\On('ic-marcar')]
     public function marcarDesdeIc(string $id, int $mes): void
     {
-        if (in_array($id, ['breuninger_ventas', 'ocm_ventas'], true) && $this->autorizar($id)) {
+        if (in_array($id, ['breuninger_ventas', 'ocm_ventas', 'validacion_ic'], true) && $this->autorizar($id)) {
             $this->marcarChecklist($id, $mes);
         }
     }

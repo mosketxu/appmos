@@ -402,7 +402,11 @@
                             </div>
                         </td>
                         <td class="px-2 py-1">
-                            @if (in_array($grupo, ['Facturación Breuninger', 'Facturación OMC'], true))
+                            @if ($auto === 'validacion-ic')
+                                {{-- 18-nov-2026: validación OMC/Breuninger contra el mayor; «Validar» lee el mayor y abre el panel con el resultado --}}
+                                <button type="button" x-on:click="$dispatch('abrir-panel', 'validacion-ic'); Livewire.dispatch('validar-ic')" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" title="Cuadra con el último mayor de SAGE que las compras de Plein y las ventas de OMC y Breuninger están bien contabilizadas">▶ Validar</button>
+                                <button type="button" x-data="{ ab: false }" x-on:panel-abierto.window="if ($event.detail.id === 'validacion-ic') ab = $event.detail.open" x-on:click="$dispatch('alternar-panel', 'validacion-ic')" x-text="ab ? '▴ Plegar' : 'ver ↓'" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50">ver ↓</button>
+                            @elseif (in_array($grupo, ['Facturación Breuninger', 'Facturación OMC'], true))
                                 {{-- 18-nov-2026: facturación Breuninger/OMC en Appmos (antes Excel); el panel se abre debajo --}}
                                 @php $panelIc = $grupo === 'Facturación OMC' ? 'fact-ic-omc' : 'fact-ic-breuninger'; @endphp
                                 <button type="button" x-data="{ ab: false }" x-on:panel-abierto.window="if ($event.detail.id === '{{ $panelIc }}') ab = $event.detail.open" x-on:click="$dispatch('alternar-panel', '{{ $panelIc }}')" x-text="ab ? '▴ Plegar' : 'abrir ↓'" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50">abrir ↓</button>
@@ -994,6 +998,18 @@
             </div>
         </div>
     </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
+                    @if ($auto === 'validacion-ic')
+                        <tr wire:key="chk-validacion-ic-detalle" id="validacion-ic" x-data="{ open: false }" x-show="open && ver('validacion omc breuninger mayor')" style="display:none"
+                            x-effect="$dispatch('panel-abierto', { id: 'validacion-ic', open })"
+                            x-on:alternar-panel.window="if ($event.detail === 'validacion-ic') open = !open"
+                            x-on:abrir-panel.window="if ($event.detail === 'validacion-ic') { open = true; $nextTick(() => $el.scrollIntoView({behavior: 'smooth', block: 'start'})) }">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-3">
+                                <div class="border border-gray-200 rounded">
+                                    @livewire('contabilidad.validacion-ic', ['anio' => $anio, 'mes' => $mes], key('val-ic-'.$anio.'-'.$mes))
                                 </div>
                             </td>
                         </tr>
