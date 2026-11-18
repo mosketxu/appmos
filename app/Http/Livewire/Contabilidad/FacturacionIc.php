@@ -20,7 +20,7 @@ class FacturacionIc extends Component
     public int $anio;
     public int $mes;
 
-    public $cuenta = '';
+    public $cuenta = ''; // sin preselección: se elige a mano
     public string $numero = '';
     public string $fecha = '';
     public string $importe = '';
@@ -36,8 +36,6 @@ class FacturacionIc extends Component
         $this->anio = $anio;
         $this->mes = $mes;
         $this->fechaEmision = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
-        $cuentas = array_keys(FiqIc::cuentasDe($this->empresa));
-        $this->cuenta = $cuentas[0] ?? '';
     }
 
     public function getPeriodoProperty(): string

@@ -30,17 +30,18 @@
         <form wire:submit.prevent="anadir" class="flex flex-wrap items-end gap-x-3 gap-y-2">
             <label class="flex flex-col text-xs font-medium text-gray-600">Proveedor
                 <select wire:model="cuenta" class="mt-1 text-sm border-gray-300 rounded shadow-sm">
+                    <option value="">—</option>
                     @foreach ($cuentas as $cod => $c)<option value="{{ $cod }}">{{ $cod }} · {{ $c['nombre'] }}</option>@endforeach
                 </select>
             </label>
             <label class="flex flex-col text-xs font-medium text-gray-600">Nº factura
-                <input type="text" wire:model="numero" class="mt-1 text-sm border-gray-300 rounded shadow-sm" style="width:120px" placeholder="120527361">
+                <input type="text" wire:model="numero" class="mt-1 text-sm border-gray-300 rounded shadow-sm" style="width:120px">
             </label>
             <label class="flex flex-col text-xs font-medium text-gray-600">Fecha
                 <input type="date" wire:model="fecha" class="mt-1 text-sm border-gray-300 rounded shadow-sm">
             </label>
             <label class="flex flex-col text-xs font-medium text-gray-600">Importe sin IVA
-                <input type="text" wire:model="importe" class="mt-1 text-sm text-right border-gray-300 rounded shadow-sm" style="width:110px" placeholder="1.100,00">
+                <input type="text" wire:model="importe" class="mt-1 text-sm text-right border-gray-300 rounded shadow-sm" style="width:110px">
             </label>
             <label class="flex flex-col text-xs font-medium text-gray-600">Tienda
                 <select wire:model="canal" class="mt-1 text-sm border-gray-300 rounded shadow-sm">
