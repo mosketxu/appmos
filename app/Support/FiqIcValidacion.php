@@ -176,6 +176,13 @@ class FiqIcValidacion
             $tot = round($f['debe'] - $f['haber'], 2);
             $item['mayor_total'] = $tot;
             $d = abs($tot - (float) $e->total);
+            if ($d > self::TOL) {   // ¿lo compensa un «Ajuste» suelto de la cuenta cliente (p. ej. OMC26/00005: 1.049,09 + ajuste 0,86 = 1.049,95)?
+                $aj = collect($filas)->first(fn ($x) => $x['cuenta'] === $f['cuenta'] && preg_match('/^Ajuste/i', $x['comentario']) && abs(round($x['debe'] - $x['haber'], 2) - round((float) $e->total - $tot, 2)) <= self::TOL);
+                if ($aj) {
+                    $item['detalle'][] = 'Compensada con el ajuste de '.self::eur(round($aj['debe'] - $aj['haber'], 2)).' del '.date('d/m/Y', strtotime($aj['fecha'])).' (asiento '.$aj['asiento'].').';
+                    $d = 0;
+                }
+            }
             if ($d > self::TOL) {
                 $item['estado'] = $d <= self::TOL_CENT ? 'cent' : 'importe';
                 $item['detalle'][] = 'Cliente '.$f['cuenta'].': '.self::eur($tot).' en el mayor, factura '.self::eur((float) $e->total).'.';
