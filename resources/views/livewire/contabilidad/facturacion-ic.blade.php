@@ -14,6 +14,18 @@
     @unless ($listo)
         <p class="text-sm text-yellow-700">Falta la migración de las tablas fiq_ic_*.</p>
     @else
+        {{-- Filtro: ver una factura de venta concreta (cualquier mes) --}}
+        <div class="flex flex-wrap items-center mb-3 gap-x-2">
+            <label class="text-xs font-medium text-gray-600" for="ic-fac-{{ $empresa }}">Factura de venta</label>
+            <select id="ic-fac-{{ $empresa }}" wire:model.live="factura" class="text-sm border-gray-300 rounded shadow-sm">
+                <option value="">Mes elegido ({{ $mesTxt }}): pendientes y emitidas</option>
+                @foreach ($facturas as $f)
+                    <option value="{{ $f->id }}">{{ \App\Support\FiqIc::etiqueta($f->serie, $f->numero) }} · {{ \Carbon\Carbon::parse($f->fecha)->format('d/m/Y') }} · {{ $fmt($f->total) }} €{{ $f->tipo === 'abono' ? ' (abono)' : '' }}</option>
+                @endforeach
+            </select>
+            @if ($factura !== '')<button type="button" wire:click="$set('factura', '')" class="text-xs text-gray-500 hover:text-gray-800">✕ quitar</button>@endif
+        </div>
+
         {{-- Alta de una compra --}}
         <form wire:submit.prevent="anadir" class="flex flex-wrap items-end gap-x-3 gap-y-2">
             <label class="flex flex-col text-xs font-medium text-gray-600">Proveedor
@@ -41,7 +53,7 @@
         @if ($aviso)<p class="mt-2 text-sm {{ str_starts_with($aviso, '✓') ? 'text-green-700' : 'text-yellow-800' }}">{{ $aviso }}</p>@endif
 
         {{-- Pendientes de emitir --}}
-        <div class="mt-4">
+        <div class="mt-4" @if ($factura !== '') style="display:none" @endif>
             <div class="mb-1 text-sm font-semibold text-gray-800">Pendientes de emitir ({{ $pendientes->count() }})</div>
             @if ($pendientes->isEmpty())
                 <p class="text-xs text-gray-500">No hay compras pendientes en {{ $mesTxt }}.</p>

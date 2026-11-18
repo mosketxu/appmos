@@ -27,6 +27,8 @@ class FacturacionIc extends Component
     public $canal = '';
     public ?string $aviso = null;
     public ?string $fechaEmision = null;
+    /** Filtro «Factura de venta»: id de una emisión (cualquier mes del año) o vacío = el mes elegido. */
+    public $factura = '';
 
     public function mount(string $empresa, int $anio, int $mes): void
     {
@@ -161,12 +163,20 @@ class FacturacionIc extends Component
 
     public function render()
     {
-        $datos = ['listo' => $this->listo(), 'pendientes' => collect(), 'emisiones' => collect(), 'resumenPend' => null, 'resumenes' => [], 'cuentas' => FiqIc::cuentasDe($this->empresa)];
+        $datos = ['facturas' => collect(), 'listo' => $this->listo(), 'pendientes' => collect(), 'emisiones' => collect(), 'resumenPend' => null, 'resumenes' => [], 'cuentas' => FiqIc::cuentasDe($this->empresa)];
         if ($datos['listo']) {
-            $comp = DB::table('fiq_ic_compras')->where('empresa', $this->empresa)->where('periodo', $this->periodo)->orderBy('cuenta')->orderBy('id')->get();
-            $datos['pendientes'] = $comp->whereNull('emision_id')->values();
-            $datos['resumenPend'] = $datos['pendientes']->isEmpty() ? null : FiqIc::resumen($datos['pendientes']);
-            $datos['emisiones'] = DB::table('fiq_ic_emisiones')->where('empresa', $this->empresa)->where('periodo', $this->periodo)->orderBy('id')->get();
+            $datos['facturas'] = DB::table('fiq_ic_emisiones')->where('empresa', $this->empresa)->where('serie', FiqIc::serie($this->empresa, $this->anio))->orderBy('fecha')->orderBy('id')->get();
+            $sel = $this->factura !== '' ? $datos['facturas']->firstWhere('id', (int) $this->factura) : null;
+            if ($sel) { // una factura concreta, de cualquier mes
+                $comp = DB::table('fiq_ic_compras')->where('emision_id', $sel->id)->orderBy('cuenta')->orderBy('id')->get();
+                $datos['pendientes'] = collect();
+                $datos['emisiones'] = collect([$sel]);
+            } else {
+                $comp = DB::table('fiq_ic_compras')->where('empresa', $this->empresa)->where('periodo', $this->periodo)->orderBy('cuenta')->orderBy('id')->get();
+                $datos['pendientes'] = $comp->whereNull('emision_id')->values();
+                $datos['resumenPend'] = $datos['pendientes']->isEmpty() ? null : FiqIc::resumen($datos['pendientes']);
+                $datos['emisiones'] = DB::table('fiq_ic_emisiones')->where('empresa', $this->empresa)->where('periodo', $this->periodo)->orderBy('id')->get();
+            }
             foreach ($datos['emisiones'] as $e) {
                 $ls = $comp->where('emision_id', $e->id)->values();
                 $datos['resumenes'][$e->id] = ['lineas' => $ls, 'r' => FiqIc::resumen($ls)];
