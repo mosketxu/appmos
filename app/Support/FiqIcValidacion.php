@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
  */
 class FiqIcValidacion
 {
+    /** Diferencias históricas que Alex dio por buenas o compensadas el 18-nov-2026 («lo dejamos así»): no cuentan. Con el sistema nuevo no debería haber más. */
+    public const ACEPTADAS = ['compra:4000005|120519685', 'compra:4000005|120519686', 'compra:4000005|120525280', 'compra:4000007|220172528', 'compra:4000007|251007568',
+        'compra:4000004|351012718', 'venta:OMC26/00002', 'venta:OMC26/00003', 'venta:BR26/00010', 'venta:OMC26/00010'];
     public const TOL = 0.011;     // igual
     public const TOL_TIENDA = 0.101;  // reparto por tienda: SAGE redondea línea a línea
     public const TOL_CENT = 0.5;  // diferencia de céntimos (ajustes a mano): se avisa, no es un error de fondo
@@ -106,6 +109,10 @@ class FiqIcValidacion
                         }
                     }
                 }
+            }
+            if ($item['estado'] !== 'ok' && in_array('compra:'.$k, self::ACEPTADAS, true)) {
+                $item['estado'] = 'ok';
+                $item['detalle'][] = '(diferencia aceptada: corregida o compensada)';
             }
             if ($item['estado'] !== 'ok' && ! isset($contadas[$k])) {
                 $problemas++;
@@ -216,6 +223,10 @@ class FiqIcValidacion
                 if ($est !== 'ok' && $item['estado'] === 'ok') {
                     $item['estado'] = $est === 'cent' ? 'cent' : 'tienda';
                 }
+            }
+            if ($item['estado'] !== 'ok' && in_array('venta:'.$item['etiqueta'], self::ACEPTADAS, true)) {
+                $item['estado'] = 'ok';
+                $item['detalle'][] = '(diferencia aceptada: corregida o compensada)';
             }
             if ($item['estado'] !== 'ok') {
                 $problemas++;
