@@ -20,6 +20,9 @@ class DigitosCuenta
     public static function detectar(string $ruta, int $filas = 3000): ?int
     {
         try {
+            if (strtolower(pathinfo($ruta, PATHINFO_EXTENSION)) === 'xlsx') {
+                return self::detectarXlsx($ruta, $filas);
+            }
             $filtro = new class($filas) implements IReadFilter {
                 public function __construct(private int $max) {}
 
@@ -61,6 +64,38 @@ class DigitosCuenta
 
             return null;
         }
+    }
+
+    /**
+     * .xlsx en streaming (18-nov-2026): PhpSpreadsheet escanea el XML ENTERO antes de leer, y el mayor de SAGE (~68 MB de XML) agotaba
+     * los 128 MB de PHP-FPM y daba un error 500 al subirlo (aunque el filtro solo pidiera 3000 filas).
+     */
+    protected static function detectarXlsx(string $ruta, int $filas): ?int
+    {
+        $rows = MayorLector::primerasFilas($ruta, $filas + 15);
+        $col = null;
+        $cab = -1;
+        foreach (array_slice($rows, 0, 15, true) as $i => $f) {
+            foreach ($f as $c => $t) {
+                if (in_array(trim((string) $t), self::CABECERAS, true)) {
+                    [$col, $cab] = [$c, $i];
+                    break 2;
+                }
+            }
+        }
+        if ($col === null) {
+            return null;
+        }
+        $largos = [];
+        foreach (array_slice($rows, $cab + 1) as $f) {
+            $v = preg_replace('/\D/', '', (string) ($f[$col] ?? ''));
+            if ($v !== '' && strlen($v) >= 6 && strlen($v) <= 12) {
+                $largos[strlen($v)] = ($largos[strlen($v)] ?? 0) + 1;
+            }
+        }
+        arsort($largos);
+
+        return $largos ? (int) array_key_first($largos) : null;
     }
 
     /** Pone las cifras reales en Entidades y en el cliente.json de Facturas OCR de esa entidad. Devuelve el aviso a mostrar, o '' si ya coincidía. */

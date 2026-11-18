@@ -71,6 +71,39 @@ class MayorLector
         return ['filas' => $filas, 'max_fecha' => $max, 'filas_leidas' => $leidas];
     }
 
+    /**
+     * Las primeras $n filas con contenido de la primera hoja de un .xlsx, en streaming (sin cargar el libro: el mayor de SAGE pesa
+     * ~68 MB de XML y PhpSpreadsheet agota los 128 MB del servidor). Cada fila: [índice de columna => texto].
+     * @return array<int, array<int, string>>
+     */
+    public static function primerasFilas(string $ruta, int $n): array
+    {
+        $zip = new \ZipArchive;
+        if ($zip->open($ruta) !== true) {
+            return [];
+        }
+        $hoja = collect(['xl/worksheets/sheet.xml', 'xl/worksheets/sheet1.xml'])->first(fn ($x) => $zip->locateName($x) !== false);
+        $comp = $hoja ? self::textosCompartidos($zip) : [];
+        $zip->close();
+        if (! $hoja) {
+            return [];
+        }
+        $r = new \XMLReader;
+        $r->open('zip://'.$ruta.'#'.$hoja);
+        $out = [];
+        while (count($out) < $n && $r->read()) {
+            if ($r->nodeType === \XMLReader::ELEMENT && $r->localName === 'row') {
+                $f = self::fila($r, $comp);
+                if (array_filter($f, fn ($t) => trim((string) $t) !== '')) {
+                    $out[] = $f;
+                }
+            }
+        }
+        $r->close();
+
+        return $out;
+    }
+
     /** Celdas de la fila actual: [índice de columna => texto]. */
     protected static function fila(\XMLReader $r, array $comp): array
     {
