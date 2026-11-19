@@ -121,6 +121,14 @@ class EntidadesRellenarCodigos extends Command
                     $difs[] = "{$e->id} | {$e->entidad} | {$e->nif} | NIF repetido en Appmos: no lo toco";
                     continue;
                 }
+                // Varias filas en SAGE para el mismo NIF (duplicados antiguos): vale la que coincide con la cuenta que ya tiene la entidad
+                if ($hit && count($hit) > 1) {
+                    $propia = trim((string) $e->{$colCta});
+                    $m = array_values(array_filter($hit, fn ($h) => $propia !== '' && $h['cta'] === $propia));
+                    if ($m) {
+                        $hit = [$m[0]];
+                    }
+                }
                 if (($hit && count($hit) > 1) || (! $hit && $planCta && count($planCta) > 1)) {
                     $difs[] = "{$e->id} | {$e->entidad} | {$e->nif} | varias filas en SAGE para este NIF ({$flag}): no lo toco";
                     continue;
