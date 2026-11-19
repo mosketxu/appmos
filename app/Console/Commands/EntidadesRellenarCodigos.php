@@ -123,6 +123,10 @@ class EntidadesRellenarCodigos extends Command
                 }
                 // Varias filas en SAGE para el mismo NIF (duplicados antiguos): vale la que coincide con la cuenta que ya tiene la entidad
                 if ($hit && count($hit) > 1) {
+                    $hit = array_values(array_unique(array_map('serialize', $hit)));
+                    $hit = array_map('unserialize', $hit);   // la misma fila entra por CifDni y por CifEuropeo
+                }
+                if ($hit && count($hit) > 1) {
                     $propia = trim((string) $e->{$colCta});
                     $m = array_values(array_filter($hit, fn ($h) => $propia !== '' && $h['cta'] === $propia));
                     if ($m) {
