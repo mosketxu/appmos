@@ -10,7 +10,7 @@ class ConfidencialidadDoc extends Model
 {
     protected $table = 'confidencialidad_docs';
 
-    protected $fillable = ['user_id', 'titulo', 'estado', 'error', 'informe', 'archivos', 'tarea_id'];
+    protected $fillable = ['user_id', 'titulo', 'estado', 'error', 'informe', 'archivos', 'tarea_id', 'correo_id'];
 
     protected $casts = ['informe' => 'array', 'archivos' => 'array'];
 

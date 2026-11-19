@@ -66,6 +66,11 @@
                         🔒 Confidencialidad
                     </x-jet-nav-link>
                     @endcan
+                    @can('confidencialidad.ver')
+                    <x-jet-nav-link href="{{ route('correo') }}" :active="request()->routeIs('correo')">
+                        ✉ Correo
+                    </x-jet-nav-link>
+                    @endcan
                     @if ($rutaImpuestos)
                         <x-jet-nav-link href="{{ route($rutaImpuestos) }}" :active="request()->routeIs('impuestos', 'impuestos.*', 'contabilidad.is')">
                             Impuestos
@@ -231,6 +236,11 @@
             @can('confidencialidad.ver')
             <x-jet-responsive-nav-link href="{{ route('confidencialidad') }}" :active="request()->routeIs('confidencialidad')">
                 🔒 Confidencialidad
+            </x-jet-responsive-nav-link>
+            @endcan
+            @can('confidencialidad.ver')
+            <x-jet-responsive-nav-link href="{{ route('correo') }}" :active="request()->routeIs('correo')">
+                ✉ Correo
             </x-jet-responsive-nav-link>
             @endcan
             @if ($rutaImpuestos)

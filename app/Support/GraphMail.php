@@ -85,13 +85,44 @@ class GraphMail
         return $filas->sortByDesc('fecha')->values()->all();
     }
 
+    /**
+     * Últimos correos de la bandeja de entrada (lectura; 19-nov-2026, pantalla «✉ Correo»): [id, asunto, de, nombre, fecha, leido, adjuntos, extracto], más recientes primero.
+     * Con $texto busca en asunto y cuerpo (Graph no deja ordenar una búsqueda: se ordena aquí).
+     */
+    public static function recientes(string $buzon, int $max = 40, string $texto = ''): array
+    {
+        $texto = trim(str_replace('"', '', $texto));
+        $sel = '$select=id,subject,from,receivedDateTime,hasAttachments,isRead,bodyPreview&$top='.$max;
+        $base = 'users/'.rawurlencode($buzon).'/mailFolders/inbox/messages';
+        $url = $texto === '' ? $base.'?'.$sel.'&$orderby='.rawurlencode('receivedDateTime desc') : $base.'?$search="'.rawurlencode($texto).'"&'.$sel;
+        $filas = collect(self::api('get', $url)['value'] ?? [])->map(fn ($m) => [
+            'id' => $m['id'], 'asunto' => $m['subject'] ?? '', 'de' => $m['from']['emailAddress']['address'] ?? '',
+            'nombre' => $m['from']['emailAddress']['name'] ?? ($m['from']['emailAddress']['address'] ?? ''),
+            'fecha' => $m['receivedDateTime'] ?? '', 'leido' => (bool) ($m['isRead'] ?? true), 'adjuntos' => (bool) ($m['hasAttachments'] ?? false),
+            'extracto' => mb_substr(trim(preg_replace('/\s+/u', ' ', $m['bodyPreview'] ?? '')), 0, 140),
+        ]);
+
+        return $filas->sortByDesc('fecha')->values()->all();
+    }
+
+    /** Nombre, tamaño y tipo de los adjuntos de un correo, SIN su contenido (lectura). @return array<int, array{nombre:string, tamano:int, tipo:string, incrustado:bool}> */
+    public static function adjuntosInfo(string $buzon, string $id): array
+    {
+        $r = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments?$select=name,size,contentType,isInline&$top=50');
+
+        return collect($r['value'] ?? [])->map(fn ($a) => ['nombre' => $a['name'] ?? 'adjunto', 'tamano' => (int) ($a['size'] ?? 0), 'tipo' => $a['contentType'] ?? '', 'incrustado' => (bool) ($a['isInline'] ?? false)])->values()->all();
+    }
+
     /** Un correo con su cuerpo en HTML (lectura). */
     public static function mensaje(string $buzon, string $id): array
     {
-        $m = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'?$select=id,subject,from,receivedDateTime,body');
+        $m = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body');
 
         return ['id' => $m['id'], 'asunto' => $m['subject'] ?? '', 'de' => $m['from']['emailAddress']['address'] ?? '',
-            'fecha' => $m['receivedDateTime'] ?? '', 'html' => $m['body']['content'] ?? '', 'tipo' => $m['body']['contentType'] ?? 'html'];
+            'nombre' => $m['from']['emailAddress']['name'] ?? '', 'fecha' => $m['receivedDateTime'] ?? '',
+            'para' => collect($m['toRecipients'] ?? [])->map(fn ($x) => $x['emailAddress']['address'] ?? '')->filter()->implode(', '),
+            'cc' => collect($m['ccRecipients'] ?? [])->map(fn ($x) => $x['emailAddress']['address'] ?? '')->filter()->implode(', '),
+            'html' => $m['body']['content'] ?? '', 'tipo' => $m['body']['contentType'] ?? 'html'];
     }
 
     /** Adjuntos de fichero de un correo con su contenido, incluidas las imágenes incrustadas (lectura): [nombre, tipo, bytes (base64)]. */

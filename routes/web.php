@@ -57,6 +57,8 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     Route::get('/formacion/tema/{tema}/zip', [\App\Http\Controllers\FormacionArchivoController::class, 'zip'])->whereNumber('tema')->name('formacion.zip')->middleware('can:formacion.ver');
     Route::get('/formacion/archivo/{id}', [\App\Http\Controllers\FormacionArchivoController::class, 'ver'])->whereNumber('id')->name('formacion.archivo')->middleware('can:formacion.ver');
     // Confidencialidad (17-nov-2026): anonimizar un documento y pedirle a Claude (tarea del TO-DO) que trabaje con él ya anonimizado. Solo Admin.
+    // «✉ Correo» (19-nov-2026): bandeja + correo + qué hacer con él (anonimiza con Confidencialidad y chat con Claude). Solo Admin.
+    Route::get('/correo', fn () => view('correo'))->name('correo')->middleware('can:confidencialidad.ver');
     Route::get('/confidencialidad', fn () => view('confidencialidad'))->name('confidencialidad')->middleware('can:confidencialidad.ver');
     Route::get('/confidencialidad/{id}/archivo/{n}', [\App\Http\Controllers\ConfidencialidadArchivoController::class, 'ver'])->whereNumber(['id', 'n'])->name('confidencialidad.archivo')->middleware('can:confidencialidad.ver');
     Route::get('/confidencialidad/{id}/original/{n}', [\App\Http\Controllers\ConfidencialidadArchivoController::class, 'original'])->whereNumber(['id', 'n'])->name('confidencialidad.original')->middleware('can:confidencialidad.ver');
