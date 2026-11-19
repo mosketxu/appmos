@@ -168,6 +168,16 @@ class GraphMail
         }
     }
 
+    /** Id de la carpeta que contiene a otra (null si no se puede saber o es la raíz del buzón). */
+    public static function carpetaPadre(string $buzon, string $id): ?string
+    {
+        try {
+            return (self::api('get', 'users/'.rawurlencode($buzon).'/mailFolders/'.rawurlencode($id).'?$select=parentFolderId')['parentFolderId'] ?? null) ?: null;
+        } catch (RuntimeException $e) {
+            return null;
+        }
+    }
+
     /** Marca un correo como leído (o no leído). */
     public static function marcarLeido(string $buzon, string $id, bool $leido = true): void
     {

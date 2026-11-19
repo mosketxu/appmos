@@ -28,6 +28,8 @@ class CorreoClaude extends Component
     public bool $mostrarMover = false;
     /** Filtro «solo correos con conversación con Claude», estén en la carpeta que estén. */
     public bool $soloConv = false;
+    protected array $convCarpetas = [];   // carpetas (ids) donde hay algún correo con conversación
+    public string $convCarpeta = '';      // con el filtro de conversaciones: carpeta pulsada ('' = todas)
     public string $filtroCarpeta = '';
     public string $perfil = 'estricto';
     public string $nombres = '';
@@ -95,6 +97,7 @@ class CorreoClaude extends Component
     public function alternarConv(): void
     {
         $this->soloConv = ! $this->soloConv;
+        $this->convCarpeta = '';
         $this->sel = null;
         $this->max = 40;
         $this->aviso = '';
@@ -126,6 +129,10 @@ class CorreoClaude extends Component
         if ($f !== '') {
             $out = array_values(array_filter($out, fn ($c) => str_contains(mb_strtolower($c['asunto'].' '.$c['nombre'].' '.$c['de']), $f)));
         }
+        $this->convCarpetas = array_values(array_unique(array_filter(array_column($out, 'carpetaId'))));
+        if ($this->convCarpeta !== '') {
+            $out = array_values(array_filter($out, fn ($c) => ($c['carpetaId'] ?? '') === $this->convCarpeta));
+        }
         usort($out, fn ($x, $y) => strcmp($y['fecha'], $x['fecha']));
 
         return $out;
@@ -134,6 +141,7 @@ class CorreoClaude extends Component
     public function irACarpeta(string $id): void
     {
         $this->carpeta = $id;
+        $this->convCarpeta = $this->soloConv ? $id : '';
         $this->sel = null;
         $this->max = 40;
         $this->busqueda = '';
@@ -206,7 +214,7 @@ class CorreoClaude extends Component
     }
 
     /** Carpetas de primer nivel (las de siempre primero) con las subcarpetas desplegadas, en una lista plana con su nivel. */
-    protected function arbol(): array
+    protected function arbol(?array $solo = null): array
     {
         $b = $this->buzon();
         $conocidas = $this->cache()->remember('correo_claude_conocidas_'.md5($b), 3600, function () use ($b) {
@@ -222,9 +230,30 @@ class CorreoClaude extends Component
         $raiz = $this->cache()->remember('correo_claude_raiz_'.md5($this->v().$b), 120, fn () => GraphMail::carpetasHijas($b));
         usort($raiz, fn ($x, $y) => [$conocidas[$x['id']] ?? 99, mb_strtolower($x['nombre'])] <=> [$conocidas[$y['id']] ?? 99, mb_strtolower($y['nombre'])]);
         $plana = [];
-        $anadir = function (array $lista, int $nivel) use (&$anadir, &$plana, $b) {
+        $mantener = $abrir = null;
+        if ($solo !== null) {                  // filtro de conversaciones: solo las carpetas con alguna y las que las contienen (abiertas)
+            $mantener = $abrir = [];
+            $raizIds = array_column($raiz, 'id');
+            foreach ($solo as $leaf) {
+                $x = $leaf;
+                for ($i = 0; $x && $i < 8; $i++) {
+                    $mantener[$x] = true;
+                    if ($x !== $leaf) {
+                        $abrir[$x] = true;
+                    }
+                    if (in_array($x, $raizIds, true)) {
+                        break;
+                    }
+                    $x = $this->cache()->remember('correo_claude_padre_'.md5($b.$x), 3600, fn () => GraphMail::carpetaPadre($b, $x) ?? '');
+                }
+            }
+        }
+        $anadir = function (array $lista, int $nivel) use (&$anadir, &$plana, $b, $mantener, $abrir) {
             foreach ($lista as $c) {
-                $abierta = in_array($c['id'], $this->abiertas, true);
+                if ($mantener !== null && ! isset($mantener[$c['id']])) {
+                    continue;
+                }
+                $abierta = in_array($c['id'], $this->abiertas, true) || isset($abrir[$c['id']]);
                 $plana[] = $c + ['nivel' => $nivel, 'abierta' => $abierta];
                 if ($abierta && $c['hijos'] > 0) {
                     $h = $this->cache()->remember('correo_claude_hijas_'.md5($this->v().$b.$c['id']), 120, fn () => GraphMail::carpetasHijas($b, $c['id']));
@@ -566,7 +595,7 @@ class CorreoClaude extends Component
         $destinos = [];
         if (! $cerrado) {
             try {
-                $carpetas = $this->arbol();
+                $carpetas = $this->arbol($this->soloConv ? $this->convCarpetas : null);
                 if ($this->mostrarMover) {
                     $f = mb_strtolower(trim($this->filtroCarpeta));
                     $destinos = array_slice(array_values(array_filter($this->todasLasCarpetas(), fn ($c) => $f === '' || str_contains(mb_strtolower($c['ruta']), $f))), 0, 40);
