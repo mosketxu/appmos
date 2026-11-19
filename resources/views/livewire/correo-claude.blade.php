@@ -12,7 +12,30 @@
             <div class="p-2 mb-2 text-sm text-green-800 bg-green-100 border border-green-300 rounded">{{ $aviso }}</div>
         @endif
 
-        <div class="flex flex-wrap gap-3" style="align-items:stretch">
+        <div class="flex flex-wrap gap-3" style="align-items:stretch" x-data>
+            {{-- ============ Carpetas ============ --}}
+            <div class="bg-white border rounded shadow-sm" style="flex:0 0 13rem; overflow-y:auto; height:calc(100vh - 11rem); min-height:22rem">
+                <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Carpetas</div>
+                @foreach ($carpetas['plana'] as $f)
+                    @php $activa = $carpeta === $f['id'] || ($carpeta === 'inbox' && $f['id'] === $carpetas['inbox']); @endphp
+                    <div wire:key="f-{{ md5($f['id']) }}" class="flex items-center text-sm border-b border-gray-50 {{ $activa ? 'bg-indigo-100 font-semibold' : 'hover:bg-indigo-50' }}"
+                         style="padding-left:{{ 0.25 + $f['nivel'] * 0.9 }}rem"
+                         x-on:dragover.prevent="$el.classList.add('bg-green-100')" x-on:dragleave="$el.classList.remove('bg-green-100')"
+                         x-on:drop.prevent="$el.classList.remove('bg-green-100'); event.dataTransfer.getData('text/plain') && $wire.moverId('{{ $f['id'] }}', event.dataTransfer.getData('text/plain'))">
+                        @if ($f['hijos'] > 0)
+                            <button type="button" wire:click="alternar('{{ $f['id'] }}')" class="w-4 text-xs text-gray-400">{{ $f['abierta'] ? '▾' : '▸' }}</button>
+                        @else
+                            <span class="w-4"></span>
+                        @endif
+                        <button type="button" wire:click="irACarpeta('{{ $f['id'] }}')" class="flex items-baseline justify-between flex-1 gap-1 py-1 pr-2 text-left" style="min-width:0">
+                            <span class="truncate">{{ $f['nombre'] }}</span>
+                            @if ($f['noLeidos'] > 0)<span class="text-xs font-semibold text-blue-700">{{ $f['noLeidos'] }}</span>@endif
+                        </button>
+                    </div>
+                @endforeach
+                <div class="px-3 py-2 text-xs text-gray-400">Arrastra un correo a una carpeta para moverlo.</div>
+            </div>
+
             {{-- ============ Izquierda: lista de correos ============ --}}
             <div class="bg-white border rounded shadow-sm" style="flex:1 1 20rem; max-width:26rem; display:flex; flex-direction:column; height:calc(100vh - 11rem); min-height:22rem">
                 <div class="flex gap-1 p-2 border-b">
@@ -22,7 +45,7 @@
                 <div style="overflow-y:auto; flex:1">
                     @forelse ($lista as $c)
                         @php $f = \Carbon\Carbon::parse($c['fecha'])->timezone('Europe/Madrid'); @endphp
-                        <button type="button" wire:key="c-{{ md5($c['id']) }}" wire:click="seleccionar('{{ $c['id'] }}')"
+                        <button draggable="true" x-on:dragstart="event.dataTransfer.setData('text/plain', '{{ $c['id'] }}')" type="button" wire:key="c-{{ md5($c['id']) }}" wire:click="seleccionar('{{ $c['id'] }}')"
                                 class="block w-full px-3 py-2 text-left border-b hover:bg-indigo-50 {{ $sel === $c['id'] ? 'bg-indigo-100' : '' }}">
                             <div class="flex items-baseline justify-between gap-2">
                                 <span class="text-sm truncate {{ $c['leido'] ? 'text-gray-700' : 'font-bold text-blue-700' }}">{{ $c['nombre'] }}</span>
@@ -47,7 +70,20 @@
                         <div class="text-base font-semibold text-gray-800">{{ $m['asunto'] ?: '(sin asunto)' }}</div>
                         <div class="mt-1 text-sm text-gray-700"><b>{{ $m['nombre'] ?: $m['de'] }}</b> <span class="text-gray-500">&lt;{{ $m['de'] }}&gt;</span>
                             <span class="float-right text-xs text-gray-400">{{ \Carbon\Carbon::parse($m['fecha'])->timezone('Europe/Madrid')->format('d/m/Y H:i') }}</span></div>
-                        <div class="mt-1">
+                        <div class="relative flex flex-wrap gap-1 mt-1">
+                            <button type="button" wire:click="abrirMover" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">📁 Mover a…</button>
+                            @if ($mostrarMover)
+                                <div class="absolute z-10 bg-white border rounded shadow-lg" style="top:1.6rem; left:0; width:20rem">
+                                    <input type="text" wire:model.live.debounce.300ms="filtroCarpeta" placeholder="Buscar carpeta…" class="w-full text-sm border-0 border-b" autofocus>
+                                    <div style="max-height:18rem; overflow-y:auto">
+                                        @forelse ($destinos as $d)
+                                            <button type="button" wire:key="d-{{ md5($d['id']) }}" wire:click="mover('{{ $d['id'] }}')" class="block w-full px-3 py-1 text-xs text-left truncate hover:bg-indigo-50">{{ $d['ruta'] }}</button>
+                                        @empty
+                                            <div class="p-2 text-xs text-gray-400">Sin resultados.</div>
+                                        @endforelse
+                                    </div>
+                                </div>
+                            @endif
                             <button type="button" wire:click="$toggle('verImagenes')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50"
                                     title="Las imágenes remotas pueden avisar al remitente de que has abierto el correo">{{ $verImagenes ? '🚫 Ocultar imágenes' : '🖼 Mostrar imágenes' }}</button>
                         </div>

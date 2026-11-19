@@ -18,6 +18,12 @@ class CorreoClaude extends Component
     public string $busqueda = '';
     public int $max = 40;
     public ?string $sel = null;
+    /** Carpeta que se ve: «inbox» o el id de Graph. */
+    public string $carpeta = 'inbox';
+    /** Carpetas con las subcarpetas desplegadas (ids). */
+    public array $abiertas = [];
+    public bool $mostrarMover = false;
+    public string $filtroCarpeta = '';
     public string $perfil = 'estricto';
     public string $nombres = '';
     public string $empresas = '';
@@ -46,6 +52,112 @@ class CorreoClaude extends Component
         return array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/u', $t) ?: []), fn ($x) => mb_strlen($x) >= 3)));
     }
 
+    public function irACarpeta(string $id): void
+    {
+        $this->carpeta = $id;
+        $this->sel = null;
+        $this->max = 40;
+        $this->busqueda = '';
+        $this->mostrarMover = false;
+        $this->aviso = '';
+    }
+
+    public function alternar(string $id): void
+    {
+        $this->abiertas = in_array($id, $this->abiertas, true) ? array_values(array_diff($this->abiertas, [$id])) : [...$this->abiertas, $id];
+    }
+
+    public function abrirMover(): void
+    {
+        $this->mostrarMover = ! $this->mostrarMover;
+        $this->filtroCarpeta = '';
+    }
+
+    /** Mueve el correo abierto a otra carpeta. */
+    public function mover(string $destino): void
+    {
+        abort_unless($this->sel && $destino !== '', 422);
+        $this->moverId($destino, $this->sel);
+    }
+
+    /** Mueve un correo concreto (el que se arrastra a una carpeta). Graph le da un id nuevo: se cierra el abierto y se refresca todo. */
+    public function moverId(string $destino, string $id): void
+    {
+        abort_unless($id !== '' && $destino !== '', 422);
+        if ($destino === $this->carpeta) {
+            return;                                   // soltarlo en la carpeta donde ya está
+        }
+        try {
+            GraphMail::mover($this->buzon(), $id, $destino);
+        } catch (\Throwable $e) {
+            $this->aviso = 'No se ha podido mover el correo.';
+
+            return;
+        }
+        if ($id === $this->sel) {
+            $this->sel = null;
+        }
+        $this->mostrarMover = false;
+        Cache::forever('correo_claude_v', $this->v() + 1);     // listas y recuentos de carpetas: se vuelven a pedir
+        $this->aviso = 'Correo movido.';
+    }
+
+    /** Carpetas de primer nivel (las de siempre primero) con las subcarpetas desplegadas, en una lista plana con su nivel. */
+    protected function arbol(): array
+    {
+        $b = $this->buzon();
+        $conocidas = Cache::remember('correo_claude_conocidas_'.md5($b), 3600, function () use ($b) {
+            $o = [];
+            foreach (['inbox', 'drafts', 'sentitems', 'deleteditems', 'junkemail', 'archive'] as $i => $n) {
+                if ($id = GraphMail::carpetaConocida($b, $n)) {
+                    $o[$id] = $i;
+                }
+            }
+
+            return $o;
+        });
+        $raiz = Cache::remember('correo_claude_raiz_'.md5($this->v().$b), 120, fn () => GraphMail::carpetasHijas($b));
+        usort($raiz, fn ($x, $y) => [$conocidas[$x['id']] ?? 99, mb_strtolower($x['nombre'])] <=> [$conocidas[$y['id']] ?? 99, mb_strtolower($y['nombre'])]);
+        $plana = [];
+        $anadir = function (array $lista, int $nivel) use (&$anadir, &$plana, $b) {
+            foreach ($lista as $c) {
+                $abierta = in_array($c['id'], $this->abiertas, true);
+                $plana[] = $c + ['nivel' => $nivel, 'abierta' => $abierta];
+                if ($abierta && $c['hijos'] > 0) {
+                    $h = Cache::remember('correo_claude_hijas_'.md5($this->v().$b.$c['id']), 120, fn () => GraphMail::carpetasHijas($b, $c['id']));
+                    usort($h, fn ($x, $y) => strnatcasecmp($x['nombre'], $y['nombre']));
+                    $anadir($h, $nivel + 1);
+                }
+            }
+        };
+        $anadir($raiz, 0);
+
+        return ['plana' => $plana, 'inbox' => array_search(0, $conocidas, true)];
+    }
+
+    /** Todas las carpetas con su ruta (para el selector de «Mover a…»), recorridas por niveles; tope de 300 por si el buzón es enorme. */
+    protected function todasLasCarpetas(): array
+    {
+        $b = $this->buzon();
+
+        return Cache::remember('correo_claude_todas_'.md5($this->v().$b), 600, function () use ($b) {
+            $out = [];
+            $cola = array_map(fn ($c) => $c + ['ruta' => $c['nombre']], GraphMail::carpetasHijas($b));
+            while ($cola && count($out) < 300) {
+                $c = array_shift($cola);
+                $out[] = ['id' => $c['id'], 'ruta' => $c['ruta']];
+                if ($c['hijos'] > 0) {
+                    foreach (GraphMail::carpetasHijas($b, $c['id']) as $h) {
+                        $cola[] = $h + ['ruta' => $c['ruta'].' / '.$h['nombre']];
+                    }
+                }
+            }
+            usort($out, fn ($x, $y) => strnatcasecmp($x['ruta'], $y['ruta']));
+
+            return $out;
+        });
+    }
+
     public function seleccionar(string $id): void
     {
         $this->sel = $id;
@@ -65,9 +177,15 @@ class CorreoClaude extends Component
         $this->aviso = '';
     }
 
+    /** Versión de la caché de listas y carpetas: se sube al mover un correo (así no se vacía la caché de toda la aplicación). */
+    protected function v(): int
+    {
+        return (int) Cache::get('correo_claude_v', 1);
+    }
+
     protected function claveLista(): string
     {
-        return 'correo_claude_lista_'.md5($this->buzon().'|'.$this->max.'|'.mb_strtolower(trim($this->busqueda)));
+        return 'correo_claude_lista_'.md5($this->v().'|'.$this->buzon().'|'.$this->carpeta.'|'.$this->max.'|'.mb_strtolower(trim($this->busqueda)));
     }
 
     /** El documento anonimizado de este correo (el último de quien está conectado), si ya se preparó. */
@@ -203,9 +321,22 @@ class CorreoClaude extends Component
         $cerrado = ! GraphMail::configurado();
         if (! $cerrado) {
             try {
-                $lista = Cache::remember($this->claveLista(), 30, fn () => GraphMail::recientes($this->buzon(), $this->max, $this->busqueda));
+                $lista = Cache::remember($this->claveLista(), 30, fn () => GraphMail::recientes($this->buzon(), $this->max, $this->busqueda, $this->carpeta));
             } catch (\Throwable $e) {
                 $aviso = 'No se ha podido leer el buzón ('.class_basename($e).').';
+            }
+        }
+        $carpetas = ['plana' => [], 'inbox' => null];
+        $destinos = [];
+        if (! $cerrado) {
+            try {
+                $carpetas = $this->arbol();
+                if ($this->mostrarMover) {
+                    $f = mb_strtolower(trim($this->filtroCarpeta));
+                    $destinos = array_slice(array_values(array_filter($this->todasLasCarpetas(), fn ($c) => $f === '' || str_contains(mb_strtolower($c['ruta']), $f))), 0, 40);
+                }
+            } catch (\Throwable $e) {
+                $aviso = $aviso ?: 'No se han podido leer las carpetas ('.class_basename($e).').';
             }
         }
         $m = null;
@@ -247,6 +378,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos'));
     }
 }

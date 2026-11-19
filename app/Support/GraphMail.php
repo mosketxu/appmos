@@ -86,14 +86,14 @@ class GraphMail
     }
 
     /**
-     * Últimos correos de la bandeja de entrada (lectura; 19-nov-2026, pantalla «✉ Correo»): [id, asunto, de, nombre, fecha, leido, adjuntos, extracto], más recientes primero.
+     * Últimos correos de una carpeta, por defecto la bandeja de entrada (lectura; 19-nov-2026, pantalla «✉ Correo»): [id, asunto, de, nombre, fecha, leido, adjuntos, extracto], más recientes primero.
      * Con $texto busca en asunto y cuerpo (Graph no deja ordenar una búsqueda: se ordena aquí).
      */
-    public static function recientes(string $buzon, int $max = 40, string $texto = ''): array
+    public static function recientes(string $buzon, int $max = 40, string $texto = '', string $carpeta = 'inbox'): array
     {
         $texto = trim(str_replace('"', '', $texto));
         $sel = '$select=id,subject,from,receivedDateTime,hasAttachments,isRead,bodyPreview&$top='.$max;
-        $base = 'users/'.rawurlencode($buzon).'/mailFolders/inbox/messages';
+        $base = 'users/'.rawurlencode($buzon).'/mailFolders/'.rawurlencode($carpeta).'/messages';
         $url = $texto === '' ? $base.'?'.$sel.'&$orderby='.rawurlencode('receivedDateTime desc') : $base.'?$search="'.rawurlencode($texto).'"&'.$sel;
         $filas = collect(self::api('get', $url)['value'] ?? [])->map(fn ($m) => [
             'id' => $m['id'], 'asunto' => $m['subject'] ?? '', 'de' => $m['from']['emailAddress']['address'] ?? '',
@@ -103,6 +103,33 @@ class GraphMail
         ]);
 
         return $filas->sortByDesc('fecha')->values()->all();
+    }
+
+    /** Carpetas de correo (lectura): las de primer nivel o, con $padre, sus subcarpetas. [id, nombre, hijos, noLeidos, total] */
+    public static function carpetasHijas(string $buzon, ?string $padre = null): array
+    {
+        $url = 'users/'.rawurlencode($buzon).'/mailFolders'.($padre ? '/'.rawurlencode($padre).'/childFolders' : '').'?$top=100&$select=id,displayName,childFolderCount,unreadItemCount,totalItemCount';
+
+        return collect(self::api('get', $url)['value'] ?? [])->map(fn ($c) => [
+            'id' => $c['id'], 'nombre' => $c['displayName'] ?? '', 'hijos' => (int) ($c['childFolderCount'] ?? 0),
+            'noLeidos' => (int) ($c['unreadItemCount'] ?? 0), 'total' => (int) ($c['totalItemCount'] ?? 0),
+        ])->all();
+    }
+
+    /** Id de una carpeta «de siempre» (inbox, drafts, sentitems, deleteditems, junkemail, archive), o null si no existe. */
+    public static function carpetaConocida(string $buzon, string $nombre): ?string
+    {
+        try {
+            return self::api('get', 'users/'.rawurlencode($buzon).'/mailFolders/'.rawurlencode($nombre).'?$select=id')['id'] ?? null;
+        } catch (RuntimeException $e) {
+            return null;
+        }
+    }
+
+    /** Mueve un correo a otra carpeta (el correo cambia de id al moverse; devuelve el nuevo). */
+    public static function mover(string $buzon, string $id, string $destino): string
+    {
+        return (string) (self::api('post', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/move', ['destinationId' => $destino])['id'] ?? '');
     }
 
     /** Nombre, tamaño y tipo de los adjuntos de un correo, SIN su contenido (lectura). @return array<int, array{nombre:string, tamano:int, tipo:string, incrustado:bool}> */

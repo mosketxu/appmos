@@ -22,6 +22,17 @@ class CorreoClaudeTest extends TestCase
         config(['contabilidad.graph.tenant_id' => 't', 'contabilidad.graph.client_id' => 'c', 'contabilidad.graph.client_secret' => 's', 'contabilidad.graph.sender' => 'buzon@example.test']);
         Http::fake([
             'login.microsoftonline.com/*' => Http::response(['access_token' => 'x']),
+            '*mailFolders/*/childFolders*' => Http::response(['value' => [['id' => 'F3', 'displayName' => 'Eric 2026', 'childFolderCount' => 0, 'unreadItemCount' => 0, 'totalItemCount' => 5]]]),
+            '*mailFolders?*' => Http::response(['value' => [
+                ['id' => 'F2', 'displayName' => 'Clientes', 'childFolderCount' => 1, 'unreadItemCount' => 0, 'totalItemCount' => 9],
+                ['id' => 'F1', 'displayName' => 'Bandeja de entrada', 'childFolderCount' => 0, 'unreadItemCount' => 3, 'totalItemCount' => 50]]]),
+            '*mailFolders/inbox?*' => Http::response(['id' => 'F1']),
+            '*mailFolders/drafts?*' => Http::response(['id' => 'FD']),
+            '*mailFolders/sentitems?*' => Http::response(['id' => 'FS']),
+            '*mailFolders/deleteditems?*' => Http::response(['id' => 'FX']),
+            '*mailFolders/junkemail?*' => Http::response(['id' => 'FJ']),
+            '*mailFolders/archive?*' => Http::response([], 404),
+            '*messages/AAA/move' => Http::response(['id' => 'NUEVO']),
             '*mailFolders/inbox/messages*' => Http::response(['value' => [
                 ['id' => 'AAA', 'subject' => 'Factura de prueba', 'from' => ['emailAddress' => ['name' => 'Proveedor Uno', 'address' => 'p@example.test']],
                     'receivedDateTime' => '2026-11-19T10:00:00Z', 'hasAttachments' => true, 'isRead' => false, 'bodyPreview' => "Hola   Alex,\n adjunto"],
@@ -131,5 +142,28 @@ class CorreoClaudeTest extends TestCase
         $con = CorreoClaude::documentoSeguro($m, ['img1@x' => 'data:image/png;base64,AAAA'], true);
         $this->assertStringContainsString('img-src data: https:', $con);
         $this->assertStringContainsString('src="data:image/png;base64,AAAA"', $con);
+    }
+
+    public function test_columna_de_carpetas_con_la_bandeja_primero_y_subcarpetas(): void
+    {
+        $this->actingAs($this->adminUser());
+        $h = Livewire::test(CorreoClaude::class)->assertSeeInOrder(['Bandeja de entrada', 'Clientes'])->assertDontSee('Eric 2026');
+        $h->call('alternar', 'F2')->assertSee('Eric 2026');
+    }
+
+    public function test_mover_el_correo_abierto_o_uno_arrastrado(): void
+    {
+        $this->actingAs($this->adminUser());
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->call('mover', 'F3')->assertSet('sel', null)->assertSee('Correo movido');
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/AAA/move') && $r['destinationId'] === 'F3');
+        Livewire::test(CorreoClaude::class)->call('moverId', 'inbox', 'AAA');       // soltarlo en la carpeta donde ya está: no hace nada
+        Http::assertSentCount(Http::recorded()->count());
+        $this->assertCount(1, Http::recorded(fn ($r) => str_ends_with($r->url(), '/move')));
+    }
+
+    public function test_sin_correo_abierto_mover_no_hace_nada(): void
+    {
+        $this->actingAs($this->adminUser());
+        Livewire::test(CorreoClaude::class)->call('mover', 'F3')->assertStatus(422);
     }
 }
