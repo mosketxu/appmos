@@ -127,7 +127,7 @@
                         </div>
                         <div class="relative">
                             <textarea id="instr-nuevo" wire:model="instruccion" rows="4" class="w-full mt-1 text-sm border-gray-300 rounded" style="padding-right:2.2rem" placeholder="Escribe o dicta aquí lo que quieres hacer con este correo…"></textarea>
-                            <button type="button" class="btn-dictar" data-dictar="instr-nuevo" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="display:none; position:absolute; right:.4rem; top:.6rem; font-size:1.1rem; line-height:1">🎤</button>
+                            <span wire:ignore><button type="button" class="btn-dictar" data-dictar="instr-nuevo" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="position:absolute; right:.4rem; top:.6rem; font-size:1.1rem; line-height:1">🎤</button></span>
                         </div>
                         <p class="mt-1 mb-2 text-xs text-gray-500">Anonimizar = los datos personales pasan a ser etiquetas (<b>Persona1, Empresa1, Mail1…</b>) en el correo, los adjuntos y tu texto.</p>
                         <label class="block text-xs text-gray-600">Perfil
@@ -210,7 +210,7 @@
                             <div class="relative">
                             <textarea id="instr-chat" wire:model="instruccion" rows="4" class="w-full mt-2 text-sm border-gray-300 rounded" style="padding-right:2.2rem"
                                       placeholder="{{ $doc->tarea_id ? 'Escribe tu siguiente mensaje…' : '¿Qué quieres que haga Claude con este correo? Se anonimiza igual que el correo (mismas etiquetas).' }}"></textarea>
-                            <button type="button" class="btn-dictar" data-dictar="instr-chat" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="display:none; position:absolute; right:.4rem; top:.8rem; font-size:1.1rem; line-height:1">🎤</button>
+                            <span wire:ignore><button type="button" class="btn-dictar" data-dictar="instr-chat" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="position:absolute; right:.4rem; top:.8rem; font-size:1.1rem; line-height:1">🎤</button></span>
                         </div>
                             @error('instruccion') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
                             <div class="flex items-center gap-3 mt-1">
@@ -225,6 +225,7 @@
         </div>
     </div>
 
+<style>.sin-voz .btn-dictar { display: none !important; }</style>
 <script>
     (function () {
         const rejilla = document.getElementById('correo-grid');
@@ -259,10 +260,8 @@
         // Dictado por voz (reconocimiento del navegador; Chrome/Edge): un botón 🎤 junto a cada cuadro de texto
         const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
         let reco = null, botonActivo = null;
-        const mostrarBotones = () => document.querySelectorAll('.btn-dictar').forEach(b => { b.style.display = Reco ? '' : 'none'; });
+        if (!Reco) document.documentElement.classList.add('sin-voz');      // sin reconocimiento de voz en este navegador: se ocultan los 🎤 (por CSS, no depende de que Livewire repinte)
         const parar = () => { if (reco) { try { reco.stop(); } catch (e) {} } };
-        mostrarBotones();
-        new MutationObserver(mostrarBotones).observe(document.body, { childList: true, subtree: true });
         document.addEventListener('click', (ev) => {
             const b = ev.target.closest && ev.target.closest('.btn-dictar'); if (!b || !Reco) return;
             ev.preventDefault();
