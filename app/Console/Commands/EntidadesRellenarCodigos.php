@@ -62,7 +62,8 @@ class EntidadesRellenarCodigos extends Command
                     continue;   // cabecera y filas de descripción
                 }
                 foreach ($this->claves($fila[4] ?? '') as $k) {
-                    $cli[$k][] = ['cod' => preg_match('/^\d+$/', $cod) ? $cod : $cta, 'cta' => $cta, 'nombre' => (string) ($fila[1] ?? '')];
+                    // Código de cliente = el de SAGE; si no coincide con el código contable (p. ej. «000002» con cuenta 430138) no se adivina: queda como duda
+                    $cli[$k][] = ['cod' => ($cod === '' || $cod === $cta) ? $cta : null, 'cod_sage' => $cod, 'cta' => $cta, 'nombre' => (string) ($fila[1] ?? '')];
                 }
             }
         }
@@ -125,6 +126,9 @@ class EntidadesRellenarCodigos extends Command
                     continue;
                 }
                 $cod = $hit[0]['cod'] ?? null;
+                if ($hit && ! isset($hit[0]['cod']) && $t === 'cli' && trim((string) $e->{$colCod}) === '' && ($hit[0]['cod_sage'] ?? '') !== '') {
+                    $difs[] = "{$e->id} | {$e->entidad} | {$e->nif} | código de cliente: SAGE tiene «{$hit[0]['cod_sage']}» y cuenta {$hit[0]['cta']} (no coinciden; no lo relleno)";
+                }
                 $cta = $hit[0]['cta'] ?? ($planCta[0]['cta'] ?? null);
                 foreach ([$colCod => $cod, $colCta => $cta] as $col => $nuevo) {
                     if ($nuevo === null || $nuevo === '') {
@@ -140,6 +144,19 @@ class EntidadesRellenarCodigos extends Command
                 }
             }
         }
+        foreach ($ents as $e) {
+            if ($e->cliente && preg_match('/^4[01]/', trim((string) $e->cuentacontable_cliente))) {
+                $difs[] = "{$e->id} | {$e->entidad} | {$e->nif} | cuenta contable CLIENTE {$e->cuentacontable_cliente} parece de proveedor (40/41): revisar";
+            }
+        }
+        $cand = [];
+        foreach (Entidad::withoutGlobalScopes()->whereNull('deleted_at')->where(fn ($q) => $q->whereNull('proveedor')->orWhere('proveedor', 0))->get() as $e) {
+            foreach ($this->claves($e->nif) as $k) {
+                if (isset($pro[$k]) && ! in_array($e->id, array_column($cand, 0), true)) {
+                    $cand[] = [$e->id, "{$e->id} | {$e->entidad} | {$e->nif} | en SAGE como proveedor {$pro[$k][0]['cod']} / cuenta {$pro[$k][0]['cta']}"];
+                }
+            }
+        }
         $this->info('A rellenar: '.count($cambios).' campos ('.$n['cli'].' de cliente, '.$n['pro'].' de proveedor) en '.collect($cambios)->pluck(0)->pluck('id')->unique()->count().' entidades');
         foreach ($cambios as [$e, $col, $nuevo]) {
             $this->line("  + {$e->id} | {$e->entidad} | {$col} = {$nuevo}");
@@ -151,6 +168,10 @@ class EntidadesRellenarCodigos extends Command
         $this->warn('Sin pareja en los ficheros de SAGE: '.count($sin));
         foreach ($sin as $l) {
             $this->line('  ? '.$l);
+        }
+        $this->warn('Están en SAGE como proveedor pero NO marcadas como proveedor en Appmos: '.count($cand));
+        foreach ($cand as [$id, $l]) {
+            $this->line('  ~ '.$l);
         }
         if ($this->option('aplicar')) {
             foreach ($cambios as [$e, $col, $nuevo]) {
