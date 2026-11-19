@@ -118,7 +118,10 @@ class CorreoClaude extends Component
         foreach (array_slice($ids, 0, 80) as $id) {
             $r = $this->cache()->remember('correo_claude_res_'.md5($this->v().$b.$id), 120, fn () => GraphMail::resumen($b, $id) ?? ['_falta' => true]);
             if (! empty($r['_falta'])) {
-                continue;                              // ya no existe (borrado del todo) o su id quedó viejo
+                $r = $this->reencontrar($id);          // su id ya no vale (lo movieron/borraron fuera de Appmos): se busca por asunto y se actualiza
+                if (! $r) {
+                    continue;
+                }
             }
             if (($r['carpetaId'] ?? '') !== '') {
                 $r['carpeta'] = $this->cache()->remember('correo_claude_nc_'.md5($b.$r['carpetaId']), 600, fn () => GraphMail::nombreCarpeta($b, $r['carpetaId']));
@@ -136,6 +139,24 @@ class CorreoClaude extends Component
         usort($out, fn ($x, $y) => strcmp($y['fecha'], $x['fecha']));
 
         return $out;
+    }
+
+    /** Reencuentra por su asunto un correo cuyo id ya no existe y deja guardado el id nuevo en su conversación. */
+    protected function reencontrar(string $idViejo): ?array
+    {
+        $docs = ConfidencialidadDoc::where('user_id', auth()->id())->where('correo_id', $idViejo)->get();
+        $titulo = (string) ($docs->first()->titulo ?? '');
+        $asunto = trim((string) preg_replace('/^Correo[^:]*:\s*/u', '', $titulo));
+        $r = $asunto !== '' ? GraphMail::buscarPorAsunto($this->buzon(), $asunto) : null;
+        if (! $r) {
+            return null;
+        }
+        foreach ($docs as $d) {
+            $d->update(['correo_id' => $r['id']]);
+        }
+        $this->cache()->forget('correo_claude_res_'.md5($this->v().$this->buzon().$idViejo));
+
+        return $r;
     }
 
     public function irACarpeta(string $id): void

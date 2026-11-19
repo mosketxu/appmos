@@ -168,6 +168,30 @@ class GraphMail
         }
     }
 
+    /** Busca en todo el buzón un correo por su asunto exacto (para reencontrar uno cuyo id ya no vale); el más reciente, o null. */
+    public static function buscarPorAsunto(string $buzon, string $asunto): ?array
+    {
+        $q = trim(str_replace(['"', '\\'], ' ', $asunto));
+        if ($q === '') {
+            return null;
+        }
+        try {
+            $v = self::api('get', 'users/'.rawurlencode($buzon).'/messages?$search="subject:'.rawurlencode($q).'"&$top=15&$select=id,subject,from,receivedDateTime,hasAttachments,isRead,bodyPreview,parentFolderId')['value'] ?? [];
+        } catch (RuntimeException $e) {
+            return null;
+        }
+        $v = array_values(array_filter($v, fn ($m) => mb_strtolower(trim($m['subject'] ?? '')) === mb_strtolower($q)));
+        usort($v, fn ($a, $b) => strcmp($b['receivedDateTime'] ?? '', $a['receivedDateTime'] ?? ''));
+        $m = $v[0] ?? null;
+
+        return $m ? [
+            'id' => $m['id'], 'asunto' => $m['subject'] ?? '', 'de' => $m['from']['emailAddress']['address'] ?? '',
+            'nombre' => $m['from']['emailAddress']['name'] ?? ($m['from']['emailAddress']['address'] ?? ''),
+            'fecha' => $m['receivedDateTime'] ?? '', 'leido' => (bool) ($m['isRead'] ?? true), 'adjuntos' => (bool) ($m['hasAttachments'] ?? false),
+            'extracto' => mb_substr(trim(preg_replace('/\s+/u', ' ', $m['bodyPreview'] ?? '')), 0, 140), 'carpetaId' => $m['parentFolderId'] ?? '',
+        ] : null;
+    }
+
     /** Id de la carpeta que contiene a otra (null si no se puede saber o es la raíz del buzón). */
     public static function carpetaPadre(string $buzon, string $id): ?string
     {
