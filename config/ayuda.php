@@ -93,15 +93,16 @@ HTML],
 HTML],
 
     'impuestos' => ['titulo' => 'Impuestos: seguimiento', 'html' => <<<'HTML'
-<p>El checklist de presentación de impuestos por cliente, impuesto y periodo.</p>
+<p>El checklist de presentación de impuestos por <b>cliente, impuesto y periodo</b>.</p>
 <h4>Cómo se usa</h4>
 <ul>
-<li>Cada casilla cambia de color según el estado: <b>rojo</b> pendiente → <b>naranja</b> en revisión → <b>azul</b> revisado → <b>verde</b> presentado (con el PDF).</li>
-<li>Cada uno ve lo suyo; Admin y Suma pueden «ver todos».</li>
-<li>El icono del documento de cada periodo es la petición de documentación al cliente.</li>
-<li>Qué impuestos presenta cada cliente se define en <b>Entidades</b> (zona Impuestos).</li>
+<li>Cada casilla cambia de color: <b>rojo</b> pendiente → <b>naranja</b> en revisión → <b>azul</b> revisado → <b>verde</b> presentado (con su PDF).</li>
+<li>Cada uno ve lo suyo; Admin y Suma tienen «ver todos».</li>
+<li>El icono del documento de cada periodo es la <b>petición de documentación</b> al cliente.</li>
+<li>Qué impuestos presenta cada cliente se define en <b>Entidades</b> (zona Impuestos): si falta una casilla, mira allí.</li>
+<li>Los PDF de presentación los sube solo un PC desde OneDrive.</li>
 </ul>
-<p>Las subpestañas (IVA M303, IRPF M111, IS M200, Pago a cuenta M202, M349, M216, Intrastat) son los procesos de cada modelo.</p>
+<p>Las subpestañas (IVA M303 / Libros IVA, IRPF M111, IS M200, Pago a cuenta M202, M349, M216, Intrastat) son los procesos de cada modelo.</p>
 HTML],
 
     'impuestos.libro-iva' => ['titulo' => 'Libros IVA (303)', 'html' => <<<'HTML'
@@ -125,11 +126,14 @@ HTML],
 HTML],
 
     'impuestos.m349' => ['titulo' => 'Modelo 349', 'html' => <<<'HTML'
-<p>Declaración recapitulativa de <b>operaciones intracomunitarias</b>.</p>
+<p>Declaración recapitulativa de <b>operaciones intracomunitarias</b>. De momento solo está operativo para <b>NAE Comunicacions</b>; otro cliente sale «en construcción».</p>
 <ul>
-<li>Elige cliente y periodo y lanza el proceso para preparar el borrador.</li>
-<li>El borrador en la AEAT se abre con Edge <b>con ventana</b> en el PC elegido en «Ejecutar en»; quien lo lanza elige el certificado.</li>
+<li>Elige cliente y mes, la carpeta de trabajo de OneDrive y el Excel anual (ventas → S, compras → I): se genera el fichero <b>.349</b> para la AEAT, que puedes descargar o guardar en OneDrive.</li>
+<li><b>Marcar como revisado</b> (Alex o Marta) y, en el último paso, <b>Enviar justificante a Marta…</b>.</li>
+<li>El borrador en la AEAT se abre con Edge <b>con ventana</b> en el PC de «Ejecutar en»; quien lo lanza elige el certificado.</li>
 </ul>
+<h4>Ojo</h4>
+<ul><li>Faltan las rectificaciones de periodos anteriores. Contrasta el resultado con lo presentado otros meses.</li></ul>
 HTML],
 
     'impuestos.m216' => ['titulo' => 'Modelo 216', 'html' => <<<'HTML'
@@ -141,11 +145,13 @@ HTML],
 HTML],
 
     'impuestos.intrastat' => ['titulo' => 'Intrastat', 'html' => <<<'HTML'
-<p>Prepara la declaración <b>Intrastat</b> (Fashion IQ).</p>
+<p>Prepara la declaración <b>Intrastat</b> (Fashion IQ) del Excel «Outbound Fashion IQ PPI &amp; PS - MM.2026».</p>
 <ul>
-<li>Elige cliente y periodo y lanza el proceso; el fichero resultante se puede <b>descargar</b> desde la propia pantalla.</li>
-<li>Comprueba las unidades y los códigos antes de presentarla.</li>
+<li>Elige cliente y periodo, sube el Excel y pulsa «▶ Procesar»: se hace en el servidor y sustituye lo que hubiera de ese mes.</li>
+<li>Sale el <b>CSV para la Sede</b> (⬇ descargar), el número de partidas y los avisos. Desde Procesos FIQ se puede lanzar igual y se marca el check del mes.</li>
 </ul>
+<h4>Ojo</h4>
+<ul><li>Lee los avisos antes de presentarlo: unidades y códigos mal puestos dieron un requerimiento de Aduana.</li></ul>
 HTML],
 
     'impuestos.pago-cuenta' => ['titulo' => 'Pago a cuenta (M202)', 'html' => <<<'HTML'
@@ -165,15 +171,22 @@ HTML],
 HTML],
 
     'contabilidad.procesos' => ['titulo' => 'Procesos FIQ', 'html' => <<<'HTML'
-<p>Los procesos mensuales de <b>Fashion IQ</b>, lanzados desde la web. Es también el <b>checklist de cierre</b>: un check por proceso y mes.</p>
+<p>Los procesos mensuales de <b>Fashion IQ</b>, lanzados desde la web. Es también el <b>checklist de cierre</b>: una fila por proceso y un check por mes.</p>
 <h4>Cómo se usa</h4>
 <ul>
-<li>Elige el <b>año</b> y el <b>mes</b>, y lanza cada proceso con su botón. Lo ejecuta un PC trabajador (puedes elegirlo en «Ejecutar en»).</li>
-<li>El estado y la salida salen en la propia pantalla; el check del proceso se marca al terminar bien.</li>
-<li>Los ficheros que pide cada proceso se suben aquí; el recuadro de arriba es el de los ficheros base de SAGE.</li>
+<li>Elige el <b>año</b> y el <b>mes</b> (arriba); ese mes lo usan todos los procesos. Lanza cada proceso con su botón: lo ejecuta un PC trabajador (puedes elegirlo en «Ejecutar en») y siempre es «real».</li>
+<li>A la derecha, el panel <b>Salida</b> enseña lo que va haciendo (con ⚠️ y «👉 Qué hacer» si algo falla); «Borrar salida» lo limpia. Al terminar bien, el check del mes se marca solo.</li>
+<li>Los checks manuales se cambian con clic: ✓ → «no toca» → vacío. Los procesos con envío tienen 3 estados: vacío, <b>P</b> (preparado, sin enviar) y ✓ (enviado). Arrastrando ⠿ cambias el orden.</li>
+<li>Los ficheros que pide cada proceso (settlement de Adyen, sumas y saldos, Excel de Intrastat…) se suben en su fila; el recuadro de arriba es el de los ficheros base de SAGE.</li>
+<li>Con ⓘ ves el detalle de cada proceso. Los paneles de <b>Rentas variables</b>, <b>Pagos de fin de mes</b>, <b>Cash in store</b> y <b>Comunicar impuestos</b> se abren debajo de su fila («abrir ↓»).</li>
+<li>Algunos van solos y solo los vigilas aquí: Fiscal Report diario («📅 Ver días») y UBS semanal.</li>
 </ul>
 <h4>Ojo</h4>
-<ul><li>Si un proceso tarda, espera: no lo lances dos veces. Algunos envían correos reales (pagos de fin de mes…): lee el aviso antes de confirmar.</li></ul>
+<ul>
+<li>Si un proceso tarda, espera: no lo lances dos veces. En Anaplan, «🔄 Reiniciar» cancela y deja el navegador limpio.</li>
+<li>Los envíos a terceros (pagos de fin de mes, Plein, arrendatarios) piden confirmación en dos pasos y tienen «enviar a prueba»: úsalo primero.</li>
+<li>Los avisos rojos (alarma de ventas, gastos sin canal, devoluciones de Adyen) no son errores del programa: son datos que hay que mirar.</li>
+</ul>
 HTML],
 
     'contabilidad.facturacion-pdf' => ['titulo' => 'Facturación PDF (Balerga / Suma)', 'html' => <<<'HTML'
@@ -188,11 +201,13 @@ HTML],
 HTML],
 
     'contabilidad.durcal' => ['titulo' => 'Durcal', 'html' => <<<'HTML'
-<p>El proceso de <b>Durcal</b> (se ejecuta en un PC fijo).</p>
+<p>El proceso de <b>Durcal Software</b>: capitaliza (activa) sueldos y Seguridad Social por proyecto desde las nóminas y da de alta la amortización (3 años). Se ejecuta en un PC fijo.</p>
 <ul>
-<li>Sube lo que pida la pantalla y lanza el proceso; el estado y los resultados salen aquí.</li>
-<li>Revisa los avisos antes de usar el resultado.</li>
+<li>Sube el fichero de nóminas del mes y lanza el proceso. Primero va en <b>modo prueba</b> (fichero aparte); revisa y solo entonces se hace sobre el Excel de amortización real.</li>
+<li>El estado y los resultados salen en la pantalla.</li>
 </ul>
+<h4>Ojo</h4>
+<ul><li>Los empleados a activar y su porcentaje por proyecto salen de la hoja de datos de Durcal: si hay cambios de plantilla, se actualizan allí.</li></ul>
 HTML],
 
     'contabilidad.bancos' => ['titulo' => 'Bancos → SAGE', 'html' => <<<'HTML'
@@ -244,9 +259,9 @@ HTML],
     'contabilidad.procesos-mensuales' => ['titulo' => 'Procesos mensuales', 'html' => <<<'HTML'
 <p>Agrupa los <b>procesos que se repiten cada mes</b> y su seguimiento.</p>
 <ul>
-<li><b>Seguimiento mensual</b>: el checklist de todos los procesos por mes (y por empresa en los que lo son); pulsa un proceso para ver su detalle y abrir su pantalla.</li>
-<li><b>Revisión del mayor</b> y <b>Certificados</b>: sus propias pestañas.</li>
-<li>Los datos son los del servidor.</li>
+<li><b>Seguimiento mensual</b>: checklist de todos los procesos por mes (y por empresa en los que lo son); pulsa un proceso para ver su detalle y abrir su pantalla.</li>
+<li><b>Revisión del mayor</b>, <b>Certificados</b>, <b>Vencimientos</b>, <b>Prefacturación mensual</b>: cada uno con su pestaña.</li>
+<li>Los datos son los del servidor (en tu PC redirige a la web).</li>
 </ul>
 HTML],
 
