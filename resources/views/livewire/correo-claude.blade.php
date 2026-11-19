@@ -126,8 +126,8 @@
                             <button type="button" wire:click="$set('instruccion', 'Dime qué tengo que hacer a partir de este correo, paso a paso.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">¿Qué tengo que hacer?</button>
                         </div>
                         <div class="relative">
-                            <textarea id="instr-nuevo" wire:model="instruccion" rows="4" class="w-full mt-1 text-sm border-gray-300 rounded" style="padding-right:2.2rem" placeholder="Escribe o dicta aquí lo que quieres hacer con este correo…"></textarea>
-                            <span wire:ignore><button type="button" class="btn-dictar" data-dictar="instr-nuevo" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="position:absolute; right:.4rem; top:.6rem; font-size:1.1rem; line-height:1">🎤</button></span>
+                            <textarea id="instr-nuevo" wire:model="instruccion" rows="4" class="w-full mt-1 text-sm border-gray-300 rounded" style="padding-right:3rem" placeholder="Escribe o dicta aquí lo que quieres hacer con este correo…"></textarea>
+                            <span wire:ignore><button type="button" class="btn-dictar" data-dictar="instr-nuevo" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="position:absolute; right:.5rem; top:.7rem; z-index:5; width:2rem; height:2rem; font-size:1.1rem; line-height:1; background:#fff; border:1px solid #d1d5db; border-radius:9999px; cursor:pointer">🎤</button></span>
                         </div>
                         <p class="mt-1 mb-2 text-xs text-gray-500">Anonimizar = los datos personales pasan a ser etiquetas (<b>Persona1, Empresa1, Mail1…</b>) en el correo, los adjuntos y tu texto.</p>
                         <label class="block text-xs text-gray-600">Perfil
@@ -208,9 +208,9 @@
                                 </div>
                             @endif
                             <div class="relative">
-                            <textarea id="instr-chat" wire:model="instruccion" rows="4" class="w-full mt-2 text-sm border-gray-300 rounded" style="padding-right:2.2rem"
+                            <textarea id="instr-chat" wire:model="instruccion" rows="4" class="w-full mt-2 text-sm border-gray-300 rounded" style="padding-right:3rem"
                                       placeholder="{{ $doc->tarea_id ? 'Escribe tu siguiente mensaje…' : '¿Qué quieres que haga Claude con este correo? Se anonimiza igual que el correo (mismas etiquetas).' }}"></textarea>
-                            <span wire:ignore><button type="button" class="btn-dictar" data-dictar="instr-chat" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="position:absolute; right:.4rem; top:.8rem; font-size:1.1rem; line-height:1">🎤</button></span>
+                            <span wire:ignore><button type="button" class="btn-dictar" data-dictar="instr-chat" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="position:absolute; right:.5rem; top:.7rem; z-index:5; width:2rem; height:2rem; font-size:1.1rem; line-height:1; background:#fff; border:1px solid #d1d5db; border-radius:9999px; cursor:pointer">🎤</button></span>
                         </div>
                             @error('instruccion') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
                             <div class="flex items-center gap-3 mt-1">
