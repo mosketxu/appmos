@@ -1,7 +1,14 @@
 <?php
 
-use App\Models\Entidad;
+namespace Tests\Feature;
 
-it('una entidad nueva nace activa', function () {
-    expect((new Entidad)->estado)->toBe(1);
-});
+use App\Models\Entidad;
+use Tests\TestCase;
+
+class EntidadNuevaActivaTest extends TestCase
+{
+    public function test_una_entidad_nueva_nace_activa(): void
+    {
+        $this->assertSame(1, (new Entidad)->estado);
+    }
+}
