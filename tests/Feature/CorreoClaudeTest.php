@@ -225,7 +225,7 @@ class CorreoClaudeTest extends TestCase
     {
         $this->actingAs($this->adminUser());
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')
-            ->assertSee('Escribe aquí lo que quieres hacer con este correo')
+            ->assertSee('Escribe o dicta aquí lo que quieres hacer con este correo')
             ->set('instruccion', 'Resume')->assertSet('instruccion', 'Resume');
     }
 
@@ -260,5 +260,21 @@ class CorreoClaudeTest extends TestCase
         $this->assertSame(3, substr_count($h, 'cursor:col-resize'));
         $this->assertStringContainsString('id="correo-grid"', $h);
         $this->assertStringNotContainsString('x-data', $h);      // el reparto de columnas no depende de Alpine: sin JavaScript sigue saliendo bien
+    }
+
+    public function test_eliminar_manda_el_correo_a_elementos_eliminados_y_lo_deja_leido(): void
+    {
+        $this->actingAs($this->adminUser());
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('Eliminar')->call('eliminar')
+            ->assertSet('sel', null)->assertSee('Elementos eliminados');
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/AAA/move') && $r['destinationId'] === 'FX');
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && $r['isRead'] === true);
+    }
+
+    public function test_el_boton_de_dictar_acompana_a_los_cuadros_de_texto(): void
+    {
+        $this->actingAs($this->adminUser());
+        $h = Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->html();
+        $this->assertStringContainsString('data-dictar="instr-nuevo"', $h);
     }
 }

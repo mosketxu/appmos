@@ -101,6 +101,22 @@ class CorreoClaude extends Component
         $this->moverId($destino, $this->sel);
     }
 
+    /** «Eliminar» como en Outlook: el correo va a Elementos eliminados (se puede recuperar de allí; no se borra para siempre desde esta pantalla). */
+    public function eliminar(): void
+    {
+        abort_unless($this->sel, 422);
+        $destino = $this->arbol()['eliminados'] ?? null;
+        if (! $destino) {
+            $this->aviso = 'No se ha encontrado la carpeta de elementos eliminados.';
+
+            return;
+        }
+        $this->moverId($destino, $this->sel);
+        if ($this->aviso === 'Correo movido.') {
+            $this->aviso = 'Correo enviado a Elementos eliminados.';
+        }
+    }
+
     /** Mueve un correo concreto (el que se arrastra a una carpeta). Graph le da un id nuevo: se cierra el abierto y se refresca todo. */
     public function moverId(string $destino, string $id): void
     {
@@ -157,7 +173,7 @@ class CorreoClaude extends Component
         };
         $anadir($raiz, 0);
 
-        return ['plana' => $plana, 'inbox' => array_search(0, $conocidas, true)];
+        return ['plana' => $plana, 'inbox' => array_search(0, $conocidas, true), 'eliminados' => array_search(3, $conocidas, true)];
     }
 
     /** Todas las carpetas con su ruta (para el selector de «Mover a…»), recorridas por niveles; tope de 300 por si el buzón es enorme. */

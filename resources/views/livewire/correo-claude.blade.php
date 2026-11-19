@@ -75,6 +75,9 @@
                             <span class="float-right text-xs text-gray-400">{{ \Carbon\Carbon::parse($m['fecha'])->timezone('Europe/Madrid')->format('d/m/Y H:i') }}</span></div>
                         <div class="relative flex flex-wrap gap-1 mt-1">
                             <button type="button" wire:click="abrirMover" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">📁 Mover a…</button>
+                            @if ($carpeta !== $carpetas['eliminados'])
+                                <button type="button" wire:click="eliminar" class="px-2 py-0.5 text-xs text-red-700 border rounded hover:bg-red-50" title="Lo manda a Elementos eliminados (se puede recuperar de allí)">🗑 Eliminar</button>
+                            @endif
                             @if ($mostrarMover)
                                 <div class="absolute z-10 bg-white border rounded shadow-lg" style="top:1.6rem; left:0; width:20rem">
                                     <input type="text" wire:model.live.debounce.300ms="filtroCarpeta" placeholder="Buscar carpeta…" class="w-full text-sm border-0 border-b" autofocus>
@@ -122,7 +125,10 @@
                             <button type="button" wire:click="$set('instruccion', 'Redacta una respuesta a este correo, breve y profesional, en español.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">Redactar respuesta</button>
                             <button type="button" wire:click="$set('instruccion', 'Dime qué tengo que hacer a partir de este correo, paso a paso.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">¿Qué tengo que hacer?</button>
                         </div>
-                        <textarea wire:model="instruccion" rows="4" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="Escribe aquí lo que quieres hacer con este correo…"></textarea>
+                        <div class="relative">
+                            <textarea id="instr-nuevo" wire:model="instruccion" rows="4" class="w-full mt-1 text-sm border-gray-300 rounded" style="padding-right:2.2rem" placeholder="Escribe o dicta aquí lo que quieres hacer con este correo…"></textarea>
+                            <button type="button" class="btn-dictar" data-dictar="instr-nuevo" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="display:none; position:absolute; right:.4rem; top:.6rem; font-size:1.1rem; line-height:1">🎤</button>
+                        </div>
                         <p class="mt-1 mb-2 text-xs text-gray-500">Anonimizar = los datos personales pasan a ser etiquetas (<b>Persona1, Empresa1, Mail1…</b>) en el correo, los adjuntos y tu texto.</p>
                         <label class="block text-xs text-gray-600">Perfil
                             <select wire:model="perfil" class="w-full mt-0.5 text-sm border-gray-300 rounded">
@@ -201,8 +207,11 @@
                                     <button type="button" wire:click="$set('instruccion', 'Dime qué tengo que hacer a partir de este correo, paso a paso.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">¿Qué tengo que hacer?</button>
                                 </div>
                             @endif
-                            <textarea wire:model="instruccion" rows="4" class="w-full mt-2 text-sm border-gray-300 rounded"
+                            <div class="relative">
+                            <textarea id="instr-chat" wire:model="instruccion" rows="4" class="w-full mt-2 text-sm border-gray-300 rounded" style="padding-right:2.2rem"
                                       placeholder="{{ $doc->tarea_id ? 'Escribe tu siguiente mensaje…' : '¿Qué quieres que haga Claude con este correo? Se anonimiza igual que el correo (mismas etiquetas).' }}"></textarea>
+                            <button type="button" class="btn-dictar" data-dictar="instr-chat" title="Dictar con el micrófono (clic para empezar y otra vez para parar)" style="display:none; position:absolute; right:.4rem; top:.8rem; font-size:1.1rem; line-height:1">🎤</button>
+                        </div>
                             @error('instruccion') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
                             <div class="flex items-center gap-3 mt-1">
                                 <button type="button" wire:click="pedir" wire:loading.attr="disabled" wire:target="pedir" class="px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">Enviar</button>
@@ -245,6 +254,32 @@
             ev.preventDefault(); c.classList.remove('bg-green-100');
             const id = ev.dataTransfer.getData('text/plain'); if (!id) return;
             const raiz = c.closest('[wire\\:id]'); if (raiz && window.Livewire) window.Livewire.find(raiz.getAttribute('wire:id')).moverId(c.dataset.carpeta, id);
+        });
+
+        // Dictado por voz (reconocimiento del navegador; Chrome/Edge): un botón 🎤 junto a cada cuadro de texto
+        const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let reco = null, botonActivo = null;
+        const mostrarBotones = () => document.querySelectorAll('.btn-dictar').forEach(b => { b.style.display = Reco ? '' : 'none'; });
+        const parar = () => { if (reco) { try { reco.stop(); } catch (e) {} } };
+        mostrarBotones();
+        new MutationObserver(mostrarBotones).observe(document.body, { childList: true, subtree: true });
+        document.addEventListener('click', (ev) => {
+            const b = ev.target.closest && ev.target.closest('.btn-dictar'); if (!b || !Reco) return;
+            ev.preventDefault();
+            if (botonActivo === b) { parar(); return; }
+            parar();
+            const caja = document.getElementById(b.dataset.dictar); if (!caja) return;
+            reco = new Reco(); reco.lang = 'es-ES'; reco.continuous = true; reco.interimResults = false;
+            botonActivo = b; b.textContent = '⏹'; b.style.color = '#dc2626'; b.title = 'Escuchando… clic para parar';
+            reco.onresult = (e) => {
+                let t = ''; for (let i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) t += e.results[i][0].transcript; }
+                if (!t) return;
+                caja.value = (caja.value && !/\s$/.test(caja.value) ? caja.value + ' ' : caja.value) + t.trim();
+                caja.dispatchEvent(new Event('input', { bubbles: true }));
+            };
+            const fin = () => { if (botonActivo === b) { b.textContent = '🎤'; b.style.color = ''; b.title = 'Dictar con el micrófono (clic para empezar y otra vez para parar)'; botonActivo = null; } };
+            reco.onend = fin; reco.onerror = fin;
+            try { reco.start(); } catch (e) { fin(); }
         });
     })();
 </script>
