@@ -44,6 +44,10 @@
                     <input type="text" wire:model.live.debounce.600ms="busqueda" placeholder="Buscar en el buzón…" class="flex-1 text-sm border-gray-300 rounded" style="min-width:0">
                     <button type="button" wire:click="refrescar" class="px-2 text-sm border rounded hover:bg-gray-50" title="Actualizar">↻</button>
                 </div>
+                <div class="px-2 py-1 border-b">
+                    <button type="button" wire:click="alternarConv" class="w-full px-2 py-1 text-xs text-left rounded border {{ $soloConv ? 'bg-indigo-100 border-indigo-300 font-semibold text-indigo-800' : 'hover:bg-gray-50' }}"
+                            title="Muestra solo los correos con los que has hablado con Claude, estén en la carpeta que estén">💬 Solo con conversación con Claude ({{ count($idsConversacion) }}){{ $soloConv ? ' ✓' : '' }}</button>
+                </div>
                 <div style="overflow-y:auto; flex:1">
                     @forelse ($lista as $c)
                         @php $f = \Carbon\Carbon::parse($c['fecha'])->timezone('Europe/Madrid'); @endphp
@@ -53,13 +57,14 @@
                                 <span class="text-sm truncate {{ $c['leido'] ? 'text-gray-700' : 'font-bold text-blue-700' }}">{{ $c['nombre'] }}</span>
                                 <span class="text-xs text-gray-400 whitespace-nowrap">{{ $f->isToday() ? $f->format('H:i') : ($f->isCurrentYear() ? $f->format('d/m H:i') : $f->format('d/m/Y')) }}</span>
                             </div>
-                            <div class="text-xs truncate {{ $c['leido'] ? 'text-gray-600' : 'font-semibold text-blue-700' }}">@if ($c['adjuntos'])📎 @endif{{ $c['asunto'] ?: '(sin asunto)' }}</div>
+                            <div class="text-xs truncate {{ $c['leido'] ? 'text-gray-600' : 'font-semibold text-blue-700' }}">@if (in_array($c['id'], $idsConversacion, true))💬 @endif@if ($c['adjuntos'])📎 @endif{{ $c['asunto'] ?: '(sin asunto)' }}</div>
+                            @if (! empty($c['carpeta']))<div class="text-xs text-indigo-600 truncate">📁 {{ $c['carpeta'] }}</div>@endif
                             <div class="text-xs text-gray-400 truncate">{{ $c['extracto'] }}</div>
                         </div>
                     @empty
-                        <div class="p-4 text-sm text-gray-400">{{ $busqueda ? 'No hay correos con ese texto.' : 'Sin correos.' }}</div>
+                        <div class="p-4 text-sm text-gray-400">{{ $soloConv ? 'Todavía no hay correos con conversación con Claude (o no se encuentran).' : ($busqueda ? 'No hay correos con ese texto.' : 'Sin correos.') }}</div>
                     @endforelse
-                    @if (count($lista) >= $max && $max < 200)
+                    @if (! $soloConv && count($lista) >= $max && $max < 200)
                         <button type="button" wire:click="masCorreos" class="block w-full p-2 text-sm text-indigo-700 hover:bg-indigo-50">Cargar más…</button>
                     @endif
                 </div>

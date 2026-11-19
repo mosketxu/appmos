@@ -469,4 +469,26 @@ class CorreoClaudeTest extends TestCase
         Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/D1/attachments') && ($r['name'] ?? '') === 'foto.png');
         \App\Support\Confidencialidad::borrar($d);
     }
+
+    public function test_filtro_solo_con_conversacion_muestra_esos_correos_de_cualquier_carpeta(): void
+    {
+        $u = $this->usuarioConCorreo();
+        $this->actingAs($u);
+        $d = $this->docListo($u);                                   // AAA: con petición hecha
+        $t = \App\Models\TodoTarea::create(['titulo' => 't', 'descripcion' => 'x', 'creador_id' => $u->id, 'prioridad' => 'normal', 'oculta' => true]);
+        $d->update(['tarea_id' => $t->id]);
+        $sin = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'borrador', 'correo_id' => 'BBB']);      // BBB: preparado pero sin conversación
+        $c = Livewire::test(CorreoClaude::class)->assertSee('Solo con conversación con Claude (1)')->assertSee('Otro');
+        $c->call('alternarConv')->assertSee('Factura de prueba')->assertDontSee('Otro');
+        $c->call('alternarConv')->assertSee('Otro');
+        \App\Support\Confidencialidad::borrar($d);
+        $sin->delete();
+    }
+
+    public function test_los_ids_de_graph_son_inmutables_para_que_la_conversacion_sobreviva_a_mover_el_correo(): void
+    {
+        $this->actingAs($this->adminUser());
+        Livewire::test(CorreoClaude::class);
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'graph.microsoft.com') && str_contains($r->header('Prefer')[0] ?? '', 'ImmutableId'));
+    }
 }

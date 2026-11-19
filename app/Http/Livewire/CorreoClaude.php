@@ -26,6 +26,8 @@ class CorreoClaude extends Component
     /** Carpetas con las subcarpetas desplegadas (ids). */
     public array $abiertas = [];
     public bool $mostrarMover = false;
+    /** Filtro «solo correos con conversación con Claude», estén en la carpeta que estén. */
+    public bool $soloConv = false;
     public string $filtroCarpeta = '';
     public string $perfil = 'estricto';
     public string $nombres = '';
@@ -88,6 +90,45 @@ class CorreoClaude extends Component
     protected function lineas(string $t): array
     {
         return array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/u', $t) ?: []), fn ($x) => mb_strlen($x) >= 3)));
+    }
+
+    public function alternarConv(): void
+    {
+        $this->soloConv = ! $this->soloConv;
+        $this->sel = null;
+        $this->max = 40;
+        $this->aviso = '';
+    }
+
+    /** Ids de los correos de este usuario con conversación con Claude (hay una petición hecha), los últimos primero. */
+    protected function idsConConversacion(): array
+    {
+        return ConfidencialidadDoc::where('user_id', auth()->id())->whereNotNull('correo_id')->whereNotNull('tarea_id')
+            ->latest('updated_at')->pluck('correo_id')->unique()->values()->all();
+    }
+
+    /** Lista del filtro «con conversación»: los correos de esas conversaciones, de cualquier carpeta (con la carpeta en la que están). */
+    protected function listaConConversacion(array $ids): array
+    {
+        $b = $this->buzon();
+        $out = [];
+        foreach (array_slice($ids, 0, 80) as $id) {
+            $r = $this->cache()->remember('correo_claude_res_'.md5($this->v().$b.$id), 120, fn () => GraphMail::resumen($b, $id) ?? ['_falta' => true]);
+            if (! empty($r['_falta'])) {
+                continue;                              // ya no existe (borrado del todo) o su id quedó viejo
+            }
+            if (($r['carpetaId'] ?? '') !== '') {
+                $r['carpeta'] = $this->cache()->remember('correo_claude_nc_'.md5($b.$r['carpetaId']), 600, fn () => GraphMail::nombreCarpeta($b, $r['carpetaId']));
+            }
+            $out[] = $r;
+        }
+        $f = mb_strtolower(trim($this->busqueda));
+        if ($f !== '') {
+            $out = array_values(array_filter($out, fn ($c) => str_contains(mb_strtolower($c['asunto'].' '.$c['nombre'].' '.$c['de']), $f)));
+        }
+        usort($out, fn ($x, $y) => strcmp($y['fecha'], $x['fecha']));
+
+        return $out;
     }
 
     public function irACarpeta(string $id): void
@@ -507,11 +548,14 @@ class CorreoClaude extends Component
     {
         $aviso = '';
         $sinPermiso = '';
+        $idsConversacion = $this->idsConConversacion();
         $lista = [];
         $cerrado = ! GraphMail::configurado();
         if (! $cerrado) {
             try {
-                $lista = $this->cache()->remember($this->claveLista(), 30, fn () => GraphMail::recientes($this->buzon(), $this->max, $this->busqueda, $this->carpeta));
+                $lista = $this->soloConv
+                    ? $this->listaConConversacion($idsConversacion)
+                    : $this->cache()->remember($this->claveLista(), 30, fn () => GraphMail::recientes($this->buzon(), $this->max, $this->busqueda, $this->carpeta));
             } catch (\App\Support\GraphSinPermiso $e) {
                 $sinPermiso = $e->getMessage();        // el buzón de este usuario aún no está en el grupo de Exchange de Appmos: el texto dice qué hacer
             } catch (\Throwable $e) {
@@ -598,6 +642,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso', 'hayRespuesta', 'borradorAuto', 'vistaAdj'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso', 'hayRespuesta', 'borradorAuto', 'vistaAdj', 'idsConversacion'));
     }
 }

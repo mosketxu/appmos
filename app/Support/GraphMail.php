@@ -61,7 +61,8 @@ class GraphMail
     protected static function api(string $metodo, string $url, array $datos = [])
     {
         // en GET no se pasa $datos: un array vacío como «query» borraría el ?$top=… de la URL
-        $http = Http::withToken(self::token())->timeout(60);
+        // Ids INMUTABLES (19-nov-2026): el id de un correo no cambia aunque se mueva de carpeta (en Appmos o en Outlook), así que las conversaciones de ✉ Correo no se pierden
+        $http = Http::withToken(self::token())->withHeaders(['Prefer' => 'IdType="ImmutableId"'])->timeout(60);
         $r = $metodo === 'get' ? $http->get('https://graph.microsoft.com/v1.0/'.$url) : $http->{$metodo}('https://graph.microsoft.com/v1.0/'.$url, $datos);
         if ($r->status() === 403 && preg_match('#^users/([^/]+)#', $url, $m)) {
             throw GraphSinPermiso::para(rawurldecode($m[1]), 'leer o mover correo');
@@ -138,6 +139,33 @@ class GraphMail
         $a = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments/'.rawurlencode($adjuntoId));
 
         return ['nombre' => $a['name'] ?? 'adjunto', 'tipo' => $a['contentType'] ?? '', 'bytes' => $a['contentBytes'] ?? ''];
+    }
+
+    /** Resumen de un correo para la lista (lectura), o null si ya no existe / no se puede leer. [id, asunto, de, nombre, fecha, leido, adjuntos, extracto, carpetaId] */
+    public static function resumen(string $buzon, string $id): ?array
+    {
+        try {
+            $m = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'?$select=id,subject,from,receivedDateTime,hasAttachments,isRead,bodyPreview,parentFolderId');
+        } catch (RuntimeException $e) {
+            return null;
+        }
+
+        return [
+            'id' => $m['id'], 'asunto' => $m['subject'] ?? '', 'de' => $m['from']['emailAddress']['address'] ?? '',
+            'nombre' => $m['from']['emailAddress']['name'] ?? ($m['from']['emailAddress']['address'] ?? ''),
+            'fecha' => $m['receivedDateTime'] ?? '', 'leido' => (bool) ($m['isRead'] ?? true), 'adjuntos' => (bool) ($m['hasAttachments'] ?? false),
+            'extracto' => mb_substr(trim(preg_replace('/\s+/u', ' ', $m['bodyPreview'] ?? '')), 0, 140), 'carpetaId' => $m['parentFolderId'] ?? '',
+        ];
+    }
+
+    /** Nombre de una carpeta (lectura), o '' si no se puede leer. */
+    public static function nombreCarpeta(string $buzon, string $id): string
+    {
+        try {
+            return (string) (self::api('get', 'users/'.rawurlencode($buzon).'/mailFolders/'.rawurlencode($id).'?$select=displayName')['displayName'] ?? '');
+        } catch (RuntimeException $e) {
+            return '';
+        }
     }
 
     /** Marca un correo como leído (o no leído). */
