@@ -54,6 +54,13 @@ return [
             'path' => storage_path('framework/cache/data'),
         ],
 
+        // «✉ Correo» (19-nov-2026): lo que se lee del buzón (asuntos, cuerpos, adjuntos, imágenes) se cachea SOLO aquí, dentro del volumen cifrado de Confidencialidad
+        // (nunca en framework/cache, que está en el disco sin cifrar). Ver App\Http\Livewire\CorreoClaude::cache().
+        'correo' => [
+            'driver' => 'file',
+            'path' => storage_path('app/confidencialidad/_cache_correo'),
+        ],
+
         'memcached' => [
             'driver' => 'memcached',
             'persistent_id' => env('MEMCACHED_PERSISTENT_ID'),

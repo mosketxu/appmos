@@ -42,6 +42,23 @@ class CorreoClaude extends Component
         abort_unless(auth()->user()?->can('confidencialidad.ver'), 403);
     }
 
+    /**
+     * Caché de lo que se lee del buzón. Contiene datos personales (asuntos, cuerpos, adjuntos): solo se guarda dentro del almacén cifrado de Confidencialidad;
+     * si está cerrado, no se guarda en ningún disco (caché en memoria de la petición).
+     */
+    protected function cache(): \Illuminate\Contracts\Cache\Repository
+    {
+        if (! Conf::almacenAbierto()) {
+            return Cache::store('array');
+        }
+        $dir = storage_path('app/confidencialidad/_cache_correo');
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0700, true);
+        }
+
+        return Cache::store('correo');
+    }
+
     protected function buzon(): string
     {
         return (string) config('contabilidad.graph.sender');
@@ -106,7 +123,7 @@ class CorreoClaude extends Component
     protected function arbol(): array
     {
         $b = $this->buzon();
-        $conocidas = Cache::remember('correo_claude_conocidas_'.md5($b), 3600, function () use ($b) {
+        $conocidas = $this->cache()->remember('correo_claude_conocidas_'.md5($b), 3600, function () use ($b) {
             $o = [];
             foreach (['inbox', 'drafts', 'sentitems', 'deleteditems', 'junkemail', 'archive'] as $i => $n) {
                 if ($id = GraphMail::carpetaConocida($b, $n)) {
@@ -116,7 +133,7 @@ class CorreoClaude extends Component
 
             return $o;
         });
-        $raiz = Cache::remember('correo_claude_raiz_'.md5($this->v().$b), 120, fn () => GraphMail::carpetasHijas($b));
+        $raiz = $this->cache()->remember('correo_claude_raiz_'.md5($this->v().$b), 120, fn () => GraphMail::carpetasHijas($b));
         usort($raiz, fn ($x, $y) => [$conocidas[$x['id']] ?? 99, mb_strtolower($x['nombre'])] <=> [$conocidas[$y['id']] ?? 99, mb_strtolower($y['nombre'])]);
         $plana = [];
         $anadir = function (array $lista, int $nivel) use (&$anadir, &$plana, $b) {
@@ -124,7 +141,7 @@ class CorreoClaude extends Component
                 $abierta = in_array($c['id'], $this->abiertas, true);
                 $plana[] = $c + ['nivel' => $nivel, 'abierta' => $abierta];
                 if ($abierta && $c['hijos'] > 0) {
-                    $h = Cache::remember('correo_claude_hijas_'.md5($this->v().$b.$c['id']), 120, fn () => GraphMail::carpetasHijas($b, $c['id']));
+                    $h = $this->cache()->remember('correo_claude_hijas_'.md5($this->v().$b.$c['id']), 120, fn () => GraphMail::carpetasHijas($b, $c['id']));
                     usort($h, fn ($x, $y) => strnatcasecmp($x['nombre'], $y['nombre']));
                     $anadir($h, $nivel + 1);
                 }
@@ -140,7 +157,7 @@ class CorreoClaude extends Component
     {
         $b = $this->buzon();
 
-        return Cache::remember('correo_claude_todas_'.md5($this->v().$b), 600, function () use ($b) {
+        return $this->cache()->remember('correo_claude_todas_'.md5($this->v().$b), 600, function () use ($b) {
             $out = [];
             $cola = array_map(fn ($c) => $c + ['ruta' => $c['nombre']], GraphMail::carpetasHijas($b));
             while ($cola && count($out) < 300) {
@@ -173,7 +190,7 @@ class CorreoClaude extends Component
 
     public function refrescar(): void
     {
-        Cache::forget($this->claveLista());
+        $this->cache()->forget($this->claveLista());
         $this->aviso = '';
     }
 
@@ -292,7 +309,7 @@ class CorreoClaude extends Component
     /** El correo abierto (con caché breve: no se guarda en la página para no viajar en cada actualización). */
     protected function mensaje(): array
     {
-        return Cache::remember('correo_claude_msg_'.md5($this->buzon().'|'.$this->sel), 300, fn () => GraphMail::mensaje($this->buzon(), $this->sel));
+        return $this->cache()->remember('correo_claude_msg_'.md5($this->buzon().'|'.$this->sel), 300, fn () => GraphMail::mensaje($this->buzon(), $this->sel));
     }
 
     /**
@@ -317,7 +334,7 @@ class CorreoClaude extends Component
     /** Imágenes del correo como data URI, por su contentId (en minúsculas). Solo se piden a Graph si se ha pulsado «Mostrar imágenes». */
     protected function imagenesIncrustadas(): array
     {
-        return Cache::remember('correo_claude_img_'.md5($this->buzon().'|'.$this->sel), 300, function () {
+        return $this->cache()->remember('correo_claude_img_'.md5($this->buzon().'|'.$this->sel), 300, function () {
             $out = [];
             foreach (GraphMail::adjuntos($this->buzon(), $this->sel) as $a) {
                 if ($a['cid'] !== '' && str_starts_with($a['tipo'], 'image/') && strlen($a['bytes']) < 4_000_000) {
@@ -336,7 +353,7 @@ class CorreoClaude extends Component
         $cerrado = ! GraphMail::configurado();
         if (! $cerrado) {
             try {
-                $lista = Cache::remember($this->claveLista(), 30, fn () => GraphMail::recientes($this->buzon(), $this->max, $this->busqueda, $this->carpeta));
+                $lista = $this->cache()->remember($this->claveLista(), 30, fn () => GraphMail::recientes($this->buzon(), $this->max, $this->busqueda, $this->carpeta));
             } catch (\Throwable $e) {
                 $aviso = 'No se ha podido leer el buzón ('.class_basename($e).').';
             }
@@ -359,7 +376,7 @@ class CorreoClaude extends Component
         if ($this->sel && ! $cerrado) {
             try {
                 $m = $this->mensaje();
-                $adjuntos = collect(Cache::remember('correo_claude_adj_'.md5($this->buzon().'|'.$this->sel), 300, fn () => GraphMail::adjuntosInfo($this->buzon(), $this->sel)))->reject(fn ($a) => $a['incrustado'])->values()->all();
+                $adjuntos = collect($this->cache()->remember('correo_claude_adj_'.md5($this->buzon().'|'.$this->sel), 300, fn () => GraphMail::adjuntosInfo($this->buzon(), $this->sel)))->reject(fn ($a) => $a['incrustado'])->values()->all();
             } catch (\Throwable $e) {
                 $aviso = 'No se ha podido abrir ese correo.';
             }
