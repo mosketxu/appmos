@@ -493,7 +493,8 @@ class CorreoClaude extends Component
         foreach (array_reverse($conversacion) as $r) {
             if ($r['quien'] === 'claude') {
                 $hayRespuesta = true;
-                if (preg_match('/---\s*BORRADOR\s*---\s*(.*?)\s*---\s*FIN\s*---/su', $r['texto'], $mm) && md5(trim($mm[1])) !== $this->bHash) {
+                // las marcas ---BORRADOR--- / ---FIN---, cada una en su línea (no si Claude solo las nombra dentro de una frase)
+                if (preg_match('/^[ \t]*-{3}\s*BORRADOR\s*-{3}[ \t]*\R(.*?)\R[ \t]*-{3}\s*FIN\s*-{3}[ \t]*$/msu', $r['texto'], $mm) && md5(trim($mm[1])) !== $this->bHash) {
                     $this->bHash = md5(trim($mm[1]));
                     $this->bTexto = trim($mm[1]);
                     $this->bAsunto = (string) ($m['asunto'] ?? '');

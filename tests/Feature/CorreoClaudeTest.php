@@ -345,4 +345,18 @@ class CorreoClaudeTest extends TestCase
         $this->assertEqualsCanonicalizing(array_keys(\App\Models\TodoTarea::PERMISOS_CLAUDE), (array) $t->claude_permisos);
         \App\Support\Confidencialidad::borrar($d);
     }
+
+    public function test_si_claude_solo_nombra_las_marcas_en_una_frase_no_se_carga_basura(): void
+    {
+        $u = $this->usuarioConCorreo();
+        $this->actingAs($u);
+        $claude = \App\Support\TodoClaude::usuario();
+        $d = $this->docListo($u);
+        $t = \App\Models\TodoTarea::create(['titulo' => 't', 'descripcion' => 'redacta', 'creador_id' => $u->id, 'prioridad' => 'normal', 'oculta' => true]);
+        $d->update(['tarea_id' => $t->id]);
+        \App\Models\TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $claude->id, 'tipo' => 'respuesta', 'fecha' => now()->format('Y-m-d'),
+            'texto' => 'Correo redactado entre ---BORRADOR--- y ---FIN---. Le dice que sí.']);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSet('bTexto', '')->assertSee('Usar la respuesta de Claude como borrador');
+        \App\Support\Confidencialidad::borrar($d);
+    }
 }
