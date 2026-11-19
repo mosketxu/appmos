@@ -129,7 +129,7 @@
                         <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
                         <x-icon.euro-a href="{{ route('facturacion.show',$entidad)}}"  title="Facturas"/>
                         --}}
-                        <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1 ent-solo-pc"/>
+                        <x-icon.delete-a wire:click.prevent="delete({{ $entidad->id }})" wire:confirm="¿Estás seguro?" class="pl-1 ent-solo-pc"/>
                     </div>
                 </div>
             </div>

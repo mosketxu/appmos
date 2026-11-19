@@ -172,13 +172,18 @@
                 @endif
             </div>
             @if ($mailArmado !== '' && $borradorInfo)
-                <div style="margin-top:10px;border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;padding:10px 12px" class="text-sm">
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(17,24,39,.5)" wire:keydown.escape="cancelarMail">
+                <div class="w-full max-w-xl p-5 space-y-2 bg-white rounded-lg shadow-xl text-sm">
+                    <h2 class="text-lg font-semibold text-gray-900">Correo a Marta con el borrador</h2>
                     <div><span class="text-gray-500">De:</span> {{ auth()->user()->email }} · <span class="text-gray-500">Para:</span> {{ \App\Support\ComunicarImpuestos::CC_DEFECTO }}</div>
                     <div><span class="text-gray-500">Asunto:</span> {{ $this->asuntoMail() }}</div>
                     <div><span class="text-gray-500">Adjunto:</span> 📎 {{ $borradorInfo['nombre'] }}</div>
                     <div style="white-space:pre-line;margin:8px 0;padding:8px;background:#fff;border-radius:6px">{{ \App\Http\Livewire\ImpuestoM349::TEXTO_MARTA }}</div>
-                    <button type="button" wire:click="pedirEnvioMarta" class="m3-btn" style="background:#059669;border-color:#059669;color:#fff;font-weight:700">✉ Confirmar y enviar</button>
-                    <button type="button" wire:click="cancelarMail" class="m3-btn">Cancelar</button>
+                    <div class="flex justify-end gap-2" style="margin-top:12px">
+                        <button type="button" wire:click="cancelarMail" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
+                        <button type="button" wire:click="enviarMail" class="px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">✉ Enviar a Marta</button>
+                    </div>
+                </div>
                 </div>
             @endif
         </div>

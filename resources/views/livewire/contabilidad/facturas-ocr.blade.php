@@ -253,7 +253,7 @@
                 async cuentaLibre(cta) {
                     this.open = false;
                     const av = await this.$wire.avisoCuentaProveedor(cta);
-                    if (av && !confirm('¿Estás seguro? ' + av + '\n\n¿Usar la cuenta ' + cta + ' para este proveedor igualmente?')) { this.mostrar(); return; }
+                    if (av && !await preguntar('¿Estás seguro? ' + av + '\n\n¿Usar la cuenta ' + cta + ' para este proveedor igualmente?')) { this.mostrar(); return; }
                     await this.$wire.set('form.' + campo, cta);
                     this.q = this.etiqueta(cta);
                     this.$refs.q.classList.remove('falta');
@@ -261,7 +261,7 @@
                 // Cuenta de contrapartida que no existe: se pregunta si crearla y su nombre; queda guardada para este cliente
                 async crearCuenta(cta) {
                     this.open = false;
-                    if (!confirm('La cuenta ' + cta + ' no está en el plan de cuentas. ¿Quieres crear una cuenta nueva?')) { this.mostrar(); return; }
+                    if (!await preguntar('La cuenta ' + cta + ' no está en el plan de cuentas. ¿Quieres crear una cuenta nueva?')) { this.mostrar(); return; }
                     const nombre = prompt('Nombre (concepto) de la cuenta ' + cta + ':', '');
                     if (nombre === null || !nombre.trim()) { this.mostrar(); return; }
                     const err = await this.$wire.crearCuenta(cta, nombre);
@@ -812,9 +812,9 @@
                                     data-pregunta="{{ $pregunta ? $pregunta.' ¿Validarla igualmente?' : '' }}" data-forzar="{{ $duplicados ? '1' : '0' }}"
                                     data-choque="{{ $choqueCuenta ?? '' }}"
                                     x-data x-on:click="const c = $el.dataset.choque;
-                                        if (c && !confirm(c + ' Si la usas, en SAGE quedarían dos proveedores en la misma cuenta. ¿Quieres usarla igualmente?')) return;
-                                        if (c && !confirm('¿Seguro del todo? Solo tiene sentido si el listado de proveedores de SAGE que tengo no está al día y esa cuenta es de verdad de este proveedor.')) return;
-                                        const m = $el.dataset.pregunta; if (m && !confirm(m)) return; $wire.validar($el.dataset.forzar === '1', !!m, !!c)">
+                                        if (c && !await preguntar(c + ' Si la usas, en SAGE quedarían dos proveedores en la misma cuenta. ¿Quieres usarla igualmente?')) return;
+                                        if (c && !await preguntar('¿Seguro del todo? Solo tiene sentido si el listado de proveedores de SAGE que tengo no está al día y esa cuenta es de verdad de este proveedor.')) return;
+                                        const m = $el.dataset.pregunta; if (m && !await preguntar(m)) return; $wire.validar($el.dataset.forzar === '1', !!m, !!c)">
                                 <span wire:loading.remove wire:target="validar">✅ Validar <small style="opacity:.75; font-weight:400">Ctrl+Intro</small></span>
                                 <span wire:loading wire:target="validar">Guardando…</span>
                             </button>

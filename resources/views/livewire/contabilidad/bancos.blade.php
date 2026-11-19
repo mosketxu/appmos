@@ -216,8 +216,8 @@
                                      },
                                      get nMal() { return this.filas.filter((f, i) => this.mal(i)).length },
                                      nueva(i) { this.filas.splice(i + 1, 0, { fecha: this.filas[i]?.fecha ?? '', concepto: '', importe: '', saldo: '' }) },
-                                     guardar() {
-                                         if (this.nMal && ! confirm(this.nMal + ' fila(s) siguen sin cuadrar. ¿Usar los movimientos igualmente?')) return;
+                                     async guardar() {
+                                         if (this.nMal && ! await preguntar(this.nMal + ' fila(s) siguen sin cuadrar. ¿Usar los movimientos igualmente?')) return;
                                          $wire.guardarOcr(this.filas);
                                      },
                                  }">
@@ -787,7 +787,7 @@
                                                     class="ml-1 text-gray-500 hover:underline">Cancelar</button>
                                             @if ($f['origen'] === 'Manual')
                                                 <button type="button" x-show="! edit"
-                                                        x-on:click="confirm('¿Borrar la fila manual ' + @js($f['concepto']) + '?') && $wire.borrarMaestro(@js($f['concepto']), @js($f['signo']))"
+                                                        x-on:click="await preguntar('¿Borrar la fila manual ' + @js($f['concepto']) + '?') && $wire.borrarMaestro(@js($f['concepto']), @js($f['signo']))"
                                                         class="ml-1 text-red-600 hover:underline">Borrar</button>
                                             @endif
                                         </td>
@@ -847,7 +847,7 @@
                                           @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
                                         <span class="font-mono">{{ $item['texto'] }}</span>
                                         <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
-                                                x-on:click="confirm('¿Quitar ' + @js($item['texto']) + ' de {{ $titulo }}?') && $wire.borrarConfig(@js($clave), @js($item['texto']))">&times;</button>
+                                                x-on:click="await preguntar('¿Quitar ' + @js($item['texto']) + ' de {{ $titulo }}?') && $wire.borrarConfig(@js($clave), @js($item['texto']))">&times;</button>
                                     </span>
                                 @endforeach
                             </div>
@@ -888,7 +888,7 @@
                                   @if ($item['comentario'] !== '') title="{{ $item['comentario'] }}" @endif>
                                 <span class="font-mono">{{ $item['texto'] }} → <b>{{ $item['abreviatura'] }}</b></span>
                                 <button type="button" title="Quitar" class="px-1 -mr-1 text-base font-bold leading-none text-gray-400 rounded-full hover:text-white hover:bg-red-500"
-                                        x-on:click="confirm('¿Quitar la abreviatura de ' + @js($item['texto']) + '?') && $wire.borrarConfig('abreviaturas', @js($item['texto']))">&times;</button>
+                                        x-on:click="await preguntar('¿Quitar la abreviatura de ' + @js($item['texto']) + '?') && $wire.borrarConfig('abreviaturas', @js($item['texto']))">&times;</button>
                             </span>
                         @endforeach
                     </div>

@@ -46,7 +46,7 @@
                             </div>
                             <div class="flex items-center flex-shrink-0 pt-3 ml-2 space-x-3">
                                 <x-icon.edit-a wire:click="edit({{ $pu->id }})" href="#"/>
-                                <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
+                                <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" wire:confirm="¿Estás seguro?"/>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 gap-y-3">
@@ -120,7 +120,7 @@
                                 <x-table.cell>
                                     <div class="flex items-center justify-center space-x-3">
                                         <x-icon.edit-a wire:click="edit({{ $pu->id }})" href="#"/>
-                                        <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
+                                        <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" wire:confirm="¿Estás seguro?"/>
                                     </div>
                                 </x-table.cell>
 

@@ -155,7 +155,7 @@
                                 <td class="">
                                     <div class="flex items-center justify-center">
                                         <x-icon.edit-a href="{{ route('facturacion.editprefactura',$facturacion) }}" title="Pre-Factura"/>
-                                        <x-icon.delete-a wire:click.prevent="delete({{ $facturacion->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1 " title="Borrar"/>
+                                        <x-icon.delete-a wire:click.prevent="delete({{ $facturacion->id }})" wire:confirm="¿Estás seguro?" class="pl-1 " title="Borrar"/>
                                     </div>
                                 </td>
                             </tr>

@@ -46,7 +46,7 @@
                 @if($deshabilitado =='')
                 <button type="submit"><x-icon.save/></button>
                 <x-icon.delete-a wire:click.prevent="delete({{ $concepto->id }})"
-                        onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"
+                        wire:confirm="¿Estás seguro?"
                         class="pl-1 " title="Borrar" />
                 @endif
             </div>

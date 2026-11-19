@@ -51,7 +51,7 @@
                                 <x-table.cell class="w-1/12 pr-2 text-right">
                                     <div class="flex">
                                         <x-icon.edit-a href="{{ route('entidad.edit',$contacto->contacto_id) }}"  title="Editar"/>
-                                        <x-icon.delete-a wire:click.prevent="delete({{ $contacto['id'] }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()" class="pl-1"  title="Eliminar contacto"/>
+                                        <x-icon.delete-a wire:click.prevent="delete({{ $contacto['id'] }})" wire:confirm="¿Estás seguro?" class="pl-1"  title="Eliminar contacto"/>
                                     </div>
                                 </x-table.cell>
                             </x-table.row>

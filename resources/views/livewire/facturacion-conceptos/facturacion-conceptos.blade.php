@@ -49,7 +49,7 @@
                                     <x-table.cell>
                                         <div class="flex items-center justify-center space-x-3">
                                             <x-icon.edit-a wire:click="edit({{ $detalles->id }})" href="#"/>
-                                            <x-icon.delete-a wire:click.prevent="delete({{ $concepto->id }})" onclick="confirm('¿Estás seguro?') || event.stopImmediatePropagation()"/>
+                                            <x-icon.delete-a wire:click.prevent="delete({{ $concepto->id }})" wire:confirm="¿Estás seguro?"/>
                                         </div>
                                     </x-table.cell>
                                 </x-table.row>

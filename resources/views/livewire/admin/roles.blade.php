@@ -36,7 +36,7 @@
                                     {{ $c['nombre'] }}
                                     @if ($c['tipo'] === 'rol' && empty($c['fijo']) && ! $c['admin'])
                                         <button type="button" class="ml-1 text-red-500 hover:text-red-700" title="Borrar rol"
-                                                x-on:click="confirm('¿Borrar el rol ' + @js($c['nombre']) + '?') && $wire.borrar(@js($c['nombre']))">&times;</button>
+                                                x-on:click="await preguntar('¿Borrar el rol ' + @js($c['nombre']) + '?') && $wire.borrar(@js($c['nombre']))">&times;</button>
                                     @endif
                                 </div>
                                 <div class="font-normal whitespace-nowrap {{ ($c['activo'] ?? true) ? 'text-gray-400' : 'text-amber-600' }}">{{ $c['sub'] }}</div>

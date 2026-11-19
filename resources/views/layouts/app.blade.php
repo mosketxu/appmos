@@ -17,6 +17,7 @@
         {{-- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" /> --}}
 
         @livewireStyles
+        <script src="{{ asset('js/confirmar.js').'?v='.filemtime(public_path('js/confirmar.js')) }}"></script>
 
         <!-- Scripts -->
         <script src="{{ mix('js/app.js') }}" defer></script>

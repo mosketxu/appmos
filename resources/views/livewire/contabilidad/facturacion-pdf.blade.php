@@ -234,7 +234,7 @@
                             const sin = faltan();
                             if (sin.length) {
                                 this.estado = '⚠️ No se han podido subir ' + sin.length + ' fichero(s): ' + sin.join(', ') + '. Revisa que se abran bien y repite solo esos.';
-                                if (! confirm('No se han subido ' + sin.length + ' fichero(s):\n' + sin.join('\n') + '\n\n¿Analizar igualmente los demás?')) return;
+                                if (! await preguntar('No se han subido ' + sin.length + ' fichero(s):\n' + sin.join('\n') + '\n\n¿Analizar igualmente los demás?')) return;
                             }
                         }
                         this.estado = 'Leyendo (OCR)…';
