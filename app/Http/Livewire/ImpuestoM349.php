@@ -616,6 +616,67 @@ class ImpuestoM349 extends Component
         $this->prepararAeatComun(true);
     }
 
+    /** Modal de confirmación (en vez del confirm() del navegador): 'cargar' (paso 6) o 'enviar' (correo a Marta). */
+    public string $modalAccion = '';
+
+    public function pedirCargaAeat(): void
+    {
+        $this->autorizar();
+        if ($this->estadoCasilla() === 'revisado') {
+            $this->cargarEnAeat();   // ya validada: sin preguntar
+            return;
+        }
+        $this->modalAccion = 'cargar';
+    }
+
+    public function pedirEnvioMarta(): void
+    {
+        $this->autorizar();
+        $this->modalAccion = 'enviar';
+    }
+
+    public function cerrarModal(): void
+    {
+        $this->modalAccion = '';
+    }
+
+    public function aceptarModal(): void
+    {
+        $accion = $this->modalAccion;
+        $this->modalAccion = '';
+        match ($accion) { 'cargar' => $this->cargarEnAeat(), 'enviar' => $this->enviarMail(), default => null };
+    }
+
+    /**
+     * Marca la casilla 349 del periodo como «revisado» (Marta ya lo ha visto). Lo puede decidir Marta o Alex (19-nov-2026); queda un comentario en la casilla.
+     * No toca una casilla ya presentada/vista.
+     */
+    public function marcarRevisado(bool $yCargar = false): void
+    {
+        $this->autorizar();
+        $this->modalAccion = '';
+        $ob = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where('ei.entidad_id', $this->entidadId)->where('m.codigo', '349')->first(['ei.id']);
+        if (! $ob) {
+            $this->error = 'Este cliente no tiene casilla 349 en Seguimiento de impuestos.';
+            return;
+        }
+        $clave = ['entidad_impuesto_id' => $ob->id, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo];
+        $fila = DB::table('impuesto_estados')->where($clave)->first();
+        if ($fila && in_array($fila->estado, ['presentado', 'visto', 'revisado'], true)) {
+            $this->msg = 'La casilla 349 de '.$this->periodo.' ya figura como «'.$fila->estado.'»; no la toco.';
+        } else {
+            $fila ? DB::table('impuesto_estados')->where('id', $fila->id)->update(['estado' => 'revisado', 'user_id' => auth()->id(), 'updated_at' => now()])
+                  : DB::table('impuesto_estados')->insert($clave + ['estado' => 'revisado', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('impuesto_comentarios')->insert($clave + ['texto' => '✔ Marcado como revisado por '.auth()->user()->name.' (Marta ya lo ha revisado).', 'user_id' => auth()->id(),
+                'created_at' => now(), 'updated_at' => now()]);
+            $this->msg = 'Casilla 349 de '.$this->periodo.' marcada como revisada.';
+        }
+        if ($yCargar) {
+            $this->cargarEnAeat();
+        }
+    }
+
     public function cancelarMail(): void
     {
         $this->mailArmado = '';

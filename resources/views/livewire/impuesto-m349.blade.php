@@ -177,28 +177,58 @@
                     <div><span class="text-gray-500">Asunto:</span> {{ $this->asuntoMail() }}</div>
                     <div><span class="text-gray-500">Adjunto:</span> 📎 {{ $borradorInfo['nombre'] }}</div>
                     <div style="white-space:pre-line;margin:8px 0;padding:8px;background:#fff;border-radius:6px">{{ \App\Http\Livewire\ImpuestoM349::TEXTO_MARTA }}</div>
-                    <button type="button" wire:click="enviarMail" wire:confirm="¿Envío el correo a Marta con el borrador?" class="m3-btn" style="background:#059669;border-color:#059669;color:#fff;font-weight:700">✉ Confirmar y enviar</button>
+                    <button type="button" wire:click="pedirEnvioMarta" class="m3-btn" style="background:#059669;border-color:#059669;color:#fff;font-weight:700">✉ Confirmar y enviar</button>
                     <button type="button" wire:click="cancelarMail" class="m3-btn">Cancelar</button>
                 </div>
             @endif
         </div>
 
         <div class="m3-card">
-            @php
-                $estCasilla = $this->estadoCasilla();
-                $confirmaCarga = $estCasilla === 'revisado' ? '' : ($estCasilla === 'presentado'
-                    ? '¿Estás seguro? Mira que la casilla 349 de '.$periodo.' ya figura como PRESENTADA: no presentes dos veces.'
-                    : '¿Estás seguro? Mira que la casilla 349 de '.$periodo.' aún no está en «revisado» (Marta no lo ha validado).');
-            @endphp
+            @php($estCasilla = $this->estadoCasilla())
             <div class="m3-h">6 · Presentar en la AEAT (lo haces tú)</div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-                <button type="button" wire:click="cargarEnAeat" @if ($confirmaCarga) wire:confirm="{{ $confirmaCarga }}" @endif class="m3-btn" @disabled($tareaCarga || empty($res['fichero']))
+                <button type="button" wire:click="pedirCargaAeat" class="m3-btn" @disabled($tareaCarga || empty($res['fichero']))
                     title="Se abre Edge en el PC de «Ejecutar en»: eliges el certificado y el .349 queda cargado en el formulario de la AEAT. Validar y presentar lo haces tú.">🏛 Cargar en la AEAT para presentar</button>
                 @if ($tareaCarga)<span class="text-xs text-indigo-700">⏳ mira tu pantalla: elige el certificado en Edge; cuando el .349 esté cargado valida y presenta tú en esa ventana (al cerrarla termina)…</span>@endif
                 <span class="text-xs {{ $estCasilla === 'revisado' ? 'text-green-700' : 'text-gray-500' }}">
                     Casilla 349 de {{ $periodo }}: {{ $estCasilla === 'revisado' ? '✔ revisada (validada por Marta)' : ($estCasilla ?: 'sin estado') }}</span>
+                @if (! in_array($estCasilla, ['revisado', 'presentado', 'visto'], true))
+                    <button type="button" wire:click="marcarRevisado" class="m3-btn" title="Marta ya lo ha revisado: lo decides tú (o ella). Deja la casilla en «revisado» y un comentario.">✔ Marcar como revisado</button>
+                @endif
             </div>
             <div class="text-xs text-gray-500" style="margin-top:6px">No valida ni presenta por su cuenta. Al acabar, sube el justificante a la casilla 349 de Seguimiento.</div>
+        </div>
+    @endif
+
+    @if ($modalAccion !== '')
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(17,24,39,.5)">
+            <div class="w-full max-w-lg p-5 space-y-3 bg-white rounded-lg shadow-xl" wire:keydown.escape="cerrarModal">
+                @if ($modalAccion === 'enviar')
+                    <h2 class="text-lg font-semibold text-gray-900">Enviar el borrador a Marta</h2>
+                    <p class="text-sm text-gray-600">Se envía el correo a {{ \App\Support\ComunicarImpuestos::CC_DEFECTO }} con el borrador adjunto. ¿Lo envío?</p>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" wire:click="cerrarModal" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
+                        <button type="button" wire:click="aceptarModal" class="px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">✉ Sí, enviar</button>
+                    </div>
+                @else
+                    @php($estM = $this->estadoCasilla())
+                    <h2 class="text-lg font-semibold text-gray-900">¿Cargar en la AEAT?</h2>
+                    <p class="text-sm text-gray-600">
+                        @if ($estM === 'presentado' || $estM === 'visto')
+                            Mira que la casilla 349 de {{ $periodo }} <b>ya figura como presentada</b>: no presentes dos veces.
+                        @else
+                            Mira que la casilla 349 de {{ $periodo }} aún no está en «revisado» (Marta no lo ha validado). Si ya lo ha revisado, márcalo aquí y sigue.
+                        @endif
+                    </p>
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <button type="button" wire:click="cerrarModal" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
+                        <button type="button" wire:click="aceptarModal" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cargar igualmente</button>
+                        @if (! in_array($estM, ['presentado', 'visto'], true))
+                            <button type="button" wire:click="marcarRevisado(true)" class="px-3 py-1.5 text-sm font-semibold text-white bg-green-700 rounded-md hover:bg-green-800">✔ Marta ya lo ha revisado: marcar y cargar</button>
+                        @endif
+                    </div>
+                @endif
+            </div>
         </div>
     @endif
     </div>
