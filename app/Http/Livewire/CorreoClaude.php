@@ -119,7 +119,8 @@ class CorreoClaude extends Component
             $r = $this->cache()->remember('correo_claude_res_'.md5($this->v().$b.$id), 120, fn () => GraphMail::resumen($b, $id) ?? ['_falta' => true]);
             if (! empty($r['_falta'])) {
                 $r = $this->reencontrar($id);          // su id ya no vale (lo movieron/borraron fuera de Appmos): se busca por asunto y se actualiza
-                if (! $r) {
+                if (! $r) {                            // no aparece: se da por perdido y deja de contar (la conversación queda guardada, sin correo)
+                    ConfidencialidadDoc::where('user_id', auth()->id())->where('correo_id', $id)->update(['correo_id' => null]);
                     continue;
                 }
             }

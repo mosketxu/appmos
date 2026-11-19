@@ -47,7 +47,7 @@
                 <div class="px-2 py-1 border-b">
                     <button type="button" wire:click="alternarConv" class="w-full px-2 py-1 text-xs text-left rounded border {{ $soloConv ? 'bg-indigo-100 border-indigo-300 font-semibold text-indigo-800' : 'hover:bg-gray-50' }}"
                             title="Muestra solo los correos con los que has hablado con Claude, estén en la carpeta que estén">💬 Solo con conversación con Claude ({{ $soloConv ? count($lista) : count($idsConversacion) }}){{ $soloConv ? ' ✓' : '' }}</button>
-                    @if ($soloConv)<div class="mt-1 text-xs text-gray-500">{{ count($idsConversacion) }} conversaciones guardadas; las carpetas de la izquierda son solo las que tienen alguna. @if ($convCarpeta !== '')<button type="button" wire:click="$set('convCarpeta','')" class="text-indigo-600 underline">Ver de todas las carpetas</button>@endif</div>@endif
+                    @if ($soloConv && $convCarpeta !== '')<div class="mt-1 text-xs text-gray-500"><button type="button" wire:click="$set('convCarpeta','')" class="text-indigo-600 underline">Ver de todas las carpetas</button></div>@endif
                 </div>
                 <div style="overflow-y:auto; flex:1">
                     @forelse ($lista as $c)
