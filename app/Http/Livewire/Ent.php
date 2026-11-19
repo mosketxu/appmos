@@ -181,7 +181,7 @@ class Ent extends Component
             'cicloimpuesto_id'=>$this->entidad['cicloimpuesto_id'],
             'ciclofacturacion_id'=>$this->entidad['ciclofacturacion_id'],
             'metodopago_id'=>$this->entidad['metodopago_id'],
-            'estado'=>$this->entidad['estado'],
+            'estado'=>($this->entidad['estado'] ?? '') === '' ? null : $this->entidad['estado'],
             'facturar'=>$this->entidad['facturar'],
             'enviar'=>$this->entidad['enviar'],
             'idioma'=>$this->entidad['idioma'],

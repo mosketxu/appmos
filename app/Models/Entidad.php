@@ -13,7 +13,8 @@ class Entidad extends Model
     use HasFactory;
     protected $table = 'entidades';
     /** Una entidad nueva NO recibe facturas por correo hasta que se marque «Enviar» (antes la columna tenía por defecto true). */
-    protected $attributes = ['enviar' => false];
+    /** Una entidad nueva nace activa (estado 1); la lista de Seguimiento de impuestos solo enseña las activas. */
+    protected $attributes = ['enviar' => false, 'estado' => 1];
 
     protected $fillable=['entidad','alias','grupo_id','favorito','redeme','gran_empresa',
                         'entidadtipo_id','direccion','codpostal',

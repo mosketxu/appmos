@@ -119,6 +119,7 @@
                     <x-jet-label class="inline-flex items-center mt-3 md:ml-auto">
                         <span class="mr-2 text-gray-700">{{ __('Estado') }}</span>
                         <select wire:model.live="entidad.estado" class="py-1 text-sm border-gray-300 rounded-md">
+                            <option value="">—</option>
                             @foreach (\App\Models\Entidad::ESTADOS as $k => $l)
                                 <option value="{{ $k }}">{{ $l }}</option>
                             @endforeach
