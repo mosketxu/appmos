@@ -3,10 +3,13 @@
     <div class="p-3">
         <div class="flex items-baseline gap-3 mb-2">
             <h1 class="text-lg font-semibold text-gray-800">✉ Correo</h1>
-            <span class="text-xs text-gray-500">Bandeja de entrada de {{ config('contabilidad.graph.sender') }}. El correo se ve aquí en claro; a Claude solo le llega <b>anonimizado</b> y tras tu visto bueno.</span>
+            <span class="text-xs text-gray-500">Tu bandeja de entrada ({{ auth()->user()->email }}). El correo se ve aquí en claro; a Claude solo le llega <b>anonimizado</b> y tras tu visto bueno.</span>
         </div>
         @if ($cerrado)
             <div class="p-2 mb-2 text-sm text-red-800 bg-red-100 border border-red-300 rounded">El correo (Graph) no está configurado en este servidor.</div>
+        @endif
+        @if ($sinPermiso)
+            <div class="p-3 mb-2 text-sm text-red-800 bg-red-50 border border-red-300 rounded" style="white-space:pre-line">{{ $sinPermiso }}</div>
         @endif
         @if ($aviso)
             <div class="p-2 mb-2 text-sm text-green-800 bg-green-100 border border-green-300 rounded">{{ $aviso }}</div>
@@ -156,8 +159,10 @@
                                 <span class="px-1.5 py-0.5 font-semibold text-red-800 bg-red-100 border border-red-300 rounded">⚠ SIN ANONIMIZAR: Claude recibe el correo tal cual</span>
                             @else
                                 Estado: <b>{{ $doc->estado === 'borrador' ? 'por revisar' : 'listo' }}</b> ·
-                                <a href="{{ route('confidencialidad', ['doc' => $doc->id]) }}" class="text-indigo-700 underline" target="_blank">abrir en Confidencialidad</a>
-                                @if ($doc->estado === 'borrador') (para ver el original al lado y ocultar más)@endif
+                                @can('confidencialidad.ver')
+                                    <a href="{{ route('confidencialidad', ['doc' => $doc->id]) }}" class="text-indigo-700 underline" target="_blank">abrir en Confidencialidad</a>
+                                    @if ($doc->estado === 'borrador') (para ver el original al lado y ocultar más)@endif
+                                @endcan
                             @endif
                         </div>
                         <details {{ $doc->estado === 'borrador' ? 'open' : '' }} class="mb-2">

@@ -504,6 +504,11 @@ class Confidencialidad
         $t->asignados()->attach($claude->id, ['orden' => TodoTarea::siguienteOrden($claude->id)]);
         TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $u->id, 'tipo' => 'evento', 'fecha' => $hoy, 'texto' => 'creó la tarea desde Confidencialidad y la asignó a Claude']);
         $d->update(['tarea_id' => $t->id]);
+        // Decisión de Alex (19-nov-2026): las peticiones de estas pantallas (✉ Correo, Confidencialidad) se lanzan SOLAS, también las de usuarios que no son gestores:
+        // se autorizan en nombre del gestor, sin permisos extra (Claude no puede ejecutar scripts, ssh, borrar…; solo lee los documentos anonimizados y responde).
+        if (! $t->claude_autorizada_at && ! TodoClaude::esGestor($u) && ($gestor = TodoClaude::gestores()[0] ?? null)) {
+            $t->update(['claude_autorizada_at' => now(), 'claude_autorizada_por' => $gestor]);
+        }
         TodoClaude::alAsignar($t, $u);
         TodoClaude::encolar($t, true);   // sin esperar a la pasada de la hora
 

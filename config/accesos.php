@@ -32,6 +32,9 @@ return [
         'TO-DO' => [
             'todo.ver' => 'TO-DO: ver y usar Tareas y Pedir mejora (cada uno solo ve las suyas; Alex ve todas las mejoras)',
         ],
+        'Correo' => [
+            'correo.ver' => 'Pantalla ✉ Correo: leer su propio buzón de Outlook, moverlo y pedirle cosas a Claude con el correo (anonimizado o no). Cada uno solo ve su buzón',
+        ],
         'Formación' => [
             'formacion.ver' => 'Formación: pantalla personal de Alex (solo Admin; no se da a nadie)',
             'formacion.editar' => 'Formación: añadir, editar, ordenar y marcar temas',
@@ -89,7 +92,7 @@ return [
     'roles' => [
         'Admin' => '*',
         'Suma' => '*',
-        'Usuario' => ['entidades.ver', 'facturacion.ver'],
+        'Usuario' => ['entidades.ver', 'facturacion.ver', 'correo.ver'],
     ],
 
     // Modelo -> permiso necesario para escribir en él (guardar o borrar).

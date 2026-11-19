@@ -11,7 +11,7 @@ use Livewire\Component;
 /**
  * «✉ Correo» (19-nov-2026): bandeja de entrada a la izquierda, el correo en el centro (se ve en claro SOLO aquí, nunca sale hacia Anthropic) y a la derecha lo que se quiere hacer con él.
  * Para trabajar con Claude el correo (cuerpo + adjuntos) pasa por el mismo anonimizador que la pantalla Confidencialidad (se reutiliza todo): primera pasada automática,
- * «dar por bueno» (borra el original) y chat con Claude, que solo ve lo anonimizado. Solo Admin (permiso confidencialidad.ver).
+ * «dar por bueno» (borra el original) y chat con Claude, que solo ve lo anonimizado. Lo puede usar cualquier usuario con el permiso correo.ver (19-nov-2026) y cada uno lee SOLO su buzón.
  */
 class CorreoClaude extends Component
 {
@@ -34,12 +34,12 @@ class CorreoClaude extends Component
 
     public function hydrate(): void
     {
-        abort_unless(auth()->user()?->can('confidencialidad.ver'), 403);
+        abort_unless(auth()->user()?->can('correo.ver'), 403);
     }
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->can('confidencialidad.ver'), 403);
+        abort_unless(auth()->user()?->can('correo.ver'), 403);
     }
 
     /**
@@ -59,9 +59,13 @@ class CorreoClaude extends Component
         return Cache::store('correo');
     }
 
+    /** El buzón es SIEMPRE el del usuario que está conectado (nunca uno elegido en pantalla): cada uno ve solo el suyo. */
     protected function buzon(): string
     {
-        return (string) config('contabilidad.graph.sender');
+        $e = (string) auth()->user()?->email;
+        abort_if($e === '', 403, 'Tu usuario no tiene correo.');
+
+        return mb_strtolower($e);
     }
 
     protected function lineas(string $t): array
@@ -105,6 +109,10 @@ class CorreoClaude extends Component
             return;                                   // soltarlo en la carpeta donde ya está
         }
         try {
+            try {
+                GraphMail::marcarLeido($this->buzon(), $id);      // al archivarlo queda como leído (si falla, no impide moverlo)
+            } catch (\Throwable $e) {
+            }
             GraphMail::mover($this->buzon(), $id, $destino);
         } catch (\Throwable $e) {
             $this->aviso = 'No se ha podido mover el correo.';
@@ -349,11 +357,14 @@ class CorreoClaude extends Component
     public function render()
     {
         $aviso = '';
+        $sinPermiso = '';
         $lista = [];
         $cerrado = ! GraphMail::configurado();
         if (! $cerrado) {
             try {
                 $lista = $this->cache()->remember($this->claveLista(), 30, fn () => GraphMail::recientes($this->buzon(), $this->max, $this->busqueda, $this->carpeta));
+            } catch (\App\Support\GraphSinPermiso $e) {
+                $sinPermiso = $e->getMessage();        // el buzón de este usuario aún no está en el grupo de Exchange de Appmos: el texto dice qué hacer
             } catch (\Throwable $e) {
                 $aviso = 'No se ha podido leer el buzón ('.class_basename($e).').';
             }
@@ -411,6 +422,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso'));
     }
 }

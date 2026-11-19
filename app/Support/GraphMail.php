@@ -126,6 +126,12 @@ class GraphMail
         }
     }
 
+    /** Marca un correo como leído (o no leído). */
+    public static function marcarLeido(string $buzon, string $id, bool $leido = true): void
+    {
+        self::api('patch', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id), ['isRead' => $leido]);
+    }
+
     /** Mueve un correo a otra carpeta (el correo cambia de id al moverse; devuelve el nuevo). */
     public static function mover(string $buzon, string $id, string $destino): string
     {

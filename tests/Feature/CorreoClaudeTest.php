@@ -32,6 +32,7 @@ class CorreoClaudeTest extends TestCase
             '*mailFolders/deleteditems?*' => Http::response(['id' => 'FX']),
             '*mailFolders/junkemail?*' => Http::response(['id' => 'FJ']),
             '*mailFolders/archive?*' => Http::response([], 404),
+            '*messages/AAA' => Http::response(['id' => 'AAA', 'isRead' => true]),
             '*messages/AAA/move' => Http::response(['id' => 'NUEVO']),
             '*mailFolders/inbox/messages*' => Http::response(['value' => [
                 ['id' => 'AAA', 'subject' => 'Factura de prueba', 'from' => ['emailAddress' => ['name' => 'Proveedor Uno', 'address' => 'p@example.test']],
@@ -49,10 +50,62 @@ class CorreoClaudeTest extends TestCase
         ]);
     }
 
-    public function test_solo_admin_entra(): void
+    protected function usuarioConCorreo(string $email = 'ana@example.test'): \App\Models\User
+    {
+        \Spatie\Permission\Models\Permission::findOrCreate('correo.ver', 'web');
+        $u = \App\Models\User::factory()->create(['activo' => true, 'email' => $email]);
+        $u->givePermissionTo('correo.ver');
+
+        return $u;
+    }
+
+    public function test_sin_el_permiso_no_entra(): void
     {
         $this->actingAs(\App\Models\User::factory()->create(['activo' => true]));
         $this->get('/correo')->assertForbidden();
+    }
+
+    public function test_cualquier_usuario_con_el_permiso_entra_y_lee_solo_su_buzon(): void
+    {
+        $this->actingAs($this->usuarioConCorreo());
+        $this->get('/correo')->assertOk();
+        Livewire::test(CorreoClaude::class)->assertSee('Proveedor Uno')->assertSee('ana@example.test');
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'users/ana%40example.test/mailFolders'));
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'buzon%40example.test'));
+    }
+
+    public function test_el_permiso_correo_ver_lo_tienen_los_roles_de_siempre(): void
+    {
+        \Spatie\Permission\Models\Role::findOrCreate('Usuario', 'web');
+        (include base_path('database/migrations/2026_11_19_150000_permiso_correo_ver.php'))->up();
+        $this->assertTrue(\Spatie\Permission\Models\Role::findByName('Usuario', 'web')->hasPermissionTo('correo.ver'));
+    }
+
+    public function test_buzon_sin_permiso_en_exchange_explica_que_hacer(): void
+    {
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        Http::preventStrayRequests();
+        Http::fake(['login.microsoftonline.com/*' => Http::response(['access_token' => 'x']), '*' => Http::response(['error' => 'x'], 403)]);
+        $this->actingAs($this->usuarioConCorreo('nuevo@example.test'));
+        Livewire::test(CorreoClaude::class)->assertSee('Appmos-Buzones')->assertSee('nuevo@example.test');
+    }
+
+    public function test_la_peticion_de_un_usuario_normal_se_autoriza_sola(): void
+    {
+        \Illuminate\Support\Facades\Process::fake(['*' => \Illuminate\Support\Facades\Process::result('x')]);
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        \App\Models\User::factory()->create(['email' => 'jefe@example.test', 'activo' => true]);
+        $u = $this->usuarioConCorreo();
+        $this->actingAs($u);
+        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'listo', 'correo_id' => 'AAA']);
+        mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
+        file_put_contents(\App\Support\Confidencialidad::dir($d).'/meta.json', json_encode(['sin_anonimizar' => true]));
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('instruccion', 'Resume')->call('pedir');
+        $t = \App\Models\TodoTarea::find($d->fresh()->tarea_id);
+        $this->assertNotNull($t->claude_autorizada_at);
+        $this->assertSame([], (array) $t->claude_permisos);          // sin permisos extra
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::table('tareas')->where('proceso', 'claude.todo')->count());   // ya está en la cola
+        \App\Support\Confidencialidad::borrar($d);
     }
 
     public function test_lista_y_correo_abierto_con_adjuntos_sin_los_incrustados(): void
@@ -156,6 +209,7 @@ class CorreoClaudeTest extends TestCase
         $this->actingAs($this->adminUser());
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->call('mover', 'F3')->assertSet('sel', null)->assertSee('Correo movido');
         Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/AAA/move') && $r['destinationId'] === 'F3');
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), 'messages/AAA') && $r['isRead'] === true);   // queda leído
         Livewire::test(CorreoClaude::class)->call('moverId', 'inbox', 'AAA');       // soltarlo en la carpeta donde ya está: no hace nada
         Http::assertSentCount(Http::recorded()->count());
         $this->assertCount(1, Http::recorded(fn ($r) => str_ends_with($r->url(), '/move')));

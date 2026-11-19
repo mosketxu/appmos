@@ -66,7 +66,7 @@
                         🔒 Confidencialidad
                     </x-jet-nav-link>
                     @endcan
-                    @can('confidencialidad.ver')
+                    @can('correo.ver')
                     <x-jet-nav-link href="{{ route('correo') }}" :active="request()->routeIs('correo')">
                         ✉ Correo
                     </x-jet-nav-link>
@@ -238,7 +238,7 @@
                 🔒 Confidencialidad
             </x-jet-responsive-nav-link>
             @endcan
-            @can('confidencialidad.ver')
+            @can('correo.ver')
             <x-jet-responsive-nav-link href="{{ route('correo') }}" :active="request()->routeIs('correo')">
                 ✉ Correo
             </x-jet-responsive-nav-link>
