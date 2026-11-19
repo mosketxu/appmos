@@ -60,6 +60,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     // «✉ Correo» (19-nov-2026): bandeja + correo + qué hacer con él (anonimiza con Confidencialidad y chat con Claude). Todos los usuarios, cada uno con su buzón.
     Route::get('/correo', fn () => view('correo'))->name('correo')->middleware('can:correo.ver');
     Route::get('/confidencialidad', fn () => view('confidencialidad'))->name('confidencialidad')->middleware('can:confidencialidad.ver');
+    Route::get('/correo/adjunto', [\App\Http\Controllers\CorreoAdjuntoController::class, 'pdf'])->name('correo.adjunto')->middleware('can:correo.ver');
     Route::get('/confidencialidad/{id}/archivo/{n}', [\App\Http\Controllers\ConfidencialidadArchivoController::class, 'ver'])->whereNumber(['id', 'n'])->name('confidencialidad.archivo')->middleware('can:correo.ver');
     Route::get('/confidencialidad/{id}/original/{n}', [\App\Http\Controllers\ConfidencialidadArchivoController::class, 'original'])->whereNumber(['id', 'n'])->name('confidencialidad.original')->middleware('can:confidencialidad.ver');
     Route::get('/todo/mejoras', fn () => view('todo.mejoras'))->name('todo.mejoras')->middleware('can:todo.ver');

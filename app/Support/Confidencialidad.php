@@ -500,7 +500,7 @@ class Confidencialidad
                     .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.')
                 .($d->correo_id ? "\n\nSi te piden REDACTAR un correo: Appmos solo muestra el campo «respuesta» de tu línea RESULTADO_TODO, así que el TEXTO COMPLETO del correo tiene que ir DENTRO de ese campo, en líneas propias "
                     ."(con \\n para los saltos de línea del JSON): una línea «---BORRADOR---», después opcionalmente las líneas «MODO: respuesta» (contesta al correo abierto, por defecto) o «MODO: nuevo» (correo nuevo a otra persona), "
-                    ."«PARA: direcciones» y «ASUNTO: texto», luego el correo (saludo, cuerpo y despedida SIN nombre ni firma; Appmos pone la firma y el pie) y por último una línea «---FIN---». "
+                    ."«PARA: direcciones», «ASUNTO: texto» y, si deben ir con el borrador ficheros adjuntos del correo original, «ADJUNTOS: todos» o «ADJUNTOS: nombre1; nombre2» (Appmos los adjunta al borrador al crearlo; solo si procede), luego el correo (saludo, cuerpo y despedida SIN nombre ni firma; Appmos pone la firma y el pie) y por último una línea «---FIN---». "
                     ."Appmos crea el borrador AL MOMENTO en el Outlook de quien lo pidió (carpeta Borradores; nunca se envía). No describas el correo ni lo resumas: escríbelo entero. No intentes crear el borrador tú ni enviar nada. Fuera del bloque puedes añadir una nota breve." : ''),
             'creador_id' => $u->id,
             'prioridad' => 'normal',
@@ -556,9 +556,9 @@ class Confidencialidad
         if (($meta['borrador_auto']['hash'] ?? null) === $hash || mb_strlen($bloque) < 10) {
             return false;
         }
-        $cab = ['modo' => 'respuesta', 'para' => '', 'asunto' => ''];
+        $cab = ['modo' => 'respuesta', 'para' => '', 'asunto' => '', 'adjuntos' => ''];
         $lineas = preg_split('/\R/u', $bloque);
-        while ($lineas && preg_match('/^\s*(MODO|PARA|ASUNTO)\s*:\s*(.*)$/iu', $lineas[0], $h)) {
+        while ($lineas && preg_match('/^\s*(MODO|PARA|ASUNTO|ADJUNTOS)\s*:\s*(.*)$/iu', $lineas[0], $h)) {
             $cab[mb_strtolower($h[1])] = trim($h[2]);
             array_shift($lineas);
         }
@@ -581,9 +581,57 @@ class Confidencialidad
             $borradorId = GraphMail::crearBorradorHtml($buzon, $para, [], $cab['asunto'] !== '' ? $cab['asunto'] : '(sin asunto)', $html);
         }
         $meta['borrador_auto'] = ['hash' => $hash, 'modo' => $modo, 'hora' => now()->format('H:i'), 'id' => $borradorId];
+        if (trim($cab['adjuntos']) !== '') {          // Claude pide que vayan adjuntos del correo original (solo al borrador; nunca se envía nada)
+            try {
+                $meta['borrador_auto']['adjuntados'] = self::adjuntarOriginales($buzon, $d->correo_id, $borradorId, self::restaurar($d, $cab['adjuntos']));
+            } catch (\Throwable $e) {
+                $meta['borrador_auto']['adjuntados'] = [];
+                $meta['borrador_auto']['adjuntos_error'] = 'No se han podido adjuntar los ficheros ('.class_basename($e).').';
+            }
+        }
         self::guardarMeta($d, $meta);
 
         return true;
+    }
+
+    /**
+     * Adjunta al borrador los adjuntos del correo original que pida Claude: «todos» o nombres separados por «;» (coincide el nombre entero o parte de él, sin mayúsculas).
+     * Solo adjuntos del propio correo del usuario, máx. 12 MB cada uno. Devuelve los nombres adjuntados.
+     */
+    public static function adjuntarOriginales(string $buzon, string $correoId, string $borradorId, string $pedido): array
+    {
+        $pedido = trim($pedido);
+        $todos = in_array(mb_strtolower($pedido), ['todos', 'todo', 'all', '*'], true);
+        $quiero = array_values(array_filter(array_map(fn ($x) => mb_strtolower(trim($x)), preg_split('/[;\n|]+/u', $pedido) ?: [])));
+        $hechos = [];
+        foreach (GraphMail::adjuntosInfo($buzon, $correoId) as $a) {
+            if ($a['incrustado'] || $a['tamano'] > 12 * 1048576) {
+                continue;
+            }
+            $n = mb_strtolower($a['nombre']);
+            $coincide = $todos;
+            foreach ($quiero as $q) {
+                $coincide = $coincide || $n === $q || str_contains($n, $q);
+            }
+            if (! $coincide) {
+                continue;
+            }
+            $c = GraphMail::adjuntoContenido($buzon, $correoId, $a['id']);
+            $bytes = base64_decode($c['bytes'], true);
+            if ($bytes === false) {
+                continue;
+            }
+            $tmp = tempnam(sys_get_temp_dir(), 'adj');
+            try {
+                file_put_contents($tmp, $bytes);
+                GraphMail::adjuntar($buzon, $borradorId, $a['nombre'], $tmp);
+                $hechos[] = $a['nombre'];
+            } finally {
+                @unlink($tmp);
+            }
+        }
+
+        return $hechos;
     }
 
     /** Respuestas de Claude en la tarea, con los datos reales puestos. [{fecha, texto, estado}] */

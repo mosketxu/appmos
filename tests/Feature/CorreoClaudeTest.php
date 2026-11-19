@@ -491,4 +491,28 @@ class CorreoClaudeTest extends TestCase
         Livewire::test(CorreoClaude::class);
         Http::assertSent(fn ($r) => str_contains($r->url(), 'graph.microsoft.com') && str_contains($r->header('Prefer')[0] ?? '', 'ImmutableId'));
     }
+
+    public function test_adjuntos_pedidos_por_claude_van_solos_al_borrador(): void
+    {
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        $u = $this->usuarioConCorreo('jefe@example.test');
+        $this->actingAs($u);
+        [$d, $t] = $this->tareaConDoc($u);
+        \App\Support\TodoClaude::registrar($t, 'hecha', "---BORRADOR---\nADJUNTOS: f.pdf\nHello,\nSee attached.\n---FIN---");
+        $this->assertSame(['f.pdf'], \App\Support\Confidencialidad::leerMeta($d)['borrador_auto']['adjuntados']);
+        $this->assertCount(2, Http::recorded(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), 'messages/D1/attachments')));   // logo + f.pdf
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_vista_previa_de_pdf_solo_pdf_y_solo_con_permiso(): void
+    {
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        Http::fake(['*messages/AAA/attachments/PDF1*' => Http::response(['id' => 'PDF1', 'name' => 'a.pdf', 'contentType' => 'application/pdf', 'contentBytes' => base64_encode("%PDF-1.4 x")]),
+            '*messages/AAA/attachments/TXT1*' => Http::response(['id' => 'TXT1', 'name' => 'a.pdf', 'contentType' => 'application/pdf', 'contentBytes' => base64_encode('no soy pdf')]),
+            'login.microsoftonline.com/*' => Http::response(['access_token' => 'x'])]);
+        $this->get('/correo/adjunto?m=AAA&a=PDF1')->assertRedirect();
+        $this->actingAs($this->usuarioConCorreo());
+        $this->get('/correo/adjunto?m=AAA&a=PDF1')->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->get('/correo/adjunto?m=AAA&a=TXT1')->assertNotFound();
+    }
 }

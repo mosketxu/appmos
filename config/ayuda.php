@@ -57,8 +57,8 @@ HTML],
 <h4>Las columnas</h4>
 <ul>
 <li><b>Carpetas</b> (izquierda): con los no leídos y las subcarpetas (▸). Arrastra un correo a una carpeta para moverlo.</li>
-<li><b>Lista</b>: buscador, «Cargar más» y el filtro <b>💬 Solo con conversación con Claude</b>, que enseña esos correos estén en la carpeta que estén.</li>
-<li><b>El correo</b>: se ve en claro solo aquí. «🖼 Mostrar imágenes» es voluntario (las remotas pueden avisar al remitente). Pulsa una imagen adjunta para verla. Botones <b>📁 Mover a…</b> y <b>🗑 Eliminar</b> (va a Elementos eliminados; queda leído).</li>
+<li><b>Lista</b>: buscador, «Cargar más» y el filtro <b>💬 Solo con conversación con Claude</b>: enseña esos correos estén donde estén y, a la izquierda, <b>solo las carpetas que tienen alguno</b> (púlsalas para acotar).</li>
+<li><b>El correo</b>: se ve en claro solo aquí. «🖼 Mostrar imágenes» es voluntario (las remotas pueden avisar al remitente). Pulsa una imagen (🖼) o un PDF (📄) adjunto para verlo aquí mismo. Botones <b>📁 Mover a…</b> y <b>🗑 Eliminar</b> (va a Elementos eliminados; queda leído).</li>
 <li><b>Qué hacer con este correo</b> (derecha): escribe o <b>dicta 🎤</b> lo que quieres y elige cómo.</li>
 </ul>
 <h4>Pedirle cosas a Claude</h4>
@@ -71,7 +71,7 @@ HTML],
 <h4>Borradores en Outlook</h4>
 <ul>
 <li>Si pides redactar un correo, <b>se crea solo en tu carpeta Borradores</b> (con tu firma, logo y pie legal); nunca se envía. Si no lo ves, pulsa F9 en Outlook.</li>
-<li>Puedes <b>adjuntar</b> (opcional) adjuntos del correo original o ficheros de tu equipo, antes o después de crearlo.</li>
+<li>Puedes <b>adjuntar</b> (opcional) adjuntos del correo original o ficheros de tu equipo, antes o después de crearlo. Si lo que pides lo requiere, <b>Claude también los adjunta solo</b> al borrador (te lo dice debajo); revísalo en Outlook antes de enviar.</li>
 </ul>
 <h4>Ojo</h4>
 <ul><li>Es seudonimización de mejor esfuerzo: revisa lo que mandas. Si ves «sin permiso» en rojo, tu buzón aún no está habilitado: manda el texto a Alex.</li></ul>
