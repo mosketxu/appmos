@@ -54,6 +54,12 @@ class CorreoClaudeTest extends TestCase
             ->assertSee('Anonimizar y preparar');
     }
 
+    public function test_el_clic_de_cada_fila_es_un_atributo_bien_formado(): void
+    {
+        $this->actingAs($this->adminUser());
+        $this->assertStringContainsString('wire:click="seleccionar(\'AAA\')"', Livewire::test(CorreoClaude::class)->html());
+    }
+
     public function test_el_iframe_va_aislado_y_sin_scripts_ni_imagenes_remotas(): void
     {
         $h = CorreoClaude::documentoSeguro(['tipo' => 'html', 'html' => '<p>Hola</p><script>alert(1)</script><iframe src="x"></iframe>']);

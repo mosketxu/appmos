@@ -22,7 +22,7 @@
                 <div style="overflow-y:auto; flex:1">
                     @forelse ($lista as $c)
                         @php $f = \Carbon\Carbon::parse($c['fecha'])->timezone('Europe/Madrid'); @endphp
-                        <button type="button" wire:key="c-{{ md5($c['id']) }}" wire:click='seleccionar(@js($c['id']))'
+                        <button type="button" wire:key="c-{{ md5($c['id']) }}" wire:click="seleccionar('{{ $c['id'] }}')"
                                 class="block w-full px-3 py-2 text-left border-b hover:bg-indigo-50 {{ $sel === $c['id'] ? 'bg-indigo-100' : '' }}">
                             <div class="flex items-baseline justify-between gap-2">
                                 <span class="text-sm truncate {{ $c['leido'] ? 'text-gray-700' : 'font-bold text-blue-700' }}">{{ $c['nombre'] }}</span>
