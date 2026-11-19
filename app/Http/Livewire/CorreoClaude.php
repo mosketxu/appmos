@@ -242,7 +242,15 @@ class CorreoClaude extends Component
         }
         [$d, $omitidos] = Conf::crearSinAnonimizar(auth()->user(), $archivos, mb_substr('Correo (sin anonimizar): '.($m['asunto'] ?? ''), 0, 120));
         $d->update(['correo_id' => $this->sel]);
-        $this->aviso = 'Listo: el correo irá a Claude tal cual. '.($omitidos ? 'No se incluyen estos adjuntos (solo PDF, imágenes y texto): '.implode(', ', $omitidos).'. ' : '').'Escribe qué quieres que haga.';
+        $extra = $omitidos ? 'No se incluyen estos adjuntos (solo PDF, imágenes y texto): '.implode(', ', $omitidos).'. ' : '';
+        if (mb_strlen(trim($this->instruccion)) >= 3) {          // con el texto ya escrito se envía en el mismo paso
+            Conf::pedirAClaude($d, auth()->user(), $this->instruccion);
+            $this->instruccion = '';
+            $this->aviso = 'Enviado a Claude tal cual (sin anonimizar). '.$extra.'La respuesta saldrá aquí en unos minutos.';
+
+            return;
+        }
+        $this->aviso = 'Listo: el correo irá a Claude tal cual. '.$extra.'Escribe qué quieres que haga.';
     }
 
     public function darPorBueno(): void

@@ -112,7 +112,14 @@
                         @if ($doc && $doc->estado === 'error')
                             <div class="p-2 mb-2 text-xs text-red-800 bg-red-100 border border-red-300 rounded">No se pudo anonimizar: {{ $doc->error ?: 'error desconocido' }}</div>
                         @endif
-                        <p class="mb-2 text-xs text-gray-500">Para trabajar con Claude, el correo y sus adjuntos se anonimizan antes (los datos personales pasan a ser <b>Persona1, Empresa1, Mail1…</b>). Después revisas el resultado y lo das por bueno.</p>
+                        <label class="block text-xs text-gray-600">¿Qué quieres que haga Claude con este correo?</label>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            <button type="button" wire:click="$set('instruccion', 'Resume este correo en pocas líneas y dime qué me piden y si hay algún plazo.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">Resumir y plazos</button>
+                            <button type="button" wire:click="$set('instruccion', 'Redacta una respuesta a este correo, breve y profesional, en español.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">Redactar respuesta</button>
+                            <button type="button" wire:click="$set('instruccion', 'Dime qué tengo que hacer a partir de este correo, paso a paso.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">¿Qué tengo que hacer?</button>
+                        </div>
+                        <textarea wire:model="instruccion" rows="4" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="Escribe aquí lo que quieres hacer con este correo…"></textarea>
+                        <p class="mt-1 mb-2 text-xs text-gray-500">Si lo anonimizas, el correo y sus adjuntos pasan a tener etiquetas (<b>Persona1, Empresa1, Mail1…</b>); tu texto también. Lo revisas, lo das por bueno y entonces pulsas Enviar.</p>
                         <label class="block text-xs text-gray-600">Perfil
                             <select wire:model="perfil" class="w-full mt-0.5 text-sm border-gray-300 rounded">
                                 <option value="estricto">Estricto (extractos, personas y empresas)</option>
@@ -130,7 +137,7 @@
                         <div class="pt-3 mt-3 text-center border-t">
                             <button type="button" wire:click="sinAnonimizar" wire:loading.attr="disabled" wire:target="sinAnonimizar"
                                     wire:confirm="¿Estás seguro? Mira que el correo y sus adjuntos (PDF, imágenes y texto) saldrán EN CLARO hacia Anthropic, con todos los datos personales que contengan. Es decisión tuya y se hace."
-                                    class="text-xs text-gray-500 underline hover:text-red-700">Prefiero enviarlo a Claude sin anonimizar…</button>
+                                    class="text-xs text-gray-500 underline hover:text-red-700">Prefiero enviarlo a Claude sin anonimizar{{ trim($instruccion) !== '' ? ' (y enviar ya)' : '' }}…</button>
                             <span wire:loading wire:target="sinAnonimizar" class="text-xs text-amber-700">⏳</span>
                         </div>
                     @elseif ($doc->estado === 'procesando')

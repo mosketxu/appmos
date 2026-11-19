@@ -166,4 +166,12 @@ class CorreoClaudeTest extends TestCase
         $this->actingAs($this->adminUser());
         Livewire::test(CorreoClaude::class)->call('mover', 'F3')->assertStatus(422);
     }
+
+    public function test_el_cuadro_de_texto_se_ve_desde_el_principio_y_se_conserva_al_anonimizar(): void
+    {
+        $this->actingAs($this->adminUser());
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')
+            ->assertSee('Escribe aquí lo que quieres hacer con este correo')
+            ->set('instruccion', 'Resume')->assertSet('instruccion', 'Resume');
+    }
 }
