@@ -11,6 +11,21 @@ class Ents extends Component
 {
     use Concerns\CoResponsables;
 
+    /** Entidad cuyo recuadro de ficheros base de SAGE está abierto en el modal (19-nov-2026); null = cerrado. */
+    public ?int $ficherosBaseDe = null;
+
+    public function abrirFicherosBase(int $entidadId): void
+    {
+        if (Entidad::find($entidadId)) {
+            $this->ficherosBaseDe = $entidadId;
+        }
+    }
+
+    public function cerrarFicherosBase(): void
+    {
+        $this->ficherosBaseDe = null;
+    }
+
     // En la URL: al entrar a editar y volver atrás se siguen aplicando (pedido 1-oct-2026)
     #[Url(except: '')]
     public $search='';

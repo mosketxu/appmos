@@ -123,6 +123,7 @@
                         <x-icon.usergroup href="{{ route('entidad.contacto',$entidad) }}"  title="Contactos" class="ent-solo-pc"/>
                         <x-icon.clock-a href="{{ route('entidad.historial',$entidad) }}"  title="Historial" class="ent-solo-pc"/>
                         <x-icon.impuestos href="{{ route('entidad.impuestos',$entidad) }}" title="Impuestos" class="hidden sm:inline-block ent-solo-pc"/>
+                        <button type="button" wire:click="abrirFicherosBase({{ $entidad->id }})" title="Ficheros base de SAGE (plan, clientes, proveedores, mayor, sumas y saldos)" class="text-lg leading-none transform hover:scale-125">📂</button>
                         <x-icon.edit-a href="{{ route('entidad.edit',$entidad) }}"  title="Editar"/>
                         {{-- Ocultos a petición: botones Prefactura y Factura
                         <x-icon.ruble-sign-a href="{{ route('facturacion.prefacturasentidad',$entidad)}}"  title="Pre-Facturas"/>
@@ -157,6 +158,17 @@
             @endif
             @include('livewire.ents._coresp', ['modo' => 'modal'])
             @include('livewire.ents._cambio_estado')
+            @if ($ficherosBaseDe && ($entFb = \App\Models\Entidad::find($ficherosBaseDe)))
+                <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.4)" wire:click.self="cerrarFicherosBase">
+                    <div class="w-full max-w-3xl p-4 overflow-y-auto bg-white rounded-lg shadow-xl" style="max-height:90vh">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <h3 class="font-semibold text-gray-900">Ficheros base · {{ $entFb->entidad }}</h3>
+                            <button type="button" wire:click="cerrarFicherosBase" class="text-xl leading-none text-gray-400 hover:text-gray-700">&times;</button>
+                        </div>
+                        @livewire('ficheros-base-subida', ['entidadId' => (int) $entFb->id, 'abierto' => true], key('fb-ents-'.$entFb->id))
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>
