@@ -45,9 +45,12 @@ class CorreoClaudeTest extends TestCase
                 ['id' => 'BBB', 'subject' => 'Otro', 'from' => ['emailAddress' => ['name' => 'Ana', 'address' => 'a@example.test']],
                     'receivedDateTime' => '2026-11-19T11:00:00Z', 'hasAttachments' => false, 'isRead' => true, 'bodyPreview' => 'x'],
             ]]),
+            '*messages/AAA/attachments/ATT1*' => Http::response(['id' => 'ATT1', 'name' => 'f.pdf', 'contentType' => 'application/pdf', 'contentBytes' => base64_encode('PDFDATA')]),
+            '*messages/AAA/attachments/ATT2*' => Http::response(['id' => 'ATT2', 'name' => 'foto.png', 'contentType' => 'image/png', 'contentBytes' => 'iVBORw0KGgo=']),
             '*messages/AAA/attachments*' => Http::response(['value' => [
-                ['name' => 'f.pdf', 'size' => 2048, 'contentType' => 'application/pdf', 'isInline' => false],
-                ['name' => 'logo.png', 'size' => 900, 'contentType' => 'image/png', 'isInline' => true],
+                ['id' => 'ATT1', 'name' => 'f.pdf', 'size' => 2048, 'contentType' => 'application/pdf', 'isInline' => false],
+                ['id' => 'ATT2', 'name' => 'foto.png', 'size' => 2000, 'contentType' => 'image/png', 'isInline' => false],
+                ['id' => 'ATT3', 'name' => 'logo.png', 'size' => 900, 'contentType' => 'image/png', 'isInline' => true],
             ]]),
             '*messages/AAA?*' => Http::response(['id' => 'AAA', 'subject' => 'Factura de prueba', 'from' => ['emailAddress' => ['name' => 'Proveedor Uno', 'address' => 'p@example.test']],
                 'toRecipients' => [['emailAddress' => ['address' => 'buzon@example.test']]], 'ccRecipients' => [], 'receivedDateTime' => '2026-11-19T10:00:00Z',
@@ -417,6 +420,53 @@ class CorreoClaudeTest extends TestCase
         $d = $this->docListo($u);
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->call('mover', 'F3');
         $this->assertSame('NUEVO', $d->fresh()->correo_id);          // el id nuevo que devuelve Graph al mover
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_vista_previa_de_un_adjunto_de_imagen_voluntaria(): void
+    {
+        $this->actingAs($this->adminUser());
+        $c = Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA');
+        $this->assertStringNotContainsString('data:image/png;base64,iVBOR', $c->html());                  // por defecto no se carga
+        $c->call('verAdjunto', 'ATT2');
+        $this->assertStringContainsString('data:image/png;base64,iVBORw0KGgo=', $c->html());
+        $this->assertStringNotContainsString('data:application/pdf', $c->html());
+        $c->call('verAdjunto', null);
+        $this->assertStringNotContainsString('data:image/png;base64,iVBOR', $c->html());
+    }
+
+    public function test_los_adjuntos_del_borrador_son_voluntarios_y_se_suben_al_crearlo(): void
+    {
+        $u = $this->usuarioConCorreo();
+        $this->actingAs($u);
+        $d = $this->docListo($u);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('bTexto', 'Hola')
+            ->set('adjOriginales', ['ATT1'])->set('subidasAdj', [\Illuminate\Http\UploadedFile::fake()->create('mayor.pdf', 50)])->call('crearBorrador')->assertSee('con 2 adjunto');
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/D1/attachments') && ($r['name'] ?? '') === 'f.pdf');
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/D1/attachments') && ($r['name'] ?? '') === 'mayor.pdf');
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_sin_elegir_adjuntos_no_se_adjunta_nada_salvo_el_logo(): void
+    {
+        $u = $this->usuarioConCorreo();
+        $this->actingAs($u);
+        $d = $this->docListo($u);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('bTexto', 'Hola')->call('crearBorrador')->assertSee('Borrador creado');
+        $this->assertCount(1, Http::recorded(fn ($r) => str_ends_with($r->url(), 'messages/D1/attachments')));      // solo el logo
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_adjuntar_a_un_borrador_ya_creado_automaticamente(): void
+    {
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        $u = $this->usuarioConCorreo('jefe@example.test');
+        $this->actingAs($u);
+        [$d, $t] = $this->tareaConDoc($u);
+        \App\Support\TodoClaude::registrar($t, 'hecha', "---BORRADOR---\nHello,\nSee attached.\n---FIN---");
+        $this->assertSame('D1', \App\Support\Confidencialidad::leerMeta($d)['borrador_auto']['id']);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('adjOriginales', ['ATT2'])->call('adjuntarAlBorrador')->assertSee('Se han añadido 1 adjunto');
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/D1/attachments') && ($r['name'] ?? '') === 'foto.png');
         \App\Support\Confidencialidad::borrar($d);
     }
 }

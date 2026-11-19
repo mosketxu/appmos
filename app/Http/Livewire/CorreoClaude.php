@@ -7,6 +7,7 @@ use App\Support\Confidencialidad as Conf;
 use App\Support\GraphMail;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * «✉ Correo» (19-nov-2026): bandeja de entrada a la izquierda, el correo en el centro (se ve en claro SOLO aquí, nunca sale hacia Anthropic) y a la derecha lo que se quiere hacer con él.
@@ -15,6 +16,8 @@ use Livewire\Component;
  */
 class CorreoClaude extends Component
 {
+    use WithFileUploads;
+
     public string $busqueda = '';
     public int $max = 40;
     public ?string $sel = null;
@@ -39,6 +42,12 @@ class CorreoClaude extends Component
     public string $bTexto = '';
     public string $bHash = '';
     public string $bHecho = '';
+    /** Adjuntos voluntarios del borrador: ficheros subidos, adjuntos del correo original (ids de Graph) y el id del último borrador creado a mano. */
+    public array $subidasAdj = [];
+    public array $adjOriginales = [];
+    public string $bBorradorId = '';
+    /** Vista previa de un adjunto de imagen del correo abierto (id de Graph). */
+    public ?string $verAdj = null;
 
     public function hydrate(): void
     {
@@ -238,6 +247,63 @@ class CorreoClaude extends Component
         }
     }
 
+    public function verAdjunto(?string $id): void
+    {
+        $this->verAdj = ($id === null || $id === $this->verAdj) ? null : $id;
+    }
+
+    /** Adjunta al borrador $borradorId lo que se haya elegido (adjuntos del correo original y ficheros subidos). Devuelve cuántos. */
+    protected function aplicarAdjuntos(string $borradorId): int
+    {
+        $this->validate(['subidasAdj.*' => 'file|max:12288'], ['subidasAdj.*.max' => 'Cada fichero puede pesar hasta 12 MB.', 'subidasAdj.*.file' => 'Fichero no válido.']);
+        $n = 0;
+        foreach ($this->adjOriginales as $aid) {
+            $a = GraphMail::adjuntoContenido($this->buzon(), $this->sel, $aid);
+            $bytes = base64_decode($a['bytes'], true);
+            if ($bytes === false || $bytes === '') {
+                continue;
+            }
+            $tmp = tempnam(sys_get_temp_dir(), 'adj_');
+            file_put_contents($tmp, $bytes);
+            try {
+                GraphMail::adjuntar($this->buzon(), $borradorId, $a['nombre'], $tmp);
+                $n++;
+            } finally {
+                @unlink($tmp);
+            }
+        }
+        foreach ($this->subidasAdj as $f) {
+            GraphMail::adjuntar($this->buzon(), $borradorId, $f->getClientOriginalName(), $f->getRealPath());
+            $n++;
+        }
+        $this->adjOriginales = [];
+        $this->subidasAdj = [];
+
+        return $n;
+    }
+
+    /** Añade adjuntos a un borrador ya creado (el de la última petición, o el creado a mano). */
+    public function adjuntarAlBorrador(): void
+    {
+        $d = $this->doc();
+        $id = (string) ($d ? (Conf::leerMeta($d)['borrador_auto']['id'] ?? '') : '') ?: $this->bBorradorId;
+        if ($id === '') {
+            $this->aviso = 'Todavía no hay un borrador creado al que adjuntar.';
+
+            return;
+        }
+        try {
+            $n = $this->aplicarAdjuntos($id);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->aviso = 'No se han podido adjuntar los ficheros al borrador.';
+
+            return;
+        }
+        $this->aviso = $n ? "Se han añadido {$n} adjunto(s) al borrador. Si ya lo tenías abierto en Outlook, ciérralo y vuelve a abrirlo (F9)." : 'No has elegido ningún adjunto.';
+    }
+
     /** Crea el borrador en el Outlook de quien está conectado (carpeta Borradores; no se envía nada). */
     public function crearBorrador(): void
     {
@@ -246,24 +312,28 @@ class CorreoClaude extends Component
             ['bTexto.required' => 'El borrador está vacío.', 'bTexto.min' => 'El borrador está vacío.']);
         $html = GraphMail::html(rtrim($this->bTexto)."\n\n".$this->firma()).GraphMail::pieRgpd();      // texto + firma + logo + pie legal
         try {
-            if ($this->bModo === 'respuesta') {
-                GraphMail::crearBorradorRespuesta($this->buzon(), $this->sel, $html, $this->bTodos);
-            } else {
-                GraphMail::crearBorradorHtml($this->buzon(), $this->direcciones($this->bPara), [], trim($this->bAsunto) ?: '(sin asunto)', $html);
-            }
+            $id = $this->bModo === 'respuesta'
+                ? GraphMail::crearBorradorRespuesta($this->buzon(), $this->sel, $html, $this->bTodos)
+                : GraphMail::crearBorradorHtml($this->buzon(), $this->direcciones($this->bPara), [], trim($this->bAsunto) ?: '(sin asunto)', $html);
+            $this->bBorradorId = $id;
+            $n = $this->aplicarAdjuntos($id);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             $this->aviso = 'No se ha podido crear el borrador en Outlook.';
 
             return;
         }
-        $this->bHecho = 'Borrador creado en tu carpeta Borradores de Outlook (no se envía solo). Revísalo, añade los adjuntos y envíalo desde Outlook.';
+        $this->bHecho = 'Borrador creado en tu carpeta Borradores de Outlook (no se envía solo)'.($n ? " con {$n} adjunto(s)" : '').'. Revísalo y envíalo desde Outlook.';
     }
 
     public function seleccionar(string $id): void
     {
         $this->sel = $id;
         $this->verImagenes = false;
-        $this->bTexto = $this->bHash = $this->bHecho = $this->bPara = '';
+        $this->bTexto = $this->bHash = $this->bHecho = $this->bPara = $this->bBorradorId = '';
+        $this->subidasAdj = $this->adjOriginales = [];
+        $this->verAdj = null;
         $this->bModo = 'respuesta';
         $this->bTodos = false;
         $this->instruccion = '';
@@ -471,6 +541,17 @@ class CorreoClaude extends Component
                 $aviso = 'No se ha podido abrir ese correo.';
             }
         }
+        $vistaAdj = null;
+        if ($this->verAdj && $m) {
+            try {
+                $x = $this->cache()->remember('correo_claude_vista_'.md5($this->buzon().'|'.$this->sel.'|'.$this->verAdj), 300, fn () => GraphMail::adjuntoContenido($this->buzon(), $this->sel, $this->verAdj));
+                if (str_starts_with($x['tipo'], 'image/') && strlen($x['bytes']) < 8_000_000) {
+                    $vistaAdj = 'data:'.$x['tipo'].';base64,'.$x['bytes'];
+                }
+            } catch (\Throwable $e) {
+                $this->aviso = 'No se ha podido abrir ese adjunto.';
+            }
+        }
         $doc = $this->doc();
         $texto = null;
         $imagenes = [];
@@ -517,6 +598,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso', 'hayRespuesta', 'borradorAuto'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso', 'hayRespuesta', 'borradorAuto', 'vistaAdj'));
     }
 }

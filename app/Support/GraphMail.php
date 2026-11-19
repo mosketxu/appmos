@@ -132,6 +132,14 @@ class GraphMail
         }
     }
 
+    /** Un adjunto de un correo CON su contenido (base64), para verlo o copiarlo a un borrador. */
+    public static function adjuntoContenido(string $buzon, string $id, string $adjuntoId): array
+    {
+        $a = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments/'.rawurlencode($adjuntoId));
+
+        return ['nombre' => $a['name'] ?? 'adjunto', 'tipo' => $a['contentType'] ?? '', 'bytes' => $a['contentBytes'] ?? ''];
+    }
+
     /** Marca un correo como leído (o no leído). */
     public static function marcarLeido(string $buzon, string $id, bool $leido = true): void
     {
@@ -147,9 +155,9 @@ class GraphMail
     /** Nombre, tamaño y tipo de los adjuntos de un correo, SIN su contenido (lectura). @return array<int, array{nombre:string, tamano:int, tipo:string, incrustado:bool}> */
     public static function adjuntosInfo(string $buzon, string $id): array
     {
-        $r = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments?$select=name,size,contentType,isInline&$top=50');
+        $r = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments?$select=id,name,size,contentType,isInline&$top=50');
 
-        return collect($r['value'] ?? [])->map(fn ($a) => ['nombre' => $a['name'] ?? 'adjunto', 'tamano' => (int) ($a['size'] ?? 0), 'tipo' => $a['contentType'] ?? '', 'incrustado' => (bool) ($a['isInline'] ?? false)])->values()->all();
+        return collect($r['value'] ?? [])->map(fn ($a) => ['id' => $a['id'] ?? '', 'nombre' => $a['name'] ?? 'adjunto', 'tamano' => (int) ($a['size'] ?? 0), 'tipo' => $a['contentType'] ?? '', 'incrustado' => (bool) ($a['isInline'] ?? false)])->values()->all();
     }
 
     /** Un correo con su cuerpo en HTML (lectura). */
@@ -358,7 +366,7 @@ class GraphMail
     }
 
     /** Adjunta un fichero del disco a un mensaje ya creado. Hasta 3 MB en una llamada; si pesa más, por sesión de subida (trozos). */
-    protected static function adjuntar(string $buzon, string $id, string $nombre, string $ruta): void
+    public static function adjuntar(string $buzon, string $id, string $nombre, string $ruta): void
     {
         if (! is_file($ruta)) {
             throw new RuntimeException("no encuentro el adjunto «{$nombre}»");

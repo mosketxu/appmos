@@ -97,8 +97,18 @@
                         @if ($adjuntos)
                             <div class="flex flex-wrap gap-1 mt-2">
                                 @foreach ($adjuntos as $a)
-                                    <span class="px-2 py-0.5 text-xs bg-gray-100 border rounded" title="{{ $a['tipo'] }}">📎 {{ $a['nombre'] }} <span class="text-gray-400">{{ $a['tamano'] >= 1048576 ? round($a['tamano'] / 1048576, 1).' MB' : max(1, round($a['tamano'] / 1024)).' KB' }}</span></span>
+                                    @if (str_starts_with($a['tipo'], 'image/'))
+                                        <button type="button" wire:key="adj-{{ md5($a['id']) }}" wire:click="verAdjunto('{{ $a['id'] }}')" title="Ver la imagen" class="px-2 py-0.5 text-xs {{ $verAdj === $a['id'] ? 'bg-indigo-100 border-indigo-300' : 'bg-gray-100' }} border rounded hover:bg-indigo-50">🖼 {{ $a['nombre'] }}</button>
+                                    @else
+                                        <span class="px-2 py-0.5 text-xs bg-gray-100 border rounded" title="{{ $a['tipo'] }}">📎 {{ $a['nombre'] }} <span class="text-gray-400">{{ $a['tamano'] >= 1048576 ? round($a['tamano'] / 1048576, 1).' MB' : max(1, round($a['tamano'] / 1024)).' KB' }}</span></span>
+                                    @endif
                                 @endforeach
+                            </div>
+                        @endif
+                        @if ($vistaAdj)
+                            <div class="p-2 mt-2 text-center bg-gray-50 border rounded">
+                                <img src="{{ $vistaAdj }}" alt="Vista previa" style="max-width:100%; max-height:45vh; margin:0 auto">
+                                <button type="button" wire:click="verAdjunto(null)" class="mt-1 text-xs text-gray-500 underline">Cerrar vista previa</button>
                             </div>
                         @endif
                     </div>
@@ -203,6 +213,7 @@
                             @if ($borradorAuto)
                                 <div class="p-2 mt-2 text-sm text-green-800 bg-green-50 border border-green-200 rounded">✔ Borrador creado en tu Outlook (Borradores) a las {{ $borradorAuto['hora'] }}{{ ($borradorAuto['modo'] ?? '') === 'nuevo' ? ' como correo nuevo' : ' como respuesta a este correo' }}. No se ha enviado nada.
                                     <a href="https://outlook.office.com/mail/drafts" target="_blank" class="underline">Abrir Borradores</a> · si no lo ves, pulsa F9 en Outlook.</div>
+                                @include('livewire._correo_adjuntos', ['modo' => 'despues'])
                             @endif
                             @if ($hayRespuesta && $bTexto === '')
                                 <button type="button" wire:click="usarRespuesta" class="mt-2 text-xs text-indigo-700 underline">📝 Usar la respuesta de Claude como borrador de correo…</button>
@@ -221,6 +232,7 @@
                                     @endif
                                     <textarea wire:model="bTexto" rows="8" class="w-full mt-1 text-sm border-gray-300 rounded"></textarea>
                                     @error('bTexto') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
+                                    @include('livewire._correo_adjuntos', ['modo' => $bBorradorId !== '' ? 'despues' : 'antes'])
                                     <div class="flex flex-wrap items-center gap-2 mt-1">
                                         <button type="button" wire:click="crearBorrador" wire:loading.attr="disabled" wire:target="crearBorrador" class="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700">📝 Crear borrador en Outlook</button>
                                         <span wire:loading wire:target="crearBorrador" class="text-xs text-amber-700">⏳</span>

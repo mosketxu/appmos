@@ -575,12 +575,12 @@ class Confidencialidad
         $html = GraphMail::html($cuerpo."\n\n".self::firmaDe($u)).GraphMail::pieRgpd();
         $modo = mb_strtolower($cab['modo']) === 'nuevo' ? 'nuevo' : 'respuesta';
         if ($modo === 'respuesta') {
-            GraphMail::crearBorradorRespuesta($buzon, $d->correo_id, $html);
+            $borradorId = GraphMail::crearBorradorRespuesta($buzon, $d->correo_id, $html);
         } else {
             $para = array_values(array_filter(preg_split('/[\s,;]+/', $cab['para']) ?: [], fn ($x) => filter_var($x, FILTER_VALIDATE_EMAIL)));
-            GraphMail::crearBorradorHtml($buzon, $para, [], $cab['asunto'] !== '' ? $cab['asunto'] : '(sin asunto)', $html);
+            $borradorId = GraphMail::crearBorradorHtml($buzon, $para, [], $cab['asunto'] !== '' ? $cab['asunto'] : '(sin asunto)', $html);
         }
-        $meta['borrador_auto'] = ['hash' => $hash, 'modo' => $modo, 'hora' => now()->format('H:i')];
+        $meta['borrador_auto'] = ['hash' => $hash, 'modo' => $modo, 'hora' => now()->format('H:i'), 'id' => $borradorId];
         self::guardarMeta($d, $meta);
 
         return true;
