@@ -106,6 +106,24 @@ class CorreoClaude extends Component
         $this->aviso = $d->estado === 'error' ? '' : 'Anonimizando en segundo plano (los adjuntos escaneados tardan). Cuando termine podrás revisarlo.';
     }
 
+    /** Voluntario: trabajar el correo con Claude SIN anonimizar (la pantalla ya ha pedido confirmación). */
+    public function sinAnonimizar(): void
+    {
+        $this->aviso = '';
+        abort_unless($this->sel, 422);
+        try {
+            $m = $this->mensaje();
+            $archivos = Conf::archivosDeCorreo($this->buzon(), $this->sel);
+        } catch (\Throwable $e) {
+            $this->aviso = 'No se ha podido traer el correo del buzón.';
+
+            return;
+        }
+        [$d, $omitidos] = Conf::crearSinAnonimizar(auth()->user(), $archivos, mb_substr('Correo (sin anonimizar): '.($m['asunto'] ?? ''), 0, 120));
+        $d->update(['correo_id' => $this->sel]);
+        $this->aviso = 'Listo: el correo irá a Claude tal cual. '.($omitidos ? 'No se incluyen estos adjuntos (solo PDF, imágenes y texto): '.implode(', ', $omitidos).'. ' : '').'Escribe qué quieres que haga.';
+    }
+
     public function darPorBueno(): void
     {
         $d = $this->docOFalla();
@@ -179,6 +197,7 @@ class CorreoClaude extends Component
         $imagenes = [];
         $conversacion = [];
         $progreso = [];
+        $claro = $doc ? Conf::esClaro($doc) : false;
         if ($doc && $doc->estado !== 'error') {
             foreach ($doc->archivos ?? [] as $n => $a) {
                 if (str_ends_with($a, '.txt')) {
@@ -194,6 +213,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro'));
     }
 }

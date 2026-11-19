@@ -399,12 +399,61 @@ class Confidencialidad
         return preg_replace_callback('/\b(?:'.implode('|', $claves).')\b/iu', fn ($m) => $bajo[mb_strtolower($m[0])] ?? $m[0], (string) $texto);
     }
 
+    /** Tipos de fichero que se pueden dar a Claude tal cual (sin pasar por el anonimizador). */
+    public const EXTENSIONES_CLARO = ['txt', 'pdf', 'jpg', 'jpeg', 'png'];
+
+    /**
+     * Decisión de Alex (19-nov-2026): trabajar un correo con Claude SIN anonimizar (el correo y sus adjuntos salen en claro hacia Anthropic; la pantalla pide confirmación).
+     * Crea un documento ya «listo» con los ficheros tal cual (cuerpo en .txt, adjuntos PDF/imagen/txt); no hay mapa ni original. Los demás adjuntos (Excel, Word…) no van.
+     *
+     * @param  ArchivoLocal[]  $archivos
+     * @return array{0: ConfidencialidadDoc, 1: string[]}  el documento y los nombres de los adjuntos que NO se han incluido
+     */
+    public static function crearSinAnonimizar(User $u, array $archivos, ?string $titulo): array
+    {
+        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'titulo' => $titulo ?: null, 'estado' => 'listo']);
+        $dir = self::dir($d);
+        mkdir($dir.'/f1', 0700, true);
+        $lista = [];
+        $omitidos = [];
+        foreach (array_values($archivos) as $i => $f) {
+            $ext = strtolower($f->getClientOriginalExtension());
+            if (! in_array($ext, self::EXTENSIONES_CLARO, true)) {
+                $omitidos[] = $f->getClientOriginalName();
+
+                continue;
+            }
+            $ext = $ext === 'jpeg' ? 'jpg' : $ext;
+            $nombre = sprintf('%02d', $i + 1).'_'.substr(preg_replace('/[^A-Za-z0-9_-]+/', '_', pathinfo($f->getClientOriginalName(), PATHINFO_FILENAME)), 0, 40).'.'.$ext;
+            copy($f->getRealPath(), $dir.'/f1/'.$nombre);
+            chmod($dir.'/f1/'.$nombre, 0600);
+            $lista[] = 'f1/'.$nombre;
+        }
+        foreach ($archivos as $f) {
+            try {
+                $f->delete();
+            } catch (\Throwable $e) {
+            }
+        }
+        self::guardarMeta($d, ['nombres' => [], 'empresas' => [], 'perfil' => 'estricto', 'originales' => [], 'sin_anonimizar' => true]);
+        $d->update(['archivos' => $lista]);
+
+        return [$d->fresh() ?? $d, $omitidos];
+    }
+
+    /** ¿Este documento va a Claude tal cual, sin anonimizar? */
+    public static function esClaro(ConfidencialidadDoc $d): bool
+    {
+        return ! empty(self::meta($d)['sin_anonimizar']);
+    }
+
     /**
      * Crea la tarea del TO-DO para Claude con la instrucción ANONIMIZADA y los documentos de este registro. Si ya hay tarea, añade la indicación al hilo.
      */
     public static function pedirAClaude(ConfidencialidadDoc $d, User $u, string $instruccion): TodoTarea
     {
-        $anon = trim(self::anonimizarTexto($d, $instruccion));
+        $claro = self::esClaro($d);
+        $anon = $claro ? trim($instruccion) : trim(self::anonimizarTexto($d, $instruccion));
         $hoy = now()->format('Y-m-d');
         $claude = TodoClaude::usuario();
         abort_unless($claude, 500, 'No existe el usuario Claude en el TO-DO.');
@@ -420,8 +469,10 @@ class Confidencialidad
         }
         $t = TodoTarea::create([
             'titulo' => 'Documento anonimizado #'.$d->id,
-            'descripcion' => $anon."\n\n---\nDocumento(s) ANONIMIZADO(S) de esta petición (documento #".$d->id.'): llegan como ficheros en la carpeta que se indica al trabajar la tarea. '
-                .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.',
+            'descripcion' => $anon."\n\n---\n".($claro
+                ? 'Documento(s) de esta petición (documento #'.$d->id.', SIN anonimizar por decisión de quien lo pidió): llegan como ficheros en la carpeta que se indica al trabajar la tarea.'
+                : 'Documento(s) ANONIMIZADO(S) de esta petición (documento #'.$d->id.'): llegan como ficheros en la carpeta que se indica al trabajar la tarea. '
+                    .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.'),
             'creador_id' => $u->id,
             'prioridad' => 'normal',
             'oculta' => true,      // el chat vive en esta pantalla, no en el TO-DO

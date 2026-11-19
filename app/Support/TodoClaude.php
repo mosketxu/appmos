@@ -230,7 +230,7 @@ class TodoClaude
             'autorizada_por' => $t->claude_autorizada_por ? User::find($t->claude_autorizada_por)?->name : null,
             'permisos' => array_values(array_intersect((array) $t->claude_permisos, array_keys(TodoTarea::PERMISOS_CLAUDE))),
             'anonimos' => \App\Models\ConfidencialidadDoc::where('tarea_id', $t->id)->whereIn('estado', ['borrador', 'listo'])->get()
-                ->map(fn ($d) => ['doc' => $d->id, 'archivos' => array_values($d->archivos ?? [])])->all(),
+                ->map(fn ($d) => ['doc' => $d->id, 'archivos' => array_values($d->archivos ?? []), 'claro' => \App\Support\Confidencialidad::esClaro($d)])->all(),
             'hilo' => $t->comentarios->map(fn ($c) => [
                 'tipo' => $c->tipo, 'autor' => $c->user->name, 'fecha' => $c->fecha->format('Y-m-d'), 'texto' => $c->texto,
             ])->all(),

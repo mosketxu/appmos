@@ -88,4 +88,37 @@ class CorreoClaudeTest extends TestCase
         $this->actingAs($this->adminUser());
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('instruccion', 'Resume')->call('pedir')->assertStatus(422);
     }
+
+    public function test_sin_anonimizar_es_voluntario_y_deja_el_correo_tal_cual(): void
+    {
+        $u = $this->adminUser();
+        $this->actingAs($u);
+        $tmp = sys_get_temp_dir().'/orig_'.bin2hex(random_bytes(4));
+        mkdir($tmp);
+        file_put_contents($tmp.'/00_cuerpo.txt', "De: Pepe Ejemplo\nHola");
+        file_put_contents($tmp.'/01.xlsx', 'x');
+        [$d, $omitidos] = \App\Support\Confidencialidad::crearSinAnonimizar($u, [
+            new \App\Support\ArchivoLocal($tmp.'/00_cuerpo.txt', 'correo.txt'), new \App\Support\ArchivoLocal($tmp.'/01.xlsx', 'hoja.xlsx')], 'Correo (sin anonimizar): x');
+        $this->assertSame('listo', $d->estado);
+        $this->assertTrue(\App\Support\Confidencialidad::esClaro($d));
+        $this->assertSame(['hoja.xlsx'], $omitidos);
+        $this->assertCount(1, $d->archivos);
+        $this->assertStringContainsString('Pepe Ejemplo', file_get_contents(\App\Support\Confidencialidad::dir($d).'/'.$d->archivos[0]));
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_pedir_con_un_documento_sin_anonimizar_manda_la_instruccion_tal_cual(): void
+    {
+        $u = $this->adminUser();
+        $this->actingAs($u);
+        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'listo', 'correo_id' => 'AAA']);
+        mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
+        file_put_contents(\App\Support\Confidencialidad::dir($d).'/meta.json', json_encode(['sin_anonimizar' => true]));
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('SIN ANONIMIZAR')
+            ->set('instruccion', 'Contesta a Pepe Ejemplo')->call('pedir');
+        $t = \App\Models\TodoTarea::find($d->fresh()->tarea_id);
+        $this->assertStringContainsString('Contesta a Pepe Ejemplo', $t->descripcion);
+        $this->assertStringContainsString('SIN anonimizar', $t->descripcion);
+        \App\Support\Confidencialidad::borrar($d);
+    }
 }

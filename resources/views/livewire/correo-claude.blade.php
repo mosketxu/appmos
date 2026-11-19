@@ -87,6 +87,12 @@
                         </details>
                         <button type="button" wire:click="preparar" wire:loading.attr="disabled" wire:target="preparar" class="w-full px-3 py-2 mt-3 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">🔒 Anonimizar y preparar para Claude</button>
                         <span wire:loading wire:target="preparar" class="text-xs text-amber-700">⏳ Trayendo el correo…</span>
+                        <div class="pt-3 mt-3 text-center border-t">
+                            <button type="button" wire:click="sinAnonimizar" wire:loading.attr="disabled" wire:target="sinAnonimizar"
+                                    wire:confirm="¿Estás seguro? Mira que el correo y sus adjuntos (PDF, imágenes y texto) saldrán EN CLARO hacia Anthropic, con todos los datos personales que contengan. Es decisión tuya y se hace."
+                                    class="text-xs text-gray-500 underline hover:text-red-700">Prefiero enviarlo a Claude sin anonimizar…</button>
+                            <span wire:loading wire:target="sinAnonimizar" class="text-xs text-amber-700">⏳</span>
+                        </div>
                     @elseif ($doc->estado === 'procesando')
                         <div class="p-2 text-sm text-amber-800 bg-yellow-100 border border-yellow-300 rounded">⏳ Anonimizando…
                             @if (! empty($progreso['de']) && $progreso['de'] > 1) adjunto {{ $progreso['doc'] ?? 1 }} de {{ $progreso['de'] }}@endif
@@ -94,17 +100,25 @@
                         </div>
                     @else
                         <div class="mb-2 text-xs text-gray-500">
-                            Estado: <b>{{ $doc->estado === 'borrador' ? 'por revisar' : 'listo' }}</b> ·
-                            <a href="{{ route('confidencialidad', ['doc' => $doc->id]) }}" class="text-indigo-700 underline" target="_blank">abrir en Confidencialidad</a>
-                            @if ($doc->estado === 'borrador') (para ver el original al lado y ocultar más)@endif
+                            @if ($claro)
+                                <span class="px-1.5 py-0.5 font-semibold text-red-800 bg-red-100 border border-red-300 rounded">⚠ SIN ANONIMIZAR: Claude recibe el correo tal cual</span>
+                            @else
+                                Estado: <b>{{ $doc->estado === 'borrador' ? 'por revisar' : 'listo' }}</b> ·
+                                <a href="{{ route('confidencialidad', ['doc' => $doc->id]) }}" class="text-indigo-700 underline" target="_blank">abrir en Confidencialidad</a>
+                                @if ($doc->estado === 'borrador') (para ver el original al lado y ocultar más)@endif
+                            @endif
                         </div>
                         <details {{ $doc->estado === 'borrador' ? 'open' : '' }} class="mb-2">
-                            <summary class="text-sm text-gray-700 cursor-pointer">Lo que verá Claude (anonimizado)</summary>
+                            <summary class="text-sm text-gray-700 cursor-pointer">{{ $claro ? 'Lo que recibe Claude (en claro)' : 'Lo que verá Claude (anonimizado)' }}</summary>
                             @if ($texto)
                                 <pre class="p-2 mt-1 overflow-auto text-xs bg-gray-50 border rounded" style="max-height:30vh; white-space:pre-wrap">{{ $texto }}</pre>
                             @endif
                             @foreach ($imagenes as $n)
+                                @if ($claro)
+                                    <div class="text-xs text-gray-600">📎 {{ basename($doc->archivos[$n]) }}</div>
+                                @else
                                 <a href="{{ route('confidencialidad.archivo', ['id' => $doc->id, 'n' => $n]) }}" target="_blank" class="block text-xs text-indigo-700 underline">Adjunto escaneado {{ $n + 1 }} (anonimizado)</a>
+                                @endif
                             @endforeach
                         </details>
 
@@ -116,7 +130,7 @@
                                 <button type="button" wire:click="descartar" wire:confirm="¿Descartar y empezar de nuevo?" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">Descartar</button>
                             </div>
                         @else
-                            <div class="mb-1 text-sm font-semibold text-gray-700">💬 Conversación con Claude <span class="font-normal text-gray-400">(solo ve lo anonimizado; aquí se ve con los datos reales)</span></div>
+                            <div class="mb-1 text-sm font-semibold text-gray-700">💬 Conversación con Claude <span class="font-normal text-gray-400">{{ $claro ? '(recibe el correo sin anonimizar)' : '(solo ve lo anonimizado; aquí se ve con los datos reales)' }}</span></div>
                             @foreach ($conversacion as $r)
                                 <div class="p-2 mt-1 text-sm rounded border {{ $r['quien'] === 'yo' ? 'bg-gray-50 border-gray-200 ml-6' : 'bg-indigo-50 border-indigo-200 mr-6' }}" style="white-space:pre-wrap"><div class="text-xs text-gray-400">{{ $r['quien'] === 'yo' ? 'Tú' : 'Claude' }} · {{ $r['fecha'] }}</div>{{ $r['texto'] }}</div>
                             @endforeach

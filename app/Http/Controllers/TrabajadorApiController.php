@@ -112,7 +112,7 @@ class TrabajadorApiController extends Controller
         $t = $this->tareaClaude($r, $id);
         $d = \App\Models\ConfidencialidadDoc::where('id', $doc)->where('tarea_id', $t->id)->whereIn('estado', ['borrador', 'listo'])->firstOrFail();
         $a = ($d->archivos ?? [])[$n] ?? null;
-        abort_unless($a && preg_match('#^f\d+/[\w.-]+\.(jpg|png|txt)$#', $a), 404);
+        abort_unless($a && preg_match('#^f\d+/[\w.-]+\.(jpg|png|txt|pdf)$#', $a), 404);
         $ruta = \App\Support\Confidencialidad::dir($d).'/'.$a;
         abort_unless(is_file($ruta), 404);
 
