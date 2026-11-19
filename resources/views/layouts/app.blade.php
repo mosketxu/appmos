@@ -39,6 +39,7 @@
             </main>
             <x-notification />
             <x-notificationred />
+            <x-ayuda-pantalla />
         </div>
 
         @stack('modals')

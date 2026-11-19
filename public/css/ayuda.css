@@ -1,0 +1,20 @@
+/* Ayuda de pantalla (19-nov-2026): icono de libro con «?» junto al título y modal de instrucciones. */
+.ayuda-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; margin-left: .6rem; padding: 0; vertical-align: middle;
+    color: #4f46e5; background: #fff; border: 1px solid #c7d2fe; border-radius: 9999px; cursor: pointer; line-height: 1; }
+.ayuda-btn:hover { background: #eef2ff; border-color: #818cf8; }
+.ayuda-btn:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+/* sin título al que pegarse: flotante, justo debajo de la barra de menú */
+.ayuda-btn.ayuda-fija { position: fixed; top: 4.6rem; right: 1rem; z-index: 40; margin-left: 0; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.ayuda-dialog { width: min(42rem, 94vw); max-height: 86vh; padding: 0; border: 1px solid #d1d5db; border-radius: .75rem; box-shadow: 0 20px 40px rgba(0,0,0,.25); color: #1f2937; background: #fff; overflow: hidden; }
+.ayuda-dialog[open] { display: flex; flex-direction: column; }
+.ayuda-dialog::backdrop { background: rgba(17, 24, 39, .55); }
+.ayuda-cab { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1.1rem; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+.ayuda-cab h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.ayuda-cerrar { border: 0; background: transparent; font-size: 1.1rem; line-height: 1; padding: .3rem .5rem; cursor: pointer; color: #6b7280; border-radius: .4rem; }
+.ayuda-cerrar:hover { background: #e5e7eb; color: #111827; }
+.ayuda-cuerpo { padding: 1rem 1.2rem 1.2rem; overflow-y: auto; font-size: .92rem; line-height: 1.5; }
+.ayuda-cuerpo p { margin: 0 0 .6rem; }
+.ayuda-cuerpo h4 { margin: .9rem 0 .3rem; font-size: .95rem; font-weight: 700; color: #111827; }
+.ayuda-cuerpo ul { margin: 0 0 .5rem; padding-left: 1.2rem; list-style: disc; }
+.ayuda-cuerpo li { margin: .2rem 0; }
+.ayuda-pie { margin-top: 1rem; padding-top: .6rem; border-top: 1px solid #e5e7eb; font-size: .8rem; color: #6b7280; }
