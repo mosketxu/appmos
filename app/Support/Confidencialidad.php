@@ -496,7 +496,9 @@ class Confidencialidad
             'descripcion' => $anon."\n\n---\n".($claro
                 ? 'Documento(s) de esta petición (documento #'.$d->id.', SIN anonimizar por decisión de quien lo pidió): llegan como ficheros en la carpeta que se indica al trabajar la tarea.'
                 : 'Documento(s) ANONIMIZADO(S) de esta petición (documento #'.$d->id.'): llegan como ficheros en la carpeta que se indica al trabajar la tarea. '
-                    .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.'),
+                    .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.')
+                .($d->correo_id ? "\n\nSi te piden REDACTAR un correo, escribe SOLO el texto del correo (sin asunto ni firma ni despedida con nombre) entre una línea «---BORRADOR---» y otra «---FIN---»; "
+                    ."Appmos crea con él el borrador en el Outlook de quien lo pidió y pone la firma. No intentes crear el borrador tú ni enviar nada. Fuera de ese bloque puedes añadir una nota breve." : ''),
             'creador_id' => $u->id,
             'prioridad' => 'normal',
             'oculta' => true,      // el chat vive en esta pantalla, no en el TO-DO

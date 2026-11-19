@@ -200,6 +200,31 @@
                             @if ($esperaClaude)
                                 <div class="mt-1 text-sm text-gray-400">⏳ Claude está en ello (puede tardar unos minutos; esto se actualiza solo).</div>
                             @endif
+                            @if ($hayRespuesta && $bTexto === '')
+                                <button type="button" wire:click="usarRespuesta" class="mt-2 text-xs text-indigo-700 underline">📝 Usar la respuesta de Claude como borrador de correo…</button>
+                            @endif
+                            @if ($bTexto !== '')
+                                <div class="p-2 mt-3 bg-green-50 border border-green-200 rounded" wire:key="borrador-{{ $bHash }}">
+                                    <div class="text-sm font-semibold text-gray-700">📝 Borrador de correo <span class="font-normal text-gray-400">(edítalo antes de crearlo)</span></div>
+                                    <div class="flex flex-wrap items-center mt-1 text-xs text-gray-600 gap-x-3">
+                                        <label><input type="radio" wire:model.live="bModo" value="respuesta"> Respuesta a este correo</label>
+                                        <label><input type="radio" wire:model.live="bModo" value="nuevo"> Correo nuevo</label>
+                                        @if ($bModo === 'respuesta')<label><input type="checkbox" wire:model="bTodos"> a todos</label>@endif
+                                    </div>
+                                    @if ($bModo === 'nuevo')
+                                        <input type="text" wire:model="bPara" placeholder="Para: (direcciones separadas por coma; puedes dejarlo vacío)" class="w-full mt-1 text-xs border-gray-300 rounded">
+                                        <input type="text" wire:model="bAsunto" placeholder="Asunto" class="w-full mt-1 text-xs border-gray-300 rounded">
+                                    @endif
+                                    <textarea wire:model="bTexto" rows="8" class="w-full mt-1 text-sm border-gray-300 rounded"></textarea>
+                                    @error('bTexto') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
+                                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                                        <button type="button" wire:click="crearBorrador" wire:loading.attr="disabled" wire:target="crearBorrador" class="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700">📝 Crear borrador en Outlook</button>
+                                        <span wire:loading wire:target="crearBorrador" class="text-xs text-amber-700">⏳</span>
+                                        <span class="text-xs text-gray-500">Se guarda en Borradores con tu firma; no se envía nada.</span>
+                                    </div>
+                                    @if ($bHecho)<div class="mt-1 text-xs text-green-800">✔ {{ $bHecho }} <a href="https://outlook.office.com/mail/drafts" target="_blank" class="underline">Abrir Borradores</a></div>@endif
+                                </div>
+                            @endif
                             @if (! $doc->tarea_id)
                                 <div class="flex flex-wrap gap-1 mt-2">
                                     <button type="button" wire:click="$set('instruccion', 'Resume este correo en pocas líneas y dime qué me piden y si hay algún plazo.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">Resumir y plazos</button>

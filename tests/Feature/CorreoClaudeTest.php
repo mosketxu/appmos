@@ -32,6 +32,11 @@ class CorreoClaudeTest extends TestCase
             '*mailFolders/deleteditems?*' => Http::response(['id' => 'FX']),
             '*mailFolders/junkemail?*' => Http::response(['id' => 'FJ']),
             '*mailFolders/archive?*' => Http::response([], 404),
+            '*messages/AAA/createReply' => Http::response(['id' => 'D1', 'body' => ['content' => '<html><body><p>cita original</p></body></html>']]),
+            '*messages/D1/attachments' => Http::response(['id' => 'LOGO']),
+            '*messages/D2/attachments' => Http::response(['id' => 'LOGO']),
+            '*messages/D1' => Http::response(['id' => 'D1']),
+            '*users/*/messages' => Http::response(['id' => 'D2']),
             '*messages/AAA' => Http::response(['id' => 'AAA', 'isRead' => true]),
             '*messages/AAA/move' => Http::response(['id' => 'NUEVO']),
             '*mailFolders/inbox/messages*' => Http::response(['value' => [
@@ -98,7 +103,7 @@ class CorreoClaudeTest extends TestCase
         $u = $this->usuarioConCorreo();
         $this->actingAs($u);
         $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'listo', 'correo_id' => 'AAA']);
-        mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
+        @mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
         file_put_contents(\App\Support\Confidencialidad::dir($d).'/meta.json', json_encode(['sin_anonimizar' => true]));
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('instruccion', 'Resume')->call('pedir');
         $t = \App\Models\TodoTarea::find($d->fresh()->tarea_id);
@@ -176,7 +181,7 @@ class CorreoClaudeTest extends TestCase
         $u = $this->adminUser();
         $this->actingAs($u);
         $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'listo', 'correo_id' => 'AAA']);
-        mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
+        @mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
         file_put_contents(\App\Support\Confidencialidad::dir($d).'/meta.json', json_encode(['sin_anonimizar' => true]));
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('SIN ANONIMIZAR')
             ->set('instruccion', 'Contesta a Pepe Ejemplo')->call('pedir');
@@ -276,5 +281,54 @@ class CorreoClaudeTest extends TestCase
         $this->actingAs($this->adminUser());
         $h = Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->html();
         $this->assertStringContainsString('data-dictar="instr-nuevo"', $h);
+    }
+
+    protected function docListo(\App\Models\User $u): ConfidencialidadDoc
+    {
+        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'listo', 'correo_id' => 'AAA']);
+        @mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
+        file_put_contents(\App\Support\Confidencialidad::dir($d).'/meta.json', json_encode(['sin_anonimizar' => true]));
+
+        return $d;
+    }
+
+    public function test_crear_borrador_de_respuesta_con_la_cita_y_la_firma_del_usuario(): void
+    {
+        $this->actingAs($u = $this->usuarioConCorreo());
+        $d = $this->docListo($u);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('bTexto', 'Gracias por tu correo.')->call('crearBorrador')->assertSee('Borrador creado');
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), 'messages/D1')
+            && str_contains($r['body']['content'], 'Gracias por tu correo.') && str_contains($r['body']['content'], 'cita original')
+            && str_contains($r['body']['content'], 'Suma Apoyo Empresarial SL') && str_contains($r['body']['content'], 'cid:logo_suma'));
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), '/send'));                      // nunca se envía
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/D1/attachments'));      // el logo en línea
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_crear_borrador_de_correo_nuevo_con_destinatarios_validos(): void
+    {
+        $this->actingAs($u = $this->usuarioConCorreo());
+        $d = $this->docListo($u);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('bModo', 'nuevo')->set('bPara', 'susan@example.test, mal-escrito; otra@example.test')
+            ->set('bAsunto', 'Invoice')->set('bTexto', 'Dear Susanne')->call('crearBorrador')->assertSee('Borrador creado');
+        Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/messages') && $r['subject'] === 'Invoice'
+            && count($r['toRecipients']) === 2 && $r['toRecipients'][0]['emailAddress']['address'] === 'susan@example.test');
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_el_bloque_borrador_de_la_respuesta_de_claude_se_carga_para_editarlo(): void
+    {
+        $u = $this->usuarioConCorreo();
+        $this->actingAs($u);
+        $claude = \App\Support\TodoClaude::usuario();
+        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'listo', 'correo_id' => 'AAA']);
+        @mkdir(\App\Support\Confidencialidad::dir($d), 0700, true);
+        file_put_contents(\App\Support\Confidencialidad::dir($d).'/meta.json', json_encode(['sin_anonimizar' => true]));
+        $t = \App\Models\TodoTarea::create(['titulo' => 't', 'descripcion' => 'redacta', 'creador_id' => $u->id, 'prioridad' => 'normal', 'oculta' => true]);
+        $d->update(['tarea_id' => $t->id]);
+        \App\Models\TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $claude->id, 'tipo' => 'respuesta', 'fecha' => now()->format('Y-m-d'),
+            'texto' => "Aquí tienes.\n---BORRADOR---\nDear Susanne,\nPlease find the ledger.\n---FIN---\nNota breve."]);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSet('bTexto', "Dear Susanne,\nPlease find the ledger.")->assertSee('Crear borrador en Outlook');
+        \App\Support\Confidencialidad::borrar($d);
     }
 }

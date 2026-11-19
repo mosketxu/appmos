@@ -326,6 +326,31 @@ class GraphMail
         return (string) $m['id'];
     }
 
+    /**
+     * Borrador de RESPUESTA a un correo del buzón (queda en Borradores; nunca se envía solo): Graph crea el borrador con la cita del original y aquí se le pone
+     * delante el texto nuevo (HTML, con el logo de Suma si lleva cid:logo_suma). 19-nov-2026, pantalla «✉ Correo».
+     */
+    public static function crearBorradorRespuesta(string $buzon, string $id, string $html, bool $todos = false): string
+    {
+        $base = 'users/'.rawurlencode($buzon).'/messages/';
+        $d = self::api('post', $base.rawurlencode($id).($todos ? '/createReplyAll' : '/createReply'), []);
+        $original = (string) ($d['body']['content'] ?? '');
+        $cuerpo = $html.'<br>'.$original;
+        if (preg_match('/<body[^>]*>/i', $original, $m, PREG_OFFSET_CAPTURE)) {      // el texto nuevo va justo después de abrir el <body> del borrador (delante de la cita)
+            $fin = $m[0][1] + strlen($m[0][0]);
+            $cuerpo = substr($original, 0, $fin).$html.'<br>'.substr($original, $fin);
+        }
+        self::api('patch', $base.rawurlencode((string) $d['id']), ['body' => ['contentType' => 'HTML', 'content' => $cuerpo]]);
+        if (str_contains($html, 'cid:logo_suma')) {
+            self::api('post', $base.rawurlencode((string) $d['id']).'/attachments', [
+                '@odata.type' => '#microsoft.graph.fileAttachment', 'name' => 'logo_suma.gif', 'contentType' => 'image/gif',
+                'contentBytes' => base64_encode(file_get_contents(resource_path('mail/logo_suma.gif'))), 'isInline' => true, 'contentId' => 'logo_suma',
+            ]);
+        }
+
+        return (string) $d['id'];
+    }
+
     /** Adjunta un fichero del disco a un mensaje ya creado. Hasta 3 MB en una llamada; si pesa más, por sesión de subida (trozos). */
     protected static function adjuntar(string $buzon, string $id, string $nombre, string $ruta): void
     {

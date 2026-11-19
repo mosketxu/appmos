@@ -31,6 +31,14 @@ class CorreoClaude extends Component
     public string $aviso = '';
     /** Voluntario: ver las imágenes del correo (las incrustadas y las remotas). Por defecto no, para no avisar al remitente de que se ha abierto. */
     public bool $verImagenes = false;
+    /** Borrador propuesto por Claude (editable antes de crearlo en Outlook). */
+    public string $bModo = 'respuesta';     // respuesta | nuevo
+    public bool $bTodos = false;
+    public string $bPara = '';
+    public string $bAsunto = '';
+    public string $bTexto = '';
+    public string $bHash = '';
+    public string $bHecho = '';
 
     public function hydrate(): void
     {
@@ -199,10 +207,65 @@ class CorreoClaude extends Component
         });
     }
 
+    /** Direcciones válidas de un texto (separadas por coma, punto y coma o espacios). */
+    protected function direcciones(string $t): array
+    {
+        return array_values(array_filter(preg_split('/[\s,;]+/', $t) ?: [], fn ($x) => filter_var($x, FILTER_VALIDATE_EMAIL)));
+    }
+
+    /** Firma estándar de Suma con el nombre de quien lo crea (y el teléfono de Alex, que es el de su firma de siempre); el logo lo pone GraphMail::html(). */
+    protected function firma(): string
+    {
+        $u = auth()->user();
+        $alex = mb_strtolower((string) $u->email) === 'alex.arregui@sumaempresa.com';
+
+        return ($alex ? 'Alexander Arregui' : $u->name).($alex ? "\nTel. 638 12 26 14" : '')."\nSuma Apoyo Empresarial SL";
+    }
+
+    /** Usa la última respuesta de Claude entera como borrador (si no la dio entre ---BORRADOR--- y ---FIN---). */
+    public function usarRespuesta(): void
+    {
+        $d = $this->doc();
+        abort_unless($d, 422);
+        foreach (array_reverse(Conf::conversacion($d)) as $r) {
+            if ($r['quien'] === 'claude') {
+                $this->bTexto = trim($r['texto']);
+                $this->bHash = md5('manual'.$this->bTexto);
+                $this->bHecho = '';
+
+                return;
+            }
+        }
+    }
+
+    /** Crea el borrador en el Outlook de quien está conectado (carpeta Borradores; no se envía nada). */
+    public function crearBorrador(): void
+    {
+        abort_unless($this->sel, 422);
+        $this->validate(['bTexto' => 'required|string|min:3|max:20000', 'bModo' => 'required|in:respuesta,nuevo', 'bAsunto' => 'nullable|string|max:250', 'bPara' => 'nullable|string|max:500'],
+            ['bTexto.required' => 'El borrador está vacío.', 'bTexto.min' => 'El borrador está vacío.']);
+        $html = GraphMail::html(rtrim($this->bTexto)."\n\n".$this->firma());
+        try {
+            if ($this->bModo === 'respuesta') {
+                GraphMail::crearBorradorRespuesta($this->buzon(), $this->sel, $html, $this->bTodos);
+            } else {
+                GraphMail::crearBorradorHtml($this->buzon(), $this->direcciones($this->bPara), [], trim($this->bAsunto) ?: '(sin asunto)', $html);
+            }
+        } catch (\Throwable $e) {
+            $this->aviso = 'No se ha podido crear el borrador en Outlook.';
+
+            return;
+        }
+        $this->bHecho = 'Borrador creado en tu carpeta Borradores de Outlook (no se envía solo). Revísalo, añade los adjuntos y envíalo desde Outlook.';
+    }
+
     public function seleccionar(string $id): void
     {
         $this->sel = $id;
         $this->verImagenes = false;
+        $this->bTexto = $this->bHash = $this->bHecho = $this->bPara = '';
+        $this->bModo = 'respuesta';
+        $this->bTodos = false;
         $this->instruccion = '';
         $this->aviso = '';
     }
@@ -426,6 +489,19 @@ class CorreoClaude extends Component
             $conversacion = Conf::conversacion($doc);
             $progreso = $doc->estado === 'procesando' ? Conf::progreso($doc) : [];
         }
+        $hayRespuesta = false;
+        foreach (array_reverse($conversacion) as $r) {
+            if ($r['quien'] === 'claude') {
+                $hayRespuesta = true;
+                if (preg_match('/---\s*BORRADOR\s*---\s*(.*?)\s*---\s*FIN\s*---/su', $r['texto'], $mm) && md5(trim($mm[1])) !== $this->bHash) {
+                    $this->bHash = md5(trim($mm[1]));
+                    $this->bTexto = trim($mm[1]);
+                    $this->bAsunto = (string) ($m['asunto'] ?? '');
+                    $this->bHecho = '';
+                }
+                break;
+            }
+        }
         $esperaClaude = $doc && $doc->tarea_id && (count($conversacion) === 0 || end($conversacion)['quien'] === 'yo');
         $cid = [];
         if ($m && $this->verImagenes) {
@@ -438,6 +514,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso', 'hayRespuesta'));
     }
 }
