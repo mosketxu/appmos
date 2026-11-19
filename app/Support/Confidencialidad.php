@@ -498,9 +498,10 @@ class Confidencialidad
                 ? 'Documento(s) de esta petición (documento #'.$d->id.', SIN anonimizar por decisión de quien lo pidió): llegan como ficheros en la carpeta que se indica al trabajar la tarea.'
                 : 'Documento(s) ANONIMIZADO(S) de esta petición (documento #'.$d->id.'): llegan como ficheros en la carpeta que se indica al trabajar la tarea. '
                     .'Los datos personales están sustituidos por etiquetas (Persona1, Empresa1, Mail1…): usa esas mismas etiquetas en tu respuesta; Appmos las convierte de nuevo en los datos reales al mostrársela a quien lo pidió.')
-                .($d->correo_id ? "\n\nSi te piden REDACTAR un correo: Appmos solo muestra el campo «respuesta» de tu línea RESULTADO_TODO, así que el TEXTO COMPLETO del correo (sin asunto ni firma ni nombre al final) tiene que ir DENTRO de ese campo, "
-                    ."en líneas propias: una línea «---BORRADOR---», el correo (con \\n para los saltos de línea del JSON) y otra línea «---FIN---». Appmos crea con ese texto el borrador en el Outlook de quien lo pidió y pone la firma y el pie. "
-                    ."No describas el correo ni lo resumas: escríbelo entero. No intentes crear el borrador tú ni enviar nada. Fuera del bloque puedes añadir una nota breve." : ''),
+                .($d->correo_id ? "\n\nSi te piden REDACTAR un correo: Appmos solo muestra el campo «respuesta» de tu línea RESULTADO_TODO, así que el TEXTO COMPLETO del correo tiene que ir DENTRO de ese campo, en líneas propias "
+                    ."(con \\n para los saltos de línea del JSON): una línea «---BORRADOR---», después opcionalmente las líneas «MODO: respuesta» (contesta al correo abierto, por defecto) o «MODO: nuevo» (correo nuevo a otra persona), "
+                    ."«PARA: direcciones» y «ASUNTO: texto», luego el correo (saludo, cuerpo y despedida SIN nombre ni firma; Appmos pone la firma y el pie) y por último una línea «---FIN---». "
+                    ."Appmos crea el borrador AL MOMENTO en el Outlook de quien lo pidió (carpeta Borradores; nunca se envía). No describas el correo ni lo resumas: escríbelo entero. No intentes crear el borrador tú ni enviar nada. Fuera del bloque puedes añadir una nota breve." : ''),
             'creador_id' => $u->id,
             'prioridad' => 'normal',
             'oculta' => true,      // el chat vive en esta pantalla, no en el TO-DO
@@ -529,6 +530,60 @@ class Confidencialidad
         if (TodoClaude::esGestor($u)) {
             $t->update(['claude_permisos' => array_keys(TodoTarea::PERMISOS_CLAUDE)]);
         }
+    }
+
+    /** Firma estándar de Suma: nombre de quien lo crea (+ teléfono en el caso de Alex) y la empresa; el logo y el pie RGPD los pone el código que crea el borrador. */
+    public static function firmaDe(User $u): string
+    {
+        $alex = mb_strtolower((string) $u->email) === 'alex.arregui@sumaempresa.com';
+
+        return ($alex ? 'Alexander Arregui' : $u->name).($alex ? "\nTel. 638 12 26 14" : '')."\nSuma Apoyo Empresarial SL";
+    }
+
+    /**
+     * Si la respuesta de Claude trae un bloque ---BORRADOR--- … ---FIN--- (cada marca en su línea), crea YA el borrador en el Outlook de quien hizo la petición (Graph; solo Borradores,
+     * nunca se envía). Primeras líneas opcionales del bloque: MODO: respuesta|nuevo · PARA: direcciones · ASUNTO: texto. Se hace una sola vez por bloque (meta.borrador_auto).
+     * Lo llama TodoClaude::registrar, así que el borrador aparece aunque la pantalla esté cerrada. Devuelve si se ha creado.
+     */
+    public static function borradorAutomatico(ConfidencialidadDoc $d, string $respuesta): bool
+    {
+        if (! $d->correo_id || ! preg_match('/^[ \t]*-{3}\s*BORRADOR\s*-{3}[ \t]*\R(.*?)\R[ \t]*-{3}\s*FIN\s*-{3}[ \t]*$/msu', $respuesta, $m)) {
+            return false;
+        }
+        $bloque = trim($m[1]);
+        $hash = md5($bloque);
+        $meta = self::leerMeta($d);
+        if (($meta['borrador_auto']['hash'] ?? null) === $hash || mb_strlen($bloque) < 10) {
+            return false;
+        }
+        $cab = ['modo' => 'respuesta', 'para' => '', 'asunto' => ''];
+        $lineas = preg_split('/\R/u', $bloque);
+        while ($lineas && preg_match('/^\s*(MODO|PARA|ASUNTO)\s*:\s*(.*)$/iu', $lineas[0], $h)) {
+            $cab[mb_strtolower($h[1])] = trim($h[2]);
+            array_shift($lineas);
+        }
+        $cuerpo = self::restaurar($d, trim(implode("\n", $lineas)));         // si el documento iba anonimizado, vuelven los datos reales
+        $cab['asunto'] = self::restaurar($d, $cab['asunto']);
+        if ($cuerpo === '') {
+            return false;
+        }
+        $u = User::find($d->user_id);
+        $buzon = mb_strtolower((string) $u?->email);
+        if (! $u || $buzon === '') {
+            return false;
+        }
+        $html = GraphMail::html($cuerpo."\n\n".self::firmaDe($u)).GraphMail::pieRgpd();
+        $modo = mb_strtolower($cab['modo']) === 'nuevo' ? 'nuevo' : 'respuesta';
+        if ($modo === 'respuesta') {
+            GraphMail::crearBorradorRespuesta($buzon, $d->correo_id, $html);
+        } else {
+            $para = array_values(array_filter(preg_split('/[\s,;]+/', $cab['para']) ?: [], fn ($x) => filter_var($x, FILTER_VALIDATE_EMAIL)));
+            GraphMail::crearBorradorHtml($buzon, $para, [], $cab['asunto'] !== '' ? $cab['asunto'] : '(sin asunto)', $html);
+        }
+        $meta['borrador_auto'] = ['hash' => $hash, 'modo' => $modo, 'hora' => now()->format('H:i')];
+        self::guardarMeta($d, $meta);
+
+        return true;
     }
 
     /** Respuestas de Claude en la tarea, con los datos reales puestos. [{fecha, texto, estado}] */

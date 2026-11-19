@@ -198,7 +198,11 @@
                                 <div class="p-2 mt-1 text-sm rounded border {{ $r['quien'] === 'yo' ? 'bg-gray-50 border-gray-200 ml-6' : 'bg-indigo-50 border-indigo-200 mr-6' }}" style="white-space:pre-wrap"><div class="text-xs text-gray-400">{{ $r['quien'] === 'yo' ? 'Tú' : 'Claude' }} · {{ $r['fecha'] }}</div>{{ $r['texto'] }}</div>
                             @endforeach
                             @if ($esperaClaude)
-                                <div class="mt-1 text-sm text-gray-400">⏳ Claude está en ello (puede tardar unos minutos; esto se actualiza solo).</div>
+                                <div class="mt-1 text-sm text-gray-400">⏳ Claude está en ello (suele tardar menos de un minuto; esto se actualiza solo).</div>
+                            @endif
+                            @if ($borradorAuto)
+                                <div class="p-2 mt-2 text-sm text-green-800 bg-green-50 border border-green-200 rounded">✔ Borrador creado en tu Outlook (Borradores) a las {{ $borradorAuto['hora'] }}{{ ($borradorAuto['modo'] ?? '') === 'nuevo' ? ' como correo nuevo' : ' como respuesta a este correo' }}. No se ha enviado nada.
+                                    <a href="https://outlook.office.com/mail/drafts" target="_blank" class="underline">Abrir Borradores</a> · si no lo ves, pulsa F9 en Outlook.</div>
                             @endif
                             @if ($hayRespuesta && $bTexto === '')
                                 <button type="button" wire:click="usarRespuesta" class="mt-2 text-xs text-indigo-700 underline">📝 Usar la respuesta de Claude como borrador de correo…</button>

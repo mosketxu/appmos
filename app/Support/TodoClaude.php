@@ -250,6 +250,14 @@ class TodoClaude
 
         if ($respuesta !== null && trim($respuesta) !== '') {
             TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $claude->id, 'tipo' => 'respuesta', 'fecha' => $hoy, 'texto' => trim($respuesta)]);
+            // ✉ Correo: si trae un borrador, se crea ya en el Outlook de quien lo pidió (aunque tenga la pantalla cerrada); un fallo aquí nunca estropea el registro de la respuesta
+            try {
+                if ($doc = \App\Models\ConfidencialidadDoc::where('tarea_id', $t->id)->whereNotNull('correo_id')->first()) {
+                    \App\Support\Confidencialidad::borradorAutomatico($doc, $respuesta);
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
         if ($estado && isset(TodoTarea::ESTADOS[$estado]) && $estado !== $t->estado) {
             TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $claude->id, 'tipo' => 'evento', 'fecha' => $hoy,

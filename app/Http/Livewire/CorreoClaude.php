@@ -213,13 +213,9 @@ class CorreoClaude extends Component
         return array_values(array_filter(preg_split('/[\s,;]+/', $t) ?: [], fn ($x) => filter_var($x, FILTER_VALIDATE_EMAIL)));
     }
 
-    /** Firma estándar de Suma con el nombre de quien lo crea (y el teléfono de Alex, que es el de su firma de siempre); el logo lo pone GraphMail::html(). */
     protected function firma(): string
     {
-        $u = auth()->user();
-        $alex = mb_strtolower((string) $u->email) === 'alex.arregui@sumaempresa.com';
-
-        return ($alex ? 'Alexander Arregui' : $u->name).($alex ? "\nTel. 638 12 26 14" : '')."\nSuma Apoyo Empresarial SL";
+        return Conf::firmaDe(auth()->user());
     }
 
     /** Usa la última respuesta de Claude entera como borrador (si no la dio entre ---BORRADOR--- y ---FIN---). */
@@ -357,7 +353,7 @@ class CorreoClaude extends Component
         if (mb_strlen(trim($this->instruccion)) >= 3) {          // con el texto ya escrito se envía en el mismo paso
             Conf::pedirAClaude($d, auth()->user(), $this->instruccion);
             $this->instruccion = '';
-            $this->aviso = 'Enviado a Claude tal cual (sin anonimizar). '.$extra.'La respuesta saldrá aquí en unos minutos.';
+            $this->aviso = 'Enviado a Claude tal cual (sin anonimizar). '.$extra.'La respuesta sale aquí en cuanto la tenga (suele ser menos de un minuto).';
 
             return;
         }
@@ -390,7 +386,7 @@ class CorreoClaude extends Component
         $nueva = ! $d->tarea_id;
         Conf::pedirAClaude($d, auth()->user(), $this->instruccion);
         $this->instruccion = '';
-        $this->aviso = $nueva ? 'Petición enviada. Claude la recoge en unos minutos; la respuesta saldrá aquí.' : 'Indicación enviada a Claude.';
+        $this->aviso = $nueva ? 'Petición enviada. Claude la recoge enseguida (suele tardar menos de un minuto); la respuesta sale aquí.' : 'Indicación enviada a Claude.';
     }
 
     /** El correo abierto (con caché breve: no se guarda en la página para no viajar en cada actualización). */
@@ -490,11 +486,13 @@ class CorreoClaude extends Component
             $progreso = $doc->estado === 'procesando' ? Conf::progreso($doc) : [];
         }
         $hayRespuesta = false;
+        $borradorAuto = $doc ? (Conf::leerMeta($doc)['borrador_auto'] ?? null) : null;
         foreach (array_reverse($conversacion) as $r) {
             if ($r['quien'] === 'claude') {
                 $hayRespuesta = true;
                 // las marcas ---BORRADOR--- / ---FIN---, cada una en su línea (no si Claude solo las nombra dentro de una frase)
-                if (preg_match('/^[ \t]*-{3}\s*BORRADOR\s*-{3}[ \t]*\R(.*?)\R[ \t]*-{3}\s*FIN\s*-{3}[ \t]*$/msu', $r['texto'], $mm) && md5(trim($mm[1])) !== $this->bHash) {
+                if (preg_match('/^[ \t]*-{3}\s*BORRADOR\s*-{3}[ \t]*\R(.*?)\R[ \t]*-{3}\s*FIN\s*-{3}[ \t]*$/msu', $r['texto'], $mm) && md5(trim($mm[1])) !== $this->bHash
+                    && (Conf::leerMeta($doc)['borrador_auto']['hash'] ?? null) !== md5(trim($mm[1]))) {      // los ya creados solos no se vuelven a ofrecer
                     $this->bHash = md5(trim($mm[1]));
                     $this->bTexto = trim($mm[1]);
                     $this->bAsunto = (string) ($m['asunto'] ?? '');
@@ -515,6 +513,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso', 'hayRespuesta'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto', 'sinPermiso', 'hayRespuesta', 'borradorAuto'));
     }
 }

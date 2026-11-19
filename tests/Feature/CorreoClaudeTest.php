@@ -359,4 +359,54 @@ class CorreoClaudeTest extends TestCase
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSet('bTexto', '')->assertSee('Usar la respuesta de Claude como borrador');
         \App\Support\Confidencialidad::borrar($d);
     }
+
+    protected function tareaConDoc(\App\Models\User $u): array
+    {
+        \Illuminate\Support\Facades\Process::fake(['*' => \Illuminate\Support\Facades\Process::result('x')]);
+        $d = $this->docListo($u);
+        \App\Support\Confidencialidad::pedirAClaude($d->fresh(), $u, 'Redacta el correo');
+
+        return [$d->fresh(), \App\Models\TodoTarea::find($d->fresh()->tarea_id)];
+    }
+
+    public function test_el_borrador_se_crea_solo_cuando_claude_responde_y_una_sola_vez(): void
+    {
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        $u = $this->usuarioConCorreo('jefe@example.test');
+        $this->actingAs($u);
+        [$d, $t] = $this->tareaConDoc($u);
+        $resp = "Hecho.\n---BORRADOR---\nHello Susanne,\nPlease find the ledger attached.\n---FIN---\nNota.";
+        \App\Support\TodoClaude::registrar($t, 'hecha', $resp);
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), 'messages/D1') && str_contains($r['body']['content'], 'Please find the ledger')
+            && str_contains($r['body']['content'], 'Suma Apoyo Empresarial SL') && str_contains($r['body']['content'], 'In compliance with'));
+        $this->assertSame('respuesta', \App\Support\Confidencialidad::leerMeta($d)['borrador_auto']['modo']);
+        \App\Support\TodoClaude::registrar($t->fresh(), 'hecha', $resp);                       // misma respuesta: no se repite
+        $this->assertCount(1, Http::recorded(fn ($r) => str_ends_with($r->url(), 'messages/AAA/createReply')));
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('Borrador creado en tu Outlook')->assertSet('bTexto', '');
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_el_borrador_automatico_nuevo_usa_para_y_asunto_de_la_cabecera(): void
+    {
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        $u = $this->usuarioConCorreo('jefe@example.test');
+        $this->actingAs($u);
+        [$d, $t] = $this->tareaConDoc($u);
+        \App\Support\TodoClaude::registrar($t, 'hecha', "---BORRADOR---\nMODO: nuevo\nPARA: susanne@example.test\nASUNTO: Pending invoice\n\nDear Susanne,\nWe attach the ledger.\n---FIN---");
+        Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/messages') && $r['subject'] === 'Pending invoice'
+            && $r['toRecipients'][0]['emailAddress']['address'] === 'susanne@example.test' && str_contains($r['body']['content'], 'We attach the ledger'));
+        $this->assertStringNotContainsString('MODO', json_encode(Http::recorded()->map(fn ($p) => $p[0]->body())->all()));
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_una_respuesta_sin_bloque_no_crea_borrador(): void
+    {
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        $u = $this->usuarioConCorreo('jefe@example.test');
+        $this->actingAs($u);
+        [$d, $t] = $this->tareaConDoc($u);
+        \App\Support\TodoClaude::registrar($t, 'hecha', 'Correo redactado entre ---BORRADOR--- y ---FIN---. Le dice que sí.');
+        $this->assertCount(0, Http::recorded(fn ($r) => str_ends_with($r->url(), 'createReply')));
+        \App\Support\Confidencialidad::borrar($d);
+    }
 }
