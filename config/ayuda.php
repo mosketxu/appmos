@@ -15,6 +15,9 @@ return [
 <li>Escribe en «Búsqueda» y filtra por <b>Clientes</b>, <b>Estado</b>, <b>Facturar</b> y <b>Responsable</b>; normalmente trabajas con las <b>activas</b>.</li>
 <li>Abre una entidad para ver sus <b>contactos</b>, su <b>historial</b>, qué <b>impuestos</b> presenta (esa zona alimenta el seguimiento de Impuestos) y su plan de facturación.</li>
 <li>Crear o editar entidades requiere el permiso de edición; sin él los botones no salen.</li>
+<li>El botón <b>📂</b> de cada fila (y el de la cabecera de la ficha) sube los <b>ficheros base de SAGE</b> de esa entidad.</li>
+<li><b>Responsable</b> se ve con iniciales; el nombre completo sale al pasar el ratón.</li>
+<li>En la ficha, <b>cuenta contable y código</b> de cliente salen si es Cliente y los de proveedor si es Proveedor (los cuatro si es ambas cosas).</li>
 </ul>
 <h4>Ojo</h4>
 <ul><li>Lo que pongas aquí (impuestos de cada cliente, cifras de cuenta de SAGE, estado) lo usan otras pantallas: Impuestos, Bancos, Facturas OCR…</li></ul>
