@@ -58,6 +58,7 @@ class ImpuestoM349 extends Component
     /** Paso 1 del envío hecho: se enseña el correo y el botón de confirmar (huella de lo que se va a enviar). */
     public string $mailArmado = '';
 
+    public const TEXTO_JUSTIFICANTE = "Hola Marta,\n\nYa he presentado el M349 de Nae de este mes. Te adjunto el justificante.\n\nGracias.";
     public const TEXTO_MARTA = "Hola Marta,\n\nAdjunto el borrador del M349 de Nae de este mes.\n\nYa me respondes.";
     public string $error = '';
     public string $msg = '';
@@ -633,6 +634,71 @@ class ImpuestoM349 extends Component
     {
         $this->autorizar();
         $this->modalAccion = 'enviar';
+    }
+
+    /** Justificante de la presentación de este periodo guardado en Seguimiento (casilla 349): ['ruta', 'nombre'] o null. */
+    public function justificante(): ?array
+    {
+        if (! $this->entidadId || $this->periodo === '') {
+            return null;
+        }
+        $d = ImpuestoDocumento::where(['entidad_id' => $this->entidadId, 'modelo' => '349', 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo, 'tipo' => 'presentado'])
+            ->whereNull('quitado_at')->orderByDesc('id')->first();
+        $ruta = $d ? Storage::disk('local')->path($d->almacen) : null;
+
+        return $d && is_file($ruta) ? ['ruta' => $ruta, 'nombre' => $d->nombre] : null;
+    }
+
+    public function asuntoJustificante(): string
+    {
+        return 'M349 Nae '.(Imp::MESES[(int) $this->periodo - 1] ?? $this->periodo).' '.$this->ejercicio.' - presentado';
+    }
+
+    public function pedirJustificante(): void
+    {
+        $this->autorizar();
+        $this->error = $this->msg = '';
+        if (! $this->justificante()) {
+            $this->error = 'Aún no hay justificante en la casilla 349 de Seguimiento: súbelo allí (el PDF que baja la AEAT) y vuelve a pulsar.';
+            return;
+        }
+        $this->modalAccion = 'justificante';
+    }
+
+    /** Envía a Marta el justificante de la presentación (adjunto el de Seguimiento) y lo anota como comentario de la casilla. */
+    public function enviarJustificante(): void
+    {
+        $this->autorizar();
+        $this->modalAccion = '';
+        $this->error = $this->msg = '';
+        $j = $this->justificante();
+        if (! $j) {
+            $this->error = 'No encuentro el justificante en Seguimiento.';
+            return;
+        }
+        try {
+            GraphMail::enviarHtml((string) auth()->user()->email, [ComunicarImpuestos::CC_DEFECTO], [], $this->asuntoJustificante(), GraphMail::html(self::TEXTO_JUSTIFICANTE),
+                [['nombre' => $j['nombre'], 'ruta' => $j['ruta']]]);
+        } catch (\Throwable $e) {
+            $this->error = 'No se ha podido enviar el correo: '.$e->getMessage();   // sin reintento automático: si dudas, mira Elementos enviados
+            return;
+        }
+        $ob = DB::table('entidad_impuestos as ei')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')->where('ei.entidad_id', $this->entidadId)->where('m.codigo', '349')->value('ei.id');
+        if ($ob) {
+            DB::table('impuesto_comentarios')->insert(['entidad_impuesto_id' => $ob, 'ejercicio' => $this->ejercicio, 'periodo' => $this->periodo,
+                'texto' => '✉ Justificante enviado a Marta («'.$j['nombre'].'»).', 'user_id' => auth()->id(), 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $this->msg = 'Justificante enviado a '.ComunicarImpuestos::CC_DEFECTO.'.';
+        $this->dispatch('notify', '✉ Justificante enviado a Marta');
+    }
+
+    public function justificanteYaEnviado(): ?string
+    {
+        $f = DB::table('impuesto_comentarios as c')->join('entidad_impuestos as ei', 'ei.id', '=', 'c.entidad_impuesto_id')->join('impuesto_modelos as m', 'm.id', '=', 'ei.modelo_id')
+            ->where(['ei.entidad_id' => $this->entidadId, 'm.codigo' => '349', 'c.ejercicio' => $this->ejercicio, 'c.periodo' => $this->periodo])
+            ->where('c.texto', 'like', '✉ Justificante enviado a Marta%')->orderByDesc('c.id')->value('c.created_at');
+
+        return $f ? date('d/m/Y H:i', strtotime($f)) : null;
     }
 
     public function cerrarModal(): void

@@ -201,6 +201,11 @@
                     <button type="button" wire:click="marcarRevisado" class="m3-btn" title="Marta ya lo ha revisado: lo decides tú (o ella). Deja la casilla en «revisado» y un comentario.">✔ Marcar como revisado</button>
                 @endif
             </div>
+            <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button type="button" wire:click="pedirJustificante" class="m3-btn">✉ Enviar justificante a Marta…</button>
+                @if ($ya = $this->justificanteYaEnviado())<span class="text-xs text-green-700">✔ ya enviado el {{ $ya }}</span>
+                @elseif (! $this->justificante())<span class="text-xs text-gray-500">primero sube el justificante a la casilla 349 de Seguimiento</span>@endif
+            </div>
             <div class="text-xs text-gray-500" style="margin-top:6px">No valida ni presenta por su cuenta. Al acabar, sube el justificante a la casilla 349 de Seguimiento.</div>
         </div>
     @endif
@@ -208,7 +213,19 @@
     @if ($modalAccion !== '')
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(17,24,39,.5)">
             <div class="w-full max-w-lg p-5 space-y-3 bg-white rounded-lg shadow-xl" wire:keydown.escape="cerrarModal">
-                @if ($modalAccion === 'enviar')
+                @if ($modalAccion === 'justificante')
+                    @php($jj = $this->justificante())
+                    <h2 class="text-lg font-semibold text-gray-900">Justificante a Marta</h2>
+                    <div class="text-sm"><span class="text-gray-500">De:</span> {{ auth()->user()->email }} · <span class="text-gray-500">Para:</span> {{ \App\Support\ComunicarImpuestos::CC_DEFECTO }}</div>
+                    <div class="text-sm"><span class="text-gray-500">Asunto:</span> {{ $this->asuntoJustificante() }}</div>
+                    <div class="text-sm"><span class="text-gray-500">Adjunto:</span> 📎 {{ $jj['nombre'] ?? '' }}</div>
+                    <div class="text-sm" style="white-space:pre-line;padding:8px;background:#f9fafb;border-radius:6px">{{ \App\Http\Livewire\ImpuestoM349::TEXTO_JUSTIFICANTE }}</div>
+                    @if ($ya = $this->justificanteYaEnviado())<div class="text-sm text-amber-700">⚠️ Ya se envió el {{ $ya }}. Mira que no se duplique.</div>@endif
+                    <div class="flex justify-end gap-2">
+                        <button type="button" wire:click="cerrarModal" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50">Cancelar</button>
+                        <button type="button" wire:click="enviarJustificante" class="px-3 py-1.5 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">✉ Enviar a Marta</button>
+                    </div>
+                @elseif ($modalAccion === 'enviar')
                     <h2 class="text-lg font-semibold text-gray-900">Enviar el borrador a Marta</h2>
                     <p class="text-sm text-gray-600">Se envía el correo a {{ \App\Support\ComunicarImpuestos::CC_DEFECTO }} con el borrador adjunto. ¿Lo envío?</p>
                     <div class="flex justify-end gap-2">
