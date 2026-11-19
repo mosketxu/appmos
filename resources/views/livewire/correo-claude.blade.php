@@ -44,15 +44,15 @@
                 <div style="overflow-y:auto; flex:1">
                     @forelse ($lista as $c)
                         @php $f = \Carbon\Carbon::parse($c['fecha'])->timezone('Europe/Madrid'); @endphp
-                        <button draggable="true" data-correo="{{ $c['id'] }}" type="button" wire:key="c-{{ md5($c['id']) }}" wire:click="seleccionar('{{ $c['id'] }}')"
-                                class="block w-full px-3 py-2 text-left border-b hover:bg-indigo-50 {{ $sel === $c['id'] ? 'bg-indigo-100' : '' }}">
+                        <div draggable="true" role="button" tabindex="0" data-correo="{{ $c['id'] }}" wire:key="c-{{ md5($c['id']) }}" wire:click="seleccionar('{{ $c['id'] }}')"
+                                class="block w-full px-3 py-2 text-left border-b cursor-pointer hover:bg-indigo-50 {{ $sel === $c['id'] ? 'bg-indigo-100' : '' }}" style="user-select:none; -webkit-user-drag:element">
                             <div class="flex items-baseline justify-between gap-2">
                                 <span class="text-sm truncate {{ $c['leido'] ? 'text-gray-700' : 'font-bold text-blue-700' }}">{{ $c['nombre'] }}</span>
                                 <span class="text-xs text-gray-400 whitespace-nowrap">{{ $f->isToday() ? $f->format('H:i') : ($f->isCurrentYear() ? $f->format('d/m H:i') : $f->format('d/m/Y')) }}</span>
                             </div>
                             <div class="text-xs truncate {{ $c['leido'] ? 'text-gray-600' : 'font-semibold text-blue-700' }}">@if ($c['adjuntos'])📎 @endif{{ $c['asunto'] ?: '(sin asunto)' }}</div>
                             <div class="text-xs text-gray-400 truncate">{{ $c['extracto'] }}</div>
-                        </button>
+                        </div>
                     @empty
                         <div class="p-4 text-sm text-gray-400">{{ $busqueda ? 'No hay correos con ese texto.' : 'Sin correos.' }}</div>
                     @endforelse
@@ -211,27 +211,36 @@
         </div>
     </div>
 
-@script
 <script>
-    const rejilla = document.getElementById('correo-grid');
-    const guardarAnchos = () => { try { const o = {}; ['--w1', '--w2', '--w4'].forEach(v => { const x = rejilla.style.getPropertyValue(v); if (x) o[v] = x; }); localStorage.setItem('correoCols2', JSON.stringify(o)); } catch (e) {} };
-    try { const g = JSON.parse(localStorage.getItem('correoCols2') || '{}'); Object.keys(g).forEach(v => rejilla.style.setProperty(v, g[v])); } catch (e) {}
-    rejilla.addEventListener('mousedown', (ev) => {
-        const t = ev.target.closest('.col-res'); if (!t) return;
-        ev.preventDefault();
-        const v = t.dataset.var, signo = parseInt(t.dataset.sign, 10), x0 = ev.clientX;
-        const col = signo > 0 ? t.previousElementSibling : t.nextElementSibling;
-        const w0 = col.getBoundingClientRect().width;
-        const marcos = rejilla.querySelectorAll('iframe'); marcos.forEach(f => f.style.pointerEvents = 'none'); document.body.style.userSelect = 'none';
-        const mover = (e) => rejilla.style.setProperty(v, Math.max(120, Math.min(900, w0 + signo * (e.clientX - x0))) + 'px');
-        const soltar = () => { window.removeEventListener('mousemove', mover); window.removeEventListener('mouseup', soltar); marcos.forEach(f => f.style.pointerEvents = ''); document.body.style.userSelect = ''; guardarAnchos(); };
-        window.addEventListener('mousemove', mover); window.addEventListener('mouseup', soltar);
-    });
-    rejilla.addEventListener('dblclick', (ev) => { const t = ev.target.closest('.col-res'); if (!t) return; rejilla.style.removeProperty(t.dataset.var); guardarAnchos(); });
-    rejilla.addEventListener('dragstart', (ev) => { const f = ev.target.closest('[data-correo]'); if (f) ev.dataTransfer.setData('text/plain', f.dataset.correo); });
-    rejilla.addEventListener('dragover', (ev) => { const c = ev.target.closest('[data-carpeta]'); if (c) { ev.preventDefault(); c.classList.add('bg-green-100'); } });
-    rejilla.addEventListener('dragleave', (ev) => { const c = ev.target.closest('[data-carpeta]'); if (c) c.classList.remove('bg-green-100'); });
-    rejilla.addEventListener('drop', (ev) => { const c = ev.target.closest('[data-carpeta]'); if (!c) return; ev.preventDefault(); c.classList.remove('bg-green-100'); const id = ev.dataTransfer.getData('text/plain'); if (id) $wire.moverId(c.dataset.carpeta, id); });
+    (function () {
+        const rejilla = document.getElementById('correo-grid');
+        if (!rejilla) return;
+        const guardarAnchos = () => { try { const o = {}; ['--w1', '--w2', '--w4'].forEach(v => { const x = rejilla.style.getPropertyValue(v); if (x) o[v] = x; }); localStorage.setItem('correoCols2', JSON.stringify(o)); } catch (e) {} };
+        try { const g = JSON.parse(localStorage.getItem('correoCols2') || '{}'); Object.keys(g).forEach(v => rejilla.style.setProperty(v, g[v])); } catch (e) {}
+        if (window.__correoPantalla) return;          // los escuchadores se ponen una sola vez; Livewire repinta la pantalla pero no los quita
+        window.__correoPantalla = true;
+        const grid = () => document.getElementById('correo-grid');
+        document.addEventListener('mousedown', (ev) => {
+            const t = ev.target.closest && ev.target.closest('#correo-grid .col-res'); if (!t) return;
+            ev.preventDefault();
+            const g = grid(), v = t.dataset.var, signo = parseInt(t.dataset.sign, 10), x0 = ev.clientX;
+            const col = signo > 0 ? t.previousElementSibling : t.nextElementSibling;
+            const w0 = col.getBoundingClientRect().width;
+            const marcos = g.querySelectorAll('iframe'); marcos.forEach(f => f.style.pointerEvents = 'none'); document.body.style.userSelect = 'none';
+            const mover = (e) => g.style.setProperty(v, Math.max(120, Math.min(900, w0 + signo * (e.clientX - x0))) + 'px');
+            const soltar = () => { window.removeEventListener('mousemove', mover); window.removeEventListener('mouseup', soltar); marcos.forEach(f => f.style.pointerEvents = ''); document.body.style.userSelect = ''; guardarAnchos(); };
+            window.addEventListener('mousemove', mover); window.addEventListener('mouseup', soltar);
+        });
+        document.addEventListener('dblclick', (ev) => { const t = ev.target.closest && ev.target.closest('#correo-grid .col-res'); if (!t) return; grid().style.removeProperty(t.dataset.var); guardarAnchos(); });
+        document.addEventListener('dragstart', (ev) => { const f = ev.target.closest && ev.target.closest('#correo-grid [data-correo]'); if (f) { ev.dataTransfer.setData('text/plain', f.dataset.correo); ev.dataTransfer.effectAllowed = 'move'; } });
+        document.addEventListener('dragover', (ev) => { const c = ev.target.closest && ev.target.closest('#correo-grid [data-carpeta]'); if (c) { ev.preventDefault(); c.classList.add('bg-green-100'); } });
+        document.addEventListener('dragleave', (ev) => { const c = ev.target.closest && ev.target.closest('#correo-grid [data-carpeta]'); if (c) c.classList.remove('bg-green-100'); });
+        document.addEventListener('drop', (ev) => {
+            const c = ev.target.closest && ev.target.closest('#correo-grid [data-carpeta]'); if (!c) return;
+            ev.preventDefault(); c.classList.remove('bg-green-100');
+            const id = ev.dataTransfer.getData('text/plain'); if (!id) return;
+            const raiz = c.closest('[wire\\:id]'); if (raiz && window.Livewire) window.Livewire.find(raiz.getAttribute('wire:id')).moverId(c.dataset.carpeta, id);
+        });
+    })();
 </script>
-@endscript
 </div>
