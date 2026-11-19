@@ -12,9 +12,18 @@
             <div class="p-2 mb-2 text-sm text-green-800 bg-green-100 border border-green-300 rounded">{{ $aviso }}</div>
         @endif
 
-        <div class="flex flex-wrap gap-3" style="align-items:stretch" x-data>
+        <div style="display:grid; align-items:stretch; overflow-x:auto" x-data="{ w1: 208, w2: 360, w4: 400, arrastrando: false,
+                 init() { try { const g = JSON.parse(localStorage.getItem('correoCols') || '{}'); this.w1 = g.w1 || this.w1; this.w2 = g.w2 || this.w2; this.w4 = g.w4 || this.w4; } catch (e) {} },
+                 guardar() { try { localStorage.setItem('correoCols', JSON.stringify({ w1: this.w1, w2: this.w2, w4: this.w4 })); } catch (e) {} },
+                 arrastrar(ev, k, signo) {
+                     const x0 = ev.clientX, w0 = this[k]; this.arrastrando = true; document.body.style.userSelect = 'none';
+                     const mover = (e) => { this[k] = Math.max(120, Math.min(900, w0 + signo * (e.clientX - x0))); };
+                     const soltar = () => { window.removeEventListener('mousemove', mover); window.removeEventListener('mouseup', soltar); this.arrastrando = false; document.body.style.userSelect = ''; this.guardar(); };
+                     window.addEventListener('mousemove', mover); window.addEventListener('mouseup', soltar);
+                 } }"
+             :style="`grid-template-columns: ${w1}px 8px ${w2}px 8px minmax(18rem, 1fr) 8px ${w4}px`">
             {{-- ============ Carpetas ============ --}}
-            <div class="bg-white border rounded shadow-sm" style="flex:0 0 13rem; overflow-y:auto; height:calc(100vh - 11rem); min-height:22rem">
+            <div class="bg-white border rounded shadow-sm" style="min-width:0; overflow-y:auto; height:calc(100vh - 11rem); min-height:22rem">
                 <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Carpetas</div>
                 @foreach ($carpetas['plana'] as $f)
                     @php $activa = $carpeta === $f['id'] || ($carpeta === 'inbox' && $f['id'] === $carpetas['inbox']); @endphp
@@ -36,8 +45,9 @@
                 <div class="px-3 py-2 text-xs text-gray-400">Arrastra un correo a una carpeta para moverlo.</div>
             </div>
 
+            <div style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)" x-on:mousedown.prevent="arrastrar($event, 'w1', 1)" x-on:dblclick="w1 = 208; guardar()"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
             {{-- ============ Izquierda: lista de correos ============ --}}
-            <div class="bg-white border rounded shadow-sm" style="flex:1 1 20rem; max-width:26rem; display:flex; flex-direction:column; height:calc(100vh - 11rem); min-height:22rem">
+            <div class="bg-white border rounded shadow-sm" style="min-width:0; display:flex; flex-direction:column; height:calc(100vh - 11rem); min-height:22rem">
                 <div class="flex gap-1 p-2 border-b">
                     <input type="text" wire:model.live.debounce.600ms="busqueda" placeholder="Buscar en el buzón…" class="flex-1 text-sm border-gray-300 rounded" style="min-width:0">
                     <button type="button" wire:click="refrescar" class="px-2 text-sm border rounded hover:bg-gray-50" title="Actualizar">↻</button>
@@ -63,8 +73,9 @@
                 </div>
             </div>
 
+            <div style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)" x-on:mousedown.prevent="arrastrar($event, 'w2', 1)" x-on:dblclick="w2 = 360; guardar()"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
             {{-- ============ Centro: el correo ============ --}}
-            <div class="bg-white border rounded shadow-sm" style="flex:3 1 28rem; min-width:0; display:flex; flex-direction:column; height:calc(100vh - 11rem); min-height:22rem">
+            <div class="bg-white border rounded shadow-sm" style="min-width:0; display:flex; flex-direction:column; height:calc(100vh - 11rem); min-height:22rem">
                 @if ($m)
                     <div class="p-3 border-b">
                         <div class="text-base font-semibold text-gray-800">{{ $m['asunto'] ?: '(sin asunto)' }}</div>
@@ -96,14 +107,15 @@
                             </div>
                         @endif
                     </div>
-                    <iframe wire:key="msg-{{ md5($sel) }}" sandbox="" referrerpolicy="no-referrer" srcdoc="{{ $seguro }}" style="flex:1; width:100%; border:0"></iframe>
+                    <iframe wire:key="msg-{{ md5($sel) }}" sandbox="" referrerpolicy="no-referrer" srcdoc="{{ $seguro }}" style="flex:1; width:100%; border:0" :style="arrastrando && 'pointer-events:none'"></iframe>
                 @else
                     <div class="p-6 text-sm text-gray-400">Elige un correo de la lista.</div>
                 @endif
             </div>
 
+            <div style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)" x-on:mousedown.prevent="arrastrar($event, 'w4', -1)" x-on:dblclick="w4 = 400; guardar()"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
             {{-- ============ Derecha: qué hacer con él ============ --}}
-            <div class="bg-white border rounded shadow-sm" style="flex:2 1 22rem; max-width:32rem; min-width:0; overflow-y:auto; height:calc(100vh - 11rem); min-height:22rem">
+            <div class="bg-white border rounded shadow-sm" style="min-width:0; overflow-y:auto; height:calc(100vh - 11rem); min-height:22rem">
                 <div class="p-3">
                     <div class="mb-2 text-sm font-semibold text-gray-700">🤖 Qué hacer con este correo</div>
                     @if (! $m)

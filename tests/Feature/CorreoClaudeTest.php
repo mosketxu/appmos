@@ -198,4 +198,12 @@ class CorreoClaudeTest extends TestCase
         $this->assertSame(1, \App\Models\TodoComentario::where('tarea_id', $t->id)->where('tipo', 'respuesta')->count() + 1);
         \App\Support\Confidencialidad::borrar($d);
     }
+
+    public function test_las_columnas_tienen_tiradores_para_cambiar_el_ancho(): void
+    {
+        $this->actingAs($this->adminUser());
+        $h = Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->html();
+        $this->assertSame(3, substr_count($h, 'cursor:col-resize'));
+        $this->assertStringContainsString('correoCols', $h);
+    }
 }
