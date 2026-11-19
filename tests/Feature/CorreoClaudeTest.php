@@ -204,6 +204,7 @@ class CorreoClaudeTest extends TestCase
         $this->actingAs($this->adminUser());
         $h = Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->html();
         $this->assertSame(3, substr_count($h, 'cursor:col-resize'));
-        $this->assertStringContainsString('correoCols', $h);
+        $this->assertStringContainsString('id="correo-grid"', $h);
+        $this->assertStringNotContainsString('x-data', $h);      // el reparto de columnas no depende de Alpine: sin JavaScript sigue saliendo bien
     }
 }

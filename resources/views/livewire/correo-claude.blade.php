@@ -12,25 +12,14 @@
             <div class="p-2 mb-2 text-sm text-green-800 bg-green-100 border border-green-300 rounded">{{ $aviso }}</div>
         @endif
 
-        <div style="display:grid; align-items:stretch; overflow-x:auto" x-data="{ w1: 208, w2: 360, w4: 400, arrastrando: false,
-                 init() { try { const g = JSON.parse(localStorage.getItem('correoCols') || '{}'); this.w1 = g.w1 || this.w1; this.w2 = g.w2 || this.w2; this.w4 = g.w4 || this.w4; } catch (e) {} },
-                 guardar() { try { localStorage.setItem('correoCols', JSON.stringify({ w1: this.w1, w2: this.w2, w4: this.w4 })); } catch (e) {} },
-                 arrastrar(ev, k, signo) {
-                     const x0 = ev.clientX, w0 = this[k]; this.arrastrando = true; document.body.style.userSelect = 'none';
-                     const mover = (e) => { this[k] = Math.max(120, Math.min(900, w0 + signo * (e.clientX - x0))); };
-                     const soltar = () => { window.removeEventListener('mousemove', mover); window.removeEventListener('mouseup', soltar); this.arrastrando = false; document.body.style.userSelect = ''; this.guardar(); };
-                     window.addEventListener('mousemove', mover); window.addEventListener('mouseup', soltar);
-                 } }"
-             :style="`grid-template-columns: ${w1}px 8px ${w2}px 8px minmax(18rem, 1fr) 8px ${w4}px`">
+        <div id="correo-grid" wire:ignore.self style="display:grid; align-items:stretch; overflow-x:auto; grid-template-columns: var(--w1,208px) 8px var(--w2,360px) 8px minmax(18rem, 1fr) 8px var(--w4,400px)">
             {{-- ============ Carpetas ============ --}}
             <div class="bg-white border rounded shadow-sm" style="min-width:0; overflow-y:auto; height:calc(100vh - 11rem); min-height:22rem">
                 <div class="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Carpetas</div>
                 @foreach ($carpetas['plana'] as $f)
                     @php $activa = $carpeta === $f['id'] || ($carpeta === 'inbox' && $f['id'] === $carpetas['inbox']); @endphp
                     <div wire:key="f-{{ md5($f['id']) }}" class="flex items-center text-sm border-b border-gray-50 {{ $activa ? 'bg-indigo-100 font-semibold' : 'hover:bg-indigo-50' }}"
-                         style="padding-left:{{ 0.25 + $f['nivel'] * 0.9 }}rem"
-                         x-on:dragover.prevent="$el.classList.add('bg-green-100')" x-on:dragleave="$el.classList.remove('bg-green-100')"
-                         x-on:drop.prevent="$el.classList.remove('bg-green-100'); event.dataTransfer.getData('text/plain') && $wire.moverId('{{ $f['id'] }}', event.dataTransfer.getData('text/plain'))">
+                         style="padding-left:{{ 0.25 + $f['nivel'] * 0.9 }}rem" data-carpeta="{{ $f['id'] }}">
                         @if ($f['hijos'] > 0)
                             <button type="button" wire:click="alternar('{{ $f['id'] }}')" class="w-4 text-xs text-gray-400">{{ $f['abierta'] ? '▾' : '▸' }}</button>
                         @else
@@ -45,7 +34,7 @@
                 <div class="px-3 py-2 text-xs text-gray-400">Arrastra un correo a una carpeta para moverlo.</div>
             </div>
 
-            <div style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)" x-on:mousedown.prevent="arrastrar($event, 'w1', 1)" x-on:dblclick="w1 = 208; guardar()"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
+            <div class="col-res" data-var="--w1" data-sign="1" style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
             {{-- ============ Izquierda: lista de correos ============ --}}
             <div class="bg-white border rounded shadow-sm" style="min-width:0; display:flex; flex-direction:column; height:calc(100vh - 11rem); min-height:22rem">
                 <div class="flex gap-1 p-2 border-b">
@@ -55,7 +44,7 @@
                 <div style="overflow-y:auto; flex:1">
                     @forelse ($lista as $c)
                         @php $f = \Carbon\Carbon::parse($c['fecha'])->timezone('Europe/Madrid'); @endphp
-                        <button draggable="true" x-on:dragstart="event.dataTransfer.setData('text/plain', '{{ $c['id'] }}')" type="button" wire:key="c-{{ md5($c['id']) }}" wire:click="seleccionar('{{ $c['id'] }}')"
+                        <button draggable="true" data-correo="{{ $c['id'] }}" type="button" wire:key="c-{{ md5($c['id']) }}" wire:click="seleccionar('{{ $c['id'] }}')"
                                 class="block w-full px-3 py-2 text-left border-b hover:bg-indigo-50 {{ $sel === $c['id'] ? 'bg-indigo-100' : '' }}">
                             <div class="flex items-baseline justify-between gap-2">
                                 <span class="text-sm truncate {{ $c['leido'] ? 'text-gray-700' : 'font-bold text-blue-700' }}">{{ $c['nombre'] }}</span>
@@ -73,7 +62,7 @@
                 </div>
             </div>
 
-            <div style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)" x-on:mousedown.prevent="arrastrar($event, 'w2', 1)" x-on:dblclick="w2 = 360; guardar()"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
+            <div class="col-res" data-var="--w2" data-sign="1" style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
             {{-- ============ Centro: el correo ============ --}}
             <div class="bg-white border rounded shadow-sm" style="min-width:0; display:flex; flex-direction:column; height:calc(100vh - 11rem); min-height:22rem">
                 @if ($m)
@@ -107,13 +96,13 @@
                             </div>
                         @endif
                     </div>
-                    <iframe wire:key="msg-{{ md5($sel) }}" sandbox="" referrerpolicy="no-referrer" srcdoc="{{ $seguro }}" style="flex:1; width:100%; border:0" :style="arrastrando && 'pointer-events:none'"></iframe>
+                    <iframe wire:key="msg-{{ md5($sel) }}" sandbox="" referrerpolicy="no-referrer" srcdoc="{{ $seguro }}" style="flex:1; width:100%; border:0"></iframe>
                 @else
                     <div class="p-6 text-sm text-gray-400">Elige un correo de la lista.</div>
                 @endif
             </div>
 
-            <div style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)" x-on:mousedown.prevent="arrastrar($event, 'w4', -1)" x-on:dblclick="w4 = 400; guardar()"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
+            <div class="col-res" data-var="--w4" data-sign="-1" style="cursor:col-resize; display:flex; justify-content:center" title="Arrastra para cambiar el ancho (doble clic: restablecer)"><div style="width:3px; height:100%; background:#e5e7eb; border-radius:2px"></div></div>
             {{-- ============ Derecha: qué hacer con él ============ --}}
             <div class="bg-white border rounded shadow-sm" style="min-width:0; overflow-y:auto; height:calc(100vh - 11rem); min-height:22rem">
                 <div class="p-3">
@@ -221,4 +210,28 @@
             </div>
         </div>
     </div>
+
+@script
+<script>
+    const rejilla = document.getElementById('correo-grid');
+    const guardarAnchos = () => { try { const o = {}; ['--w1', '--w2', '--w4'].forEach(v => { const x = rejilla.style.getPropertyValue(v); if (x) o[v] = x; }); localStorage.setItem('correoCols2', JSON.stringify(o)); } catch (e) {} };
+    try { const g = JSON.parse(localStorage.getItem('correoCols2') || '{}'); Object.keys(g).forEach(v => rejilla.style.setProperty(v, g[v])); } catch (e) {}
+    rejilla.addEventListener('mousedown', (ev) => {
+        const t = ev.target.closest('.col-res'); if (!t) return;
+        ev.preventDefault();
+        const v = t.dataset.var, signo = parseInt(t.dataset.sign, 10), x0 = ev.clientX;
+        const col = signo > 0 ? t.previousElementSibling : t.nextElementSibling;
+        const w0 = col.getBoundingClientRect().width;
+        const marcos = rejilla.querySelectorAll('iframe'); marcos.forEach(f => f.style.pointerEvents = 'none'); document.body.style.userSelect = 'none';
+        const mover = (e) => rejilla.style.setProperty(v, Math.max(120, Math.min(900, w0 + signo * (e.clientX - x0))) + 'px');
+        const soltar = () => { window.removeEventListener('mousemove', mover); window.removeEventListener('mouseup', soltar); marcos.forEach(f => f.style.pointerEvents = ''); document.body.style.userSelect = ''; guardarAnchos(); };
+        window.addEventListener('mousemove', mover); window.addEventListener('mouseup', soltar);
+    });
+    rejilla.addEventListener('dblclick', (ev) => { const t = ev.target.closest('.col-res'); if (!t) return; rejilla.style.removeProperty(t.dataset.var); guardarAnchos(); });
+    rejilla.addEventListener('dragstart', (ev) => { const f = ev.target.closest('[data-correo]'); if (f) ev.dataTransfer.setData('text/plain', f.dataset.correo); });
+    rejilla.addEventListener('dragover', (ev) => { const c = ev.target.closest('[data-carpeta]'); if (c) { ev.preventDefault(); c.classList.add('bg-green-100'); } });
+    rejilla.addEventListener('dragleave', (ev) => { const c = ev.target.closest('[data-carpeta]'); if (c) c.classList.remove('bg-green-100'); });
+    rejilla.addEventListener('drop', (ev) => { const c = ev.target.closest('[data-carpeta]'); if (!c) return; ev.preventDefault(); c.classList.remove('bg-green-100'); const id = ev.dataTransfer.getData('text/plain'); if (id) $wire.moverId(c.dataset.carpeta, id); });
+</script>
+@endscript
 </div>
