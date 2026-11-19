@@ -47,6 +47,10 @@
                         <div class="text-base font-semibold text-gray-800">{{ $m['asunto'] ?: '(sin asunto)' }}</div>
                         <div class="mt-1 text-sm text-gray-700"><b>{{ $m['nombre'] ?: $m['de'] }}</b> <span class="text-gray-500">&lt;{{ $m['de'] }}&gt;</span>
                             <span class="float-right text-xs text-gray-400">{{ \Carbon\Carbon::parse($m['fecha'])->timezone('Europe/Madrid')->format('d/m/Y H:i') }}</span></div>
+                        <div class="mt-1">
+                            <button type="button" wire:click="$toggle('verImagenes')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50"
+                                    title="Las imágenes remotas pueden avisar al remitente de que has abierto el correo">{{ $verImagenes ? '🚫 Ocultar imágenes' : '🖼 Mostrar imágenes' }}</button>
+                        </div>
                         <div class="text-xs text-gray-500">Para: {{ $m['para'] ?: '—' }}@if ($m['cc']) · CC: {{ $m['cc'] }}@endif</div>
                         @if ($adjuntos)
                             <div class="flex flex-wrap gap-1 mt-2">

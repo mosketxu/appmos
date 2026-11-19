@@ -23,6 +23,8 @@ class CorreoClaude extends Component
     public string $empresas = '';
     public string $instruccion = '';
     public string $aviso = '';
+    /** Voluntario: ver las imágenes del correo (las incrustadas y las remotas). Por defecto no, para no avisar al remitente de que se ha abierto. */
+    public bool $verImagenes = false;
 
     public function hydrate(): void
     {
@@ -47,6 +49,7 @@ class CorreoClaude extends Component
     public function seleccionar(string $id): void
     {
         $this->sel = $id;
+        $this->verImagenes = false;
         $this->instruccion = '';
         $this->aviso = '';
     }
@@ -159,15 +162,38 @@ class CorreoClaude extends Component
         return Cache::remember('correo_claude_msg_'.md5($this->buzon().'|'.$this->sel), 300, fn () => GraphMail::mensaje($this->buzon(), $this->sel));
     }
 
-    /** HTML del correo listo para un iframe aislado: sin scripts, sin imágenes ni nada remoto (así no se «avisa» al remitente de que se ha abierto). */
-    public static function documentoSeguro(array $m): string
+    /**
+     * HTML del correo listo para un iframe aislado: sin scripts. Por defecto sin imágenes (así no se «avisa» al remitente de que se ha abierto);
+     * con $imagenes las incrustadas (cid:) se ponen como datos del propio correo y se permiten las remotas (https).
+     *
+     * @param  array<string, string>  $cid  contentId => data URI
+     */
+    public static function documentoSeguro(array $m, array $cid = [], bool $imagenes = false): string
     {
         $cuerpo = ($m['tipo'] ?? 'html') === 'html' ? (string) $m['html'] : '<pre style="white-space:pre-wrap;font:inherit">'.e((string) $m['html']).'</pre>';
         $cuerpo = preg_replace('/(?is)<(script|iframe|object|embed|form)\b.*?<\/\1\s*>/', '', $cuerpo);   // con su contenido
         $cuerpo = preg_replace('/(?is)<\/?(script|iframe|object|embed|form|link|meta|base)\b[^>]*>/', '', $cuerpo);   // restos sin cierre
+        if ($imagenes && $cid) {
+            $cuerpo = preg_replace_callback('/cid:([^"\'\s)>]+)/i', fn ($x) => $cid[strtolower(trim($x[1], '<>'))] ?? $x[0], $cuerpo);
+        }
 
-        return '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">'
+        return '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:'.($imagenes ? ' https:' : '').'">'
             .'<style>body{font:14px/1.45 Calibri,Arial,sans-serif;margin:12px;color:#222;word-wrap:break-word}img{max-width:100%}table{max-width:100%}</style></head><body>'.$cuerpo.'</body></html>';
+    }
+
+    /** Imágenes del correo como data URI, por su contentId (en minúsculas). Solo se piden a Graph si se ha pulsado «Mostrar imágenes». */
+    protected function imagenesIncrustadas(): array
+    {
+        return Cache::remember('correo_claude_img_'.md5($this->buzon().'|'.$this->sel), 300, function () {
+            $out = [];
+            foreach (GraphMail::adjuntos($this->buzon(), $this->sel) as $a) {
+                if ($a['cid'] !== '' && str_starts_with($a['tipo'], 'image/') && strlen($a['bytes']) < 4_000_000) {
+                    $out[strtolower($a['cid'])] = 'data:'.$a['tipo'].';base64,'.$a['bytes'];
+                }
+            }
+
+            return $out;
+        });
     }
 
     public function render()
@@ -210,7 +236,15 @@ class CorreoClaude extends Component
             $progreso = $doc->estado === 'procesando' ? Conf::progreso($doc) : [];
         }
         $esperaClaude = $doc && $doc->tarea_id && (count($conversacion) === 0 || end($conversacion)['quien'] === 'yo');
-        $seguro = $m ? self::documentoSeguro($m) : null;
+        $cid = [];
+        if ($m && $this->verImagenes) {
+            try {
+                $cid = $this->imagenesIncrustadas();
+            } catch (\Throwable $e) {
+                $this->aviso = 'No se han podido traer las imágenes del correo.';
+            }
+        }
+        $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
         return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro'));

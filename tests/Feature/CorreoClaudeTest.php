@@ -121,4 +121,15 @@ class CorreoClaudeTest extends TestCase
         $this->assertStringContainsString('SIN anonimizar', $t->descripcion);
         \App\Support\Confidencialidad::borrar($d);
     }
+
+    public function test_las_imagenes_son_voluntarias_y_las_incrustadas_van_como_datos(): void
+    {
+        $m = ['tipo' => 'html', 'html' => '<img src="cid:Img1@x"><img src="https://r.example/p.gif">'];
+        $sin = CorreoClaude::documentoSeguro($m, ['img1@x' => 'data:image/png;base64,AAAA'], false);
+        $this->assertStringContainsString("img-src data:\"", $sin);
+        $this->assertStringNotContainsString('base64,AAAA', $sin);
+        $con = CorreoClaude::documentoSeguro($m, ['img1@x' => 'data:image/png;base64,AAAA'], true);
+        $this->assertStringContainsString('img-src data: https:', $con);
+        $this->assertStringContainsString('src="data:image/png;base64,AAAA"', $con);
+    }
 }

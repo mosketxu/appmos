@@ -131,7 +131,7 @@ class GraphMail
         $r = self::api('get', 'users/'.rawurlencode($buzon).'/messages/'.rawurlencode($id).'/attachments?$top=50');
 
         return collect($r['value'] ?? [])->filter(fn ($a) => ($a['@odata.type'] ?? '') === '#microsoft.graph.fileAttachment')
-            ->map(fn ($a) => ['nombre' => $a['name'] ?? 'adjunto', 'tipo' => $a['contentType'] ?? '', 'bytes' => $a['contentBytes'] ?? ''])->values()->all();
+            ->map(fn ($a) => ['nombre' => $a['name'] ?? 'adjunto', 'tipo' => $a['contentType'] ?? '', 'bytes' => $a['contentBytes'] ?? '', 'cid' => trim((string) ($a['contentId'] ?? ''), '<> ')])->values()->all();
     }
 
     /** Id de la carpeta $ruta (['2026', '___Suma 2026', 'Eric 2026']) del buzón, o null. */
