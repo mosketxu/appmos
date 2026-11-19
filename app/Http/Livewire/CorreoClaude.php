@@ -244,7 +244,7 @@ class CorreoClaude extends Component
         abort_unless($this->sel, 422);
         $this->validate(['bTexto' => 'required|string|min:3|max:20000', 'bModo' => 'required|in:respuesta,nuevo', 'bAsunto' => 'nullable|string|max:250', 'bPara' => 'nullable|string|max:500'],
             ['bTexto.required' => 'El borrador está vacío.', 'bTexto.min' => 'El borrador está vacío.']);
-        $html = GraphMail::html(rtrim($this->bTexto)."\n\n".$this->firma());
+        $html = GraphMail::html(rtrim($this->bTexto)."\n\n".$this->firma()).GraphMail::pieRgpd();      // texto + firma + logo + pie legal
         try {
             if ($this->bModo === 'respuesta') {
                 GraphMail::crearBorradorRespuesta($this->buzon(), $this->sel, $html, $this->bTodos);

@@ -483,6 +483,7 @@ class Confidencialidad
         abort_unless($claude, 500, 'No existe el usuario Claude en el TO-DO.');
 
         if ($d->tarea_id && ($t = TodoTarea::find($d->tarea_id))) {
+            self::permisosDelGestor($t, $u);
             TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $u->id, 'tipo' => 'respuesta', 'fecha' => $hoy, 'texto' => $anon]);
             if (! $t->abierta()) {
                 $t->update(['estado' => 'pendiente', 'cerrada_at' => null]);
@@ -506,6 +507,7 @@ class Confidencialidad
         $t->asignados()->attach($claude->id, ['orden' => TodoTarea::siguienteOrden($claude->id)]);
         TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $u->id, 'tipo' => 'evento', 'fecha' => $hoy, 'texto' => 'creó la tarea desde Confidencialidad y la asignó a Claude']);
         $d->update(['tarea_id' => $t->id]);
+        self::permisosDelGestor($t, $u);
         // Decisión de Alex (19-nov-2026): las peticiones de estas pantallas (✉ Correo, Confidencialidad) se lanzan SOLAS, también las de usuarios que no son gestores:
         // se autorizan en nombre del gestor, sin permisos extra (Claude no puede ejecutar scripts, ssh, borrar…; solo lee los documentos anonimizados y responde).
         if (! $t->claude_autorizada_at && ! TodoClaude::esGestor($u) && ($gestor = TodoClaude::gestores()[0] ?? null)) {
@@ -515,6 +517,17 @@ class Confidencialidad
         TodoClaude::encolar($t, true);   // sin esperar a la pasada de la hora
 
         return $t;
+    }
+
+    /**
+     * Decisión de Alex (19-nov-2026): para él, la conversación de ✉ Correo / Confidencialidad es «exactamente como escribirle aquí», sin las limitaciones de permisos por tarea
+     * (scripts, correo, desplegar, ssh, borrar): las tareas que crea un gestor llevan TODOS los permisos. Para el resto del equipo siguen sin ninguno (ya se verá).
+     */
+    protected static function permisosDelGestor(TodoTarea $t, User $u): void
+    {
+        if (TodoClaude::esGestor($u)) {
+            $t->update(['claude_permisos' => array_keys(TodoTarea::PERMISOS_CLAUDE)]);
+        }
     }
 
     /** Respuestas de Claude en la tarea, con los datos reales puestos. [{fecha, texto, estado}] */

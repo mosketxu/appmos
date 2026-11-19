@@ -52,6 +52,12 @@ class GraphMail
         return '<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">'.str_replace('{logo}', $logo, $h).'</div>';
     }
 
+    /** Pie legal estándar de Suma (RGPD, en español e inglés), el mismo que la firma de Alex en Outlook (Contabilidad/_comun/firma_suma.py). Va debajo de la firma en los borradores. */
+    public static function pieRgpd(): string
+    {
+        return (string) @file_get_contents(resource_path('mail/pie_rgpd.html'));
+    }
+
     protected static function api(string $metodo, string $url, array $datos = [])
     {
         // en GET no se pasa $datos: un array vacío como «query» borraría el ?$top=… de la URL

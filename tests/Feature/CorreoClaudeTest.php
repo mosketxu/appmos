@@ -299,7 +299,8 @@ class CorreoClaudeTest extends TestCase
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('bTexto', 'Gracias por tu correo.')->call('crearBorrador')->assertSee('Borrador creado');
         Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), 'messages/D1')
             && str_contains($r['body']['content'], 'Gracias por tu correo.') && str_contains($r['body']['content'], 'cita original')
-            && str_contains($r['body']['content'], 'Suma Apoyo Empresarial SL') && str_contains($r['body']['content'], 'cid:logo_suma'));
+            && str_contains($r['body']['content'], 'Suma Apoyo Empresarial SL') && str_contains($r['body']['content'], 'cid:logo_suma')
+            && str_contains($r['body']['content'], 'In compliance with the provisions of the RGPD'));      // pie legal
         Http::assertNotSent(fn ($r) => str_contains($r->url(), '/send'));                      // nunca se envía
         Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/D1/attachments'));      // el logo en línea
         \App\Support\Confidencialidad::borrar($d);
@@ -329,6 +330,19 @@ class CorreoClaudeTest extends TestCase
         \App\Models\TodoComentario::create(['tarea_id' => $t->id, 'user_id' => $claude->id, 'tipo' => 'respuesta', 'fecha' => now()->format('Y-m-d'),
             'texto' => "Aquí tienes.\n---BORRADOR---\nDear Susanne,\nPlease find the ledger.\n---FIN---\nNota breve."]);
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSet('bTexto', "Dear Susanne,\nPlease find the ledger.")->assertSee('Crear borrador en Outlook');
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_las_peticiones_del_gestor_llevan_todos_los_permisos_y_las_del_resto_ninguno(): void
+    {
+        \Illuminate\Support\Facades\Process::fake(['*' => \Illuminate\Support\Facades\Process::result('x')]);
+        config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
+        $jefe = \App\Models\User::factory()->create(['email' => 'jefe@example.test', 'activo' => true]);
+        $this->actingAs($jefe);
+        $d = $this->docListo($jefe);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('instruccion', 'Haz esto')->call('pedir');
+        $t = \App\Models\TodoTarea::find($d->fresh()->tarea_id);
+        $this->assertEqualsCanonicalizing(array_keys(\App\Models\TodoTarea::PERMISOS_CLAUDE), (array) $t->claude_permisos);
         \App\Support\Confidencialidad::borrar($d);
     }
 }
