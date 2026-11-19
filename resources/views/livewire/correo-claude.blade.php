@@ -75,7 +75,7 @@
                             <span class="float-right text-xs text-gray-400">{{ \Carbon\Carbon::parse($m['fecha'])->timezone('Europe/Madrid')->format('d/m/Y H:i') }}</span></div>
                         <div class="relative flex flex-wrap gap-1 mt-1">
                             <button type="button" wire:click="abrirMover" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">📁 Mover a…</button>
-                            @if ($carpeta !== $carpetas['eliminados'])
+                            @if ($carpeta !== ($carpetas['eliminados'] ?? null))
                                 <button type="button" wire:click="eliminar" class="px-2 py-0.5 text-xs text-red-700 border rounded hover:bg-red-50" title="Lo manda a Elementos eliminados (se puede recuperar de allí)">🗑 Eliminar</button>
                             @endif
                             @if ($mostrarMover)

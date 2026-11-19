@@ -385,7 +385,7 @@ class CorreoClaude extends Component
                 $aviso = 'No se ha podido leer el buzón ('.class_basename($e).').';
             }
         }
-        $carpetas = ['plana' => [], 'inbox' => null];
+        $carpetas = ['plana' => [], 'inbox' => null, 'eliminados' => null];
         $destinos = [];
         if (! $cerrado) {
             try {
