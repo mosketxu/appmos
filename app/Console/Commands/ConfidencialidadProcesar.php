@@ -25,7 +25,8 @@ class ConfidencialidadProcesar extends Command
             if (! ConfidencialidadDoc::find($d->id)) {   // borrado mientras esperaba
                 return self::SUCCESS;
             }
-            Confidencialidad::procesar($d->fresh());
+            $hecho = Confidencialidad::procesar($d->fresh());
+            Confidencialidad::alTerminar($hecho->fresh() ?? $hecho);
         } catch (\Throwable $e) {
             $d->fresh()?->update(['estado' => 'error', 'error' => 'Fallo al anonimizar: '.$e->getMessage()]);
             report($e);

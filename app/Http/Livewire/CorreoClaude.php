@@ -203,11 +203,14 @@ class CorreoClaude extends Component
     }
 
     /** Trae el correo (cuerpo + adjuntos) y lo anonimiza en segundo plano. */
-    public function preparar(): void
+    public function preparar(bool $enviar = false): void
     {
         $this->aviso = '';
         abort_unless($this->sel, 422);
         $this->validate(['perfil' => 'required|in:estricto,contable,mercantil']);
+        if ($enviar) {
+            $this->validate(['instruccion' => 'required|string|min:3|max:4000'], ['instruccion.required' => 'Escribe qué quieres que haga Claude.', 'instruccion.min' => 'Escribe qué quieres que haga Claude.']);
+        }
         if (! Conf::almacenAbierto()) {
             $this->aviso = Conf::MENSAJE_CERRADO;
 
@@ -221,10 +224,14 @@ class CorreoClaude extends Component
 
             return;
         }
-        $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, mb_substr('Correo: '.($m['asunto'] ?? ''), 0, 120));
+        $d = Conf::crear(auth()->user(), array_slice($archivos, 0, 25), $this->lineas($this->nombres), $this->lineas($this->empresas), $this->perfil, mb_substr('Correo: '.($m['asunto'] ?? ''), 0, 120), $enviar ? $this->instruccion : null);
         $d->update(['correo_id' => $this->sel]);
         $this->nombres = $this->empresas = '';
-        $this->aviso = $d->estado === 'error' ? '' : 'Anonimizando en segundo plano (los adjuntos escaneados tardan). Cuando termine podrás revisarlo.';
+        if ($enviar) {
+            $this->instruccion = '';
+        }
+        $this->aviso = $d->estado === 'error' ? '' : ($enviar ? 'Anonimizando en segundo plano; en cuanto termine se envía a Claude solo (no hace falta que esperes aquí).'
+            : 'Anonimizando en segundo plano (los adjuntos escaneados tardan). Cuando termine podrás revisarlo.');
     }
 
     /** Voluntario: trabajar el correo con Claude SIN anonimizar (la pantalla ya ha pedido confirmación). */
@@ -363,6 +370,7 @@ class CorreoClaude extends Component
         $conversacion = [];
         $progreso = [];
         $claro = $doc ? Conf::esClaro($doc) : false;
+        $auto = $doc && $doc->estado === 'procesando' && ! empty(Conf::leerMeta($doc)['auto']);
         if ($doc && $doc->estado !== 'error') {
             foreach ($doc->archivos ?? [] as $n => $a) {
                 if (str_ends_with($a, '.txt')) {
@@ -386,6 +394,6 @@ class CorreoClaude extends Component
         $seguro = $m ? self::documentoSeguro($m, $cid, $this->verImagenes) : null;
         $this->aviso = $this->aviso ?: $aviso;
 
-        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos'));
+        return view('livewire.correo-claude', compact('lista', 'm', 'adjuntos', 'doc', 'texto', 'imagenes', 'conversacion', 'progreso', 'cerrado', 'esperaClaude', 'seguro', 'claro', 'carpetas', 'destinos', 'auto'));
     }
 }

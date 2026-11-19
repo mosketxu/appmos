@@ -62,7 +62,7 @@ class CorreoClaudeTest extends TestCase
             ->assertSee('Proveedor Uno')->assertSee('Factura de prueba')->assertSee('Otro')
             ->call('seleccionar', 'AAA')
             ->assertSee('p@example.test')->assertSee('f.pdf')->assertDontSee('logo.png')
-            ->assertSee('Anonimizar y preparar');
+            ->assertSee('Anonimizar y enviar a Claude');
     }
 
     public function test_el_clic_de_cada_fila_es_un_atributo_bien_formado(): void
@@ -89,9 +89,9 @@ class CorreoClaudeTest extends TestCase
         $a = $this->adminUser();
         ConfidencialidadDoc::create(['user_id' => $a->id, 'estado' => 'listo', 'correo_id' => 'AAA']);
         $this->actingAs($this->adminUser(['email' => 'otro@example.test']));
-        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('Anonimizar y preparar');   // el de otro Admin no se ve
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('Anonimizar y enviar a Claude');   // el de otro Admin no se ve
         $this->actingAs($a);
-        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('Conversación con Claude')->assertDontSee('Anonimizar y preparar');
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->assertSee('Conversación con Claude')->assertDontSee('Anonimizar y enviar a Claude');
     }
 
     public function test_pedir_sin_documento_no_hace_nada(): void
@@ -173,5 +173,29 @@ class CorreoClaudeTest extends TestCase
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')
             ->assertSee('Escribe aquí lo que quieres hacer con este correo')
             ->set('instruccion', 'Resume')->assertSet('instruccion', 'Resume');
+    }
+
+    public function test_anonimizar_y_enviar_pide_a_claude_solo_al_terminar_y_una_vez(): void
+    {
+        \Illuminate\Support\Facades\Process::fake(['*' => \Illuminate\Support\Facades\Process::result('Contesta a Persona1')]);
+        $u = $this->adminUser();
+        $d = ConfidencialidadDoc::create(['user_id' => $u->id, 'estado' => 'procesando', 'correo_id' => 'AAA']);
+        $dir = \App\Support\Confidencialidad::dir($d);
+        mkdir($dir.'/_orig', 0700, true);
+        file_put_contents($dir.'/meta.json', json_encode(['perfil' => 'estricto', 'auto' => 'Contesta a Pepe', 'originales' => []]));
+        \App\Support\Confidencialidad::alTerminar($d->fresh());          // aún procesando: no hace nada
+        $this->assertNull($d->fresh()->tarea_id);
+        $d->update(['estado' => 'borrador']);
+        \App\Support\Confidencialidad::alTerminar($d->fresh());
+        $d = $d->fresh();
+        $this->assertSame('listo', $d->estado);
+        $t = \App\Models\TodoTarea::find($d->tarea_id);
+        $this->assertStringContainsString('Contesta a Persona1', $t->descripcion);
+        $this->assertStringNotContainsString('Pepe', $t->descripcion);
+        $this->assertArrayNotHasKey('auto', \App\Support\Confidencialidad::leerMeta($d));
+        \App\Support\Confidencialidad::alTerminar($d);                    // otra vez: no pide nada más
+        $this->assertSame($t->id, $d->fresh()->tarea_id);
+        $this->assertSame(1, \App\Models\TodoComentario::where('tarea_id', $t->id)->where('tipo', 'respuesta')->count() + 1);
+        \App\Support\Confidencialidad::borrar($d);
     }
 }

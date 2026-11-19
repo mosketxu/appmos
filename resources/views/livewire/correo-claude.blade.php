@@ -119,7 +119,7 @@
                             <button type="button" wire:click="$set('instruccion', 'Dime qué tengo que hacer a partir de este correo, paso a paso.')" class="px-2 py-0.5 text-xs border rounded hover:bg-gray-50">¿Qué tengo que hacer?</button>
                         </div>
                         <textarea wire:model="instruccion" rows="4" class="w-full mt-1 text-sm border-gray-300 rounded" placeholder="Escribe aquí lo que quieres hacer con este correo…"></textarea>
-                        <p class="mt-1 mb-2 text-xs text-gray-500">Si lo anonimizas, el correo y sus adjuntos pasan a tener etiquetas (<b>Persona1, Empresa1, Mail1…</b>); tu texto también. Lo revisas, lo das por bueno y entonces pulsas Enviar.</p>
+                        <p class="mt-1 mb-2 text-xs text-gray-500">Anonimizar = los datos personales pasan a ser etiquetas (<b>Persona1, Empresa1, Mail1…</b>) en el correo, los adjuntos y tu texto.</p>
                         <label class="block text-xs text-gray-600">Perfil
                             <select wire:model="perfil" class="w-full mt-0.5 text-sm border-gray-300 rounded">
                                 <option value="estricto">Estricto (extractos, personas y empresas)</option>
@@ -132,18 +132,22 @@
                             <textarea wire:model="nombres" rows="2" class="w-full mt-1 text-xs border-gray-300 rounded" placeholder="Personas, una por línea"></textarea>
                             <textarea wire:model="empresas" rows="2" class="w-full mt-1 text-xs border-gray-300 rounded" placeholder="Empresas, una por línea"></textarea>
                         </details>
-                        <button type="button" wire:click="preparar" wire:loading.attr="disabled" wire:target="preparar" class="w-full px-3 py-2 mt-3 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">🔒 Anonimizar y preparar para Claude</button>
+                        @error('instruccion') <div class="text-xs text-red-600">{{ $message }}</div> @enderror
+                        <button type="button" wire:click="preparar(true)" wire:loading.attr="disabled" wire:target="preparar" class="w-full px-3 py-2 mt-3 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700">🔒 Anonimizar y enviar a Claude</button>
+                        <p class="mt-1 text-xs text-gray-500">Se anonimiza en segundo plano y se envía solo, sin esperar a que lo revises. Ojo: en <b>tu texto</b> solo se ocultan los datos que se detectan igual que en el correo; un nombre que escribas y no esté en el correo puede ir a la vista (puedes ponerlo en «Ocultar además estos nombres»).</p>
+                        <button type="button" wire:click="preparar(false)" wire:loading.attr="disabled" wire:target="preparar" class="block mx-auto mt-2 text-xs text-gray-500 underline hover:text-indigo-700">Solo anonimizar para revisarlo antes de enviar</button>
                         <span wire:loading wire:target="preparar" class="text-xs text-amber-700">⏳ Trayendo el correo…</span>
                         <div class="pt-3 mt-3 text-center border-t">
                             <button type="button" wire:click="sinAnonimizar" wire:loading.attr="disabled" wire:target="sinAnonimizar"
                                     wire:confirm="¿Estás seguro? Mira que el correo y sus adjuntos (PDF, imágenes y texto) saldrán EN CLARO hacia Anthropic, con todos los datos personales que contengan. Es decisión tuya y se hace."
-                                    class="text-xs text-gray-500 underline hover:text-red-700">Prefiero enviarlo a Claude sin anonimizar{{ trim($instruccion) !== '' ? ' (y enviar ya)' : '' }}…</button>
+                                    class="text-xs text-gray-500 underline hover:text-red-700">Enviar a Claude SIN anonimizar{{ trim($instruccion) !== '' ? ' (y enviar ya)' : '' }}…</button>
                             <span wire:loading wire:target="sinAnonimizar" class="text-xs text-amber-700">⏳</span>
                         </div>
                     @elseif ($doc->estado === 'procesando')
                         <div class="p-2 text-sm text-amber-800 bg-yellow-100 border border-yellow-300 rounded">⏳ Anonimizando…
                             @if (! empty($progreso['de']) && $progreso['de'] > 1) adjunto {{ $progreso['doc'] ?? 1 }} de {{ $progreso['de'] }}@endif
                             @if (! empty($progreso['total'])) · página {{ $progreso['pagina'] ?? 1 }} de {{ $progreso['total'] }}@endif
+                            @if ($auto)<div class="mt-1 text-xs">Se enviará a Claude solo al terminar; puedes cerrar la pantalla.</div>@endif
                         </div>
                     @else
                         <div class="mb-2 text-xs text-gray-500">

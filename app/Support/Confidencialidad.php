@@ -87,7 +87,7 @@ class Confidencialidad
      *
      * @param  \Livewire\Features\SupportFileUploads\TemporaryUploadedFile[]|array  $archivos
      */
-    public static function crear(User $u, array $archivos, array $nombres, array $empresas, string $perfil, ?string $titulo): ConfidencialidadDoc
+    public static function crear(User $u, array $archivos, array $nombres, array $empresas, string $perfil, ?string $titulo, ?string $auto = null): ConfidencialidadDoc
     {
         if (! self::almacenAbierto()) {
             throw new \RuntimeException(self::MENSAJE_CERRADO);
@@ -96,6 +96,9 @@ class Confidencialidad
         $dir = self::dir($d);
         mkdir($dir.'/_orig', 0700, true);
         $meta = ['nombres' => array_values($nombres), 'empresas' => array_values($empresas), 'perfil' => $perfil, 'originales' => []];
+        if ($auto !== null && trim($auto) !== '') {     // «anonimizar y enviar»: al terminar la primera pasada se da por buena y se le pide esto a Claude (ver alTerminar)
+            $meta['auto'] = trim($auto);
+        }
         try {
             foreach (array_values($archivos) as $i => $f) {
                 $ext = strtolower($f->getClientOriginalExtension());
@@ -253,6 +256,27 @@ class Confidencialidad
         Process::path(base_path())->run('nohup '.escapeshellarg($php).' artisan confidencialidad:procesar '.(int) $d->id.' > /dev/null 2>&1 &');
 
         return $d->fresh();
+    }
+
+    /**
+     * «Anonimizar y enviar» (19-nov-2026, Alex: no esperar a revisar): al acabar la primera pasada automática se da por bueno el anonimizado (se borra el original)
+     * y se le pide a Claude lo que se escribió, ya anonimizado con el mismo mapa. Sin revisión humana: solo se hace si se pidió así al empezar.
+     */
+    public static function alTerminar(ConfidencialidadDoc $d): void
+    {
+        $meta = self::leerMeta($d);
+        $auto = $meta['auto'] ?? null;
+        if (! $auto || $d->estado !== 'borrador') {
+            return;                                   // sin envío programado, o la anonimización falló: se queda como estaba
+        }
+        $u = User::find($d->user_id);
+        if (! $u) {
+            return;
+        }
+        unset($meta['auto']);
+        self::guardarMeta($d, $meta);                 // antes de enviar: nunca se pide dos veces
+        self::finalizar($d, false);
+        self::pedirAClaude($d->fresh(), $u, $auto);
     }
 
     /** Progreso del procesado en curso: ['doc' => k, 'de' => M, 'pagina' => i, 'total' => N] (lo que se sepa). */
