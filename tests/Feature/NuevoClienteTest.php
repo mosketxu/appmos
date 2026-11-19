@@ -149,9 +149,9 @@ class NuevoClienteTest extends TestCase
         $r = \App\Support\AltaClienteSage::siguiente();
         $this->assertSame('430251', $r['codigo']);
 
-        $e = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'FORZA ANDINA CAPITAL, S.L.', 'nif' => 'B05622055', 'codigo_cliente' => '430251', 'cuentacontable' => '430251', 'localidad' => 'Barcelona', 'provincia_id' => '08']);
-        $e2 = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'OTRA SL', 'nif' => 'B11111111', 'codigo_cliente' => '430252', 'cuentacontable' => '430252']);
-        $e3 = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'YA EN SAGE', 'nif' => 'B1', 'codigo_cliente' => '430100', 'cuentacontable' => '430100']);
+        $e = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'FORZA ANDINA CAPITAL, S.L.', 'nif' => 'B05622055', 'codigo_cliente' => '430251', 'cuentacontable_cliente' => '430251', 'localidad' => 'Barcelona', 'provincia_id' => '08']);
+        $e2 = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'OTRA SL', 'nif' => 'B11111111', 'codigo_cliente' => '430252', 'cuentacontable_cliente' => '430252']);
+        $e3 = \App\Models\Entidad::withoutGlobalScopes()->create(['entidad' => 'YA EN SAGE', 'nif' => 'B1', 'codigo_cliente' => '430100', 'cuentacontable_cliente' => '430100']);
         foreach ([$e, $e2, $e3] as $x) {
             DB::table('entidad_historico')->insert(['entidad_id' => $x->id, 'tipo' => 'alta', 'fecha' => now()->toDateString(), 'created_at' => now(), 'updated_at' => now()]);
         }

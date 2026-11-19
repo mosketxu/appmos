@@ -47,7 +47,7 @@ class CreateEntidadesTable extends Migration
             $table->double('tipoiva', 8, 2)->nullable()->default(0.00);
             $table->double('porcentajemarta', 8, 2)->nullable()->default(0.00);
             $table->double('porcentajesusana', 8, 2)->nullable()->default(0.00);
-            $table->string('cuentacontable', 10)->nullable();
+            $table->string('cuentacontable_cliente', 10)->nullable();
             $table->string('observaciones')->nullable();
             $table->bigInteger('suma_id')->nullable()->index('entidades_suma_id_foreign');
             $table->string('cliente')->nullable();

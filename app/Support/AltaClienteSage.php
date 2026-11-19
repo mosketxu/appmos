@@ -83,7 +83,7 @@ class AltaClienteSage
             $max = max($max, $m);
         }
         // También lo ya dado de alta en Appmos y aún no importado en SAGE
-        foreach (['codigo_cliente', 'cuentacontable'] as $col) {
+        foreach (['codigo_cliente', 'cuentacontable_cliente'] as $col) {
             $m = Entidad::withoutGlobalScopes()->whereNotNull($col)->where($col, 'like', '430%')->pluck($col)
                 ->filter(fn ($v) => preg_match('/^430\d{3}$/', trim((string) $v)) && (int) $v < self::TOPE)->map(fn ($v) => (int) $v)->max();
             if ($m) {
@@ -132,9 +132,9 @@ class AltaClienteSage
         $ids = \Illuminate\Support\Facades\DB::table('entidad_historico')->where('tipo', 'alta')->pluck('entidad_id');
 
         return Entidad::withoutGlobalScopes()->whereIn('id', $ids)->get()
-            ->filter(fn ($e) => ($c = trim((string) ($e->codigo_cliente ?: $e->cuentacontable))) !== ''
+            ->filter(fn ($e) => ($c = trim((string) ($e->codigo_cliente ?: $e->cuentacontable_cliente))) !== ''
                 && ! isset($codigos[$c]) && ! isset($cifs[AltaClienteCorreo::nifLimpio((string) $e->nif)]))
-            ->sortBy(fn ($e) => (string) ($e->codigo_cliente ?: $e->cuentacontable))->values();
+            ->sortBy(fn ($e) => (string) ($e->codigo_cliente ?: $e->cuentacontable_cliente))->values();
     }
 
     /** Copia el último listado de clientes de Suma con UNA FILA MÁS por cada entidad pendiente (todas las nuevas, no solo la última). Devuelve el nombre del fichero (dentro de dirSalida()). */
@@ -165,7 +165,7 @@ class AltaClienteSage
         foreach ($ents as $e) {
             $ultima = $nueva;
             $nueva++;
-            $codigo = (string) ($e->codigo_cliente ?: $e->cuentacontable);
+            $codigo = (string) ($e->codigo_cliente ?: $e->cuentacontable_cliente);
             $prov = $e->provincia_id ? (string) Provincia::whereKey($e->provincia_id)->value('provincia') : '';
             $valores = [
                 'Código cliente' => $codigo, 'Razón social' => mb_substr($e->entidad, 0, 40), 'Nombre fiscal' => mb_substr($e->entidad, 0, 35), 'Sigla Nación' => 'ES',
@@ -243,12 +243,12 @@ class AltaClienteSage
         $ents = $extra ? collect() : self::pendientes()->keyBy('id');   // con códigos: solo esos; sin códigos: todos los pendientes
         if ($extra) {
             foreach (Entidad::withoutGlobalScopes()->get() as $e) {
-                if (in_array(trim((string) ($e->codigo_cliente ?: $e->cuentacontable)), $extra, true)) {
+                if (in_array(trim((string) ($e->codigo_cliente ?: $e->cuentacontable_cliente)), $extra, true)) {
                     $ents[$e->id] = $e;
                 }
             }
         }
-        $ents = $ents->sortBy(fn ($e) => (string) ($e->codigo_cliente ?: $e->cuentacontable))->values();
+        $ents = $ents->sortBy(fn ($e) => (string) ($e->codigo_cliente ?: $e->cuentacontable_cliente))->values();
         if ($ents->isEmpty()) {
             throw new \RuntimeException('No hay clientes nuevos pendientes (o ninguna entidad tiene los códigos indicados).');
         }
@@ -271,7 +271,7 @@ class AltaClienteSage
         $fila = 1;
         foreach ($ents as $e) {
             $fila++;
-            $codigo = trim((string) ($e->codigo_cliente ?: $e->cuentacontable));
+            $codigo = trim((string) ($e->codigo_cliente ?: $e->cuentacontable_cliente));
             $nif = AltaClienteCorreo::nifLimpio((string) $e->nif);
             $cp = preg_replace('/\D/', '', (string) $e->codpostal);
             $prov = $e->provincia_id ? (string) Provincia::whereKey($e->provincia_id)->value('provincia') : '';

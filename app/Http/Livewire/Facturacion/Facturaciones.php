@@ -184,7 +184,7 @@ class Facturaciones extends Component
             ->join('entidades','facturacion.entidad_id','=','entidades.id')
             ->leftJoin('facturacion_detalles','facturacion_detalles.facturacion_id','=','facturacion.id')
             ->leftJoin('facturacion_detalle_conceptos','facturacion_detalle_conceptos.facturaciondetalle_id','=','facturacion_detalles.id')
-            ->select('entidades.cuentacontable','entidades.entidad',
+            ->select('entidades.cuentacontable_cliente','entidades.entidad',
                 // DB::raw('sum(facturacion_detalle_conceptos.base) as base'),
                 DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 0 THEN facturacion_detalle_conceptos.base END ) ) AS Base"),
                 DB::raw("SUM( ( CASE WHEN facturacion_detalle_conceptos.tipo = 2 THEN facturacion_detalle_conceptos.base END ) ) AS Otros"),
@@ -251,7 +251,7 @@ class Facturaciones extends Component
             "facturacion.numfactura as 'Factura'",
             "facturacion.fechafactura as 'Fecha'",
             "facturacion.fechafactura as 'FechaOperacion'",
-            "entidades.cuentacontable as 'CodigoCuenta'",
+            "entidades.cuentacontable_cliente as 'CodigoCuenta'",
             "entidades.nif as 'CIFEUROPEO'",
             "entidades.entidad as 'Cliente'",
             DB::raw("'' AS 'Comentario SII'"),

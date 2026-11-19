@@ -271,15 +271,26 @@
                     <x-jet-input  wire:model.defer="entidad.digitos_cuenta" type="number" min="6" max="12" id="digitos_cuenta" name="digitos_cuenta" class="w-full"/>
                     <x-jet-input-error for="digitos_cuenta" class="mt-2" />
                 </div>
-                <div class="w-full form-item">
-                    <x-jet-label for="cuentacontable" >{{ __('Cta.Contable') }}</x-jet-label>
-                    <x-jet-input  wire:model.defer="entidad.cuentacontable" type="number" id="cuentacontable" name="cuentacontable" :value="old('cuentacontable')" class="w-full"/>
-                    <x-jet-input-error for="cuentacontable" class="mt-2" />
+                {{-- Cuenta y código de cliente / de proveedor: solo los que tocan según las casillas Cliente y Proveedor (los 4 si es las dos cosas) --}}
+                <div class="w-full form-item" x-show="Number($wire.entidad.cliente)" x-cloak>
+                    <x-jet-label for="cuentacontable_cliente" >{{ __('Cta. contable cliente') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.cuentacontable_cliente" type="number" id="cuentacontable_cliente" name="cuentacontable_cliente" class="w-full"/>
+                    <x-jet-input-error for="cuentacontable_cliente" class="mt-2" />
                 </div>
-                <div class="w-full form-item">
-                    <x-jet-label for="codigo_cliente" >{{ __('Cód. Cliente') }}</x-jet-label>
+                <div class="w-full form-item" x-show="Number($wire.entidad.cliente)" x-cloak>
+                    <x-jet-label for="codigo_cliente" >{{ __('Cód. cliente') }}</x-jet-label>
                     <x-jet-input  wire:model.defer="entidad.codigo_cliente" type="text" id="codigo_cliente" maxlength="20" class="w-full" title="Código de cliente (no es la cuenta contable)"/>
                     <x-jet-input-error for="codigo_cliente" class="mt-2" />
+                </div>
+                <div class="w-full form-item" x-show="Number($wire.entidad.proveedor)" x-cloak>
+                    <x-jet-label for="cuentacontable_proveedor" >{{ __('Cta. contable proveedor') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.cuentacontable_proveedor" type="number" id="cuentacontable_proveedor" name="cuentacontable_proveedor" class="w-full"/>
+                    <x-jet-input-error for="cuentacontable_proveedor" class="mt-2" />
+                </div>
+                <div class="w-full form-item" x-show="Number($wire.entidad.proveedor)" x-cloak>
+                    <x-jet-label for="codigo_proveedor" >{{ __('Cód. proveedor') }}</x-jet-label>
+                    <x-jet-input  wire:model.defer="entidad.codigo_proveedor" type="text" id="codigo_proveedor" maxlength="20" class="w-full" title="Código de proveedor (no es la cuenta contable)"/>
+                    <x-jet-input-error for="codigo_proveedor" class="mt-2" />
                 </div>
                 <div class="w-full form-item">
                     <x-jet-label for="alias" >{{ __('Alias') }}</x-jet-label>

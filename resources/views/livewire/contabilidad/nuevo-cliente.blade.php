@@ -71,7 +71,7 @@
                 $texto = [['entidad', 'Entidad'], ['alias', 'Alias'], ['nif', 'NIF'], ['emailgral', 'Email Gral'], ['emailadm', 'Email Adm'], ['web', 'Web'], ['tfno', 'Tfno.'],
                     ['direccion', 'Dirección'], ['codpostal', 'C.P.'], ['localidad', 'Localidad'],
                     ['banco1', 'Banco 1'], ['iban1', 'IBAN 1'], ['banco2', 'Banco 2'], ['iban2', 'IBAN 2'], ['banco3', 'Banco 3'], ['iban3', 'IBAN 3'],
-                    ['cuentacontable', 'Cta. contable'], ['digitos_cuenta', 'Dígitos de cuenta (6-12)'], ['codigo_cliente', 'Cód. cliente'], ['referenciacliente', 'Ref. cliente'],
+                    ['cuentacontable_cliente', 'Cta. contable'], ['digitos_cuenta', 'Dígitos de cuenta (6-12)'], ['codigo_cliente', 'Cód. cliente'], ['referenciacliente', 'Ref. cliente'],
                     ['cnae', 'CNAE'], ['epigrafe_iae', 'Epígrafe IAE'], ['diafactura', 'Día factura'], ['diavencimiento', 'Día vencimiento'],
                     ['porcentajemarta', '% Marta'], ['porcentajesusana', '% Susana'], ['importe', 'Importe (€) → historial']];
                 $ciclos = \App\Models\Entidad::CICLOS;

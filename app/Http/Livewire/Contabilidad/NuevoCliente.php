@@ -167,7 +167,7 @@ class NuevoCliente extends Component
         $this->codigoInfo = $r;
         if ($this->campos && $r['codigo']) {
             $this->campos['codigo_cliente'] = $r['codigo'];
-            $this->campos['cuentacontable'] = $r['codigo'];
+            $this->campos['cuentacontable_cliente'] = $r['codigo'];
         }
     }
 
@@ -254,7 +254,7 @@ class NuevoCliente extends Component
             $id = DB::transaction(function () use ($c, $v, $nombre, $nif) {
                 $datos = ['entidad' => $nombre, 'nif' => $nif ?: null];
                 foreach (['direccion', 'codpostal', 'localidad', 'provincia_id', 'pais_id', 'idioma', 'tfno', 'web', 'emailgral', 'emailadm', 'banco1', 'banco2', 'banco3',
-                    'iban1', 'iban2', 'iban3', 'referenciacliente', 'cuentacontable', 'codigo_cliente', 'alias', 'cnae', 'epigrafe_iae', 'observaciones',
+                    'iban1', 'iban2', 'iban3', 'referenciacliente', 'cuentacontable_cliente', 'codigo_cliente', 'alias', 'cnae', 'epigrafe_iae', 'observaciones',
                     'digitos_cuenta', 'suma_id', 'grupo_id', 'cicloimpuesto_id', 'persona_fj'] as $k) {
                     $datos[$k] = $v($k);
                 }
