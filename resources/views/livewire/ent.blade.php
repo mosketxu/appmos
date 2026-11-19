@@ -20,6 +20,9 @@
             @endif
         @endif
     </div>
+    @if (! $contactoId && $entidadModel->id)
+        <div class="mx-2">@include('livewire._ficheros_base', ['eid' => $entidadModel->id, 'clave' => 'ficha'])</div>
+    @endif
     <div class="py-1 space-y-4">
         @include('errores')
     </div>
