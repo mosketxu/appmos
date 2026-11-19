@@ -212,7 +212,7 @@ class CorreoClaudeTest extends TestCase
     public function test_mover_el_correo_abierto_o_uno_arrastrado(): void
     {
         $this->actingAs($this->adminUser());
-        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->call('mover', 'F3')->assertSet('sel', null)->assertSee('Correo movido');
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->call('mover', 'F3')->assertSet('sel', 'NUEVO')->assertSee('Correo movido');
         Http::assertSent(fn ($r) => str_ends_with($r->url(), 'messages/AAA/move') && $r['destinationId'] === 'F3');
         Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), 'messages/AAA') && $r['isRead'] === true);   // queda leído
         Livewire::test(CorreoClaude::class)->call('moverId', 'inbox', 'AAA');       // soltarlo en la carpeta donde ya está: no hace nada
@@ -407,6 +407,16 @@ class CorreoClaudeTest extends TestCase
         [$d, $t] = $this->tareaConDoc($u);
         \App\Support\TodoClaude::registrar($t, 'hecha', 'Correo redactado entre ---BORRADOR--- y ---FIN---. Le dice que sí.');
         $this->assertCount(0, Http::recorded(fn ($r) => str_ends_with($r->url(), 'createReply')));
+        \App\Support\Confidencialidad::borrar($d);
+    }
+
+    public function test_al_mover_un_correo_su_conversacion_con_claude_se_va_con_el(): void
+    {
+        $u = $this->usuarioConCorreo();
+        $this->actingAs($u);
+        $d = $this->docListo($u);
+        Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->call('mover', 'F3');
+        $this->assertSame('NUEVO', $d->fresh()->correo_id);          // el id nuevo que devuelve Graph al mover
         \App\Support\Confidencialidad::borrar($d);
     }
 }

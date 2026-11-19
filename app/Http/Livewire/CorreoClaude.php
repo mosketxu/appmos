@@ -120,6 +120,7 @@ class CorreoClaude extends Component
             return;
         }
         $this->moverId($destino, $this->sel);
+        $this->sel = null;                 // eliminado: se cierra (el que se mueve a una carpeta sigue abierto)
         if ($this->aviso === 'Correo movido.') {
             $this->aviso = 'Correo enviado a Elementos eliminados.';
         }
@@ -137,14 +138,17 @@ class CorreoClaude extends Component
                 GraphMail::marcarLeido($this->buzon(), $id);      // al archivarlo queda como leído (si falla, no impide moverlo)
             } catch (\Throwable $e) {
             }
-            GraphMail::mover($this->buzon(), $id, $destino);
+            $nuevo = GraphMail::mover($this->buzon(), $id, $destino);
         } catch (\Throwable $e) {
             $this->aviso = 'No se ha podido mover el correo.';
 
             return;
         }
+        if ($nuevo !== '') {      // al moverse, Graph le da otro id al correo: las conversaciones con Claude de este correo pasan a su nueva ubicación (no se pierden)
+            ConfidencialidadDoc::where('user_id', auth()->id())->where('correo_id', $id)->update(['correo_id' => $nuevo]);
+        }
         if ($id === $this->sel) {
-            $this->sel = null;
+            $this->sel = $nuevo !== '' ? $nuevo : null;      // sigue abierto el mismo correo, ya en su carpeta nueva
         }
         $this->mostrarMover = false;
         Cache::forever('correo_claude_v', $this->v() + 1);     // listas y recuentos de carpetas: se vuelven a pedir
