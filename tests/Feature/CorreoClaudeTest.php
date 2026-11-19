@@ -337,7 +337,7 @@ class CorreoClaudeTest extends TestCase
     {
         \Illuminate\Support\Facades\Process::fake(['*' => \Illuminate\Support\Facades\Process::result('x')]);
         config(['contabilidad.claude_todo_gestores' => ['jefe@example.test']]);
-        $jefe = \App\Models\User::factory()->create(['email' => 'jefe@example.test', 'activo' => true]);
+        $jefe = $this->usuarioConCorreo('jefe@example.test');
         $this->actingAs($jefe);
         $d = $this->docListo($jefe);
         Livewire::test(CorreoClaude::class)->call('seleccionar', 'AAA')->set('instruccion', 'Haz esto')->call('pedir');
