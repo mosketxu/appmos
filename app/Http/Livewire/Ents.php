@@ -171,6 +171,11 @@ class Ents extends Component
         $nombresCiclo = \Illuminate\Support\Facades\DB::table('ciclos')->pluck('ciclo', 'id')->map(fn ($c, $id) => $id === 0 ? 'Sin definir' : $c)->all();
 
         $sumas = Suma::orderBy('nombre')->get(['id', 'nombre', 'user_id']);
+        // Iniciales (de su usuario) para el listado: en el desplegable de responsable se ven solo cuando está cerrado (19-nov-2026)
+        $inis = \Illuminate\Support\Facades\DB::table('users')->whereIn('id', $sumas->pluck('user_id')->filter())->pluck('iniciales', 'id');
+        foreach ($sumas as $su) {
+            $su->iniciales = ($inis[$su->user_id] ?? null) ?: collect(preg_split('/\s+/', trim($su->nombre)))->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
+        }
         $coResp = self::coResponsablesDe(array_merge($entidades->pluck('id')->all(), array_filter([$this->coRespDe])));
 
         return view('livewire.ents',compact('entidades', 'hayMas', 'nombresCiclo', 'sumas', 'coResp'));

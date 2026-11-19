@@ -19,14 +19,18 @@
         title="Ciclo de impuestos: {{ $nc }}{{ $puede ? ' (clic: pasa al siguiente)' : '' }}"
         class="px-1 py-0.5 text-xs border rounded-md whitespace-nowrap {{ $ok ? 'text-gray-600 border-gray-300 hover:bg-gray-100' : 'text-yellow-800 border-yellow-400 bg-yellow-50' }}">{{ $nc === 'Sin definir' ? '—' : (mb_strlen($nc) > 5 ? mb_substr($nc, 0, 4).'.' : $nc) }}</{{ $tag }}>
 @elseif ($c === 'responsable')
+    @php $sr = $sumas->firstWhere('id', $e->suma_id); @endphp
     @if ($puede)
-        <select wire:change="cambiarResponsable({{ $e->id }}, $event.target.value)" title="Responsable Suma (se guarda al momento)"
-                class="w-full py-0.5 pl-1 pr-6 text-xs border-gray-300 rounded-md {{ $e->suma_id ? 'text-gray-600' : 'text-purple-700' }}">
-            <option value="" @selected(! $e->suma_id)>— sin resp. —</option>
-            @foreach ($sumas as $s) <option value="{{ $s->id }}" @selected($e->suma_id == $s->id)>{{ $s->nombre }}</option> @endforeach
+        {{-- Cerrado: solo las iniciales (ahorra espacio); al abrirlo, «Nombre (INI)»; el hover da el nombre entero --}}
+        <select wire:change="cambiarResponsable({{ $e->id }}, $event.target.value)" title="{{ $sr ? $sr->nombre : 'Sin responsable' }} (se guarda al momento)"
+                x-data="{ f(v) { $el.querySelectorAll('option[data-full]').forEach(o => o.textContent = v ? o.dataset.full : o.dataset.ini) } }"
+                x-on:focus="f(true)" x-on:mousedown="f(true)" x-on:blur="f(false)" x-on:change="f(false)"
+                style="width:4.25rem" class="py-0.5 pl-1 pr-5 text-xs border-gray-300 rounded-md {{ $e->suma_id ? 'text-gray-600' : 'text-purple-700' }}">
+            <option value="" data-full="— sin resp. —" data-ini="—" @selected(! $e->suma_id)>—</option>
+            @foreach ($sumas as $s) <option value="{{ $s->id }}" data-full="{{ $s->nombre }} ({{ $s->iniciales }})" data-ini="{{ $s->iniciales }}" @selected($e->suma_id == $s->id)>{{ $s->iniciales }}</option> @endforeach
         </select>
     @else
-        <span class="text-xs {{ $e->suma_id ? 'text-gray-600' : 'text-purple-700' }}">{{ $sumas->firstWhere('id', $e->suma_id)->nombre ?? '— sin resp. —' }}</span>
+        <span class="text-xs {{ $e->suma_id ? 'text-gray-600' : 'text-purple-700' }}" title="{{ $sr->nombre ?? 'Sin responsable' }}">{{ $sr->iniciales ?? '—' }}</span>
     @endif
 @elseif ($c === 'estado')
     @php
