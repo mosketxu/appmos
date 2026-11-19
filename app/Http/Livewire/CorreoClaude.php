@@ -613,6 +613,7 @@ class CorreoClaude extends Component
                 $aviso = 'No se ha podido leer el buzón ('.class_basename($e).').';
             }
         }
+        $idsConversacion = $this->idsConConversacion();      // otra vez: la lista pudo dar por perdidas conversaciones cuyo correo ya no existe
         $carpetas = ['plana' => [], 'inbox' => null, 'eliminados' => null];
         $destinos = [];
         if (! $cerrado) {
