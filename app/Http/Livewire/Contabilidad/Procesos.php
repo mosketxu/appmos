@@ -1181,7 +1181,7 @@ class Procesos extends Component
         if (in_array($id, ['monthly_sales', 'anaplan'], true) && ! $this->prepararSys($mm, $pasos, $opc)) {
             return;
         }
-        if ($id === 'anaplan') {
+        if ($id === 'anaplan_web') {
             $this->prepararComprobarNominas($mm, $pasos, $opc);
         }
         if ($id === 'cashflow' && ! $this->prepararMayorCashflow($pasos, $opc)) {
@@ -1893,9 +1893,9 @@ class Procesos extends Component
     }
 
     /**
-     * 20-nov-2026 (idea de Sara Salom): antes de preparar Anaplan se comprueba que las nóminas contabilizadas en SAGE (mayor
+     * 20-nov-2026 (idea de Sara Salom): antes de «Subir Web» (Anaplan) se comprueba que las nóminas contabilizadas en SAGE (mayor
      * de los ficheros base) cuadran, tienda a tienda, con la Imputación de costes del mes (ComprobarNominas/comprobarNominas.py).
-     * Solo AVISA (--avisar): sale en la Salida y el proceso sigue. Va justo después de ponerSyS (si lo hay) y antes de sysSplit.
+     * Solo AVISA (--avisar): sale en la Salida y el proceso sigue. Va como primer paso, antes de abrir Chrome/Anaplan.
      */
     protected function prepararComprobarNominas(string $mm, array &$pasos, array &$opc): void
     {
