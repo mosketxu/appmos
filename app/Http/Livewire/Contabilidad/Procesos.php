@@ -1183,12 +1183,16 @@ class Procesos extends Component
         }
         if (in_array($id, ['anaplan', 'anaplan_web'], true)) {
             $this->prepararComprobarNominas($mm, $pasos, $opc);
+            $this->prepararComprobarFacturas($mm, $pasos, $opc, false);
         }
         if ($id === 'cashflow' && ! $this->prepararMayorCashflow($pasos, $opc)) {
             return;
         }
         if ($id === 'open_items' && ! $this->prepararMayorOpenItems($pasos, $opc)) {
             return;
+        }
+        if ($id === 'open_items') {
+            $this->prepararComprobarFacturas($mm, $pasos, $opc, true);
         }
         if ($id === 'laboral' && $this->laboralFichero) {
             $f = $this->laboralFichero;
@@ -1893,17 +1897,32 @@ class Procesos extends Component
     }
 
     /**
-     * 20-nov-2026 (idea de Sara Salom): antes de «Subir Web» (Anaplan) se comprueba que las nóminas contabilizadas en SAGE (mayor
-     * de los ficheros base) cuadran, tienda a tienda, con la Imputación de costes del mes (ComprobarNominas/comprobarNominas.py).
-     * Solo AVISA (--avisar): sale en la Salida y el proceso sigue. Va en «Split SyS Canal» (tras ponerSyS, antes de sysSplit) y en «Subir Web» (primer paso, antes de abrir Chrome).
+     * 20-nov-2026 (idea de Sara Salom): antes de «Split SyS Canal» y de «Subir Web» (Anaplan) se comprueba que las nóminas contabilizadas en SAGE
+     * (mayor de los ficheros base) cuadran, tienda a tienda, con la Imputación de costes del mes (ComprobarNominas/comprobarNominas.py).
+     * Solo AVISA (--avisar): sale en la Salida y el proceso sigue. En «Split SyS Canal» va tras ponerSyS y antes de sysSplit; en «Subir Web», primero.
      */
     protected function prepararComprobarNominas(string $mm, array &$pasos, array &$opc): void
     {
+        $this->anadirPasoConMayor('ComprobarNominas/comprobarNominas.py', "Comprobar nóminas del mayor (mes {$mm})", $mm, $pasos, $opc, true);
+    }
+
+    /**
+     * 20-nov-2026 (Alex): las facturas del Open Sold Items tienen que coincidir con su PDF (OpenItems/comprobarFacturas.py). Se hace al final del
+     * proceso Open Sold Items y otra vez al subir Anaplan (junto a la de nóminas). Solo avisa.
+     */
+    protected function prepararComprobarFacturas(string $mm, array &$pasos, array &$opc, bool $alFinal): void
+    {
+        $this->anadirPasoConMayor('OpenItems/comprobarFacturas.py', "Comprobar facturas Open Items vs PDF (mes {$mm})", $mm, $pasos, $opc, ! $alFinal);
+    }
+
+    /** Paso Python de solo aviso que recibe el último mayor de los ficheros base como entrada del PC. */
+    protected function anadirPasoConMayor(string $script, string $etiqueta, string $mm, array &$pasos, array &$opc, bool $alPrincipio): void
+    {
         $paso = [
-            'script' => 'ComprobarNominas/comprobarNominas.py',
+            'script' => $script,
             'args' => [$mm, '--avisar'],
             'timeout' => 300,
-            'etiqueta' => "Comprobar nóminas del mayor (mes {$mm})",
+            'etiqueta' => $etiqueta,
             'windows' => false,
             'solo_si_ok' => ! empty($pasos[0]['solo_si_ok']),
         ];
@@ -1911,15 +1930,21 @@ class Procesos extends Component
         $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, $this->anio) : null;
         if ($c && FicherosBase::esMayorLineal($c['ruta'])) {
             if ($this->remoto()) {
-                $i = count($opc['entradas'] ?? []);
-                $opc['entradas'][] = ['ruta' => $c['ruta'], 'nombre' => 'mayor_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $c['nombre']), 'dir' => '_tmp/mayor_in'];
+                $i = array_search($c['ruta'], array_column($opc['entradas'] ?? [], 'ruta'), true);   // el mismo mayor ya viaja como entrada: se reutiliza
+                if ($i === false) {
+                    $i = count($opc['entradas'] ?? []);
+                    $opc['entradas'][] = ['ruta' => $c['ruta'], 'nombre' => 'mayor_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $c['nombre']), 'dir' => '_tmp/mayor_in'];
+                }
                 $paso['args'] = array_merge($paso['args'], ['--mayor-central', '{E'.$i.'}']);
             } else {
                 $paso['args'] = array_merge($paso['args'], ['--mayor-central', $c['ruta']]);
             }
         }
-        // después de ponerSyS (primer paso si se ha puesto el SyS), antes del resto
-        array_splice($pasos, isset($opc['ctx']['pasoSys']) ? 1 : 0, 0, [$paso]);
+        if ($alPrincipio) {   // después de ponerSyS (primer paso si se ha puesto el SyS), antes del resto
+            array_splice($pasos, isset($opc['ctx']['pasoSys']) ? 1 : 0, 0, [$paso]);
+        } else {
+            $pasos[] = $paso;
+        }
     }
 
     /** Lo que se enseña en la fila de Cash flow: el mayor que se usará. */
