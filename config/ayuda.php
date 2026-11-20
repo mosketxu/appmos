@@ -184,7 +184,7 @@ HTML],
 <h4>Ojo</h4>
 <ul>
 <li>Si un proceso tarda, espera: no lo lances dos veces. En Anaplan, «🔄 Reiniciar» cancela y deja el navegador limpio.</li>
-<li>El botón «Subir Web» (Anaplan) empieza <b>comprobando las nóminas</b>: compara, tienda a tienda, lo contabilizado en el mayor de SAGE (sueldos, ticket, pagas extras, finiquito, bonus, SS empresa) con la Imputación de costes del mes. Solo avisa en la Salida (⚠️ si algo no cuadra) y el proceso sigue.</li>
+<li>Los botones «Split SyS Canal» y «Subir Web» de Anaplan empiezan <b>comprobando las nóminas</b>: compara, tienda a tienda, lo contabilizado en el mayor de SAGE (sueldos, ticket, pagas extras, finiquito, bonus, SS empresa) con la Imputación de costes del mes. Solo avisa en la Salida (⚠️ si algo no cuadra) y el proceso sigue.</li>
 <li>Los envíos a terceros (pagos de fin de mes, Plein, arrendatarios) piden confirmación en dos pasos y tienen «enviar a prueba»: úsalo primero.</li>
 <li>Los avisos rojos (alarma de ventas, gastos sin canal, devoluciones de Adyen) no son errores del programa: son datos que hay que mirar.</li>
 </ul>
