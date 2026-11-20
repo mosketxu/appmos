@@ -1181,6 +1181,9 @@ class Procesos extends Component
         if (in_array($id, ['monthly_sales', 'anaplan'], true) && ! $this->prepararSys($mm, $pasos, $opc)) {
             return;
         }
+        if ($id === 'anaplan') {
+            $this->prepararComprobarNominas($mm, $pasos, $opc);
+        }
         if ($id === 'cashflow' && ! $this->prepararMayorCashflow($pasos, $opc)) {
             return;
         }
@@ -1887,6 +1890,36 @@ class Procesos extends Component
         }
 
         return true;
+    }
+
+    /**
+     * 20-nov-2026 (idea de Sara Salom): antes de preparar Anaplan se comprueba que las nóminas contabilizadas en SAGE (mayor
+     * de los ficheros base) cuadran, tienda a tienda, con la Imputación de costes del mes (ComprobarNominas/comprobarNominas.py).
+     * Solo AVISA (--avisar): sale en la Salida y el proceso sigue. Va justo después de ponerSyS (si lo hay) y antes de sysSplit.
+     */
+    protected function prepararComprobarNominas(string $mm, array &$pasos, array &$opc): void
+    {
+        $paso = [
+            'script' => 'ComprobarNominas/comprobarNominas.py',
+            'args' => [$mm, '--avisar'],
+            'timeout' => 300,
+            'etiqueta' => "Comprobar nóminas del mayor (mes {$mm})",
+            'windows' => false,
+            'solo_si_ok' => ! empty($pasos[0]['solo_si_ok']),
+        ];
+        $eid = $this->fiqEntidad();
+        $c = $eid ? FicherosBase::ultimo($eid, 'mayor', null, $this->anio) : null;
+        if ($c && FicherosBase::esMayorLineal($c['ruta'])) {
+            if ($this->remoto()) {
+                $i = count($opc['entradas'] ?? []);
+                $opc['entradas'][] = ['ruta' => $c['ruta'], 'nombre' => 'mayor_'.preg_replace('/[^A-Za-z0-9._-]+/', '_', $c['nombre']), 'dir' => '_tmp/mayor_in'];
+                $paso['args'] = array_merge($paso['args'], ['--mayor-central', '{E'.$i.'}']);
+            } else {
+                $paso['args'] = array_merge($paso['args'], ['--mayor-central', $c['ruta']]);
+            }
+        }
+        // después de ponerSyS (primer paso si se ha puesto el SyS), antes del resto
+        array_splice($pasos, isset($opc['ctx']['pasoSys']) ? 1 : 0, 0, [$paso]);
     }
 
     /** Lo que se enseña en la fila de Cash flow: el mayor que se usará. */
