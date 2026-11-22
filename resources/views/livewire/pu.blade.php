@@ -249,14 +249,15 @@
                                         });
                                         if (fs.length) $wire.uploadMultiple('nuevas', fs);
                                     } }"
-                                 x-on:paste.window="if ($wire.showEditModal && $event.clipboardData && $event.clipboardData.files.length) { $event.preventDefault(); subir($event.clipboardData.files) }"
+                                 tabindex="0" x-on:click="$el.focus()"
+                                 x-on:paste="if ($event.clipboardData && $event.clipboardData.files.length) { $event.preventDefault(); subir($event.clipboardData.files) }"
                                  x-on:dragover.prevent="sobre = true" x-on:dragleave.prevent="sobre = false"
                                  x-on:drop.prevent="sobre = false; subir($event.dataTransfer.files)"
                                  :class="sobre ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'"
-                                 class="px-3 py-3 text-sm text-center text-gray-600 border-2 border-dashed rounded-md">
+                                 class="px-3 py-3 text-sm text-center text-gray-600 border-2 border-dashed rounded-md cursor-pointer focus:outline-none focus:border-indigo-500 focus:bg-indigo-50">
                                 <input type="file" multiple id="pu-ficheros" x-ref="fi" class="hidden" x-on:change="subir($event.target.files); $event.target.value = ''">
-                                <button type="button" x-on:click="$refs.fi.click()" class="px-2 py-1 text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50">📎 Añadir imágenes o ficheros</button>
-                                <span class="block mt-1 text-xs text-gray-500">o arrástralos aquí, o pega una captura con Ctrl+V (máx. 20 MB cada uno)</span>
+                                <button type="button" x-on:click.stop="$refs.fi.click()" class="px-2 py-1 text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50">📎 Añadir imágenes o ficheros</button>
+                                <span class="block mt-1 text-xs text-gray-500">o arrástralos aquí, o haz clic en este recuadro y pega una captura con Ctrl+V (máx. 20 MB cada uno)</span>
                                 <span wire:loading wire:target="nuevas" class="block mt-1 text-xs text-indigo-700">⏳ Subiendo…</span>
                             </div>
                         @endcan

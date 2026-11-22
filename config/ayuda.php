@@ -28,7 +28,7 @@ HTML],
 <h4>Cómo se usa</h4>
 <ul>
 <li><b>Nueva Pu</b> o el lápiz de una fila abren la ficha; <b>Save</b> guarda.</li>
-<li><b>Imágenes y ficheros</b>: en la ficha, «📎 Añadir», arrástralos al recuadro o <b>pega una captura con Ctrl+V</b>. Quedan pendientes (en ámbar) hasta pulsar <b>Save</b>; máx. 20 MB cada uno.</li>
+<li><b>Imágenes y ficheros</b>: en la ficha, «📎 Añadir», arrástralos al recuadro o <b>haz clic en el recuadro y pega una captura con Ctrl+V</b> (solo pega ahí; en los demás campos Ctrl+V pega texto normal). Quedan pendientes (en ámbar) hasta pulsar <b>Save</b>; máx. 20 MB cada uno.</li>
 <li>En la lista salen las miniaturas de las imágenes y el 📎 de los ficheros; clic para abrirlos. La ✕ de la ficha borra un adjunto (pide confirmación).</li>
 </ul>
 <h4>Ojo</h4>
