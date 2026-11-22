@@ -133,8 +133,8 @@
                     </div>
                 </div>
             </div>
-            {{-- Móvil / tablet: los controles debajo del nombre --}}
-            <div class="flex flex-wrap items-center gap-2 px-2 pb-2 lg:hidden ent-controles">
+            {{-- 22-nov-2026 (Alex): en pantallas medianas/pequeñas ya no salen los controles debajo del nombre (Cli/Pro/Con, Fact., ciclo, estado); se cambian en la ficha --}}
+            <div class="hidden ent-controles">
                 @include('livewire.ents._control', ['e' => $entidad, 'c' => 'relacion'])
                 <span class="text-xs text-gray-400">Fact.</span>@include('livewire.ents._control', ['e' => $entidad, 'c' => 'facturar'])
                 @include('livewire.ents._control', ['e' => $entidad, 'c' => 'ciclo'])
