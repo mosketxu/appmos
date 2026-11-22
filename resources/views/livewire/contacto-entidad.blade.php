@@ -31,22 +31,22 @@
                         @forelse ($contactos as $index=>$contacto)
                             <x-table.row wire:loading.class.delay="opacity-50">
                                 <x-table.cell class="w-2/12">
-                                    <input type="text" value="{{ $contacto->entidad }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $contacto->entidad }}" title="{{ $contacto->entidad }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell class="w-1/12">
-                                    <input type="text" value="{{ $contacto->nif }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $contacto->nif }}" title="{{ $contacto->nif }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell  class="w-1/12">
-                                    <input type="text" value="{{ $contacto->tfno }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $contacto->tfno }}" title="{{ $contacto->tfno }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell class="w-2/12">
-                                    <input type="text" value="{{ $contacto->emailgral }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $contacto->emailgral }}" title="{{ $contacto->emailgral }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell class="w-2/12">
-                                    <input type="text"value="{{ $contacto->departamento }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text"value="{{ $contacto->departamento }}" title="{{ $contacto->departamento }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell class="w-3/12">
-                                    <input type="text"value="{{ $contacto->comentarios }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text"value="{{ $contacto->comentarios }}" title="{{ $contacto->comentarios }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell class="w-1/12 pr-2 text-right">
                                     <div class="flex">

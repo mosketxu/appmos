@@ -107,22 +107,22 @@
                         @forelse ($pus as $pu)
                             <x-table.row wire:loading.class.delay="opacity-50">
                                 <x-table.cell>
-                                    <input type="text" value="{{ $pu->destino }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $pu->destino }}" title="{{ $pu->destino }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
-                                    <input type="text" value="{{ $pu->url }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $pu->url }}" title="{{ $pu->url }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
-                                    <input type="text" value="{{ $pu->us }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $pu->us }}" title="{{ $pu->us }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
-                                    <input type="text" value="{{ $pu->us2 }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $pu->us2 }}" title="{{ $pu->us2 }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
-                                    <input type="text" value="{{ $pu->ps }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $pu->ps }}" title="{{ $pu->ps }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
-                                    <input type="text" value="{{ $pu->observaciones }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
+                                    <input type="text" value="{{ $pu->observaciones }}" title="{{ $pu->observaciones }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
                                     @include('livewire._pu_adjuntos', ['adjuntos' => $pu->adjuntos, 'grande' => false])
