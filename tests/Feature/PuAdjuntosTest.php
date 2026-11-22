@@ -77,6 +77,14 @@ class PuAdjuntosTest extends TestCase
         $this->assertSame(0, PuAdjunto::count());
     }
 
+    public function test_nueva_pu_tras_guardar_otra_sale_en_blanco(): void
+    {
+        $ent = $this->entidad();
+        Livewire::actingAs($this->usuario(true))->test(\App\Http\Livewire\Pu::class, ['entidad' => $ent])
+            ->call('create')->set('editing.destino', 'Primera')->set('editing.ps', 'secreta')->call('save')
+            ->call('create')->assertSet('editing.destino', '')->assertSet('editing.ps', '')->assertSet('editingId', null);
+    }
+
     public function test_sin_permiso_de_editar_no_sube(): void
     {
         Storage::fake('local');

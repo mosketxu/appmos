@@ -79,8 +79,10 @@ class Pu extends Component
     }
 
     public function create(){
-        if ($this->editingId) $this->editing = $this->makeBlankPu();
+        // Siempre en blanco: tras guardar una PU nueva, «Nueva Pu» salía con los datos de la anterior (22-nov-2026)
+        $this->editing = $this->makeBlankPu();
         $this->subidas = [];
+        $this->resetErrorBag();
         $this->showEditModal = true;
     }
 
