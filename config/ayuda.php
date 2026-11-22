@@ -23,6 +23,18 @@ return [
 <ul><li>Lo que pongas aquí (impuestos de cada cliente, cifras de cuenta de SAGE, estado) lo usan otras pantallas: Impuestos, Bancos, Facturas OCR…</li></ul>
 HTML],
 
+    'entidad.pu' => ['titulo' => 'PU de la entidad', 'html' => <<<'HTML'
+<p>Accesos de la entidad (webs, usuarios, contraseñas y notas). Cada uno ve solo los de sus entidades.</p>
+<h4>Cómo se usa</h4>
+<ul>
+<li><b>Nueva Pu</b> o el lápiz de una fila abren la ficha; <b>Save</b> guarda.</li>
+<li><b>Imágenes y ficheros</b>: en la ficha, «📎 Añadir», arrástralos al recuadro o <b>pega una captura con Ctrl+V</b>. Quedan pendientes (en ámbar) hasta pulsar <b>Save</b>; máx. 20 MB cada uno.</li>
+<li>En la lista salen las miniaturas de las imágenes y el 📎 de los ficheros; clic para abrirlos. La ✕ de la ficha borra un adjunto (pide confirmación).</li>
+</ul>
+<h4>Ojo</h4>
+<ul><li>Borrar una PU borra también sus adjuntos. Añadir o borrar requiere permiso de edición de entidades.</li></ul>
+HTML],
+
     'todo' => ['titulo' => 'Tareas (TO-DO)', 'html' => <<<'HTML'
 <p>Tu lista de tareas. También es el canal para pedirle cosas a <b>Claude</b>.</p>
 <h4>Cómo se usa</h4>

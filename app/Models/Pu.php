@@ -16,4 +16,9 @@ class Pu extends Model
     {
         return $this->belongsTo(Entidad::class);
     }
+
+    public function adjuntos()
+    {
+        return $this->hasMany(PuAdjunto::class)->orderBy('id');
+    }
 }

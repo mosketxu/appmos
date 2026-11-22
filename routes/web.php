@@ -184,6 +184,7 @@ Route::middleware(['auth:sanctum', 'verified', 'activo'])->group(function () {
     Route::middleware('can:entidades.ver')->group(function () {
         Route::get('/entidades', function () {return view('entidades');})->name('entidades');
         Route::get('/entidad/pu/{entidad}', [EntidadController::class, 'pus'])->name('entidad.pu');
+        Route::get('/entidad/pu/adjunto/{adjunto}', [\App\Http\Controllers\PuAdjuntoController::class, 'ver'])->name('entidad.pu.adjunto');
         Route::get('/entidad/contacto/{entidad}', [EntidadController::class, 'contactos'])->name('entidad.contacto');
         Route::get('/entidad/historial/{entidad}', [EntidadController::class, 'historial'])->name('entidad.historial');
         Route::get('/entidad/impuestos/{entidad}', [EntidadController::class, 'impuestos'])->name('entidad.impuestos');

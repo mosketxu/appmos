@@ -73,6 +73,12 @@
                                 <span class="block text-gray-700 pu-valor" style="white-space:pre-line">{{ $pu->observaciones }}</span>
                             </div>
                         @endif
+                        @if($pu->adjuntos->isNotEmpty())
+                            <div class="min-w-0">
+                                <span class="block text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ __('Adjuntos') }}</span>
+                                @include('livewire._pu_adjuntos', ['adjuntos' => $pu->adjuntos, 'grande' => true])
+                            </div>
+                        @endif
                     </div>
                 @empty
                     <div class="flex items-center justify-center">
@@ -94,6 +100,7 @@
                         <x-table.heading class="pl-4 text-left">{{ __('us2') }}</x-table.heading>
                         <x-table.heading class="pl-4 text-left">{{ __('ps') }}</x-table.heading>
                         <x-table.heading class="pl-4 text-left">{{ __('Observaciones') }}</x-table.heading>
+                        <x-table.heading class="pl-4 text-left">{{ __('Adjuntos') }}</x-table.heading>
                         <x-table.heading colspan="2"/>
                     </x-slot>
                     <x-slot name="body">
@@ -118,6 +125,9 @@
                                     <input type="text" value="{{ $pu->observaciones }}" class="w-full py-1 text-sm font-thin text-gray-500 truncate border-0 rounded-md"  readonly/>
                                 </x-table.cell>
                                 <x-table.cell>
+                                    @include('livewire._pu_adjuntos', ['adjuntos' => $pu->adjuntos, 'grande' => false])
+                                </x-table.cell>
+                                <x-table.cell>
                                     <div class="flex items-center justify-center space-x-3">
                                         <x-icon.edit-a wire:click="edit({{ $pu->id }})" href="#"/>
                                         <x-icon.delete-a wire:click.prevent="delete({{ $pu->id }})" wire:confirm="¿Estás seguro?"/>
@@ -128,7 +138,7 @@
                             </x-table.row>
                         @empty
                             <x-table.row>
-                                <x-table.cell colspan="7">
+                                <x-table.cell colspan="8">
                                     <div class="flex items-center justify-center">
                                         <x-icon.inbox class="w-8 h-8 text-gray-300"/>
                                         <span class="py-5 text-xl font-medium text-gray-500">
@@ -189,6 +199,67 @@
 
                     <x-input.group for="observaciones" label="observaciones" :error="$errors->first('editing.observaciones')">
                         <textarea wire:model="editing.observaciones" id="observaciones" rows="3" class="block w-full border border-gray-300 rounded-md form-textarea sm:text-sm sm:leading-5" style="resize:vertical; min-height:4.5rem"></textarea>
+                    </x-input.group>
+
+                    {{-- Imágenes y ficheros de la PU (22-nov-2026): elegir, arrastrar o pegar una captura con Ctrl+V; se guardan con Save --}}
+                    <x-input.group for="pu-ficheros" label="Imágenes y ficheros" :error="$errors->first('nuevas.*') ?: $errors->first('subidas.*')">
+                        @if($adjuntosEdicion->isNotEmpty())
+                            <ul class="mb-2 space-y-1">
+                                @foreach($adjuntosEdicion as $a)
+                                    <li class="flex items-center space-x-2 text-sm" wire:key="pa-{{ $a->id }}">
+                                        <a href="{{ route('entidad.pu.adjunto', $a->id) }}" target="_blank" class="flex items-center min-w-0 space-x-2 text-indigo-700 hover:underline">
+                                            @if($a->esImagen())
+                                                <img src="{{ route('entidad.pu.adjunto', $a->id) }}" alt="" class="object-cover w-10 h-10 border rounded">
+                                            @else
+                                                <span>📎</span>
+                                            @endif
+                                            <span class="truncate">{{ $a->nombre }}</span>
+                                        </a>
+                                        @can('entidades.editar')
+                                            <button type="button" wire:click="quitarAdjunto({{ $a->id }})" wire:confirm="¿Borrar «{{ $a->nombre }}»?" class="text-red-600 hover:text-red-800" title="Borrar">✕</button>
+                                        @endcan
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        @if(count($subidas))
+                            <ul class="mb-2 space-y-1">
+                                @foreach($subidas as $i => $f)
+                                    <li class="flex items-center space-x-2 text-sm" wire:key="ps-{{ $i }}-{{ $f->getFilename() }}">
+                                        @if($f->isPreviewable())
+                                            <img src="{{ $f->temporaryUrl() }}" alt="" class="object-cover w-10 h-10 border rounded">
+                                        @else
+                                            <span>📎</span>
+                                        @endif
+                                        <span class="truncate">{{ $f->getClientOriginalName() }}</span>
+                                        <span class="text-xs text-amber-700">(se guarda al pulsar Save)</span>
+                                        <button type="button" wire:click="quitarSubida({{ $i }})" class="text-red-600 hover:text-red-800" title="Quitar">✕</button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                        @can('entidades.editar')
+                            <div x-data="{ sobre: false,
+                                    subir(lista) {
+                                        const fs = Array.from(lista || []).map((f, n) => {
+                                            if (f.name && f.name !== 'image.png') return f;
+                                            const d = new Date(), p = v => String(v).padStart(2, '0');
+                                            const ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                                            return new File([f], `captura-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}${n ? '-' + n : ''}.${ext}`, { type: f.type });
+                                        });
+                                        if (fs.length) $wire.uploadMultiple('nuevas', fs);
+                                    } }"
+                                 x-on:paste.window="if ($wire.showEditModal && $event.clipboardData && $event.clipboardData.files.length) { $event.preventDefault(); subir($event.clipboardData.files) }"
+                                 x-on:dragover.prevent="sobre = true" x-on:dragleave.prevent="sobre = false"
+                                 x-on:drop.prevent="sobre = false; subir($event.dataTransfer.files)"
+                                 :class="sobre ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'"
+                                 class="px-3 py-3 text-sm text-center text-gray-600 border-2 border-dashed rounded-md">
+                                <input type="file" multiple id="pu-ficheros" x-ref="fi" class="hidden" x-on:change="subir($event.target.files); $event.target.value = ''">
+                                <button type="button" x-on:click="$refs.fi.click()" class="px-2 py-1 text-indigo-700 border border-indigo-300 rounded hover:bg-indigo-50">📎 Añadir imágenes o ficheros</button>
+                                <span class="block mt-1 text-xs text-gray-500">o arrástralos aquí, o pega una captura con Ctrl+V (máx. 20 MB cada uno)</span>
+                                <span wire:loading wire:target="nuevas" class="block mt-1 text-xs text-indigo-700">⏳ Subiendo…</span>
+                            </div>
+                        @endcan
                     </x-input.group>
 
                 </x-slot>
