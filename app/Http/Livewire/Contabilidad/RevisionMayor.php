@@ -113,7 +113,7 @@ class RevisionMayor extends Component
     public function filasBase(): array
     {
         $out = [];
-        foreach (FicherosBase::TIPOS as $t => $d) {
+        foreach (array_intersect_key(FicherosBase::TIPOS, array_flip(['plan', 'clientes', 'proveedores', 'mayor'])) as $t => $d) {
             if (! empty($d['por_periodo'])) {
                 continue;   // el sumas y saldos se sube en la pantalla que lo usa, que sabe de qué mes es
             }
