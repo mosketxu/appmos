@@ -1235,6 +1235,13 @@ class Bancos extends Component
             if (($eid = $this->entidadIdCliente()) && ! \App\Support\FicherosBase::existeContenido($eid, $fila, $destino)) {
                 \App\Support\FicherosBase::guardar($eid, $fila, $destino, $nombre, 'Bancos');
             }
+            // Este fichero ya se usa aquí (bancos_base lo borra de Recibidos al usarlo): que sincronizarCentral no lo vuelva a procesar
+            if (in_array($fila, ['plan', 'mayor', 'proveedores'], true)) {
+                $marca = $this->baseDir().'/'.$this->cliente.'/Base/central_visto.json';
+                $vis = is_file($marca) ? (json_decode((string) file_get_contents($marca), true) ?: []) : [];
+                $vis[$fila] = hash_file('sha256', $destino);
+                @file_put_contents($marca, json_encode((object) $vis));
+            }
         }
 
         $this->resultados = [];

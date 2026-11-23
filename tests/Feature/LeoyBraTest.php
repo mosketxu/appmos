@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Livewire\Contabilidad\LeoyBra;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -10,6 +11,8 @@ use Tests\TestCase;
 /** LeoyBra: sube ficheros a la carpeta del cliente y lanza el motor (aquí, uno falso que imita sus dos órdenes). */
 class LeoyBraTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected string $dir;
 
     protected function setUp(): void
@@ -44,6 +47,7 @@ PY);
                 return '<div></div>';
             }
         });
+        $this->actingAs($this->adminUser(['activo' => 1]));
         config(['contabilidad.leoybra_entidad' => 77, 'contabilidad.ficheros_base_dir' => $this->dir.'/fb', 'contabilidad.leoybra_dir' => $this->dir, 'contabilidad.leoybra_python' => trim((string) shell_exec('command -v python3'))]);
     }
 
@@ -62,12 +66,11 @@ PY);
     public function test_sube_base_datos_y_pdfs_genera_y_deja_descargar(): void
     {
         $c = Livewire::test(LeoyBra::class)->set('periodo', '2026-3T');
-        $c->set('subidas', [UploadedFile::fake()->create('Mayor 2026.xlsx', 5)])->call('procesarSubidas', 'mayor');
-        $c->set('subidas', [UploadedFile::fake()->create('prov.xlsx', 5)])->call('procesarSubidas', 'proveedores');
-        $c->set('subidas', [UploadedFile::fake()->create('prov2.xlsx', 5)])->call('procesarSubidas', 'proveedores');
-        $this->assertCount(1, glob($this->dir.'/Base/mayor_*'));
-        $this->assertCount(1, glob($this->dir.'/Base/proveedores_*'), 'de los demás solo vale el último');
-        $this->assertCount(1, glob($this->dir.'/Base/OLD/proveedores_*'));
+        $c->set('subidas', [UploadedFile::fake()->createWithContent('Mayor 2026.xlsx', 'mayor 1')])->call('procesarSubidas', 'mayor');
+        $c->set('subidas', [UploadedFile::fake()->createWithContent('prov.xlsx', 'prov 1')])->call('procesarSubidas', 'proveedores');
+        $c->set('subidas', [UploadedFile::fake()->createWithContent('prov2.xlsx', 'prov 2')])->call('procesarSubidas', 'proveedores');
+        $this->assertEmpty(glob($this->dir.'/Base/*'), 'sin copia propia: todo va al central');
+        $this->assertNotNull(\App\Support\FicherosBase::ultimo(77, 'mayor'));
 
         $c->call('generar')->assertSet('error', 'Falta el fichero de datos del trimestre (ventas, compras, banco y tarjeta).');
         $c->set('subidas', [UploadedFile::fake()->create('trim.xlsx', 5)])->call('procesarSubidas', 'datos');
@@ -92,22 +95,11 @@ PY);
         $this->assertEmpty(glob($this->dir.'/Base/*'));
     }
 
-    public function test_los_ficheros_base_se_publican_en_el_central_y_se_traen_de_el(): void
+    public function test_los_ficheros_base_van_solo_al_central_sin_copia_propia(): void
     {
         $c = Livewire::test(LeoyBra::class);
-        $c->set('subidas', [UploadedFile::fake()->create('Mayor 2026.xlsx', 5)])->call('procesarSubidas', 'mayor');
+        $c->set('subidas', [UploadedFile::fake()->createWithContent('Mayor 2026.xlsx', 'contenido de prueba')])->call('procesarSubidas', 'mayor')->assertSet('error', '');
         $this->assertSame('Mayor 2026.xlsx', \App\Support\FicherosBase::ultimo(77, 'mayor')['nombre'], 'lo subido en LeoyBra queda en el central');
-
-        // otro proceso sube el plan de cuentas al central: LeoyBra lo trae al abrirse
-        $tmp = tempnam(sys_get_temp_dir(), 'p').'.xlsx';
-        file_put_contents($tmp, 'plan desde otro proceso');
-        \App\Support\FicherosBase::guardar(77, 'plan', $tmp, 'Plan de cuentas.xlsx', 'Facturas OCR');
-        Livewire::test(LeoyBra::class);
-        $traidos = glob($this->dir.'/Base/plan_*');
-        $this->assertCount(1, $traidos);
-        $this->assertSame('plan desde otro proceso', file_get_contents($traidos[0]));
-        Livewire::test(LeoyBra::class);   // abrir otra vez no lo duplica
-        $this->assertCount(1, glob($this->dir.'/Base/plan_*'));
-        $this->assertCount(1, \App\Support\FicherosBase::historial(77, 'mayor'));
+        $this->assertEmpty(glob($this->dir.'/Base/*'), 'LeoyBra no guarda una copia propia: lee del central');
     }
 }
