@@ -82,7 +82,7 @@ class FicherosBase
                 }
                 $vistos = [];
                 foreach (self::historial((int) basename($dEnt), $tipo) as $h) {   // del más reciente al más antiguo
-                    $clave = $h['periodo'] ?? '-';
+                    $clave = ($h['periodo'] ?? '-').'|'.($h['ejercicio'] ?? '-');   // el último de cada periodo y ejercicio (el IS usa el mayor de su ejercicio)
                     if (! isset($vistos[$clave])) {
                         $vistos[$clave] = true;   // el último de su grupo se queda siempre
                         continue;
