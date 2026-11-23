@@ -65,6 +65,43 @@ class FicherosBase
         return $destino;
     }
 
+    /**
+     * Depuración (23-nov-2026, Alex: «los históricos no me hacen falta, bórralos con cierta antigüedad»): de cada empresa y tipo se conserva SIEMPRE el último
+     * (por periodo en sumas y saldos / PyG / balance) y se borran los anteriores con más de $dias días, con sus ficheros de apoyo.
+     * Devuelve los ficheros borrados (rutas). Con $simular no borra.
+     */
+    public static function depurar(int $dias = 30, bool $simular = false): array
+    {
+        $borrados = [];
+        $limite = time() - $dias * 86400;
+        foreach (glob(self::raiz().'/*', GLOB_ONLYDIR) ?: [] as $dEnt) {
+            foreach (glob($dEnt.'/*', GLOB_ONLYDIR) ?: [] as $dTipo) {
+                $tipo = basename($dTipo);
+                if (! isset(self::TIPOS[$tipo])) {
+                    continue;
+                }
+                $vistos = [];
+                foreach (self::historial((int) basename($dEnt), $tipo) as $h) {   // del más reciente al más antiguo
+                    $clave = $h['periodo'] ?? '-';
+                    if (! isset($vistos[$clave])) {
+                        $vistos[$clave] = true;   // el último de su grupo se queda siempre
+                        continue;
+                    }
+                    if ($h['fecha'] < $limite) {
+                        foreach ([$h['ruta'], $h['ruta'].'.origen', $h['ruta'].'.sha256', $h['ruta'].'.ejercicio', $h['ruta'].'.periodo'] as $f) {
+                            if (is_file($f) && ! $simular) {
+                                @unlink($f);
+                            }
+                        }
+                        $borrados[] = $h['ruta'];
+                    }
+                }
+            }
+        }
+
+        return $borrados;
+    }
+
     /** Todos los de ese tipo, del más reciente al más antiguo: [ruta, nombre, fecha (timestamp), origen]. */
     public static function historial(int $entidadId, string $tipo): array
     {
