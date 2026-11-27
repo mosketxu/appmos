@@ -620,12 +620,22 @@
                                             @else
                                                 <span class="text-gray-500">Falta subir la Imputación</span>
                                             @endif
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
+                                        wire:click="ejecutar('{{ $id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="ejecutar('{{ $id }}')"
+                                        wire:confirm="Esto escribe sobre los ficheros reales. ¿Seguro?"
+                                    >
+                                        <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">1 ▶ Ejecutar</span>
+                                        <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
+                                    </button>
                                             <button type="button" wire:click="$set('edenredUsuariosAbierto', true)" class="px-2 py-0.5 text-xs bg-white border rounded shadow-sm hover:bg-gray-50 {{ $nAlta ? 'border-red-400 text-red-700' : 'border-gray-300 text-gray-700' }}"
                                                 title="Trabajadores nuevos con sus datos (DNI/NIE, correo, fecha de nacimiento) para crear el usuario en Edenred.">
-                                                👤 Usuarios{{ $nAlta ? " ({$nAlta} por dar de alta)" : '' }}
+                                                2 👤 Usuarios{{ $nAlta ? " ({$nAlta} por dar de alta)" : '' }}
                                             </button>
                                         </div>
                                     @endif
+                                    @if ($id !== 'edenred')
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
                                         wire:click="ejecutar('{{ $id }}')"
                                         wire:loading.attr="disabled"
@@ -635,6 +645,7 @@
                                         <span wire:loading.remove wire:target="ejecutar('{{ $id }}')">▶ Ejecutar</span>
                                         <span wire:loading wire:target="ejecutar('{{ $id }}')">⏳…</span>
                                     </button>
+                                    @endif
                                     @if ($id === 'anaplan_web')
                                         <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50"
                                             title="Si la subida se ha quedado colgada o has tocado la ventana de Chrome de Anaplan: para la subida, cierra ese Chrome (solo el de Anaplan) y lo abre limpio. Luego entra si pide sesión y vuelve a pulsar ▶ Ejecutar."
