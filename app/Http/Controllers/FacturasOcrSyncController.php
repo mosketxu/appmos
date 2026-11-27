@@ -181,7 +181,7 @@ class FacturasOcrSyncController extends Controller
         $out = [];
         foreach (\App\Support\FacturasOcrEntrada::todosLosClientes() as $n => $cfg) {
             if (! empty($cfg['carpeta_facturas_recibidas'])) {
-                $out[] = ['cliente' => $n, 'carpeta' => $cfg['carpeta_facturas_recibidas'], 'codigo' => $cfg['codigo'] ?? '', 'tampon' => $cfg['carpeta_tampon'] ?? $cfg['carpeta_facturas_recibidas'], 'entrada' => $cfg['carpeta_entrada'] ?? $cfg['carpeta_facturas_recibidas'], 'validadas' => \App\Support\FacturasOcrEntrada::idsValidadas($n), 'a_mano' => (object) \App\Support\FacturasOcrEntrada::idsAMano($n), 'a_mano_prov' => (object) \App\Support\FacturasOcrEntrada::proveedoresAMano($n)];
+                $out[] = ['cliente' => $n, 'carpeta' => $cfg['carpeta_facturas_recibidas'], 'codigo' => $cfg['codigo'] ?? '', 'tampon' => $cfg['carpeta_tampon'] ?? $cfg['carpeta_facturas_recibidas'], 'entrada' => $cfg['carpeta_entrada'] ?? $cfg['carpeta_facturas_recibidas'], 'validadas' => \App\Support\FacturasOcrEntrada::idsValidadas($n), 'a_mano' => (object) \App\Support\FacturasOcrEntrada::idsAMano($n), 'a_mano_prov' => (object) \App\Support\FacturasOcrEntrada::proveedoresAMano($n), 'nombres' => (object) \App\Support\FacturasOcrEntrada::nombresActuales($n)];
             }
         }
 

@@ -90,6 +90,21 @@ class FacturasOcrEntrada
         return $out;
     }
 
+    /** id => nombre actual del PDF en el servidor (con el proveedor delante) solo si difiere del original subido: el PC renombra así su copia de «Subidas VPS». */
+    public static function nombresActuales(string $cliente): array
+    {
+        $estado = json_decode((string) @file_get_contents(FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/facturas.json'), true) ?: [];
+        $out = [];
+        foreach ($estado['facturas'] ?? [] as $f) {
+            $nuevo = basename((string) ($f['ruta'] ?? ''));
+            if (($f['id'] ?? '') !== '' && preg_match('/\.pdf$/i', $nuevo) && $nuevo !== ($f['nombre_original'] ?? $nuevo)) {
+                $out[$f['id']] = $nuevo;
+            }
+        }
+
+        return $out;
+    }
+
     public static function dirEntrada(string $cliente): string
     {
         return FacturasOcr::rutaDatos(self::baseDir().'/'.basename($cliente)).'/Entrada';
