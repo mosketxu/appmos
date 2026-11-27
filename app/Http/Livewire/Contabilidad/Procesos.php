@@ -223,6 +223,7 @@ class Procesos extends Component
         $this->cargarCashInStore();
         $this->cargarIntrastat();
         $this->cargarComunicarImpuestos();
+        $this->cargarRecordatorioSuma(true);
     }
 
     protected function confPagosFinMes(): array
@@ -1120,6 +1121,9 @@ class Procesos extends Component
             $this->ciEnviado = (string) ($m['enviado'] ?? $this->ciEnviado);
             $this->ciBorrador = (string) ($m['borrador'] ?? $this->ciBorrador);
         }
+        $r = $this->confRecordatorioSuma()['meses'][sprintf('%02d', $this->rsMes ?: $this->mes)] ?? [];
+        $this->rsEnviado = (string) ($r['enviado'] ?? $this->rsEnviado);
+        $this->rsBorrador = (string) ($r['borrador'] ?? $this->rsBorrador);
     }
 
     protected function ejecutarUno(string $id): void
@@ -2585,6 +2589,7 @@ class Procesos extends Component
         $this->cargarCashInStore();
         $this->cargarIntrastat();
         $this->cargarComunicarImpuestos();
+        $this->cargarRecordatorioSuma(true);
         $this->intrastatFichero = null;
     }
 
@@ -2951,6 +2956,93 @@ class Procesos extends Component
             } elseif ($ctx['modo'] === 'borrador' && str_contains($nuevo, 'BORRADOR_OK')) {
                 $this->marcarChecklist('comunicar_impuestos', $ctx['mes'], 'proc');
                 $this->ciBorrador = date('Y-m-d H:i');
+            }
+        }
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^(ENVIADO_REAL|BORRADOR_OK)\s*$/m', '', $nuevo));
+    }
+
+
+    // ---- Recordatorio de la factura de Suma a Plein (27-nov-2026) ----------------
+    // Correo en inglés a «Pagos FIQ» (CC Marta) con la factura de Suma a Fashion IQ del mes que se elija (el de la FACTURA, no el del
+    // cierre: en noviembre se recuerda la de octubre), recordando que está pendiente de pago. Script:
+    // monthlyFIQ/RecordatorioSuma/recordatorioSuma.py (destinatarios y lo de cada mes en su .json).
+
+    public int $rsMes = 0;
+    public string $rsTo = '';
+    public string $rsCc = '';
+    public string $rsEnviado = '';
+    public string $rsBorrador = '';
+    public bool $rsAbierto = false;
+    /** Primer paso del envío real (el segundo es «Confirmar envío REAL»). */
+    public bool $rsArmado = false;
+
+    protected function confRecordatorioSuma(): array
+    {
+        return $this->estadoFiq('fiq.recordatorioSuma', $this->scriptDir().'/RecordatorioSuma/recordatorioSuma.json') ?? [];
+    }
+
+    /** Carga destinatarios y lo ya hecho con la factura del mes elegido en el panel. */
+    protected function cargarRecordatorioSuma(bool $alinearMes = false): void
+    {
+        if ($alinearMes || $this->rsMes < 1 || $this->rsMes > 12) {
+            $this->rsMes = $this->mes;
+        }
+        $conf = $this->confRecordatorioSuma();
+        $m = $conf['meses'][sprintf('%02d', $this->rsMes)] ?? [];
+        $this->rsTo = implode(', ', $conf['to'] ?? []);
+        $this->rsCc = implode(', ', $conf['cc'] ?? []);
+        $this->rsEnviado = (string) ($m['enviado'] ?? '');
+        $this->rsBorrador = (string) ($m['borrador'] ?? '');
+        $this->rsArmado = false;
+    }
+
+    public function updatedRsMes(): void
+    {
+        $this->rsMes = max(1, min(12, (int) $this->rsMes));
+        $this->cargarRecordatorioSuma();
+    }
+
+    /** Primer paso del envío real: enseña «Confirmar envío REAL». */
+    public function armarRecordatorioSuma(): void
+    {
+        if ($this->autorizar('recordatorio_fra_suma')) {
+            $this->rsArmado = ! $this->rsArmado;
+        }
+    }
+
+    /** $modo: 'comprobar' (no crea nada), 'borrador' (Borradores de Outlook, no se envía) o 'real' (solo tras armar). */
+    public function recordatorioSuma(string $modo): void
+    {
+        if (! $this->autorizar('recordatorio_fra_suma') || ! in_array($modo, ['comprobar', 'borrador', 'real'], true)) {
+            return;
+        }
+        if ($modo === 'real' && ! $this->rsArmado) {
+            return; // sin el primer paso no se envía nada
+        }
+        $this->rsArmado = false;
+        $mmF = str_pad((string) $this->rsMes, 2, '0', STR_PAD_LEFT);
+        $etiqueta = "Recordatorio factura Suma {$mmF}/{$this->anio} · ".['comprobar' => 'comprobar', 'borrador' => 'borrador en Outlook', 'real' => 'ENVÍO REAL a Pagos FIQ'][$modo];
+        if ($modo !== 'comprobar' && trim($this->rsTo) === '') {
+            $this->salida .= "\n\n===== {$etiqueta} =====\n⚠️ El «Para» está vacío.";
+            $this->dispatch('proceso-terminado', mensaje: "⚠️ {$etiqueta}\nEl «Para» está vacío.");
+            return;
+        }
+        $args = [(string) $this->rsMes, '--anio='.$this->anio, '--to', $this->rsTo, '--cc', $this->rsCc,
+            match ($modo) {'real' => '--real', 'borrador' => '--borrador', default => '--sin-enviar'}];
+        $this->lanzar([['script' => 'RecordatorioSuma/recordatorioSuma.py', 'args' => $args, 'timeout' => 180, 'etiqueta' => $etiqueta]],
+            ['post' => 'postRecordatorioSuma', 'ctx' => ['mes' => $this->mes, 'modo' => $modo, 'rsMes' => $this->rsMes]]);
+    }
+
+    protected function postRecordatorioSuma(array $ctx, int $desde, array $oks): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        if (! in_array(false, $oks, true)) {
+            if ($ctx['modo'] === 'real' && str_contains($nuevo, 'ENVIADO_REAL')) {
+                $this->marcarChecklist('recordatorio_fra_suma', $ctx['mes'], 'ok');
+                $this->rsEnviado = date('Y-m-d H:i');
+            } elseif ($ctx['modo'] === 'borrador' && str_contains($nuevo, 'BORRADOR_OK')) {
+                $this->marcarChecklist('recordatorio_fra_suma', $ctx['mes'], 'proc');
+                $this->rsBorrador = date('Y-m-d H:i');
             }
         }
         $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^(ENVIADO_REAL|BORRADOR_OK)\s*$/m', '', $nuevo));

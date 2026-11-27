@@ -805,6 +805,12 @@
                                     @if ($ciEnviado)<span class="text-xs text-green-700">✓ enviado el {{ $ciEnviado }}</span>
                                     @elseif ($ciBorrador)<span class="text-xs text-yellow-700">P borrador en Outlook el {{ $ciBorrador }}</span>@endif
                                 </div>
+                            @elseif ($auto === 'recordatorio-suma')
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50" wire:click="$toggle('rsAbierto')">{{ $rsAbierto ? '▴ Plegar' : '✎ Preparar recordatorio' }}</button>
+                                    @if ($rsEnviado)<span class="text-xs text-green-700">✓ enviado el {{ $rsEnviado }}</span>
+                                    @elseif ($rsBorrador)<span class="text-xs text-yellow-700">P borrador en Outlook el {{ $rsBorrador }}</span>@endif
+                                </div>
                             @elseif (in_array($id, ['rv_envio', 'pagos_fin_mes'], true))
                                 {{-- 17-oct-2026 (Alex): el panel de Rentas Variables / Pagos fin de mes se abre aquí debajo; ya no son desplegables aparte --}}
                                 <button type="button" x-data="{ ab: false }" x-on:panel-abierto.window="if ($event.detail.id === '{{ $auto }}') ab = $event.detail.open" x-on:click="$dispatch('alternar-panel', '{{ $auto }}')" x-text="ab ? '▴ Plegar' : 'abrir ↓'" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50">abrir ↓</button>
@@ -915,6 +921,46 @@
                                             @endforelse
                                         </table>
                                         <p class="mt-1 text-xs text-gray-500">Si el M303 está vacío al preparar el correo, el script lo busca solo. Al enviar o dejar el borrador, los destinatarios quedan como base del mes siguiente.</p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
+                    @if ($id === 'recordatorio_fra_suma' && $rsAbierto)
+                        {{-- Recordatorio de pago de la factura de Suma a Plein (27-nov-2026) --}}
+                        <tr wire:key="chk-rs-detalle" x-show="ver('recordatorio factura suma plein pago')">
+                            <td colspan="{{ 3 + count($this->checklistMeses) }}" class="px-2 pb-3">
+                                <div class="p-2 space-y-2 border border-gray-200 rounded">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <label class="text-sm font-semibold text-gray-800">Factura de</label>
+                                        <select wire:model.live="rsMes" class="py-0.5 text-sm border-gray-300 rounded shadow-sm">
+                                            @foreach (range(1, 12) as $mi)
+                                                <option value="{{ $mi }}">{{ ucfirst(\Carbon\Carbon::create($anio, $mi, 1)->locale('es')->monthName) }} {{ $anio }}</option>
+                                            @endforeach
+                                        </select>
+                                        <span class="text-xs text-gray-500">(el mes de la <b>factura</b> de Suma a Fashion IQ, en <code>_Suma\Facturas\{{ $anio }}\{{ str_pad((string) $rsMes, 2, '0', STR_PAD_LEFT) }}</code>; puede ser distinto del mes del cierre)</span>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <label class="text-xs font-medium text-gray-600 shrink-0">To</label>
+                                        <input type="text" wire:model="rsTo" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <label class="text-xs font-medium text-gray-600 shrink-0">CC</label>
+                                        <input type="text" wire:model="rsCc" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                                    </div>
+                                    <p class="text-xs text-gray-500">Texto: «Dear all, Kindly reminder for the payment of our invoice for {{ \Carbon\Carbon::create($anio, $rsMes ?: 1, 1)->locale('en')->monthName }} services. You can find it attached.» + firma de Alex, con la factura en PDF adjunta.</p>
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+                                        @php $rsT = 'recordatorioSuma,armarRecordatorioSuma'; @endphp
+                                        <x-button.secondary wire:click="recordatorioSuma('comprobar')" wire:loading.attr="disabled" wire:target="{{ $rsT }}" title="Solo busca la factura y enseña a quién iría; no crea nada">🔎 Comprobar factura</x-button.secondary>
+                                        <x-button.secondary wire:click="recordatorioSuma('borrador')" wire:loading.attr="disabled" wire:target="{{ $rsT }}" title="Lo deja en Borradores de Outlook para revisarlo y enviarlo desde allí (queda P)">✉ Borrador en Outlook</x-button.secondary>
+                                        @if (! $rsArmado)
+                                            <x-button.primary wire:click="armarRecordatorioSuma" wire:loading.attr="disabled" wire:target="{{ $rsT }}">Enviar a Pagos FIQ…</x-button.primary>
+                                        @else
+                                            <button type="button" wire:click="recordatorioSuma('real')" wire:loading.attr="disabled" wire:target="{{ $rsT }}"
+                                                class="inline-flex items-center px-3 py-1 text-sm font-semibold text-white bg-red-600 border border-red-700 rounded shadow-sm hover:bg-red-700">⚠️ Confirmar envío REAL a Pagos FIQ</button>
+                                            <button type="button" wire:click="armarRecordatorioSuma" class="text-xs text-gray-600 underline">cancelar</button>
+                                        @endif
+                                        <span wire:loading wire:target="{{ $rsT }}" class="text-sm text-gray-500">⏳ …</span>
                                     </div>
                                 </div>
                             </td>
