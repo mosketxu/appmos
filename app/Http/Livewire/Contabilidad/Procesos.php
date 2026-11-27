@@ -674,6 +674,11 @@ class Procesos extends Component
         $d = $this->jsonEdenred($desde);
         if (($ctx['fase'] ?? '') === 'analizar') {
             if ($ok && $d) {
+                if (! empty($d['imputacion']) && Schema::hasTable('estado_procesos')) {
+                    $ult = (array) $this->estadoRemoto('fiq.edenred_ultima_imputacion');
+                    $ult[($d['anio'] ?? $this->anio).'-'.str_pad((string) ($d['mes'] ?? $this->mes), 2, '0', STR_PAD_LEFT)] = $d['imputacion'];
+                    ColaTareas::guardarEstado('fiq.edenred_ultima_imputacion', $ult, 'Procesos FIQ');
+                }
                 $this->edenredAnalisis = $d;
                 $this->edenredDec = [];
                 foreach ($d['diferencias'] ?? [] as $x) {
@@ -742,6 +747,17 @@ class Procesos extends Component
             return null;
         }
         $h = (array) $this->estadoRemoto('fiq.edenred_historial');
+
+        return $h[$this->anio.'-'.str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT)] ?? null;
+    }
+
+    /** Nombre de la Imputación que usó el último análisis del mes (para enseñarlo en el botón aunque no se suba nada). */
+    public function getEdenredUltimaImputacionProperty(): ?string
+    {
+        if (! Schema::hasTable('estado_procesos')) {
+            return null;
+        }
+        $h = (array) $this->estadoRemoto('fiq.edenred_ultima_imputacion');
 
         return $h[$this->anio.'-'.str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT)] ?? null;
     }

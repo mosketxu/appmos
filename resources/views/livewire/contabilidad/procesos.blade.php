@@ -617,6 +617,8 @@
                                                 <span class="text-green-700">✓ {{ $edenredFichero->getClientOriginalName() }}</span>
                                             @elseif ($u = $this->edenredUsada)
                                                 <span class="text-green-700" title="Los Recargas de este mes ya se prepararon con esta Imputación ({{ $u['cuando'] ?? '' }}). Solo hay que subir otra si llega una versión nueva.">✓ Usada: {{ \Illuminate\Support\Str::before($u['imputacion'] ?? '', '.xlsx') }}</span>
+                                            @elseif ($ui = $this->edenredUltimaImputacion)
+                                                <span class="text-green-700" title="Es la que usó el último análisis de este mes (versión más alta de la carpeta Laboral). Sube otra solo si llega una versión nueva.">✓ Se usará: {{ \Illuminate\Support\Str::before($ui, '.xlsx') }}</span>
                                             @else
                                                 <span class="text-gray-500" title="«Ejecutar» usa la versión más alta de «IMPUTACION COSTES» que ya esté en la carpeta Laboral del mes. Sube otra solo si llega una versión nueva.">Se usará la de la carpeta Laboral</span>
                                             @endif
