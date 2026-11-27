@@ -6,7 +6,11 @@
         @foreach ($sf as $f)
             <div>{{ $f['tienda'] }}: {{ $f['excel'] }} → créalo como <b>«{{ $f['propuesta'] }}»</b>@if (! empty($f['quizas'])) <span style="color:#991b1b">(¿o es «{{ $f['quizas'] }}»?)</span>@endif</div>
         @endforeach
-        <div style="margin-top:.2rem;color:#991b1b">👉 1) Créalos en Anaplan («Input Staff Data for AC»). 2) Pulsa el botón de abajo y, en la ventana, escribe al lado de cada uno el nombre que tiene en Anaplan (normalmente el mismo que he propuesto).</div>
+        <div style="margin-top:.2rem;color:#991b1b">👉 Pulsa «➕ Crear en Anaplan»: los crea en «L Staff System» (con el nombre propuesto, tienda por tienda y en este orden), los asigna a su tienda y guarda su nombre. Si prefieres hacerlo a mano: créalos en Anaplan («Input Staff Data for AC») y escribe su nombre con el botón de abajo.</div>
+        <button type="button" wire:click="crearStaffAnaplan" wire:loading.attr="disabled" wire:target="crearStaffAnaplan"
+            wire:confirm="¿Crear en Anaplan a estos {{ count($sf) }} empleado(s) y asignarlos a su tienda? Se escribe en el modelo real de Anaplan (no duplica a quien ya exista)."
+            style="margin-top:.3rem;margin-right:.3rem;padding:.2rem .6rem;font-size:.75rem;font-weight:600;color:#fff;background:#4f46e5;border-radius:.25rem">
+            <span wire:loading.remove wire:target="crearStaffAnaplan">➕ Crear en Anaplan</span><span wire:loading wire:target="crearStaffAnaplan">⏳…</span></button>
         <button type="button" wire:click="abrirNombresStaff" wire:loading.attr="disabled" wire:target="abrirNombresStaff"
             style="margin-top:.3rem;padding:.2rem .6rem;font-size:.75rem;font-weight:600;color:#fff;background:#dc2626;border-radius:.25rem">✎ Escribir los nombres de Anaplan</button>
     </div>

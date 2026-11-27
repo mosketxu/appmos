@@ -1681,6 +1681,70 @@ class Procesos extends Component
         $this->staffAbierto = false;
     }
 
+    /**
+     * «➕ Crear en Anaplan» (27-nov-2026, Alex): a los empleados de la nómina del mes sin nombre de Anaplan les crea el propuesto en
+     * «L Staff System» y los asigna a su tienda (staffAnaplan.js --crear). Tienda por tienda y en el orden del Excel. No toca a quien ya
+     * existe (se puede repetir). Los que tienen duda («¿o es …?») no se crean solos. Al terminar bien, el nombre pasa al histórico.
+     */
+    public function crearStaffAnaplan(): void
+    {
+        if (! $this->autorizar('anaplan_staff')) {
+            return;
+        }
+        $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
+        $porTienda = [];
+        $asoc = [];
+        $dudas = [];
+        foreach ($this->staffSinNombreMes as $f) {
+            if (! empty($f['quizas'])) {
+                $dudas[] = "{$f['tienda']}: {$f['excel']} (¿o es «{$f['quizas']}»?)";
+                continue;
+            }
+            $nombre = trim((string) ($f['propuesta'] ?? '')) ?: trim((string) $f['excel']);
+            $porTienda[$f['tienda']][] = $nombre;
+            $asoc[] = [$f['tienda'], $f['excel'], $nombre];
+        }
+        if (! $porTienda) {
+            $this->dispatch('proceso-terminado', mensaje: '⚠️ No hay empleados nuevos por crear'.($dudas ? ' (los dudosos hay que resolverlos a mano en «✎ Nombres»).' : '.'));
+            return;
+        }
+        $json = tempnam(sys_get_temp_dir(), 'staffcrear');
+        file_put_contents($json, json_encode(['tiendas' => collect($porTienda)->map(fn ($n, $t) => ['tienda' => $t, 'nombres' => $n])->values()->all()], JSON_UNESCAPED_UNICODE));
+        $paso = ['script' => 'anaplanWeb/staffAnaplan.js', 'timeout' => 900, 'windows' => true, 'etiqueta' => "Anaplan · personal {$mm} · crear empleados nuevos"];
+        $opc = ['post' => 'postStaffCrear', 'ctx' => ['mes' => $this->mes, 'asoc' => $asoc]];
+        if ($this->remoto()) {
+            $paso['args'] = [$mm, '--crear', '{E0WIN}', '--real'];
+            $opc['entradas'] = [['ruta' => $json, 'nombre' => 'staff_crear.json', 'dir' => '_tmp/staff_in']];
+        } else {
+            $paso['args'] = [$mm, '--crear', $this->rutaWindows($json), '--real'];
+        }
+        if ($dudas) {
+            $this->salida .= "\n⚠️ No se crean solos (tienen duda; resuélvelos en «✎ Nombres»):\n· ".implode("\n· ", $dudas);
+        }
+        $this->lanzar([$paso], $opc);
+    }
+
+    protected function postStaffCrear(array $ctx, int $desde, array $oks): void
+    {
+        $nuevo = substr($this->salida, $desde);
+        $res = preg_match('/^CREAR_RES: (.*)$/m', $nuevo, $m) ? (json_decode($m[1], true) ?: []) : [];
+        $this->salida = substr($this->salida, 0, $desde).trim(preg_replace('/^CREAR_RES: .*(\r?\n)?/m', '', $nuevo));
+        $bien = [];
+        foreach ((array) ($res['ok'] ?? []) as $x) {
+            $bien[$x[0].'|'.$x[1]] = true;
+        }
+        $h = $this->staffHistorico();
+        foreach ($ctx['asoc'] ?? [] as [$tienda, $excel, $nombre]) {
+            if (isset($bien[$tienda.'|'.$nombre])) {
+                $h[$tienda][$excel] = $nombre;
+            }
+        }
+        if ($bien && Schema::hasTable('estado_procesos')) {
+            ColaTareas::guardarEstado('fiq.anaplan_staff_asoc', $h, 'Procesos FIQ');
+            unset($this->staffSinNombreMes);
+        }
+    }
+
     /** Al cambiar a mano el empleado de Anaplan de una fila del modal. */
     /** Botón «usar este nombre»: pone en el empleado el nombre propuesto (el que se le dijo a Alex que creara en Anaplan) y lo guarda. */
     public function usarPropuestaStaff(int $bi, int $fi): void
