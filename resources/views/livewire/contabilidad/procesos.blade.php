@@ -614,7 +614,7 @@
                                             <x-subir-fichero wire:model="edenredFichero" accept=".xlsx" :fichero="$edenredFichero" texto="Imputación de costes {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}"
                                                 title="La última versión de «IMPUTACION COSTES MMAAAA vN.0.xlsx» del mes (la que llega de Jordi). Se compara con la que se usó el mes anterior." />
                                             @if ($edenredFichero)
-                                                <span class="text-green-700">✓ {{ $edenredFichero->getClientOriginalName() }}</span>
+                                                {{-- el nombre ya sale en el botón de subir --}}
                                             @elseif ($u = $this->edenredUsada)
                                                 <span class="text-green-700" title="Los Recargas de este mes ya se prepararon con esta Imputación ({{ $u['cuando'] ?? '' }}). Solo hay que subir otra si llega una versión nueva.">✓ Usada: {{ \Illuminate\Support\Str::before($u['imputacion'] ?? '', '.xlsx') }}</span>
                                             @elseif ($ui = $this->edenredUltimaImputacion)
