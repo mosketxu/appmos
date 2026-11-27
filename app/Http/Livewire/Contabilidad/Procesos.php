@@ -704,7 +704,7 @@ class Procesos extends Component
     /** Fase 2 de EDENRED: con las decisiones de la ventana, genera los Recargas (y los ajustes). */
     public function generarEdenred(): void
     {
-        if (! $this->autorizar('edenred') || ! $this->edenredFichero) {
+        if (! $this->autorizar('edenred')) {
             return;
         }
         $mm = str_pad((string) $this->mes, 2, '0', STR_PAD_LEFT);
@@ -714,17 +714,17 @@ class Procesos extends Component
         $remoto = $this->remoto();
         $pasos = [[
             'script' => 'Edenred/edenred.py',
-            'args' => [$mm, '--real', '--fichero', $remoto ? '{E0}' : $f->getRealPath(), '--ajustes', $remoto ? '{E1}' : $json],
+            'args' => array_merge([$mm, '--real'], $f ? ['--fichero', $remoto ? '{E0}' : $f->getRealPath()] : [], ['--ajustes', $remoto ? ($f ? '{E1}' : '{E0}') : $json]),
             'timeout' => 900,
             'etiqueta' => "EDENRED · Recargas (mes {$mm}, REAL)",
             'windows' => false,
         ]];
         $opc = ['resultados' => 'edenred', 'post' => 'postProceso', 'ctx' => ['id' => 'edenred', 'mes' => $this->mes, 'fase' => 'generar']];
         if ($remoto) {
-            $opc['entradas'] = [
-                ['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/edenred_in'],
+            $opc['entradas'] = array_values(array_filter([
+                $f ? ['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/edenred_in'] : null,
                 ['ruta' => $json, 'nombre' => 'edenred_ajustes.json', 'dir' => '_tmp/edenred_in'],
-            ];
+            ]));
         }
         $this->edenredAbierto = false;
         $this->lanzar($pasos, $opc);
@@ -1213,18 +1213,15 @@ class Procesos extends Component
         if ($id === 'edenred') {
             // Fase 1: solo analiza (no escribe). La ventana de después lanza la fase 2 (generarEdenred).
             $f = $this->edenredFichero;
-            if (! $f) {
-                $this->dispatch('proceso-terminado', mensaje: '⚠️ Sube primero la Imputación de costes del mes (la última versión).');
-                return;
-            }
-            if (strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
+            // Sin fichero subido, el script usa la versión más alta de la Imputación que ya esté en Laboral\<MM>.
+            if ($f && strtolower($f->getClientOriginalExtension()) !== 'xlsx') {
                 $this->dispatch('proceso-terminado', mensaje: '⚠️ La Imputación de costes tiene que ser un .xlsx.');
                 return;
             }
-            $pasos[0]['args'] = [$mm, '--analizar', '--fichero', $this->remoto() ? '{E0}' : $f->getRealPath()];
+            $pasos[0]['args'] = array_merge([$mm, '--analizar'], $f ? ['--fichero', $this->remoto() ? '{E0}' : $f->getRealPath()] : []);
             $pasos[0]['etiqueta'] = "EDENRED · análisis (mes {$mm})";
             $opc['ctx']['fase'] = 'analizar';
-            if ($this->remoto()) {
+            if ($f && $this->remoto()) {
                 $opc['entradas'] = [['ruta' => $f->getRealPath(), 'nombre' => $f->getClientOriginalName(), 'dir' => '_tmp/edenred_in']];
             }
         }

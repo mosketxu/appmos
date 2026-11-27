@@ -618,7 +618,7 @@
                                             @elseif ($u = $this->edenredUsada)
                                                 <span class="text-green-700" title="Los Recargas de este mes ya se prepararon con esta Imputación ({{ $u['cuando'] ?? '' }}). Solo hay que subir otra si llega una versión nueva.">✓ Usada: {{ \Illuminate\Support\Str::before($u['imputacion'] ?? '', '.xlsx') }}</span>
                                             @else
-                                                <span class="text-gray-500">Falta subir la Imputación</span>
+                                                <span class="text-gray-500" title="«Ejecutar» usa la versión más alta de «IMPUTACION COSTES» que ya esté en la carpeta Laboral del mes. Sube otra solo si llega una versión nueva.">Se usará la de la carpeta Laboral</span>
                                             @endif
                                     <button type="button" class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
                                         wire:click="ejecutar('{{ $id }}')"
