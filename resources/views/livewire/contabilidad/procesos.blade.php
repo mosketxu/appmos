@@ -948,10 +948,17 @@
                                         <label class="text-xs font-medium text-gray-600 shrink-0">CC</label>
                                         <input type="text" wire:model="rsCc" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
                                     </div>
-                                    <p class="text-xs text-gray-500">Texto: «Dear all, Kindly reminder for the payment of our invoice for {{ \Carbon\Carbon::create($anio, $rsMes ?: 1, 1)->locale('en')->monthName }} services. You can find it attached.» + firma de Alex, con la factura en PDF adjunta.</p>
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <label class="text-xs font-medium text-gray-600 shrink-0">Asunto</label>
+                                        <input type="text" wire:model="rsAsunto" class="flex-1 min-w-0 text-sm border-gray-300 rounded shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-gray-600">Texto del correo (editable; la firma de Alex con el logo se añade siempre y la factura va adjunta)</label>
+                                        <textarea wire:model="rsTexto" rows="6" class="w-full text-sm border-gray-300 rounded shadow-sm"></textarea>
+                                    </div>
                                     <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
                                         @php $rsT = 'recordatorioSuma,armarRecordatorioSuma'; @endphp
-                                        <x-button.secondary wire:click="recordatorioSuma('comprobar')" wire:loading.attr="disabled" wire:target="{{ $rsT }}" title="Solo busca la factura y enseña a quién iría; no crea nada">🔎 Comprobar factura</x-button.secondary>
+                                        <x-button.secondary wire:click="recordatorioSuma('comprobar')" wire:loading.attr="disabled" wire:target="{{ $rsT }}" title="Busca la factura y enseña cómo quedará el correo, con la firma; no crea ni envía nada">👁 Vista previa y comprobar</x-button.secondary>
                                         <x-button.secondary wire:click="recordatorioSuma('borrador')" wire:loading.attr="disabled" wire:target="{{ $rsT }}" title="Lo deja en Borradores de Outlook para revisarlo y enviarlo desde allí (queda P)">✉ Borrador en Outlook</x-button.secondary>
                                         @if (! $rsArmado)
                                             <x-button.primary wire:click="armarRecordatorioSuma" wire:loading.attr="disabled" wire:target="{{ $rsT }}">Enviar a Pagos FIQ…</x-button.primary>
@@ -962,6 +969,12 @@
                                         @endif
                                         <span wire:loading wire:target="{{ $rsT }}" class="text-sm text-gray-500">⏳ …</span>
                                     </div>
+                                    @if ($rsVista !== '')
+                                        <div>
+                                            <div class="mb-1 text-xs font-semibold text-gray-600">Así saldrá (el texto de arriba + la firma; el PDF de la factura va adjunto)</div>
+                                            <div class="p-3 text-sm bg-white border border-gray-300 rounded">{!! $rsVista !!}</div>
+                                        </div>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

@@ -192,7 +192,7 @@ HTML],
 <li>Los ficheros que pide cada proceso (settlement de Adyen, sumas y saldos, Excel de Intrastat…) se suben en su fila; el recuadro de arriba es el de los ficheros base de SAGE.</li>
 <li>Con ⓘ ves el detalle de cada proceso. Los paneles de <b>Rentas variables</b>, <b>Pagos de fin de mes</b>, <b>Cash in store</b> y <b>Comunicar impuestos</b> se abren debajo de su fila («abrir ↓»).</li>
 <li>Algunos van solos y solo los vigilas aquí: Fiscal Report diario («📅 Ver días») y UBS semanal.</li>
-<li><b>Recordatorio factura Suma a Plein</b>: eliges el mes de la <b>factura</b> (puede ser distinto del mes del cierre: en noviembre, la de octubre) y prepara el correo en inglés a «Pagos FIQ» (CC Marta) con la factura de Suma a Fashion IQ adjunta, recordando que está pendiente de pago. «Comprobar factura» solo la busca; «Borrador en Outlook» lo deja para revisar; «Enviar a Pagos FIQ…» pide una segunda confirmación.</li>
+<li><b>Recordatorio factura Suma a Plein</b>: eliges el mes de la <b>factura</b> (puede ser distinto del mes del cierre: en noviembre, la de octubre) y prepara el correo en inglés a «Pagos FIQ» (CC Marta) con la factura de Suma a Fashion IQ adjunta, recordando que está pendiente de pago. «Vista previa y comprobar» busca la factura y enseña el correo con la firma (sin crear nada); el texto y el asunto se pueden modificar antes; «Borrador en Outlook» lo deja para revisar; «Enviar a Pagos FIQ…» pide una segunda confirmación.</li>
 </ul>
 <h4>Ojo</h4>
 <ul>

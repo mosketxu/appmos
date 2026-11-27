@@ -2970,6 +2970,10 @@ class Procesos extends Component
     public int $rsMes = 0;
     public string $rsTo = '';
     public string $rsCc = '';
+    public string $rsAsunto = '';
+    public string $rsTexto = '';
+    /** Vista previa del correo (HTML con la firma) que devuelve el script con «Vista previa». */
+    public string $rsVista = '';
     public string $rsEnviado = '';
     public string $rsBorrador = '';
     public bool $rsAbierto = false;
@@ -2989,8 +2993,13 @@ class Procesos extends Component
         }
         $conf = $this->confRecordatorioSuma();
         $m = $conf['meses'][sprintf('%02d', $this->rsMes)] ?? [];
-        $this->rsTo = implode(', ', $conf['to'] ?? []);
-        $this->rsCc = implode(', ', $conf['cc'] ?? []);
+        // Sin copia del estado todavía (el PC aún no la ha subido): los valores de siempre.
+        $this->rsTo = implode(', ', $conf['to'] ?? ['ap@plein.com', 'e.guzzardi@plein.com', 'l.scibona@plein.com']);
+        $this->rsCc = implode(', ', $conf['cc'] ?? ['marta.ruiz@sumaempresa.com']);
+        $mesEn = \Carbon\Carbon::create($this->anio, $this->rsMes, 1)->locale('en')->monthName;
+        $this->rsAsunto = str_replace('{month}', $mesEn, $conf['asunto'] ?? 'Kindly reminder - Suma invoice for {month} services');
+        $this->rsTexto = str_replace('{month}', $mesEn, $conf['texto'] ?? "Dear all,\n\nKindly reminder for the payment of our invoice for {month} services. You can find it attached.\n\nBest regards,");
+        $this->rsVista = '';
         $this->rsEnviado = (string) ($m['enviado'] ?? '');
         $this->rsBorrador = (string) ($m['borrador'] ?? '');
         $this->rsArmado = false;
@@ -3010,7 +3019,7 @@ class Procesos extends Component
         }
     }
 
-    /** $modo: 'comprobar' (no crea nada), 'borrador' (Borradores de Outlook, no se envía) o 'real' (solo tras armar). */
+    /** $modo: 'comprobar' (no crea nada; devuelve la vista previa del correo), 'borrador' (Borradores de Outlook, no se envía) o 'real' (solo tras armar). */
     public function recordatorioSuma(string $modo): void
     {
         if (! $this->autorizar('recordatorio_fra_suma') || ! in_array($modo, ['comprobar', 'borrador', 'real'], true)) {
@@ -3028,6 +3037,7 @@ class Procesos extends Component
             return;
         }
         $args = [(string) $this->rsMes, '--anio='.$this->anio, '--to', $this->rsTo, '--cc', $this->rsCc,
+            '--asunto', trim($this->rsAsunto), '--texto', trim($this->rsTexto),
             match ($modo) {'real' => '--real', 'borrador' => '--borrador', default => '--sin-enviar'}];
         $this->lanzar([['script' => 'RecordatorioSuma/recordatorioSuma.py', 'args' => $args, 'timeout' => 180, 'etiqueta' => $etiqueta]],
             ['post' => 'postRecordatorioSuma', 'ctx' => ['mes' => $this->mes, 'modo' => $modo, 'rsMes' => $this->rsMes]]);
@@ -3036,6 +3046,10 @@ class Procesos extends Component
     protected function postRecordatorioSuma(array $ctx, int $desde, array $oks): void
     {
         $nuevo = substr($this->salida, $desde);
+        if (preg_match('/^VISTA_B64: (\S+)\s*$/m', $nuevo, $v)) {
+            $this->rsVista = (string) base64_decode($v[1]);
+            $nuevo = trim(preg_replace('/^VISTA_B64: .*(\r?\n)?/m', '', $nuevo));
+        }
         if (! in_array(false, $oks, true)) {
             if ($ctx['modo'] === 'real' && str_contains($nuevo, 'ENVIADO_REAL')) {
                 $this->marcarChecklist('recordatorio_fra_suma', $ctx['mes'], 'ok');
